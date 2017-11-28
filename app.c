@@ -205,7 +205,210 @@ void app_close() {
   [pool drain];
 }
 #elif defined(_WIN32)
-#error Windows not implemented
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <stdlib.h>
+
+static WNDCLASS wc;
+static HWND wnd;
+static int close = 0;
+static int width;
+static int height;
+static HDC hdc;
+static void* buffer;
+static BITMAPINFO* bitmapInfo;
+
+static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+  LRESULT res = 0;
+  switch (message) {
+    case WM_PAINT:
+      if (buffer) {
+        StretchDIBits(hdc, 0, 0, width, height, 0, 0, width, height, buffer, bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
+        ValidateRect(hWnd, NULL);
+      }
+      break;
+    case WM_KEYDOWN:
+      if ((wParam&0xFF) == 27)
+        close = 1;
+      break;
+    case WM_CLOSE:
+      close = 1;
+      break;
+    default:
+      res = DefWindowProc(hWnd, message, wParam, lParam);
+  }
+  return res;
+}
+
+int app_open(const char* title, int width, int height) {
+  wc.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
+  wc.lpfnWndProc = WndProc;
+  wc.hCursor = LoadCursor(0, IDC_ARROW);
+  wc.lpszClassName = title;
+  RegisterClass(&wc);
+  
+  RECT rect    = { 0 };
+  rect.right   = width;
+  rect.bottom  = height;
+  AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
+  rect.right  -= rect.left;
+  rect.bottom -= rect.top;
+  
+  width  = width;
+  height = height;
+  
+  wnd = CreateWindowEx(0, title, title,
+                       WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
+                       CW_USEDEFAULT, CW_USEDEFAULT,
+                       rect.right, rect.bottom,
+                       0, 0, 0, 0);
+  
+  if (!wnd)
+    return 0;
+  
+  ShowWindow(wnd, SW_NORMAL);
+  
+  bitmapInfo = (BITMAPINFO*)calloc(1, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
+  bitmapInfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  bitmapInfo->bmiHeader.biPlanes = 1;
+  bitmapInfo->bmiHeader.biBitCount = 32;
+  bitmapInfo->bmiHeader.biCompression = BI_BITFIELDS;
+  bitmapInfo->bmiHeader.biWidth = width;
+  bitmapInfo->bmiHeader.biHeight = -height;
+  bitmapInfo->bmiColors[0].rgbRed = 0xff;
+  bitmapInfo->bmiColors[1].rgbGreen = 0xff;
+  bitmapInfo->bmiColors[2].rgbBlue = 0xff;
+  
+  hdc = GetDC(wnd);
+  
+  return 1;
+}
+
+int app_update(void* buffer) {
+  MSG msg;
+  buffer = buffer;
+  
+  InvalidateRect(wnd, NULL, TRUE);
+  SendMessage(wnd, WM_PAINT, 0, 0);
+  while (PeekMessage(&msg, wnd, 0, 0, PM_REMOVE)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+  }
+  
+  if (close == 1)
+    return 0;
+  
+  return 1;
+}
+
+void app_close() {
+  buffer = 0;
+  free(bitmapInfo);
+  ReleaseDC(wnd, hdc);
+  DestroyWindow(wnd);
+}
 #else
-#error *nix not implemented
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+
+static Display* display;
+static int screen;
+static int width;
+static int height;
+static Window window;
+static GC gc;
+static XImage *ximage;
+
+int app_open(const char* title, int width, int height) {
+  int depth, i, formatCount, convDepth = -1;
+  XPixmapFormatValues* formats;
+  XSetWindowAttributes windowAttributes;
+  XSizeHints sizeHints;
+  Visual* visual;
+  
+  display = XOpenDisplay(0);
+  
+  if (!display)
+    return -1;
+  
+  screen  = DefaultScreen(display);
+  visual  = DefaultVisual(display, screen);
+  formats = XListPixmapFormats(display, &formatCount);
+  depth   = DefaultDepth(display, screen);
+  Window defaultRootWindow = DefaultRootWindow(display);
+  
+  for (i = 0; i < formatCount; ++i) {
+    if (depth == formats[i].depth) {
+      convDepth = formats[i].bitper_pixel;
+      break;
+    }
+  }
+  XFree(formats);
+  
+  if (convDepth != 32) {
+    XCloseDisplay(display);
+    return -1;
+  }
+  
+  int screenWidth  = DisplayWidth(display, screen);
+  int screenHeight = DisplayHeight(display, screen);
+  
+  windowAttributes.border_pixel     = BlackPixel(display, screen);
+  windowAttributes.background_pixel = BlackPixel(display, screen);
+  windowAttributes.backing_store    = NotUseful;
+  
+  window = XCreateWindow(display, defaultRootWindow, (screenWidth - width) / 2,
+                         (screenHeight - height) / 2, width, height, 0, depth, InputOutput,
+                         visual, CWBackPixel | CWBorderPixel | CWBackingStore,
+                         &windowAttributes);
+  if (!window)
+    return 0;
+  
+  XSelectInput(display, window, KeyPressMask | KeyReleaseMask);
+  XStoreName(display, window, title);
+  
+  sizeHints.flags = PPosition | PMinSize | PMaxSize;
+  sizeHints.x = 0;
+  sizeHints.y = 0;
+  sizeHints.min_width = width;
+  sizeHints.max_width = width;
+  sizeHints.min_height = height;
+  sizeHints.max_height = height;
+  
+  XSetWMNormalHints(display, window, &sizeHints);
+  XClearWindow(display, window);
+  XMapRaised(display, window);
+  XFlush(display);
+  
+  gc = DefaultGC(display, screen);
+  ximage = XCreateImage(display, CopyFromParent, depth, ZPixmap, 0, NULL, width, height, 32, width * 4);
+  
+  width  = width;
+  height = height;
+  
+  return 1;
+}
+
+int app_update(void* buffer) {
+  ximage->data = (char*)buffer;
+  
+  XPutImage(display, window, gc, ximage, 0, 0, 0, 0, width, height);
+  XFlush(display);
+  
+  if (!XPending(display))
+    return 0;
+  
+  XEvent event;
+  XNextEvent(display, &event);
+  KeySym sym = XLookupKeysym(&event.xkey, 0);
+  
+  return 1;
+}
+
+void app_close (void) {
+  ximage->data = NULL;
+  XDestroyImage(ximage);
+  XDestroyWindow(display, window);
+  XCloseDisplay(display);
+}
 #endif
