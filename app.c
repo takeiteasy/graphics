@@ -8,6 +8,54 @@
 
 #include "app.h"
 
+surface_t* create_surface(unsigned int w, unsigned int h) {
+  surface_t* ret = malloc(sizeof(surface_t));
+  if (!ret) {
+    fprintf(stderr, "ERROR! malloc() failed.\n");
+    return NULL;
+  }
+  
+  ret->w = w;
+  ret->h = h;
+  ret->buf = malloc(w * h * sizeof(unsigned int));
+  if (!ret->buf) {
+    fprintf(stderr, "ERROR! malloc() failed.\n");
+    return NULL;
+  }
+  
+  return ret;
+}
+
+void free_surface(surface_t** s) {
+  free((*s)->buf);
+  (*s)->buf = NULL;
+  free(*s);
+  *s = NULL;
+}
+
+void fill_surface(surface_t* s, int r, int g, int b) {
+  for (int i = 0; i < s->w; ++i)
+    for (int j = 0; j < s->h; ++j)
+      s->buf[j * s->w + i] = Map_RGB(r, g, b);
+}
+
+unsigned int pset(surface_t* s, int x, int y, int r, int g, int b) {
+  if (x > s->w || y > s->h) {
+    fprintf(stderr, "ERROR! pset() failed! x/y outside of bounds.\n");
+    return 0;
+  }
+  s->buf[x * s->w + y] = Map_RGB(r, g, b);
+  return 1;
+}
+
+int pget(surface_t* s, int x, int y) {
+  if (x > s->w || y > s->h) {
+    fprintf(stderr, "ERROR! pget() failed! x/y outside of bounds.\n");
+    return -1;
+  }
+  return s->buf[x * s->w + y];
+}
+
 #if defined(__APPLE__)
 #import <Cocoa/Cocoa.h>
 
@@ -20,14 +68,11 @@
 @interface osx_view_t : NSView {}
 @end
 
-static void* buffer = NULL;
-static int w = 0, h = 0;
+static surface_t* buffer;
 static osx_app_t* app;
 
 @implementation osx_view_t
-extern void* buffer;
-extern int   w;
-extern int   h;
+extern surface_t* buffer;
 
 -(NSRect)resizeRect {
   NSRect v = [[self window] contentRectForFrameRect:[[self window] frame]];
@@ -44,13 +89,13 @@ extern int   h;
   CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
   
   CGColorSpaceRef s = CGColorSpaceCreateDeviceRGB();
-  CGDataProviderRef p = CGDataProviderCreateWithData(NULL, buffer, w * h * 4, NULL);
-  CGImageRef img = CGImageCreate(w, h, 8, 32, w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, false, kCGRenderingIntentDefault);
+  CGDataProviderRef p = CGDataProviderCreateWithData(NULL, buffer->buf, buffer->w * buffer->h * 4, NULL);
+  CGImageRef img = CGImageCreate(buffer->w, buffer->h, 8, 32, buffer->w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, false, kCGRenderingIntentDefault);
   
   CGColorSpaceRelease(s);
   CGDataProviderRelease(p);
   
-  CGContextDrawImage(ctx, CGRectMake(0, 0, w, h), img);
+  CGContextDrawImage(ctx, CGRectMake(0, 0, buffer->w, buffer->h), img);
   
   CGImageRelease(img);
 }
@@ -144,9 +189,11 @@ extern int   h;
 }
 @end
 
-int app_open(const char* t, int _w, int _h) {
-  w = _w;
-  h = _h;
+surface_t* app_open(const char* t, int w, int h) {
+  if (!(buffer = create_surface(w, h)))
+    return NULL;
+  buffer->w = w;
+  buffer->h = h;
   
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
@@ -157,7 +204,7 @@ int app_open(const char* t, int _w, int _h) {
                                        backing:NSBackingStoreBuffered
                                          defer:NO];
   if (!app)
-    return 0;
+    return NULL;
   
   [app setTitle:[NSString stringWithUTF8String:t]];
   [app setReleasedWhenClosed:NO];
@@ -167,11 +214,10 @@ int app_open(const char* t, int _w, int _h) {
   [NSApp activateIgnoringOtherApps:YES];
   [pool drain];
   
-  return 1;
+  return buffer;
 }
 
-int app_update(void* b) {
-  buffer  = b;
+int app_update() {
   int ret = 1;
 
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
