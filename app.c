@@ -8,6 +8,8 @@
 
 #include "app.h"
 
+#define RGB2INT(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
+
 surface_t* create_surface(unsigned int w, unsigned int h) {
   surface_t* ret = malloc(sizeof(surface_t));
   if (!ret) {
@@ -36,22 +38,22 @@ void free_surface(surface_t** s) {
 void fill_surface(surface_t* s, int r, int g, int b) {
   for (int i = 0; i < s->w; ++i)
     for (int j = 0; j < s->h; ++j)
-      s->buf[j * s->w + i] = Map_RGB(r, g, b);
+      s->buf[j * s->w + i] = RGB2INT(r, g, b);
 }
 
-unsigned int pset(surface_t* s, int x, int y, int r, int g, int b) {
+bool pset(surface_t* s, int x, int y, int r, int g, int b) {
   if (x > s->w || y > s->h) {
     fprintf(stderr, "ERROR! pset() failed! x/y outside of bounds.\n");
-    return 0;
+    return false;
   }
-  s->buf[x * s->w + y] = Map_RGB(r, g, b);
-  return 1;
+  s->buf[x * s->w + y] = RGB2INT(r, g, b);
+  return true;
 }
 
 int pget(surface_t* s, int x, int y) {
   if (x > s->w || y > s->h) {
     fprintf(stderr, "ERROR! pget() failed! x/y outside of bounds.\n");
-    return -1;
+    return 0;
   }
   return s->buf[x * s->w + y];
 }
@@ -78,7 +80,6 @@ extern surface_t* buffer;
   NSRect v = [[self window] contentRectForFrameRect:[[self window] frame]];
   return NSMakeRect(NSMaxX(v) + 5.5, NSMinY(v) - 16.0 - 5.5, 16.0, 16.0);
 }
-
 
 -(void)drawRect:(NSRect)r {
   (void)r;
@@ -217,9 +218,8 @@ surface_t* app_open(const char* t, int w, int h) {
   return buffer;
 }
 
-int app_update() {
-  int ret = 1;
-
+bool app_update() {
+  bool ret = true;
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   NSEvent* e = [NSApp nextEventMatchingMask:NSEventMaskAny
                                   untilDate:[NSDate distantPast]
@@ -229,7 +229,7 @@ int app_update() {
     switch ([e type]) {
       case NSEventTypeKeyDown:
       case  NSEventTypeKeyUp:
-        ret = 0;
+        ret = false;
         break;
       default :
         [NSApp sendEvent:e];
@@ -238,7 +238,7 @@ int app_update() {
   [pool release];
   
   if (app->closed)
-    ret = 0;
+    ret = false;
   [[app contentView] setNeedsDisplay:YES];
 
   return ret;
