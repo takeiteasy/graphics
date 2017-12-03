@@ -15,14 +15,11 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-
+#include <math.h>
+  
 typedef struct {
   unsigned int* buf, w, h;
 } surface_t;
-  
-typedef struct {
-  unsigned int r, g, b;
-} rgb_t;
 
 typedef struct {
   unsigned int x, y, w, h;
@@ -38,6 +35,11 @@ void fill_surface(surface_t*, int, int , int);
 bool pset(surface_t*, int, int, int, int, int);
 int pget(surface_t*, int, int);
 bool blit_surface(surface_t*, point_t*, surface_t*, rect_t*);
+bool yline(surface_t*, int, int, int, int, int, int);
+bool xline(surface_t*, int, int, int, int, int, int);
+bool line(surface_t*, int, int, int, int, int, int, int);
+bool circle(surface_t*, int, int, int, int, int, int);
+bool disk(surface_t*, int, int, int, int, int, int);
 
 surface_t* app_open(const char*, int, int);
 bool app_update(void);

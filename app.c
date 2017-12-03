@@ -81,7 +81,7 @@ bool blit_surface(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   }
   int to_x = offset_x + width, to_y = offset_y + height;
   if (to_x > dst->w || to_y > dst->h) {
-    fprintf(stderr, "ERROR! blit_surface() failed! src w/h outside bounds of dst.\n");
+    fprintf(stderr, "WARNING! blit_surface() failed! src w/h outside bounds of dst.\n");
     return false;
   }
   
@@ -89,6 +89,177 @@ bool blit_surface(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   for (x = 0; x < width; ++x)
     for (y = 0; y < height; ++y)
       XYSET(dst, offset_x + x, offset_y + y, XYGET(src, from_x + x, from_y + y));
+  return true;
+}
+
+bool yline(surface_t* s, int x, int y1, int y2, int r, int g, int b) {
+  if (y2 < y1) {
+    y1 += y2;
+    y2  = y1 - y2;
+    y1 -= y2;
+  }
+  if (y2 < 0 || y1 >= s->h  || x < 0 || x >= s->w) {
+    fprintf(stderr, "WARNING! yline() failed! x/y outside bounds of dst.\n");
+    return false;
+  }
+  if (y1 < 0)
+    y1 = 0;
+  if (y2 >= s->h)
+    y2 = s->h - 1;
+  
+  int c = RGB2INT(r, g, b);
+  for(int y = y1; y <= y2; y++)
+    XYSET(s, x, y, c);
+  return true;
+}
+
+bool xline(surface_t* s, int y, int x1, int x2, int r, int g, int b) {
+  if (x2 < x1) {
+    x1 += x2;
+    x2  = x1 - x2;
+    x1 -= x2;
+  }
+  
+  if (x2 < 0 || x1 >= s->w || y < 0 || y >= s->h) {
+    fprintf(stderr, "WARNING! xline() failed! x/y outside bounds of dst.\n");
+    return false;
+  }
+  
+  if (x1 < 0)
+    x1 = 0;
+  if (x2 >= s->w)
+    x2 = s->w - 1;
+  
+  int c = RGB2INT(r, g, b);
+  for(int x = x1; x <= x2; x++)
+    XYSET(s, x, y, c);
+  return true;
+}
+
+bool line(surface_t* s, int x1, int y1, int x2, int y2, int r, int g, int b) {
+  if (x1 < 0 || x1 > s->w - 1 || x2 < 0 || x2 > s->w - 1 || y1 < 0 || y1 > s->h - 1 || y2 < 0 || y2 > s->h - 1) {
+    fprintf(stderr, "WARNING! line() failed! x1/y1/x2/y2 outside bounds of dst.\n");
+    return false;
+  }
+  
+  int dx = abs(x2 - x1), dy = abs(y2 - y1);
+  int x = x1, y = y1;
+  int c = RGB2INT(r, g, b);
+  int xi1, xi2, yi1, yi2, d, n, na, np, p;
+  
+  if (x2 >= x1) {
+    xi1 = 1;
+    xi2 = 1;
+  } else {
+    xi1 = -1;
+    xi2 = -1;
+  }
+  
+  if(y2 >= y1) {
+    yi1 = 1;
+    yi2 = 1;
+  } else  {
+    yi1 = -1;
+    yi2 = -1;
+  }
+  
+  if (dx >= dy) {
+    xi1 = 0;
+    yi2 = 0;
+    d = dx;
+    n = dx / 2;
+    na = dy;
+    np = dx;
+  } else {
+    xi2 = 0;
+    yi1 = 0;
+    d = dy;
+    n = dy / 2;
+    na = dx;
+    np = dy;
+  }
+  
+  for (p = 0; p <= np; ++p) {
+    XYSET(s, x % s->w, y % s->h, c);
+    n += na;
+    if (n >= d) {
+      n -= d;
+      x += xi1;
+      y += yi1;
+    }
+    x += xi2;
+    y += yi2;
+  }
+  return true;
+}
+
+bool circle(surface_t* s, int xc, int yc, int r, int r1, int g1, int b1) {
+  if (xc - r < 0 || xc + r >= s->w || yc - r < 0 || yc + r >= s->h) {
+    fprintf(stderr, "WARNING! circle() failed! x/y outside bounds of dst.\n");
+    return false;
+  }
+  
+  int x = 0, y = r, p = 3 - (r << 1), c1 = RGB2INT(r1, g1, b1);
+  int a, b, c, d, e, f, g, h;
+  
+  while (x <= y) {
+    a = xc + x;
+    b = yc + y;
+    c = xc - x;
+    d = yc - y;
+    e = xc + y;
+    f = yc + x;
+    g = xc - y;
+    h = yc - x;
+    
+    XYSET(s, a, b, c1);
+    XYSET(s, c, d, c1);
+    XYSET(s, e, f, c1);
+    XYSET(s, g, f, c1);
+    
+    if (x > 0) {
+      XYSET(s, a, d, c1);
+      XYSET(s, c, b, c1);
+      XYSET(s, e, h, c1);
+      XYSET(s, g, h, c1);
+    }
+    p += (p < 0 ? (x++ << 2) + 6 : ((x++ - y--) << 2) + 10);
+  }
+  return true;
+}
+
+bool disk(surface_t* s, int xc, int yc, int r, int r1, int g1, int b1) {
+  if (xc + r < 0 || xc - r >= s->w || yc + r < 0 || yc - r >= s->h) {
+    fprintf(stderr, "WARNING! circle() failed! x/y outside bounds of dst.\n");
+    return false;
+  }
+  
+  int x = 0, y = r, p = 3 - (r << 1), pb = yc + r + 1, pd = yc + r + 1;
+  int a, b, c, d, e, f, g, h;
+  
+  while (x <= y) {
+    a = xc + x;
+    b = yc + y;
+    c = xc - x;
+    d = yc - y;
+    e = xc + y;
+    f = yc + x;
+    g = xc - y;
+    h = yc - x;
+    
+    if (b != pb)
+      xline(s, b, a, c, r1, g1, b1);
+    if (d != pd)
+      xline(s, d, a, c, r1, g1, b1);
+    if (f != b)
+      xline(s, f, e, g, r1, g1, b1);
+    if (h != d && h != f)
+      xline(s, h, e, g, r1, g1, b1);
+    
+    pb = b;
+    pd = d;
+    p += (p < 0 ? (x++ << 2) + 6 : ((x++ - y--) << 2) + 10);
+  }
   return true;
 }
 
