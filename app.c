@@ -9,6 +9,8 @@
 #include "app.h"
 
 #define RGB2INT(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
+#define XYSET(s, x, y, v) (s->buf[(y) * s->w + (x)] = (v))
+#define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
 
 surface_t* create_surface(unsigned int w, unsigned int h) {
   surface_t* ret = malloc(sizeof(surface_t));
@@ -19,7 +21,7 @@ surface_t* create_surface(unsigned int w, unsigned int h) {
   
   ret->w = w;
   ret->h = h;
-  ret->buf = malloc(w * h * sizeof(unsigned int));
+  ret->buf = malloc(w * h * sizeof(unsigned int) + 1);
   if (!ret->buf) {
     fprintf(stderr, "ERROR! malloc() failed.\n");
     return NULL;
@@ -36,9 +38,9 @@ void free_surface(surface_t** s) {
 }
 
 void fill_surface(surface_t* s, int r, int g, int b) {
-  for (int i = 0; i < s->w; ++i)
-    for (int j = 0; j < s->h; ++j)
-      s->buf[j * s->w + i] = RGB2INT(r, g, b);
+  for (int x = 0; x < s->w; ++x)
+    for (int y = 0; y < s->h; ++y)
+      XYSET(s, x, y, RGB2INT(r, g, b));
 }
 
 bool pset(surface_t* s, int x, int y, int r, int g, int b) {
@@ -46,7 +48,7 @@ bool pset(surface_t* s, int x, int y, int r, int g, int b) {
     fprintf(stderr, "ERROR! pset() failed! x/y outside of bounds.\n");
     return false;
   }
-  s->buf[x * s->w + y] = RGB2INT(r, g, b);
+  XYSET(s, x, y, RGB2INT(r, g, b));
   return true;
 }
 
@@ -55,7 +57,39 @@ int pget(surface_t* s, int x, int y) {
     fprintf(stderr, "ERROR! pget() failed! x/y outside of bounds.\n");
     return 0;
   }
-  return s->buf[x * s->w + y];
+  return XYGET(s, x, y);
+}
+
+bool blit_surface(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
+  if (!src || !dst) {
+    fprintf(stderr, "ERROR! blit_surface() failed! src and dst must not be null.\n");
+    return false;
+  }
+  
+  int offset_x = 0,      offset_y = 0,
+      from_x   = 0,      from_y   = 0,
+      width    = src->w, height   = src->h;
+  if (p) {
+    offset_x = p->x;
+    offset_y = p->y;
+  }
+  if (r) {
+    from_x = r->x;
+    from_y = r->y;
+    width  = r->w;
+    height = r->h;
+  }
+  int to_x = offset_x + width, to_y = offset_y + height;
+  if (to_x > dst->w || to_y > dst->h) {
+    fprintf(stderr, "ERROR! blit_surface() failed! src w/h outside bounds of dst.\n");
+    return false;
+  }
+  
+  int x, y;
+  for (x = 0; x < width; ++x)
+    for (y = 0; y < height; ++y)
+      XYSET(dst, offset_x + x, offset_y + y, XYGET(src, from_x + x, from_y + y));
+  return true;
 }
 
 #if defined(__APPLE__)

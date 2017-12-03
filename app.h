@@ -37,7 +37,8 @@ void free_surface(surface_t**);
 void fill_surface(surface_t*, int, int , int);
 bool pset(surface_t*, int, int, int, int, int);
 int pget(surface_t*, int, int);
-  
+bool blit_surface(surface_t*, point_t*, surface_t*, rect_t*);
+
 surface_t* app_open(const char*, int, int);
 bool app_update(void);
 void app_close(void);
