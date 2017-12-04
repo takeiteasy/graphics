@@ -8,7 +8,6 @@
 
 #include "app.h"
 
-#define RGB2INT(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
 #define XYSET(s, x, y, v) (s->buf[(y) * s->w + (x)] = (v))
 #define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
 
@@ -279,6 +278,100 @@ bool rect_filled(surface_t* s, int x, int y, int w, int h, int r, int g, int b) 
   for (; y < h; ++y)
     xline(s, y, x, w, r, g, b);
   return true;
+}
+
+unsigned char* load_file_to_mem(const char* path) {
+  FILE *file = fopen(path, "rb");
+  if (!file) {
+    fprintf(stderr, "ERROR! fopen(%s) failed. %d: %s\n", path, errno, strerror(errno));
+    return NULL;
+  }
+  
+  fseek(file, 0, SEEK_END);
+  size_t length = ftell(file);
+  rewind(file);
+  
+  unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
+  fread(data, 1, length, file);
+  fclose(file);
+  
+  return data;
+}
+
+surface_t* load_bmp_from_mem(unsigned char* data) {
+  unsigned char bmp_file_header[14];
+  unsigned char bmp_info_header[40];
+  
+  memset(bmp_file_header, 0, sizeof(bmp_file_header));
+  memset(bmp_info_header, 0, sizeof(bmp_info_header));
+  
+  memcpy(bmp_file_header, data, sizeof(bmp_file_header));
+  memcpy(bmp_info_header, data + sizeof(bmp_file_header), sizeof(bmp_info_header));
+  
+  if ((bmp_file_header[0] != 'B') || (bmp_file_header[1] != 'M')) {
+    fprintf(stderr, "ERROR! load_bmp() failed. Invalid signiture.\n");
+    return NULL;
+  }
+  
+  if ((bmp_info_header[14] != 24) && (bmp_info_header[14] != 32)) {
+    fprintf(stderr, "ERROR! load_bmp() failed. Invalid BPP.\n");
+    return NULL;
+  }
+  
+  int w = (bmp_info_header[4] + (bmp_info_header[5] << 8) + (bmp_info_header[6] << 16) + (bmp_info_header[7] << 24));
+  int h = (bmp_info_header[8] + (bmp_info_header[9] << 8) + (bmp_info_header[10] << 16) + (bmp_info_header[11] << 24));
+  surface_t* ret = create_surface(w, h);
+  
+  int x, y, i, p = sizeof(bmp_file_header) + sizeof(bmp_info_header);
+  for (y = (h - 1); y != -1; --y) {
+    for (x = 0; x < w; x++) {
+      i = p + ((x + y * w) * 3);
+      pset(ret, x, y, data[i + 2], data[i + 1], data[i]);
+    }
+    p += ((4 - (w * 3) % 4) % 4);
+  }
+  return ret;
+}
+
+surface_t* load_bmp_from_file(const char* path) {
+  FILE* fp = fopen(path, "rb");
+  
+  unsigned char bmp_file_header[14];
+  unsigned char bmp_info_header[40];
+  unsigned char bmp_pad[3];
+  
+  memset(bmp_file_header, 0, sizeof(bmp_file_header));
+  memset(bmp_info_header, 0, sizeof(bmp_info_header));
+  
+  fread(bmp_file_header, sizeof(bmp_file_header), 1, fp);
+  fread(bmp_info_header, sizeof(bmp_info_header), 1, fp);
+  
+  if ((bmp_file_header[0] != 'B') || (bmp_file_header[1] != 'M')) {
+    fprintf(stderr, "ERROR! load_bmp() failed. Invalid signiture.\n");
+    return NULL;
+  }
+  
+  if ((bmp_info_header[14] != 24) && (bmp_info_header[14] != 32)) {
+    fprintf(stderr, "ERROR! load_bmp() failed. Invalid BPP.\n");
+    return NULL;
+  }
+  
+  int w = (bmp_info_header[4] + (bmp_info_header[5] << 8) + (bmp_info_header[6] << 16) + (bmp_info_header[7] << 24));
+  int h = (bmp_info_header[8] + (bmp_info_header[9] << 8) + (bmp_info_header[10] << 16) + (bmp_info_header[11] << 24));
+  surface_t* ret = create_surface(w, h);
+  
+  printf("%ld\n", ftell(fp));
+  
+  int x, y, padding;
+  for (y = (h - 1); y != -1; --y) {
+    for (x = 0; x < w; x++) {
+      fread(bmp_pad, 3, 1, fp);
+      pset(ret, x, y, bmp_pad[2], bmp_pad[1], bmp_pad[0]);
+    }
+    padding = ((4 - (w * 3) % 4) % 4);
+    fread(bmp_pad, 1, padding, fp);
+  }
+  return ret;
 }
 
 #if defined(__APPLE__)

@@ -3,10 +3,7 @@
 #define WIDTH  640
 #define HEIGHT 480
 
-int rnd_int(int min, int max) {
-  return min + rand() % (max+1 - min);
-}
-#define RNDRGB (rnd_int(0, 255))
+#define RNDRGB (rand() % 256)
 
 void fill_rnd(surface_t* s) {
   int x, y;
@@ -28,16 +25,38 @@ int main(int argc, const char* argv[]) {
   
   surface_t* rnd = create_surface(50, 50);
   
-  point_t tmpp  = { 0, 22 };
+  unsigned char* a = load_file_to_mem("/Users/roryb/Desktop/Uncompressed-24.bmp");
+  surface_t* b = load_bmp_from_mem(a);
+  free(a);
+  surface_t* c = load_bmp_from_file("/Users/roryb/Desktop/Uncompressed-24.bmp");
+  
   rect_t  tmpr  = { 100, 100, 100, 100 };
+  point_t tmpp  = { 0, 22 };
+  point_t tmpp1  = { 101, 22 };
   point_t tmpp2 = { 0, 200 };
+  point_t tmpp4 = { b->w + 1, 200 };
   point_t tmpp3 = { 475, 175 };
   
+  int noise, carry, seed = 0xBEEF, i, state;
   for (;;) {
-    fill_surface(win, 0, 0, 0);
+    for (i = 0; i < WIDTH * HEIGHT; ++i) {
+      noise = seed;
+      noise >>= 3;
+      noise ^= seed;
+      carry = noise & 1;
+      noise >>= 1;
+      seed >>= 1;
+      seed |= (carry << 30);
+      noise &= 0xFF;
+      win->buf[i] = RGB2INT(noise, noise, noise);
+    }
+    // fill_surface(win, 0, 0, 0);
     
+    blit_surface(win, &tmpp1, test, NULL);
     blit_surface(win, &tmpp, test, &tmpr);
-    blit_surface(win, &tmpp2, test, NULL);
+    
+    blit_surface(win, &tmpp4, b, NULL);
+    blit_surface(win, &tmpp2, c, NULL);
     
     xline(win, 135, 110, 160, 255, 0, 0);
     yline(win, 135, 110, 160, 255, 0, 0);
@@ -54,6 +73,8 @@ int main(int argc, const char* argv[]) {
       break;
   }
   
+  free_surface(&b);
+  free_surface(&c);
   free_surface(&test);
   free_surface(&rnd);
   app_close();
