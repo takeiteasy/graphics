@@ -228,7 +228,7 @@ bool circle(surface_t* s, int xc, int yc, int r, int r1, int g1, int b1) {
   return true;
 }
 
-bool disk(surface_t* s, int xc, int yc, int r, int r1, int g1, int b1) {
+bool circle_filled(surface_t* s, int xc, int yc, int r, int r1, int g1, int b1) {
   if (xc + r < 0 || xc - r >= s->w || yc + r < 0 || yc - r >= s->h) {
     fprintf(stderr, "WARNING! circle() failed! x/y outside bounds of dst.\n");
     return false;
@@ -260,6 +260,24 @@ bool disk(surface_t* s, int xc, int yc, int r, int r1, int g1, int b1) {
     pd = d;
     p += (p < 0 ? (x++ << 2) + 6 : ((x++ - y--) << 2) + 10);
   }
+  return true;
+}
+
+bool rect(surface_t* s, int x, int y, int w, int h, int r, int g, int b) {
+  w = x + w;
+  h = y + h;
+  xline(s, y, x, w, r, g, b);
+  xline(s, h, x, w, r, g, b);
+  yline(s, x, y, h, r, g, b);
+  yline(s, w, y, h, r, g, b);
+  return true;
+}
+
+bool rect_filled(surface_t* s, int x, int y, int w, int h, int r, int g, int b) {
+  h = y + h;
+  w = x + w;
+  for (; y < h; ++y)
+    xline(s, y, x, w, r, g, b);
   return true;
 }
 

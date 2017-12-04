@@ -39,7 +39,9 @@ bool yline(surface_t*, int, int, int, int, int, int);
 bool xline(surface_t*, int, int, int, int, int, int);
 bool line(surface_t*, int, int, int, int, int, int, int);
 bool circle(surface_t*, int, int, int, int, int, int);
-bool disk(surface_t*, int, int, int, int, int, int);
+bool circle_filled(surface_t*, int, int, int, int, int, int);
+bool rect(surface_t*, int, int, int, int, int, int, int);
+bool rect_filled(surface_t*, int, int, int, int, int, int, int);
 
 surface_t* app_open(const char*, int, int);
 bool app_update(void);
