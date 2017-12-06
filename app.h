@@ -33,12 +33,12 @@ typedef struct {
   unsigned int x, y;
 } point_t;
   
-surface_t* create_surface(unsigned int, unsigned int);
-void free_surface(surface_t**);
-void fill_surface(surface_t*, int, int , int);
+surface_t* surface(unsigned int, unsigned int);
+void destroy(surface_t**);
+void fill(surface_t*, int, int , int);
 bool pset(surface_t*, int, int, int, int, int);
 int pget(surface_t*, int, int);
-bool blit_surface(surface_t*, point_t*, surface_t*, rect_t*);
+bool blit(surface_t*, point_t*, surface_t*, rect_t*);
 bool yline(surface_t*, int, int, int, int, int, int);
 bool xline(surface_t*, int, int, int, int, int, int);
 bool line(surface_t*, int, int, int, int, int, int, int);
@@ -50,9 +50,9 @@ unsigned char* load_file_to_mem(const char*);
 surface_t* load_bmp_from_mem(unsigned char*);
 surface_t* load_bmp_from_file(const char*);
 
-surface_t* app_open(const char*, int, int);
-bool app_update(void);
-void app_close(void);
+surface_t* screen(const char*, int, int);
+bool redraw(void);
+void release(void);
 
 #ifdef __cplusplus
 }

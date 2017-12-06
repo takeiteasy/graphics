@@ -15,7 +15,7 @@ void fill_rnd(surface_t* s) {
 const char* font_b64_str = "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";
 const int font_b64_strlen = 2928;
 
-const static unsigned char unb64[] = {
+const static unsigned char b64_table[] = {
   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  //10
   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  //20
   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  //30
@@ -44,92 +44,88 @@ const static unsigned char unb64[] = {
   0,   0,   0,   0,   0,   0,
 };
 
-unsigned char* unbase64( const char* ascii, int len, int *flen )
-{
-  const unsigned char *safeAsciiPtr = (const unsigned char*)ascii ;
-  unsigned char *bin ;
-  int cb=0;
-  int charNo;
-  int pad = 0 ;
+unsigned char* base64_decode(const char* ascii, int len, int *flen) {
+  int cb = 0, pad = 0, n, A, B, C, D;;
   
-  if( len < 2 ) { // 2 accesses below would be OOB.
-    // catch empty string, return NULL as result.
-    puts( "ERROR: You passed an invalid base64 string (too short). You get NULL back." ) ;
-    *flen=0;
-    return 0 ;
-  }
-  if( safeAsciiPtr[ len-1 ]=='=' )  ++pad ;
-  if( safeAsciiPtr[ len-2 ]=='=' )  ++pad ;
-  
-  *flen = 3*len/4 - pad ;
-  bin = (unsigned char*)malloc( *flen ) ;
-  if( !bin )
-  {
-    puts( "ERROR: unbase64 could not allocate enough memory." ) ;
-    puts( "I must stop because I could not get enough" ) ;
-    return 0;
+  if (len < 2) {
+    puts("ERROR! base64_decode() failed. Base64 string too short.");
+    *flen = 0;
+    return NULL;
   }
   
-  for( charNo=0; charNo <= len - 4 - pad ; charNo+=4 )
-  {
-    int A=unb64[safeAsciiPtr[charNo]];
-    int B=unb64[safeAsciiPtr[charNo+1]];
-    int C=unb64[safeAsciiPtr[charNo+2]];
-    int D=unb64[safeAsciiPtr[charNo+3]];
+  if (ascii[len - 1] == '=')
+    ++pad;
+  if (ascii[len - 2] == '=')
+    ++pad;
+  
+  *flen = 3 * len / 4 - pad;
+  unsigned char* bin = (unsigned char*)malloc(*flen);
+  if (!bin) {
+    puts("ERROR! malloc() failed.");
+    return NULL;
+  }
+  
+  for (n = 0; n <= len - 4 - pad; n += 4) {
+    A = b64_table[ascii[n]];
+    B = b64_table[ascii[n + 1]];
+    C = b64_table[ascii[n + 2]];
+    D = b64_table[ascii[n + 3]];
     
-    bin[cb++] = (A<<2) | (B>>4) ;
-    bin[cb++] = (B<<4) | (C>>2) ;
-    bin[cb++] = (C<<6) | (D) ;
+    bin[cb++] = (A << 2) | (B >> 4);
+    bin[cb++] = (B << 4) | (C >> 2);
+    bin[cb++] = (C << 6) | (D);
   }
   
-  if( pad==1 )
-  {
-    int A=unb64[safeAsciiPtr[charNo]];
-    int B=unb64[safeAsciiPtr[charNo+1]];
-    int C=unb64[safeAsciiPtr[charNo+2]];
+  if (pad == 1) {
+    A = b64_table[ascii[n]];
+    B = b64_table[ascii[n + 1]];
+    C = b64_table[ascii[n + 2]];
     
-    bin[cb++] = (A<<2) | (B>>4) ;
-    bin[cb++] = (B<<4) | (C>>2) ;
-  }
-  else if( pad==2 )
-  {
-    int A=unb64[safeAsciiPtr[charNo]];
-    int B=unb64[safeAsciiPtr[charNo+1]];
+    bin[cb++] = (A << 2) | (B >> 4);
+    bin[cb++] = (B << 4) | (C >> 2);
+  } else if(pad == 2) {
+    A = b64_table[ascii[n]];
+    B = b64_table[ascii[n + 1]];
     
-    bin[cb++] = (A<<2) | (B>>4) ;
+    bin[cb++] = (A << 2) | (B >> 4);
   }
   
-  return bin ;
+  return bin;
 }
 
 int main(int argc, const char* argv[]) {
-  surface_t* win = NULL;
-  if (!(win = app_open("win", WIDTH, HEIGHT)))
+  surface_t* win = screen("test", WIDTH, HEIGHT);
+  if (!win)
     return 1;
   
-  surface_t* test = create_surface(200, 200);
+  surface_t* test = surface(200, 200);
   rect_filled(test, 0, 0, 100, 100, 255, 0, 0);
   rect_filled(test, 100, 0, 100, 100, 0, 255, 0);
   rect_filled(test, 0, 100, 100, 100, 0, 0, 255);
   rect_filled(test, 100, 100, 100, 100, 255, 255, 255);
   
-  surface_t* rnd = create_surface(50, 50);
+  surface_t* rnd = surface(50, 50);
   
 //  unsigned char* a = load_file_to_mem("/Users/roryb/Desktop/Uncompressed-24.bmp");
 //  surface_t* b = load_bmp_from_mem(a);
 //  free(a);
   surface_t* c = load_bmp_from_file("/Users/roryb/Desktop/charset.bmp");
+//  surface_t* c = surface(100, 100);
+//  for (int i = 0; i < 100 * 100; ++i) {
+//    c->buf[(i - (i % 100)) + (100 - (i % 100) - 1)] = RGB2INT(255 - (i % 100), 255 - (i % 100), 255 - (i % 100));
+//    printf("%d\n", (i - (i % 100)) + (100 - (i % 100) - 1));
+//  }
   
   int size;
-  unsigned char* f = unbase64(font_b64_str, font_b64_strlen, &size);
+  unsigned char* f = base64_decode(font_b64_str, font_b64_strlen, &size);
   surface_t* d = load_bmp_from_mem(f);
   free(f);
   
   rect_t  tmpr  = { 0, 100, 100, 100 };
   point_t tmpp  = { 0, 22 };
   point_t tmpp1  = { 101, 22 };
-  point_t tmpp2 = { 0, 227 };
-//  point_t tmpp4 = { b->w + 1, 227 };
+  point_t tmpp2 = { 5, 227 };
+  point_t tmpp4 = { c->w + 10, 227 };
   point_t tmpp3 = { 475, 175 };
   
   int noise, carry, seed = 0xBEEF, i;
@@ -147,11 +143,11 @@ int main(int argc, const char* argv[]) {
     }
     // fill_surface(win, 0, 0, 0);
     
-    blit_surface(win, &tmpp1, test, NULL);
-    blit_surface(win, &tmpp, test, &tmpr);
+    blit(win, &tmpp1, test, NULL);
+    blit(win, &tmpp, test, &tmpr);
     
-//    blit_surface(win, &tmpp4, b, NULL);
-    blit_surface(win, &tmpp2, c, NULL);
+    blit(win, &tmpp4, d, NULL);
+    blit(win, &tmpp2, c, NULL);
     
     xline(win, 135, 110, 160, 255, 255, 255);
     yline(win, 135, 110, 160, 255, 255, 255);
@@ -162,18 +158,18 @@ int main(int argc, const char* argv[]) {
     rect_filled(win, 450, 150, 100, 100, 0, 255, 255);
     
     fill_rnd(rnd);
-    blit_surface(win, &tmpp3, rnd, NULL);
+    blit(win, &tmpp3, rnd, NULL);
     
-    if (!app_update())
+    if (!redraw())
       break;
   }
   
 //  free_surface(&b);
-  free_surface(&c);
-  free_surface(&d);
-  free_surface(&test);
-  free_surface(&rnd);
-  app_close();
+  destroy(&c);
+  destroy(&d);
+  destroy(&test);
+  destroy(&rnd);
+  release();
   return 0;
 }
 

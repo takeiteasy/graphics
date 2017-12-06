@@ -11,7 +11,7 @@
 #define XYSET(s, x, y, v) (s->buf[(y) * s->w + (x)] = (v))
 #define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
 
-surface_t* create_surface(unsigned int w, unsigned int h) {
+surface_t* surface(unsigned int w, unsigned int h) {
   surface_t* ret = malloc(sizeof(surface_t));
   if (!ret) {
     fprintf(stderr, "ERROR! malloc() failed.\n");
@@ -29,7 +29,7 @@ surface_t* create_surface(unsigned int w, unsigned int h) {
   return ret;
 }
 
-void free_surface(surface_t** s) {
+void destroy(surface_t** s) {
   if ((*s)) {
     free((*s)->buf);
     (*s)->buf = NULL;
@@ -38,7 +38,7 @@ void free_surface(surface_t** s) {
   }
 }
 
-void fill_surface(surface_t* s, int r, int g, int b) {
+void fill(surface_t* s, int r, int g, int b) {
   for (int x = 0; x < s->w; ++x)
     for (int y = 0; y < s->h; ++y)
       XYSET(s, x, y, RGB2INT(r, g, b));
@@ -61,9 +61,9 @@ int pget(surface_t* s, int x, int y) {
   return XYGET(s, x, y);
 }
 
-bool blit_surface(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
+bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   if (!src || !dst) {
-    fprintf(stderr, "ERROR! blit_surface() failed! src and dst must not be null.\n");
+    fprintf(stderr, "ERROR! blit() failed! src and dst must not be null.\n");
     return false;
   }
   
@@ -82,7 +82,7 @@ bool blit_surface(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   }
   int to_x = offset_x + width, to_y = offset_y + height;
   if (to_x > dst->w || to_y > dst->h) {
-    fprintf(stderr, "WARNING! blit_surface() failed! src w/h outside bounds of dst.\n");
+    fprintf(stderr, "WARNING! blit() failed! src w/h outside bounds of dst.\n");
     return false;
   }
   
@@ -308,6 +308,7 @@ typedef struct {
   unsigned int   offset;   /* Offset to image data, bytes */
 } BMPHEADER;
 #pragma pack(pop)
+
 #pragma pack(push, 1)
 typedef struct {
   unsigned int size;              /* Header size in bytes      */
@@ -322,15 +323,44 @@ typedef struct {
 } BMPINFOHEADER;
 #pragma pack(pop)
 
+#define BREAD(d, b, o, s) \
+memcpy(d, b + o, s); \
+o += s;
+
 surface_t* load_bmp_from_mem(unsigned char* data) {
-  BMPHEADER a;
-  BMPINFOHEADER b;
-  memcpy(&a, data, sizeof(BMPHEADER));
-  memcpy(&b, data + sizeof(BMPHEADER), sizeof(BMPINFOHEADER));
+  int off = 0;
+  BMPHEADER header;
+  BMPINFOHEADER info;
+  BREAD(&header, data, off, sizeof(BMPHEADER));
+  BREAD(&info, data, off, sizeof(BMPINFOHEADER));
   
-  printf("%u %ld", a.offset, sizeof(BMPHEADER) + sizeof(BMPINFOHEADER));
+  unsigned char* color_map = NULL;
+  int color_map_size = 0;
+  if (info.bits <= 8) {
+    color_map_size = (1 << info.bits) * 4;
+    color_map = (unsigned char*)malloc (color_map_size * sizeof(unsigned char));
+    BREAD(color_map, data, off, color_map_size);
+  }
   
-  return NULL;
+  off = header.offset;
+  
+  surface_t* ret = surface(info.width, info.height);
+  
+  int i, j, x, s = info.width * info.height;
+  unsigned char color, index;
+  for (i = 0; i < s;) {
+    color = data[off++];
+    for (j = 7; j >= 0; --j, ++i) {
+      index = ((color & (1 << j)) > 0);
+      x = s - i - 1;
+      ret->buf[(x - (x % info.width)) + (info.width - (x % info.width) - 1)] = RGB2INT(color_map[(index * 4) + 1], color_map[(index * 4) + 1], color_map[(index * 4) + 1]);
+    }
+  }
+  
+  if (color_map)
+    free(color_map);
+  
+  return ret;
 //  unsigned char bmp_file_header[14];
 //  unsigned char bmp_info_header[40];
 //
@@ -352,7 +382,7 @@ surface_t* load_bmp_from_mem(unsigned char* data) {
 //
 //  int w = (bmp_info_header[4] + (bmp_info_header[5] << 8) + (bmp_info_header[6] << 16) + (bmp_info_header[7] << 24));
 //  int h = (bmp_info_header[8] + (bmp_info_header[9] << 8) + (bmp_info_header[10] << 16) + (bmp_info_header[11] << 24));
-//  surface_t* ret = create_surface(w, h);
+//  surface_t* ret = surface(w, h);
 //
 //  int x, y, i, p = sizeof(bmp_file_header) + sizeof(bmp_info_header);
 //  for (y = (h - 1); y != -1; --y) {
@@ -383,15 +413,16 @@ surface_t* load_bmp_from_file(const char* path) {
   
   fseek(fp, header.offset, SEEK_SET);
   
-  surface_t* ret = create_surface(info.width, info.height);
+  surface_t* ret = surface(info.width, info.height);
   
-  int i, j;
+  int i, j, x, s = info.width * info.height;
   unsigned char color, index;
-  for (i = 0; i < info.width * info.height;) {
+  for (i = 0; i < s;) {
     color = (unsigned char)fgetc(fp);
     for (j = 7; j >= 0; --j, ++i) {
       index = ((color & (1 << j)) > 0);
-      ret->buf[i] = RGB2INT(color_map[(index * 4) + 1], color_map[(index * 4) + 1], color_map[(index * 4) + 1]);
+      x = s - i - 1;
+      ret->buf[(x - (x % info.width)) + (info.width - (x % info.width) - 1)] = RGB2INT(color_map[(index * 4) + 1], color_map[(index * 4) + 1], color_map[(index * 4) + 1]);
     }
   }
   
@@ -422,7 +453,7 @@ surface_t* load_bmp_from_file(const char* path) {
 //
 //  int w = (bmp_info_header[4] + (bmp_info_header[5] << 8) + (bmp_info_header[6] << 16) + (bmp_info_header[7] << 24));
 //  int h = (bmp_info_header[8] + (bmp_info_header[9] << 8) + (bmp_info_header[10] << 16) + (bmp_info_header[11] << 24));
-//  surface_t* ret = create_surface(w, h);
+//  surface_t* ret = surface(w, h);
 //
 //  int x, y, padding;
 //  for (y = (h - 1); y != -1; --y) {
@@ -568,8 +599,8 @@ extern surface_t* buffer;
 }
 @end
 
-surface_t* app_open(const char* t, int w, int h) {
-  if (!(buffer = create_surface(w, h)))
+surface_t* screen(const char* t, int w, int h) {
+  if (!(buffer = surface(w, h)))
     return NULL;
   buffer->w = w;
   buffer->h = h;
@@ -596,7 +627,7 @@ surface_t* app_open(const char* t, int w, int h) {
   return buffer;
 }
 
-bool app_update() {
+bool redraw() {
   bool ret = true;
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   NSEvent* e = [NSApp nextEventMatchingMask:NSEventMaskAny
@@ -622,7 +653,7 @@ bool app_update() {
   return ret;
 }
 
-void app_close() {
+void release() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   if (app)
   	[app close];
@@ -664,7 +695,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
   return res;
 }
 
-int app_open(const char* title, int width, int height) {
+int screen(const char* title, int width, int height) {
   wc.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
   wc.lpfnWndProc = WndProc;
   wc.hCursor = LoadCursor(0, IDC_ARROW);
@@ -708,7 +739,7 @@ int app_open(const char* title, int width, int height) {
   return 1;
 }
 
-int app_update(void* buffer) {
+int redraw(void* buffer) {
   MSG msg;
   buffer = buffer;
   
@@ -725,7 +756,7 @@ int app_update(void* buffer) {
   return 1;
 }
 
-void app_close() {
+void release() {
   buffer = 0;
   free(bitmapInfo);
   ReleaseDC(wnd, hdc);
@@ -743,7 +774,7 @@ static Window window;
 static GC gc;
 static XImage *ximage;
 
-int app_open(const char* title, int width, int height) {
+int screen(const char* title, int width, int height) {
   int depth, i, formatCount, convDepth = -1;
   XPixmapFormatValues* formats;
   XSetWindowAttributes windowAttributes;
@@ -813,7 +844,7 @@ int app_open(const char* title, int width, int height) {
   return 1;
 }
 
-int app_update(void* buffer) {
+int redraw(void* buffer) {
   ximage->data = (char*)buffer;
   
   XPutImage(display, window, gc, ximage, 0, 0, 0, 0, width, height);
@@ -829,7 +860,7 @@ int app_update(void* buffer) {
   return 1;
 }
 
-void app_close (void) {
+void release(void) {
   ximage->data = NULL;
   XDestroyImage(ximage);
   XDestroyWindow(display, window);
