@@ -1,5 +1,5 @@
 #define GRAPHICS_EXTRA_COLORS
-#include "app.h"
+#include "graphics.h"
 
 /* TODO:
  *  - Chroma key to blit
@@ -31,7 +31,7 @@ void fill_rnd(surface_t* s) {
 int main(int argc, const char* argv[]) {
   surface_t* win = screen("test", WIDTH, HEIGHT);
   if (!win) {
-    fprintf(stderr, "ERROR! %s\n", get_last_error());
+    fprintf(stderr, "%s\n", get_last_error());
     return 1;
   }
   
