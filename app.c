@@ -1,4 +1,4 @@
-//
+
 //  app.c
 //  app
 //
@@ -439,16 +439,26 @@ surface_t* load_bmp_from_mem(unsigned char* data) {
   off = header.offset;
   
   surface_t* ret = surface(info.width, info.height);
-  
   int i, j, x, s = info.width * info.height;
   unsigned char color, index;
-  for (i = 0; i < s;) {
-    color = data[off++];
-    for (j = 7; j >= 0; --j, ++i) {
-      index = ((color & (1 << j)) > 0);
-      x = s - i - 1;
-      ret->buf[(x - (x % info.width)) + (info.width - (x % info.width) - 1)] = RGB(color_map[(index * 4) + 1], color_map[(index * 4) + 1], color_map[(index * 4) + 1]);
-    }
+  
+  switch (info.bits) {
+    case 1:
+      for (i = 0; i < s;) {
+        color = data[off++];
+        for (j = 7; j >= 0; --j, ++i) {
+          index = ((color & (1 << j)) > 0);
+          x = s - i - 1;
+          ret->buf[(x - (x % info.width)) + (info.width - (x % info.width) - 1)] = RGB(color_map[(index * 4) + 1], color_map[(index * 4) + 1], color_map[(index * 4) + 1]);
+        }
+      }
+      break;
+    case 24:
+      break;
+    default:
+      fprintf(stderr, "ERROR! load_bmp_from_mem() failed. Unsupported BPP: %d\n", info.bits);
+      destroy(&ret);
+      break;
   }
   
   if (color_map)
