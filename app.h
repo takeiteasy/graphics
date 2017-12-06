@@ -19,7 +19,7 @@ extern "C" {
 #include <errno.h>
 #include <math.h>
 
-#define RGB2INT(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
+#define RGB(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
   
 typedef struct {
   unsigned int* buf, w, h;

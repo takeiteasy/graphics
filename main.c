@@ -14,6 +14,7 @@ void fill_rnd(surface_t* s) {
 
 const char* font_b64_str = "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";
 const int font_b64_strlen = 2928;
+static bool font[256][8][8];
 
 const static unsigned char b64_table[] = {
   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  //10
@@ -93,6 +94,41 @@ unsigned char* base64_decode(const char* ascii, int len, int *flen) {
   return bin;
 }
 
+void init_font() {
+  int size;
+  unsigned char* f = base64_decode(font_b64_str, font_b64_strlen, &size);
+  surface_t* img = load_bmp_from_mem(f);
+  
+  size_t c, x, y;
+  for(c = 0; c < 256; ++c)
+    for (x = 0; x < 8; ++x)
+      for (y = 0; y < 8; ++y)
+        font[c][x][y] = (img->buf[(((c / 16) * 8) + y) * img->w + (((c % 16) * 8) + x)] != 0);
+  
+  free(f);
+  destroy(&img);
+}
+
+//void drawLetter(unsigned char n, int x, int y, const ColorRGB& color, bool bg, const ColorRGB& color2)
+//{
+//  int u,v;
+//
+//  for (v = 0; v < 8; v++)
+//    for (u = 0; u < 8; u++)
+//    {
+//      if(font[n][u][v]) pset(x + u, y + v, color);
+//      else if(bg) pset(x + u, y + v, color2);
+//    }
+//}
+
+void draw_letter(surface_t* s, unsigned char c, unsigned int x, unsigned int y, int r, int g, int b) {
+  int u, v;
+  for (u = 0; u < 8; ++u)
+    for (v = 0; v < 8; ++v)
+      if (font[c][u][v])
+        s->buf[(y + v) * s->w + (x + u)] = RGB(r, g, b);
+}
+
 int main(int argc, const char* argv[]) {
   surface_t* win = screen("test", WIDTH, HEIGHT);
   if (!win)
@@ -112,20 +148,17 @@ int main(int argc, const char* argv[]) {
   surface_t* c = load_bmp_from_file("/Users/roryb/Desktop/charset.bmp");
 //  surface_t* c = surface(100, 100);
 //  for (int i = 0; i < 100 * 100; ++i) {
-//    c->buf[(i - (i % 100)) + (100 - (i % 100) - 1)] = RGB2INT(255 - (i % 100), 255 - (i % 100), 255 - (i % 100));
+//    c->buf[(i - (i % 100)) + (100 - (i % 100) - 1)] = RGB(255 - (i % 100), 255 - (i % 100), 255 - (i % 100));
 //    printf("%d\n", (i - (i % 100)) + (100 - (i % 100) - 1));
 //  }
   
-  int size;
-  unsigned char* f = base64_decode(font_b64_str, font_b64_strlen, &size);
-  surface_t* d = load_bmp_from_mem(f);
-  free(f);
+  init_font();
   
   rect_t  tmpr  = { 0, 100, 100, 100 };
   point_t tmpp  = { 0, 22 };
   point_t tmpp1  = { 101, 22 };
   point_t tmpp2 = { 5, 227 };
-  point_t tmpp4 = { c->w + 10, 227 };
+//  point_t tmpp4 = { c->w + 10, 227 };
   point_t tmpp3 = { 475, 175 };
   
   int noise, carry, seed = 0xBEEF, i;
@@ -139,14 +172,13 @@ int main(int argc, const char* argv[]) {
       seed >>= 1;
       seed |= (carry << 30);
       noise &= 0xFF;
-      win->buf[i] = RGB2INT(noise, noise, noise);
+      win->buf[i] = RGB(noise, noise, noise);
     }
     // fill_surface(win, 0, 0, 0);
     
     blit(win, &tmpp1, test, NULL);
     blit(win, &tmpp, test, &tmpr);
     
-    blit(win, &tmpp4, d, NULL);
     blit(win, &tmpp2, c, NULL);
     
     xline(win, 135, 110, 160, 255, 255, 255);
@@ -160,13 +192,14 @@ int main(int argc, const char* argv[]) {
     fill_rnd(rnd);
     blit(win, &tmpp3, rnd, NULL);
     
+    draw_letter(test, 'A', 0, 0, 255, 255, 255);
+    
     if (!redraw())
       break;
   }
   
 //  free_surface(&b);
   destroy(&c);
-  destroy(&d);
   destroy(&test);
   destroy(&rnd);
   release();

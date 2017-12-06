@@ -41,7 +41,7 @@ void destroy(surface_t** s) {
 void fill(surface_t* s, int r, int g, int b) {
   for (int x = 0; x < s->w; ++x)
     for (int y = 0; y < s->h; ++y)
-      XYSET(s, x, y, RGB2INT(r, g, b));
+      XYSET(s, x, y, RGB(r, g, b));
 }
 
 bool pset(surface_t* s, int x, int y, int r, int g, int b) {
@@ -49,7 +49,7 @@ bool pset(surface_t* s, int x, int y, int r, int g, int b) {
     fprintf(stderr, "ERROR! pset() failed! x/y outside of bounds.\n");
     return false;
   }
-  XYSET(s, x, y, RGB2INT(r, g, b));
+  XYSET(s, x, y, RGB(r, g, b));
   return true;
 }
 
@@ -108,7 +108,7 @@ bool yline(surface_t* s, int x, int y1, int y2, int r, int g, int b) {
   if (y2 >= s->h)
     y2 = s->h - 1;
   
-  int c = RGB2INT(r, g, b);
+  int c = RGB(r, g, b);
   for(int y = y1; y <= y2; y++)
     XYSET(s, x, y, c);
   return true;
@@ -131,7 +131,7 @@ bool xline(surface_t* s, int y, int x1, int x2, int r, int g, int b) {
   if (x2 >= s->w)
     x2 = s->w - 1;
   
-  int c = RGB2INT(r, g, b);
+  int c = RGB(r, g, b);
   for(int x = x1; x <= x2; x++)
     XYSET(s, x, y, c);
   return true;
@@ -145,7 +145,7 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int r, int g, int b) {
   
   int dx = abs(x2 - x1), dy = abs(y2 - y1);
   int x = x1, y = y1;
-  int c = RGB2INT(r, g, b);
+  int c = RGB(r, g, b);
   int xi1, xi2, yi1, yi2, d, n, na, np, p;
   
   if (x2 >= x1) {
@@ -200,7 +200,7 @@ bool circle(surface_t* s, int xc, int yc, int r, int r1, int g1, int b1) {
     return false;
   }
   
-  int x = 0, y = r, p = 3 - (r << 1), c1 = RGB2INT(r1, g1, b1);
+  int x = 0, y = r, p = 3 - (r << 1), c1 = RGB(r1, g1, b1);
   int a, b, c, d, e, f, g, h;
   
   while (x <= y) {
@@ -353,7 +353,7 @@ surface_t* load_bmp_from_mem(unsigned char* data) {
     for (j = 7; j >= 0; --j, ++i) {
       index = ((color & (1 << j)) > 0);
       x = s - i - 1;
-      ret->buf[(x - (x % info.width)) + (info.width - (x % info.width) - 1)] = RGB2INT(color_map[(index * 4) + 1], color_map[(index * 4) + 1], color_map[(index * 4) + 1]);
+      ret->buf[(x - (x % info.width)) + (info.width - (x % info.width) - 1)] = RGB(color_map[(index * 4) + 1], color_map[(index * 4) + 1], color_map[(index * 4) + 1]);
     }
   }
   
@@ -396,75 +396,10 @@ surface_t* load_bmp_from_mem(unsigned char* data) {
 }
 
 surface_t* load_bmp_from_file(const char* path) {
-  FILE* fp = fopen(path, "rb");
-  BMPHEADER header;
-  BMPINFOHEADER info;
-  
-  fread(&header, sizeof(BMPHEADER),1, fp);
-  fread(&info, sizeof(BMPINFOHEADER), 1, fp);
-  
-  unsigned char* color_map = NULL;
-  int color_map_size = 0;
-  if (info.bits <= 8) {
-    color_map_size = (1 << info.bits) * 4;
-    color_map = (unsigned char*)malloc (color_map_size * sizeof(unsigned char));
-    fread(color_map, sizeof(unsigned char), color_map_size, fp);
-  }
-  
-  fseek(fp, header.offset, SEEK_SET);
-  
-  surface_t* ret = surface(info.width, info.height);
-  
-  int i, j, x, s = info.width * info.height;
-  unsigned char color, index;
-  for (i = 0; i < s;) {
-    color = (unsigned char)fgetc(fp);
-    for (j = 7; j >= 0; --j, ++i) {
-      index = ((color & (1 << j)) > 0);
-      x = s - i - 1;
-      ret->buf[(x - (x % info.width)) + (info.width - (x % info.width) - 1)] = RGB2INT(color_map[(index * 4) + 1], color_map[(index * 4) + 1], color_map[(index * 4) + 1]);
-    }
-  }
-  
-  if (color_map)
-    free(color_map);
-  
+  unsigned char* data = load_file_to_mem(path);
+  surface_t* ret = load_bmp_from_mem(data);
+  free(data);
   return ret;
-  
-//  unsigned char bmp_file_header[14];
-//  unsigned char bmp_info_header[40];
-//  unsigned char bmp_pad[3];
-//
-//  memset(bmp_file_header, 0, sizeof(bmp_file_header));
-//  memset(bmp_info_header, 0, sizeof(bmp_info_header));
-//
-//  fread(bmp_file_header, sizeof(bmp_file_header), 1, fp);
-//  fread(bmp_info_header, sizeof(bmp_info_header), 1, fp);
-//
-//  if ((bmp_file_header[0] != 'B') || (bmp_file_header[1] != 'M')) {
-//    fprintf(stderr, "ERROR! load_bmp() failed. Invalid signiture.\n");
-//    return NULL;
-//  }
-//
-//  if ((bmp_info_header[14] != 24) && (bmp_info_header[14] != 32)) {
-//    fprintf(stderr, "ERROR! load_bmp() failed. Invalid BPP '%d'.\n", bmp_info_header[14]);
-//    return NULL;
-//  }
-//
-//  int w = (bmp_info_header[4] + (bmp_info_header[5] << 8) + (bmp_info_header[6] << 16) + (bmp_info_header[7] << 24));
-//  int h = (bmp_info_header[8] + (bmp_info_header[9] << 8) + (bmp_info_header[10] << 16) + (bmp_info_header[11] << 24));
-//  surface_t* ret = surface(w, h);
-//
-//  int x, y, padding;
-//  for (y = (h - 1); y != -1; --y) {
-//    for (x = 0; x < w; x++) {
-//      fread(bmp_pad, 3, 1, fp);
-//      pset(ret, x, y, bmp_pad[2], bmp_pad[1], bmp_pad[0]);
-//    }
-//    padding = ((4 - (w * 3) % 4) % 4);
-//    fread(bmp_pad, 1, padding, fp);
-//  }
-//  return ret;
 }
 
 #if defined(__APPLE__)
