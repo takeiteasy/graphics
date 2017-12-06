@@ -11,6 +11,12 @@
 #define XYSET(s, x, y, v) (s->buf[(y) * s->w + (x)] = (v))
 #define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
 
+static char last_error[1024];
+
+const char* get_last_error() {
+  return last_error;
+}
+
 const char* font_b64_str = "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";
 const int font_b64_strlen = 2928;
 static bool font[256][8][8];
@@ -48,7 +54,7 @@ unsigned char* base64_decode(const char* ascii, int len, int *flen) {
   int cb = 0, pad = 0, n, A, B, C, D;;
   
   if (len < 2) {
-    puts("ERROR! base64_decode() failed. Base64 string too short.");
+    sprintf(last_error, "base64_decode() failed. Base64 string too short.");
     *flen = 0;
     return NULL;
   }
@@ -61,7 +67,7 @@ unsigned char* base64_decode(const char* ascii, int len, int *flen) {
   *flen = 3 * len / 4 - pad;
   unsigned char* bin = (unsigned char*)malloc(*flen);
   if (!bin) {
-    puts("ERROR! malloc() failed.");
+    sprintf(last_error, "malloc() failed.");
     return NULL;
   }
   
@@ -111,17 +117,19 @@ void init_default_font() {
 surface_t* surface(unsigned int w, unsigned int h) {
   surface_t* ret = malloc(sizeof(surface_t));
   if (!ret) {
-    fprintf(stderr, "ERROR! malloc() failed.\n");
+    sprintf(last_error, "malloc() failed");
     return NULL;
   }
   
   ret->w = w;
   ret->h = h;
-  ret->buf = malloc(w * h * sizeof(unsigned int) + 1);
+  size_t s = w * h * sizeof(unsigned int) + 1;
+  ret->buf = malloc(s);
   if (!ret->buf) {
-    fprintf(stderr, "ERROR! malloc() failed.\n");
+    sprintf(last_error, "malloc() failed");
     return NULL;
   }
+  memset(ret->buf, 0, s);
   
   return ret;
 }
@@ -143,7 +151,7 @@ void fill(surface_t* s, int col) {
 
 bool pset(surface_t* s, int x, int y, int col) {
   if (x > s->w || y > s->h) {
-    fprintf(stderr, "ERROR! pset() failed! x/y outside of bounds.\n");
+    sprintf(last_error, "pset() failed! x/y outside of bounds");
     return false;
   }
   XYSET(s, x, y, col);
@@ -152,7 +160,7 @@ bool pset(surface_t* s, int x, int y, int col) {
 
 int pget(surface_t* s, int x, int y) {
   if (x > s->w || y > s->h) {
-    fprintf(stderr, "ERROR! pget() failed! x/y outside of bounds.\n");
+    sprintf(last_error, "pget() failed! x/y outside of bounds");
     return 0;
   }
   return XYGET(s, x, y);
@@ -160,7 +168,7 @@ int pget(surface_t* s, int x, int y) {
 
 bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   if (!src || !dst) {
-    fprintf(stderr, "ERROR! blit() failed! src and dst must not be null.\n");
+    sprintf(last_error, "blit() failed! src and dst must not be null");
     return false;
   }
   
@@ -179,7 +187,7 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   }
   int to_x = offset_x + width, to_y = offset_y + height;
   if (to_x > dst->w || to_y > dst->h) {
-    fprintf(stderr, "WARNING! blit() failed! src w/h outside bounds of dst.\n");
+    sprintf(last_error, "WARNING! blit() failed! src w/h outside bounds of dst");
     return false;
   }
   
@@ -197,7 +205,7 @@ bool yline(surface_t* s, int x, int y1, int y2, int col) {
     y1 -= y2;
   }
   if (y2 < 0 || y1 >= s->h  || x < 0 || x >= s->w) {
-    fprintf(stderr, "WARNING! yline() failed! x/y outside bounds of dst.\n");
+    sprintf(last_error, "WARNING! yline() failed! x/y outside bounds of dst");
     return false;
   }
   if (y1 < 0)
@@ -218,7 +226,7 @@ bool xline(surface_t* s, int y, int x1, int x2, int col) {
   }
   
   if (x2 < 0 || x1 >= s->w || y < 0 || y >= s->h) {
-    fprintf(stderr, "WARNING! xline() failed! x/y outside bounds of dst.\n");
+    sprintf(last_error, "WARNING! xline() failed! x/y outside bounds of dst");
     return false;
   }
   
@@ -234,7 +242,7 @@ bool xline(surface_t* s, int y, int x1, int x2, int col) {
 
 bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
   if (x1 < 0 || x1 > s->w - 1 || x2 < 0 || x2 > s->w - 1 || y1 < 0 || y1 > s->h - 1 || y2 < 0 || y2 > s->h - 1) {
-    fprintf(stderr, "WARNING! line() failed! x1/y1/x2/y2 outside bounds of dst.\n");
+    sprintf(last_error, "WARNING! line() failed! x1/y1/x2/y2 outside bounds of dst");
     return false;
   }
   
@@ -290,7 +298,7 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
 
 bool circle(surface_t* s, int xc, int yc, int r, int col) {
   if (xc - r < 0 || xc + r >= s->w || yc - r < 0 || yc + r >= s->h) {
-    fprintf(stderr, "WARNING! circle() failed! x/y outside bounds of dst.\n");
+    sprintf(last_error, "WARNING! circle() failed! x/y outside bounds of dst");
     return false;
   }
   
@@ -325,7 +333,7 @@ bool circle(surface_t* s, int xc, int yc, int r, int col) {
 
 bool circle_filled(surface_t* s, int xc, int yc, int r, int col) {
   if (xc + r < 0 || xc - r >= s->w || yc + r < 0 || yc - r >= s->h) {
-    fprintf(stderr, "WARNING! circle() failed! x/y outside bounds of dst.\n");
+    sprintf(last_error, "WARNING! circle() failed! x/y outside bounds of dst");
     return false;
   }
   
@@ -379,7 +387,7 @@ bool rect_filled(surface_t* s, int x, int y, int w, int h, int col) {
 unsigned char* load_file_to_mem(const char* path) {
   FILE *file = fopen(path, "rb");
   if (!file) {
-    fprintf(stderr, "ERROR! fopen(%s) failed. %d: %s\n", path, errno, strerror(errno));
+    sprintf(last_error, "fopen(%s) failed. %d: %s\n", path, errno, strerror(errno));
     return NULL;
   }
   
@@ -456,7 +464,7 @@ surface_t* load_bmp_from_mem(unsigned char* data) {
     case 24:
       break;
     default:
-      fprintf(stderr, "ERROR! load_bmp_from_mem() failed. Unsupported BPP: %d\n", info.bits);
+      sprintf(last_error, "load_bmp_from_mem() failed. Unsupported BPP: %d", info.bits);
       destroy(&ret);
       break;
   }
@@ -475,12 +483,12 @@ surface_t* load_bmp_from_mem(unsigned char* data) {
 //  memcpy(bmp_info_header, data + sizeof(bmp_file_header), sizeof(bmp_info_header));
 //
 //  if ((bmp_file_header[0] != 'B') || (bmp_file_header[1] != 'M')) {
-//    fprintf(stderr, "ERROR! load_bmp() failed. Invalid signiture.\n");
+//    sprintf(last_error, "load_bmp() failed. Invalid signiture");
 //    return NULL;
 //  }
 //
 //  if ((bmp_info_header[14] != 24) && (bmp_info_header[14] != 32)) {
-//    fprintf(stderr, "ERROR! load_bmp() failed. Invalid BPP '%d'.\n", bmp_info_header[14]);
+//    sprintf(last_error, "load_bmp() failed. Invalid BPP '%d'", bmp_info_header[14]);
 //    return NULL;
 //  }
 //
@@ -519,7 +527,7 @@ void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* st
   char* c = (char*)str;
   while (c != NULL && *c != '\0') {
     if (*c == '\n') {
-      v += 16;
+      v += 8;
       u  = x;
     } else {
       letter(s, *c, u, v, col);
@@ -548,6 +556,49 @@ void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* 
   
   print(s, x, y, col, buffer);
   free(buffer);
+}
+
+surface_t* string(int col, const char* str) {
+  int w = 0, x = 0, h = 8;
+  char* c = (char*)str;
+  while (c != NULL && *c != '\0') {
+    if (*c == '\n') {
+      h += 8;
+      if (x > w)
+        w = x;
+      x = 0;
+    } else
+      x += 8;
+    ++c;
+  }
+  if (x > w)
+    w = x;
+  
+  surface_t* ret = surface(w, h);
+  print(ret, 0, 0, col, str);
+  return ret;
+}
+
+surface_t* string_f(int col, const char* fmt, ...) {
+  char *buffer = NULL;
+  size_t buffer_size = 0;
+  
+  va_list argptr;
+  va_start(argptr, fmt);
+  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
+  va_end(argptr);
+  
+  if (length + 1 > buffer_size) {
+    buffer_size = length + 1;
+    buffer = realloc(buffer, buffer_size);
+    va_start(argptr, fmt);
+    vsnprintf(buffer, buffer_size, fmt, argptr);
+    va_end(argptr);
+  }
+  
+  surface_t* ret = string(col, buffer);
+  free(buffer);
+  return ret;
 }
 
 #if defined(__APPLE__)

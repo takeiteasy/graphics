@@ -22,12 +22,28 @@ extern "C" {
 
 #define RGB(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
   
-#define MAROON RGB(128,0,0)
+#define RED RGB(255, 0, 0)
+#define BLUE RGB(0, 0, 255)
+#define LIME RGB(0, 255, 0)
+#define BLACK RGB(0, 0, 0)
+#define WHITE RGB(255, 255, 255)
+#define YELLOW RGB(255, 255, 0)
+#define CYAN RGB(0, 255, 255)
+#define MAGENTA RGB(255, 0, 255)
+#define SILVER RGB(192, 192, 192)
+#define GRAY RGB(128, 128, 128)
+#define MAROON RGB(128, 0, 0)
+#define OLIVE RGB(128, 128, 0)
+#define GREEN RGB(0, 128, 0)
+#define PURPLE RGB(128, 0, 128)
+#define TEAL RGB(0, 128, 128)
+#define NAVY RGB(0, 0, 128)
+
+#if defined(GRAPHICS_EXTRA_COLORS)
 #define DARKRED RGB(139,0,0)
 #define BROWN RGB(165,42,42)
 #define FIREBRICK RGB(178,34,34)
 #define CRIMSON RGB(220,20,60)
-#define RED RGB(255,0,0)
 #define TOMATO RGB(255,99,71)
 #define CORAL RGB(255,127,80)
 #define INDIANRED RGB(205,92,92)
@@ -44,8 +60,6 @@ extern "C" {
 #define PALEGOLDENROD RGB(238,232,170)
 #define DARKKHAKI RGB(189,183,107)
 #define KHAKI RGB(240,230,140)
-#define OLIVE RGB(128,128,0)
-#define YELLOW RGB(255,255,0)
 #define YELLOWGREEN RGB(154,205,50)
 #define DARKOLIVEGREEN RGB(85,107,47)
 #define OLIVEDRAB RGB(107,142,35)
@@ -53,9 +67,7 @@ extern "C" {
 #define CHARTREUSE RGB(127,255,0)
 #define GREENYELLOW RGB(173,255,47)
 #define DARKGREEN RGB(0,100,0)
-#define GREEN RGB(0,128,0)
 #define FORESTGREEN RGB(34,139,34)
-#define LIME RGB(0,255,0)
 #define LIMEGREEN RGB(50,205,50)
 #define LIGHTGREEN RGB(144,238,144)
 #define PALEGREEN RGB(152,251,152)
@@ -67,10 +79,8 @@ extern "C" {
 #define MEDIUMSEAGREEN RGB(60,179,113)
 #define LIGHTSEAGREEN RGB(32,178,170)
 #define DARKSLATEGRAY RGB(47,79,79)
-#define TEAL RGB(0,128,128)
 #define DARKCYAN RGB(0,139,139)
 #define AQUA RGB(0,255,255)
-#define CYAN RGB(0,255,255)
 #define LIGHTCYAN RGB(224,255,255)
 #define DARKTURQUOISE RGB(0,206,209)
 #define TURQUOISE RGB(64,224,208)
@@ -87,10 +97,8 @@ extern "C" {
 #define SKYBLUE RGB(135,206,235)
 #define LIGHTSKYBLUE RGB(135,206,250)
 #define MIDNIGHTBLUE RGB(25,25,112)
-#define NAVY RGB(0,0,128)
 #define DARKBLUE RGB(0,0,139)
 #define MEDIUMBLUE RGB(0,0,205)
-#define BLUE RGB(0,0,255)
 #define ROYALBLUE RGB(65,105,225)
 #define BLUEVIOLET RGB(138,43,226)
 #define INDIGO RGB(75,0,130)
@@ -102,11 +110,9 @@ extern "C" {
 #define DARKVIOLET RGB(148,0,211)
 #define DARKORCHID RGB(153,50,204)
 #define MEDIUMORCHID RGB(186,85,211)
-#define PURPLE RGB(128,0,128)
 #define THISTLE RGB(216,191,216)
 #define PLUM RGB(221,160,221)
 #define VIOLET RGB(238,130,238)
-#define MAGENTA RGB(255,0,255)
 #define ORCHID RGB(218,112,214)
 #define MEDIUMVIOLETRED RGB(199,21,133)
 #define PALEVIOLETRED RGB(219,112,147)
@@ -152,15 +158,12 @@ extern "C" {
 #define IVORY RGB(255,255,240)
 #define AZURE RGB(240,255,255)
 #define SNOW RGB(255,250,250)
-#define BLACK RGB(0,0,0)
 #define DIMGRAY RGB(105,105,105)
-#define GRAY RGB(128,128,128)
 #define DARKGRAY RGB(169,169,169)
-#define SILVER RGB(192,192,192)
 #define LIGHTGRAY RGB(211,211,211)
 #define GAINSBORO RGB(220,220,220)
 #define WHITESMOKE RGB(245,245,245)
-#define WHITE RGB(255,255,255)
+#endif
 
 typedef struct {
   unsigned int* buf, w, h;
@@ -193,11 +196,14 @@ surface_t* load_bmp_from_file(const char* path);
 void letter(surface_t* s, unsigned char c, unsigned int x, unsigned int y, int col);
 void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str);
 void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...);
+surface_t* string(int col, const char* str);
+surface_t* string_f(int col, const char* fmt, ...);
 void init_default_font(void);
 
 surface_t* screen(const char* title, int w, int h);
 bool redraw(void);
 void release(void);
+const char* get_last_error(void);
 
 #ifdef __cplusplus
 }
