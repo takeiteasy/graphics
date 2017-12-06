@@ -129,6 +129,37 @@ void draw_letter(surface_t* s, unsigned char c, unsigned int x, unsigned int y, 
         s->buf[(y + v) * s->w + (x + u)] = RGB(r, g, b);
 }
 
+void print(surface_t* s, unsigned int x, unsigned int y, int r, int g, int b, const char* fmt, ...) {
+  char *buffer = NULL;
+  size_t buffer_size = 0;
+  
+  va_list argptr;
+  va_start(argptr, fmt);
+  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
+  va_end(argptr);
+  
+  if (length + 1 > buffer_size) {
+    buffer_size = length + 1;
+    buffer = realloc(buffer, buffer_size);
+    va_start(argptr, fmt);
+    vsnprintf(buffer, buffer_size, fmt, argptr);
+    va_end(argptr);
+  }
+  
+  int u = x, v = y;
+  char* c = buffer;
+  while (c != NULL && *c != '\0') {
+    if (*c == '\n') {
+      v += 16;
+      u  = x;
+    } else {
+      draw_letter(s, *c, u, v, r, g, b);
+      u += 8;
+    }
+    ++c;
+  }
+}
+
 int main(int argc, const char* argv[]) {
   surface_t* win = screen("test", WIDTH, HEIGHT);
   if (!win)
@@ -192,7 +223,7 @@ int main(int argc, const char* argv[]) {
     fill_rnd(rnd);
     blit(win, &tmpp3, rnd, NULL);
     
-    draw_letter(test, 'A', 0, 0, 255, 255, 255);
+    print(test, 0, 0, 255, 255, 255, "this is a test: %dx%d\nI hope this works.", test->w, test->h);
     
     if (!redraw())
       break;
