@@ -3,13 +3,14 @@
 #define WIDTH  640
 #define HEIGHT 480
 
-#define RNDRGB (rand() % 256)
+#define RND_255 (rand() % 256)
+#define RND_RBG RGB(RND_255, RND_255, RND_255)
 
 void fill_rnd(surface_t* s) {
   int x, y;
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
-      pset(s, x, y, RNDRGB, RNDRGB, RNDRGB);
+      pset(s, x, y, RND_RBG);
 }
 
 int main(int argc, const char* argv[]) {
@@ -18,10 +19,10 @@ int main(int argc, const char* argv[]) {
     return 1;
   
   surface_t* test = surface(200, 200);
-  rect_filled(test, 0, 0, 100, 100, 255, 0, 0);
-  rect_filled(test, 100, 0, 100, 100, 0, 255, 0);
-  rect_filled(test, 0, 100, 100, 100, 0, 0, 255);
-  rect_filled(test, 100, 100, 100, 100, 255, 255, 255);
+  rect_filled(test, 0, 0, 100, 100, RED);
+  rect_filled(test, 100, 0, 100, 100, BLUE);
+  rect_filled(test, 0, 100, 100, 100, LIME);
+  rect_filled(test, 100, 100, 100, 100, YELLOW);
   
   surface_t* rnd = surface(50, 50);
   
@@ -53,18 +54,18 @@ int main(int argc, const char* argv[]) {
     
     blit(win, &tmpp2, c, NULL);
     
-    xline(win, 135, 110, 160, 255, 255, 255);
-    yline(win, 135, 110, 160, 255, 255, 255);
-    line(win, 0, 0, 300, 300, 255, 255, 0);
-    circle(win, 300, 300, 30, 255, 255, 0);
-    circle_filled(win, 350, 350, 30, 255, 255, 0);
-    rect(win, 425, 125, 150, 150, 0, 255, 255);
-    rect_filled(win, 450, 150, 100, 100, 0, 255, 255);
+    xline(win, 135, 110, 160, WHITE);
+    yline(win, 135, 110, 160, WHITE);
+    line(win, 0, 0, 300, 300, WHITE);
+    circle(win, 300, 300, 30, CYAN);
+    circle_filled(win, 350, 350, 30, CYAN);
+    rect(win, 425, 125, 150, 150, RND_RBG);
+    rect_filled(win, 450, 150, 100, 100, RND_RBG);
     
     fill_rnd(rnd);
     blit(win, &tmpp3, rnd, NULL);
     
-    print_f(test, 0, 0, 255, 255, 255, "this is a test: %dx%d\nI hope this works.", test->w, test->h);
+    print_f(test, 0, 0, WHITE, "this is a test: %dx%d\nI hope this works.", test->w, test->h);
     
     if (!redraw())
       break;

@@ -102,7 +102,7 @@ void init_default_font() {
   for(c = 0; c < 256; ++c)
     for (x = 0; x < 8; ++x)
       for (y = 0; y < 8; ++y)
-        font[c][x][y] = (img->buf[(((c / 16) * 8) + y) * img->w + (((c % 16) * 8) + x)] != 0);
+        font[c][x][y] = (XYGET(img, ((c % 16) * 8) + x, ((c / 16) * 8) + y) != 0);
   
   free(f);
   destroy(&img);
@@ -135,18 +135,18 @@ void destroy(surface_t** s) {
   }
 }
 
-void fill(surface_t* s, int r, int g, int b) {
+void fill(surface_t* s, int col) {
   for (int x = 0; x < s->w; ++x)
     for (int y = 0; y < s->h; ++y)
-      XYSET(s, x, y, RGB(r, g, b));
+      XYSET(s, x, y, col);
 }
 
-bool pset(surface_t* s, int x, int y, int r, int g, int b) {
+bool pset(surface_t* s, int x, int y, int col) {
   if (x > s->w || y > s->h) {
     fprintf(stderr, "ERROR! pset() failed! x/y outside of bounds.\n");
     return false;
   }
-  XYSET(s, x, y, RGB(r, g, b));
+  XYSET(s, x, y, col);
   return true;
 }
 
@@ -190,7 +190,7 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   return true;
 }
 
-bool yline(surface_t* s, int x, int y1, int y2, int r, int g, int b) {
+bool yline(surface_t* s, int x, int y1, int y2, int col) {
   if (y2 < y1) {
     y1 += y2;
     y2  = y1 - y2;
@@ -205,13 +205,12 @@ bool yline(surface_t* s, int x, int y1, int y2, int r, int g, int b) {
   if (y2 >= s->h)
     y2 = s->h - 1;
   
-  int c = RGB(r, g, b);
   for(int y = y1; y <= y2; y++)
-    XYSET(s, x, y, c);
+    XYSET(s, x, y, col);
   return true;
 }
 
-bool xline(surface_t* s, int y, int x1, int x2, int r, int g, int b) {
+bool xline(surface_t* s, int y, int x1, int x2, int col) {
   if (x2 < x1) {
     x1 += x2;
     x2  = x1 - x2;
@@ -228,13 +227,12 @@ bool xline(surface_t* s, int y, int x1, int x2, int r, int g, int b) {
   if (x2 >= s->w)
     x2 = s->w - 1;
   
-  int c = RGB(r, g, b);
   for(int x = x1; x <= x2; x++)
-    XYSET(s, x, y, c);
+    XYSET(s, x, y, col);
   return true;
 }
 
-bool line(surface_t* s, int x1, int y1, int x2, int y2, int r, int g, int b) {
+bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
   if (x1 < 0 || x1 > s->w - 1 || x2 < 0 || x2 > s->w - 1 || y1 < 0 || y1 > s->h - 1 || y2 < 0 || y2 > s->h - 1) {
     fprintf(stderr, "WARNING! line() failed! x1/y1/x2/y2 outside bounds of dst.\n");
     return false;
@@ -242,7 +240,6 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int r, int g, int b) {
   
   int dx = abs(x2 - x1), dy = abs(y2 - y1);
   int x = x1, y = y1;
-  int c = RGB(r, g, b);
   int xi1, xi2, yi1, yi2, d, n, na, np, p;
   
   if (x2 >= x1) {
@@ -278,7 +275,7 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int r, int g, int b) {
   }
   
   for (p = 0; p <= np; ++p) {
-    XYSET(s, x % s->w, y % s->h, c);
+    XYSET(s, x % s->w, y % s->h, col);
     n += na;
     if (n >= d) {
       n -= d;
@@ -291,13 +288,13 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int r, int g, int b) {
   return true;
 }
 
-bool circle(surface_t* s, int xc, int yc, int r, int r1, int g1, int b1) {
+bool circle(surface_t* s, int xc, int yc, int r, int col) {
   if (xc - r < 0 || xc + r >= s->w || yc - r < 0 || yc + r >= s->h) {
     fprintf(stderr, "WARNING! circle() failed! x/y outside bounds of dst.\n");
     return false;
   }
   
-  int x = 0, y = r, p = 3 - (r << 1), c1 = RGB(r1, g1, b1);
+  int x = 0, y = r, p = 3 - (r << 1);
   int a, b, c, d, e, f, g, h;
   
   while (x <= y) {
@@ -310,23 +307,23 @@ bool circle(surface_t* s, int xc, int yc, int r, int r1, int g1, int b1) {
     g = xc - y;
     h = yc - x;
     
-    XYSET(s, a, b, c1);
-    XYSET(s, c, d, c1);
-    XYSET(s, e, f, c1);
-    XYSET(s, g, f, c1);
+    XYSET(s, a, b, col);
+    XYSET(s, c, d, col);
+    XYSET(s, e, f, col);
+    XYSET(s, g, f, col);
     
     if (x > 0) {
-      XYSET(s, a, d, c1);
-      XYSET(s, c, b, c1);
-      XYSET(s, e, h, c1);
-      XYSET(s, g, h, c1);
+      XYSET(s, a, d, col);
+      XYSET(s, c, b, col);
+      XYSET(s, e, h, col);
+      XYSET(s, g, h, col);
     }
     p += (p < 0 ? (x++ << 2) + 6 : ((x++ - y--) << 2) + 10);
   }
   return true;
 }
 
-bool circle_filled(surface_t* s, int xc, int yc, int r, int r1, int g1, int b1) {
+bool circle_filled(surface_t* s, int xc, int yc, int r, int col) {
   if (xc + r < 0 || xc - r >= s->w || yc + r < 0 || yc - r >= s->h) {
     fprintf(stderr, "WARNING! circle() failed! x/y outside bounds of dst.\n");
     return false;
@@ -346,13 +343,13 @@ bool circle_filled(surface_t* s, int xc, int yc, int r, int r1, int g1, int b1) 
     h = yc - x;
     
     if (b != pb)
-      xline(s, b, a, c, r1, g1, b1);
+      xline(s, b, a, c, col);
     if (d != pd)
-      xline(s, d, a, c, r1, g1, b1);
+      xline(s, d, a, c, col);
     if (f != b)
-      xline(s, f, e, g, r1, g1, b1);
+      xline(s, f, e, g, col);
     if (h != d && h != f)
-      xline(s, h, e, g, r1, g1, b1);
+      xline(s, h, e, g, col);
     
     pb = b;
     pd = d;
@@ -361,21 +358,21 @@ bool circle_filled(surface_t* s, int xc, int yc, int r, int r1, int g1, int b1) 
   return true;
 }
 
-bool rect(surface_t* s, int x, int y, int w, int h, int r, int g, int b) {
+bool rect(surface_t* s, int x, int y, int w, int h, int col) {
   w = x + w;
   h = y + h;
-  xline(s, y, x, w, r, g, b);
-  xline(s, h, x, w, r, g, b);
-  yline(s, x, y, h, r, g, b);
-  yline(s, w, y, h, r, g, b);
+  xline(s, y, x, w, col);
+  xline(s, h, x, w, col);
+  yline(s, x, y, h, col);
+  yline(s, w, y, h, col);
   return true;
 }
 
-bool rect_filled(surface_t* s, int x, int y, int w, int h, int r, int g, int b) {
+bool rect_filled(surface_t* s, int x, int y, int w, int h, int col) {
   h = y + h;
   w = x + w;
   for (; y < h; ++y)
-    xline(s, y, x, w, r, g, b);
+    xline(s, y, x, w, col);
   return true;
 }
 
@@ -499,15 +496,15 @@ surface_t* load_bmp_from_file(const char* path) {
   return ret;
 }
 
-void letter(surface_t* s, unsigned char c, unsigned int x, unsigned int y, int r, int g, int b) {
+void letter(surface_t* s, unsigned char c, unsigned int x, unsigned int y, int col) {
   int u, v;
   for (u = 0; u < 8; ++u)
     for (v = 0; v < 8; ++v)
       if (font[c][u][v])
-        s->buf[(y + v) * s->w + (x + u)] = RGB(r, g, b);
+        XYSET(s, x + u, y + v, col);
 }
 
-void print(surface_t* s, unsigned int x, unsigned int y, int r, int g, int b, const char* str) {
+void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str) {
   int u = x, v = y;
   char* c = (char*)str;
   while (c != NULL && *c != '\0') {
@@ -515,14 +512,14 @@ void print(surface_t* s, unsigned int x, unsigned int y, int r, int g, int b, co
       v += 16;
       u  = x;
     } else {
-      letter(s, *c, u, v, r, g, b);
+      letter(s, *c, u, v, col);
       u += 8;
     }
     ++c;
   }
 }
 
-void print_f(surface_t* s, unsigned int x, unsigned int y, int r, int g, int b, const char* fmt, ...) {
+void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...) {
   char *buffer = NULL;
   size_t buffer_size = 0;
   
@@ -539,7 +536,7 @@ void print_f(surface_t* s, unsigned int x, unsigned int y, int r, int g, int b, 
     va_end(argptr);
   }
   
-  print(s, x, y, r, g, b, buffer);
+  print(s, x, y, col, buffer);
   free(buffer);
 }
 
