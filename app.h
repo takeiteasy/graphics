@@ -50,6 +50,10 @@ bool rect_filled(surface_t*, int, int, int, int, int, int, int);
 unsigned char* load_file_to_mem(const char*);
 surface_t* load_bmp_from_mem(unsigned char*);
 surface_t* load_bmp_from_file(const char*);
+void letter(surface_t*, unsigned char, unsigned int, unsigned int, int, int, int);
+void print(surface_t*, unsigned int, unsigned int, int, int, int, const char*);
+void print_f(surface_t*, unsigned int, unsigned int, int, int, int, const char*, ...);
+void init_default_font();
 
 surface_t* screen(const char*, int, int);
 bool redraw(void);
