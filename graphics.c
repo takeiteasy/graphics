@@ -614,7 +614,9 @@ surface_t* string_f(int col, const char* fmt, ...) {
 }
 @end
 
-@interface osx_view_t : NSView {}
+@interface osx_view_t : NSView {
+  NSTrackingArea* track;
+}
 @end
 
 static surface_t* buffer;
@@ -622,6 +624,54 @@ static osx_app_t* app;
 
 @implementation osx_view_t
 extern surface_t* buffer;
+
+-(id)initWithFrame:(CGRect)r {
+  self = [super initWithFrame:r];
+  if (self != nil) {
+    track = nil;
+    [self updateTrackingAreas];
+  }
+  return self;
+}
+
+-(void)updateTrackingAreas {
+  if (track != nil) {
+    [self removeTrackingArea:track];
+    [track release];
+  }
+  
+  track = [[NSTrackingArea alloc] initWithRect:[self bounds]
+                                       options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow | NSTrackingEnabledDuringMouseDrag | NSTrackingCursorUpdate | NSTrackingInVisibleRect | NSTrackingAssumeInside | NSTrackingMouseMoved
+                                                owner:self
+                                             userInfo:nil];
+  
+  [self addTrackingArea:track];
+  [super updateTrackingAreas];
+}
+
+-(void)mouseDown:(NSEvent *)event {
+  
+}
+
+-(void)mouseDragged:(NSEvent *)event {
+  [self mouseMoved:event];
+}
+
+-(void)mouseUp:(NSEvent *)event {
+  
+}
+
+-(void)mouseEntered:(NSEvent *)event {
+  
+}
+
+-(void)mouseExited:(NSEvent *)event {
+  
+}
+
+-(void)mouseMoved:(NSEvent *)event {
+  
+}
 
 -(NSRect)resizeRect {
   NSRect v = [[self window] contentRectForFrameRect:[[self window] frame]];
@@ -646,6 +696,11 @@ extern surface_t* buffer;
   CGContextDrawImage(ctx, CGRectMake(0, 0, buffer->w, buffer->h), img);
   
   CGImageRelease(img);
+}
+
+- (void)dealloc {
+  [track release];
+  [super dealloc];
 }
 @end
 
