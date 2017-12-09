@@ -296,13 +296,14 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
   return true;
 }
 
-bool circle(surface_t* s, int xc, int yc, int r, int col) {
+bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
   if (xc - r < 0 || xc + r >= s->w || yc - r < 0 || yc + r >= s->h) {
     SET_LAST_ERROR("circle() failed! x/y outside bounds of dst");
     return false;
   }
   
   int x = 0, y = r, p = 3 - (r << 1);
+  int pb = yc + r + 1, pd = yc + r + 1;
   int a, b, c, d, e, f, g, h;
   
   while (x <= y) {
@@ -315,49 +316,28 @@ bool circle(surface_t* s, int xc, int yc, int r, int col) {
     g = xc - y;
     h = yc - x;
     
-    XYSET(s, a, b, col);
-    XYSET(s, c, d, col);
-    XYSET(s, e, f, col);
-    XYSET(s, g, f, col);
-    
-    if (x > 0) {
-      XYSET(s, a, d, col);
-      XYSET(s, c, b, col);
-      XYSET(s, e, h, col);
-      XYSET(s, g, h, col);
+    if (fill) {
+      if (b != pb)
+        xline(s, b, a, c, col);
+      if (d != pd)
+        xline(s, d, a, c, col);
+      if (f != b)
+        xline(s, f, e, g, col);
+      if (h != d && h != f)
+        xline(s, h, e, g, col);
+    } else {
+      XYSET(s, a, b, col);
+      XYSET(s, c, d, col);
+      XYSET(s, e, f, col);
+      XYSET(s, g, f, col);
+      
+      if (x > 0) {
+        XYSET(s, a, d, col);
+        XYSET(s, c, b, col);
+        XYSET(s, e, h, col);
+        XYSET(s, g, h, col);
+      }
     }
-    p += (p < 0 ? (x++ << 2) + 6 : ((x++ - y--) << 2) + 10);
-  }
-  return true;
-}
-
-bool circle_filled(surface_t* s, int xc, int yc, int r, int col) {
-  if (xc + r < 0 || xc - r >= s->w || yc + r < 0 || yc - r >= s->h) {
-    SET_LAST_ERROR("circle() failed! x/y outside bounds of dst");
-    return false;
-  }
-  
-  int x = 0, y = r, p = 3 - (r << 1), pb = yc + r + 1, pd = yc + r + 1;
-  int a, b, c, d, e, f, g, h;
-  
-  while (x <= y) {
-    a = xc + x;
-    b = yc + y;
-    c = xc - x;
-    d = yc - y;
-    e = xc + y;
-    f = yc + x;
-    g = xc - y;
-    h = yc - x;
-    
-    if (b != pb)
-      xline(s, b, a, c, col);
-    if (d != pd)
-      xline(s, d, a, c, col);
-    if (f != b)
-      xline(s, f, e, g, col);
-    if (h != d && h != f)
-      xline(s, h, e, g, col);
     
     pb = b;
     pd = d;
@@ -366,21 +346,18 @@ bool circle_filled(surface_t* s, int xc, int yc, int r, int col) {
   return true;
 }
 
-bool rect(surface_t* s, int x, int y, int w, int h, int col) {
+bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
   w = x + w;
   h = y + h;
-  xline(s, y, x, w, col);
-  xline(s, h, x, w, col);
-  yline(s, x, y, h, col);
-  yline(s, w, y, h, col);
-  return true;
-}
-
-bool rect_filled(surface_t* s, int x, int y, int w, int h, int col) {
-  h = y + h;
-  w = x + w;
-  for (; y < h; ++y)
+  if (fill) {
+    for (; y < h; ++y)
+      xline(s, y, x, w, col);
+  } else {
     xline(s, y, x, w, col);
+    xline(s, h, x, w, col);
+    yline(s, x, y, h, col);
+    yline(s, w, y, h, col);
+  }
   return true;
 }
 

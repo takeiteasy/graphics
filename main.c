@@ -3,7 +3,7 @@
 
 /* TODO:
  *  - Chroma key to blit
- *  - BMP RLE8/4 loading + OS/2 BMP
+ *  - RLE8/4 loading + OS/2 BMP
  *  - Fix OSX draw offset (0, 22)
  *  - ANSI colour escapes for print()
  *  - HSV, HSL, INT to RGB functions
@@ -14,6 +14,7 @@
  *  - Test on Linux/Windows
  *  - Add copyright for borrowed stuff
  *  - Native system timer
+ *  - OpenGL alternative backend ???
  */
 
 #define WIDTH  640
@@ -37,10 +38,10 @@ int main(int argc, const char* argv[]) {
   }
   
   surface_t* test = surface(200, 200);
-  rect_filled(test, 0, 0, 100, 100, MAROON);
-  rect_filled(test, 100, 0, 100, 100, DARKRED);
-  rect_filled(test, 0, 100, 100, 100, FIREBRICK);
-  rect_filled(test, 100, 100, 100, 100, BROWN);
+  rect(test, 0, 0, 100, 100, MAROON, true);
+  rect(test, 100, 0, 100, 100, DARKRED, true);
+  rect(test, 0, 100, 100, 100, FIREBRICK, true);
+  rect(test, 100, 100, 100, 100, BROWN, true);
   
   surface_t* rnd = surface(50, 50);
   
@@ -65,10 +66,10 @@ int main(int argc, const char* argv[]) {
     xline(win, 135, 110, 160, THISTLE);
     yline(win, 135, 110, 160, THISTLE);
     line(win, 0, 0, 300, 300, THISTLE);
-    circle(win, 300, 300, 30, THISTLE);
-    circle_filled(win, 350, 350, 30, RND_RBG);
-    rect(win, 425, 125, 150, 150, PALEGOLDENROD);
-    rect_filled(win, 450, 150, 100, 100, PALEGOLDENROD);
+    circle(win, 300, 300, 30, THISTLE, false);
+    circle(win, 350, 350, 30, RND_RBG, true);
+    rect(win, 425, 125, 150, 150, PALEGOLDENROD, false);
+    rect(win, 450, 150, 100, 100, PALEGOLDENROD, true);
     
     fill_rnd(rnd);
     blit(win, &tmpp3, rnd, NULL);
