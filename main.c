@@ -51,44 +51,54 @@ int main(int argc, const char* argv[]) {
   mouse_move_cb(test_cb_move);
   mouse_entered_cb(test_cb_enter);
   
-  surface_t* test = surface(200, 200);
-  rect(test, 0, 0, 100, 100, MAROON, true);
-  rect(test, 100, 0, 100, 100, DARKRED, true);
-  rect(test, 0, 100, 100, 100, FIREBRICK, true);
-  rect(test, 100, 100, 100, 100, BROWN, true);
-  
   surface_t* rnd = surface(50, 50);
   
   surface_t* c = load_bmp_from_file("/Users/roryb/Desktop/Uncompressed-24.bmp");
   surface_t* d = string(WHITE, "test string");
   
-  rect_t  tmpr = { 0, 100, 100, 100 };
-  point_t tmpp = { 0, 22 };
-  point_t tmpp1 = { 101, 22 };
+  rect_t  tmpr = { 150, 50, 50, 50 };
+  point_t tmpp = { 10, 150 };
   point_t tmpp2 = { 5, 227 };
   point_t tmpp3 = { 475, 175 };
   
   for (;;) {
-    fill(win, CORNFLOWERBLUE);
+    fill(win, WHITE);
     
-    blit(win, &tmpp1, test, NULL);
-    blit(win, &tmpp, test, &tmpr);
+    for (int x = 32; x < win->w; x += 32)
+      yline(win, x, 0, win->h, GRAY);
+    for (int y = 32; y < win->h; y += 32)
+      xline(win, y, 0, win->w, GRAY);
     
     blit(win, &tmpp2, c, NULL);
-    blit(win, &tmpp2, d, NULL);
+    blit(win, &tmpp, c, &tmpr);
+    blit(c, NULL, d, NULL);
     
-    xline(win, 135, 110, 160, THISTLE);
-    yline(win, 135, 110, 160, THISTLE);
-    line(win, 0, 0, mx, my, THISTLE);
-    circle(win, mx, my, 30, THISTLE, false);
-    circle(win, 350, 350, 30, RND_RBG, true);
-    rect(win, 425, 125, 150, 150, PALEGOLDENROD, false);
-    rect(win, 450, 150, 100, 100, PALEGOLDENROD, true);
+    rect(win, 150, 50, 100, 100, BLUE, false);
+    rect(win, 200, 100, 100, 100, BLUE, false);
+    line(win, 150, 50, 200, 100, BLUE);
+    line(win, 250, 50, 300, 100, BLUE);
+    line(win, 150, 150, 200, 200, BLUE);
+    line(win, 250, 150, 300, 200, BLUE);
+    
+    circle(win, 352, 400, 30, RGB(255, 0, 0), true);
+    circle(win, 382, 400, 30, RGB(255, 127, 0), true);
+    circle(win, 412, 400, 30, RGB(255, 255, 0), true);
+    circle(win, 442, 400, 30, RGB(0, 255, 0), true);
+    circle(win, 472, 400, 30, RGB(0, 0, 255), true);
+    circle(win, 502, 400, 30, RGB(75, 0, 130), true);
+    circle(win, 532, 400, 30, RGB(148, 0, 211), true);
+    
+    
+    rect(win, 425, 125, 150, 150, RED, false);
+    rect(win, 450, 150, 100, 100, RED, true);
     
     fill_rnd(rnd);
     blit(win, &tmpp3, rnd, NULL);
     
-    print_f(test, 10, 50, WHITE, "this is a test: %dx%d\nI hope this works.", test->w, test->h);
+    print_f(win, 10, 8, BLACK, "mouse x,y: (%d, %d)\nA S T H E T I C", mx, my);
+    
+    line(win, 0, 0, mx, my, MAGENTA);
+    circle(win, mx, my, 30, MAGENTA, false);
     
     if (!redraw())
       break;
@@ -96,7 +106,6 @@ int main(int argc, const char* argv[]) {
   
   destroy(&c);
   destroy(&d);
-  destroy(&test);
   destroy(&rnd);
   release();
   return 0;

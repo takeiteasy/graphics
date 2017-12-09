@@ -25,6 +25,8 @@ static const char* font_b64_str = "Qk2SCAAAAAAAAJIAAAB8AAAAgAAAAIAAAAABAAEAAAAAA
 static const int font_b64_strlen = 2928;
 static bool font[256][8][8];
 
+#define LINE_HEIGHT 10
+
 const static unsigned char b64_table[] = {
   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  //10
   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  //20
@@ -61,6 +63,7 @@ const static unsigned char b64_table[] = {
   y = t; \
 }
 
+static int mx = 0, my = 0;
 static void (*__mouse_move_cb)(int, int);
 static void (*__mouse_enter_cb)(bool);
 
@@ -70,6 +73,13 @@ void mouse_move_cb(void (*fn)(int, int)) {
 
 void mouse_entered_cb(void (*fn)(bool)) {
   SWAP_POINTERS(__mouse_enter_cb, fn);
+}
+
+void mouse_pos(int* x, int* y) {
+  if (!x || !y)
+    return;
+  *x = mx;
+  *y = my;
 }
 
 unsigned char* base64_decode(const char* ascii, int len, int *flen) {
@@ -544,7 +554,7 @@ void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* st
   char* c = (char*)str;
   while (c != NULL && *c != '\0') {
     if (*c == '\n') {
-      v += 8;
+      v += LINE_HEIGHT;
       u  = x;
     } else {
       letter(s, *c, u, v, col);
@@ -580,7 +590,7 @@ surface_t* string(int col, const char* str) {
   char* c = (char*)str;
   while (c != NULL && *c != '\0') {
     if (*c == '\n') {
-      h += 8;
+      h += LINE_HEIGHT;
       if (x > w)
         w = x;
       x = 0;
@@ -701,8 +711,10 @@ extern surface_t* buffer;
 }
 
 -(void)mouseMoved:(NSEvent*)event {
+  mx = (int)floor([event locationInWindow].x - 1);
+  my = (int)floor(buffer->h - 1 - [event locationInWindow].y);
   if (__mouse_move_cb)
-    __mouse_move_cb((int)floor([event locationInWindow].x - 1), (int)floor(buffer->h - 1 - [event locationInWindow].y));
+    __mouse_move_cb(mx, my);
 }
 
 -(NSRect)resizeRect {
