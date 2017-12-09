@@ -148,8 +148,9 @@ void destroy(surface_t** s) {
 }
 
 void fill(surface_t* s, int col) {
-  for (int x = 0; x < s->w; ++x)
-    for (int y = 0; y < s->h; ++y)
+  int x, y;
+  for (x = 0; x < s->w; ++x)
+    for (y = 0; y < s->h; ++y)
       XYSET(s, x, y, col);
 }
 
@@ -171,11 +172,6 @@ int pget(surface_t* s, int x, int y) {
 }
 
 bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
-  if (!src || !dst) {
-    SET_LAST_ERROR("blit() failed! src and dst must not be null");
-    return false;
-  }
-  
   int offset_x = 0,      offset_y = 0,
       from_x   = 0,      from_y   = 0,
       width    = src->w, height   = src->h;
@@ -191,7 +187,7 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   }
   int to_x = offset_x + width, to_y = offset_y + height;
   if (to_x > dst->w || to_y > dst->h) {
-    SET_LAST_ERROR("WARNING! blit() failed! src w/h outside bounds of dst");
+    SET_LAST_ERROR("blit() failed! src w/h outside bounds of dst");
     return false;
   }
   
@@ -209,7 +205,7 @@ bool yline(surface_t* s, int x, int y1, int y2, int col) {
     y1 -= y2;
   }
   if (y2 < 0 || y1 >= s->h  || x < 0 || x >= s->w) {
-    SET_LAST_ERROR("WARNING! yline() failed! x/y outside bounds of dst");
+    SET_LAST_ERROR("yline() failed! x/y outside bounds of dst");
     return false;
   }
   if (y1 < 0)
@@ -230,7 +226,7 @@ bool xline(surface_t* s, int y, int x1, int x2, int col) {
   }
   
   if (x2 < 0 || x1 >= s->w || y < 0 || y >= s->h) {
-    SET_LAST_ERROR("WARNING! xline() failed! x/y outside bounds of dst");
+    SET_LAST_ERROR("xline() failed! x/y outside bounds of dst");
     return false;
   }
   
@@ -246,7 +242,7 @@ bool xline(surface_t* s, int y, int x1, int x2, int col) {
 
 bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
   if (x1 < 0 || x1 > s->w - 1 || x2 < 0 || x2 > s->w - 1 || y1 < 0 || y1 > s->h - 1 || y2 < 0 || y2 > s->h - 1) {
-    SET_LAST_ERROR("WARNING! line() failed! x1/y1/x2/y2 outside bounds of dst");
+    SET_LAST_ERROR("line() failed! x1/y1/x2/y2 outside bounds of dst");
     return false;
   }
   
@@ -302,7 +298,7 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
 
 bool circle(surface_t* s, int xc, int yc, int r, int col) {
   if (xc - r < 0 || xc + r >= s->w || yc - r < 0 || yc + r >= s->h) {
-    SET_LAST_ERROR("WARNING! circle() failed! x/y outside bounds of dst");
+    SET_LAST_ERROR("circle() failed! x/y outside bounds of dst");
     return false;
   }
   
@@ -337,7 +333,7 @@ bool circle(surface_t* s, int xc, int yc, int r, int col) {
 
 bool circle_filled(surface_t* s, int xc, int yc, int r, int col) {
   if (xc + r < 0 || xc - r >= s->w || yc + r < 0 || yc - r >= s->h) {
-    SET_LAST_ERROR("WARNING! circle() failed! x/y outside bounds of dst");
+    SET_LAST_ERROR("circle() failed! x/y outside bounds of dst");
     return false;
   }
   
@@ -406,69 +402,123 @@ unsigned char* load_file_to_mem(const char* path) {
   return data;
 }
 
-#pragma pack(push, 1)
 typedef struct {
-  unsigned short type;     /* Magic identifier            */
-  unsigned int   size;     /* File size in bytes          */
-  unsigned int   reserved;
-  unsigned int   offset;   /* Offset to image data, bytes */
-} BMPHEADER;
-#pragma pack(pop)
+  unsigned short type; /* Magic identifier */
+  unsigned int size; /* File size in bytes */
+  unsigned int reserved;
+  unsigned int offset; /* Offset to image data, bytes */
+} __attribute__((packed, aligned(2))) BMPHEADER;
 
-#pragma pack(push, 1)
 typedef struct {
-  unsigned int size;              /* Header size in bytes      */
-  int width, height;              /* Width and height of image */
-  unsigned short planes;          /* Number of colour planes   */
-  unsigned short bits;            /* Bits per pixel            */
-  unsigned int   compression;     /* Compression type          */
-  unsigned int   image_size;      /* Image size in bytes       */
-  int xresolution, yresolution;   /* Pixels per meter          */
-  unsigned int ncolours;          /* Number of colours         */
-  unsigned int important_colours; /* Important colours         */
+  unsigned int size; /* Header size in bytes */
+  int width, height; /* Width and height of image */
+  unsigned short planes; /* Number of colour planes */
+  unsigned short bits; /* Bits per pixel */
+  unsigned int compression; /* Compression type */
+  unsigned int image_size; /* Image size in bytes */
+  int xresolution, yresolution; /* Pixels per meter */
+  unsigned int ncolours; /* Number of colours */
+  unsigned int important_colours; /* Important colours */
 } BMPINFOHEADER;
-#pragma pack(pop)
 
-#define BREAD(d, b, o, s) \
-memcpy(d, b + o, s); \
-o += s;
+typedef struct {
+  unsigned int size; /* size of bitmap core header */
+  unsigned short width; /* image with */
+  unsigned short height; /* image height */
+  unsigned short planes; /* must be equal to 1 */
+  unsigned short count; /* bits per pixel */
+} BMPCOREHEADER;
+
+//typedef struct {
+//  BMPCOREHEADER header;
+//  unsigned char colors[3];
+//} BMPCOREIFNOHEADER;
+
+#define BMP_GET(d, b, s) \
+memcpy(d, b + off, s); \
+off += s;
+
+#define BMP_SET(c) (ret->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
 
 surface_t* load_bmp_from_mem(unsigned char* data) {
   int off = 0;
   BMPHEADER header;
   BMPINFOHEADER info;
-  BREAD(&header, data, off, sizeof(BMPHEADER));
-  BREAD(&info, data, off, sizeof(BMPINFOHEADER));
+  BMPCOREHEADER core;
+  BMP_GET(&header, data, sizeof(BMPHEADER));
+  BMP_GET(&info, data, sizeof(BMPINFOHEADER));
+  
+  if (header.type != 0x4D42) {
+    SET_LAST_ERROR("loadbmp() failed: invalid BMP signiture '%d'", header.type);
+    return NULL;
+  }
   
   unsigned char* color_map = NULL;
   int color_map_size = 0;
   if (info.bits <= 8) {
     color_map_size = (1 << info.bits) * 4;
     color_map = (unsigned char*)malloc (color_map_size * sizeof(unsigned char));
-    BREAD(color_map, data, off, color_map_size);
+    if (!color_map) {
+      SET_LAST_ERROR("malloc() failed");
+      return NULL;
+    }
+    BMP_GET(color_map, data, color_map_size);
+  }
+  
+  surface_t* ret = surface(info.width, info.height);
+  if (!ret) {
+    if (color_map)
+      free(color_map);
+    SET_LAST_ERROR("malloc() failed");
+    return NULL;
   }
   
   off = header.offset;
-  
-  surface_t* ret = surface(info.width, info.height);
-  int i, j, x, s = info.width * info.height;
-  unsigned char color, index;
-  
-  switch (info.bits) {
-    case 1:
-      for (i = 0; i < s;) {
-        color = data[off++];
-        for (j = 7; j >= 0; --j, ++i) {
-          index = ((color & (1 << j)) > 0);
-          x = s - i - 1;
-          ret->buf[(x - (x % info.width)) + (info.width - (x % info.width) - 1)] = RGB(color_map[(index * 4) + 1], color_map[(index * 4) + 1], color_map[(index * 4) + 1]);
-        }
+  int i, j, c, s = info.width * info.height;
+  unsigned char color;
+  switch (info.compression) {
+    case 0: // RGB
+      switch (info.bits) { // BPP
+        case 1:
+          for (i = (s - 1); i != -1; ++off) {
+            for (j = 7; j >= 0; --j, --i) {
+              c = color_map[((data[off] & (1 << j)) > 0) * 4 + 1];
+              BMP_SET(RGB(c, c, c));
+            }
+          }
+          break;
+        case 4:
+          for (i = (s - 1); i != -1; --i, ++off) {
+            color = (data[off] >> 4) * 4;
+            BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
+            i--;
+            color = (data[off] & 0x0F);
+            BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
+          }
+          break;
+        case 8:
+          for (i = (s - 1); i != -1; --i, ++off) {
+            color = (data[off] * 4);
+            BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
+          }
+          break;
+        case 32:
+        case 24:
+          for (i = (s - 1); i != -1; --i, off += (info.bits == 32 ? 4 : 3))
+            BMP_SET(RGB(data[off], data[off + 1], data[off + 2]));
+          break;
+        default:
+          SET_LAST_ERROR("load_bmp_from_mem() failed. Unsupported BPP: %d", info.bits);
+          destroy(&ret);
+          break;
       }
       break;
-    case 24:
-      break;
+    case 1: // RLE8
+//      break;
+    case 2: // RLE4
+//      break;
     default:
-      SET_LAST_ERROR("load_bmp_from_mem() failed. Unsupported BPP: %d", info.bits);
+      SET_LAST_ERROR("load_bmp_from_mem() failed. Unsupported compression: %d", info.compression);
       destroy(&ret);
       break;
   }
@@ -477,38 +527,6 @@ surface_t* load_bmp_from_mem(unsigned char* data) {
     free(color_map);
   
   return ret;
-//  unsigned char bmp_file_header[14];
-//  unsigned char bmp_info_header[40];
-//
-//  memset(bmp_file_header, 0, sizeof(bmp_file_header));
-//  memset(bmp_info_header, 0, sizeof(bmp_info_header));
-//
-//  memcpy(bmp_file_header, data, sizeof(bmp_file_header));
-//  memcpy(bmp_info_header, data + sizeof(bmp_file_header), sizeof(bmp_info_header));
-//
-//  if ((bmp_file_header[0] != 'B') || (bmp_file_header[1] != 'M')) {
-//    SET_LAST_ERROR("load_bmp() failed. Invalid signiture");
-//    return NULL;
-//  }
-//
-//  if ((bmp_info_header[14] != 24) && (bmp_info_header[14] != 32)) {
-//    SET_LAST_ERROR("load_bmp() failed. Invalid BPP '%d'", bmp_info_header[14]);
-//    return NULL;
-//  }
-//
-//  int w = (bmp_info_header[4] + (bmp_info_header[5] << 8) + (bmp_info_header[6] << 16) + (bmp_info_header[7] << 24));
-//  int h = (bmp_info_header[8] + (bmp_info_header[9] << 8) + (bmp_info_header[10] << 16) + (bmp_info_header[11] << 24));
-//  surface_t* ret = surface(w, h);
-//
-//  int x, y, i, p = sizeof(bmp_file_header) + sizeof(bmp_info_header);
-//  for (y = (h - 1); y != -1; --y) {
-//    for (x = 0; x < w; x++) {
-//      i = p + ((x + y * w) * 3);
-//      pset(ret, x, y, data[i + 2], data[i + 1], data[i]);
-//    }
-//    p += ((4 - (w * 3) % 4) % 4);
-//  }
-//  return ret;
 }
 
 surface_t* load_bmp_from_file(const char* path) {
@@ -608,6 +626,22 @@ surface_t* string_f(int col, const char* fmt, ...) {
 #if defined(__APPLE__)
 #import <Cocoa/Cocoa.h>
 
+#if MAC_OS_X_VERSION_MAX_ALLOWED < 101200
+#define NSWindowStyleMaskBorderless NSBorderlessWindowMask
+#define NSWindowStyleMaskClosable NSClosableWindowMask
+#define NSWindowStyleMaskMiniaturizable NSMiniaturizableWindowMask
+#define NSWindowStyleMaskResizable NSResizableWindowMask
+#define NSWindowStyleMaskTitled NSTitledWindowMask
+#define NSEventModifierFlagCommand NSCommandKeyMask
+#define NSEventModifierFlagControl NSControlKeyMask
+#define NSEventModifierFlagOption NSAlternateKeyMask
+#define NSEventModifierFlagShift NSShiftKeyMask
+#define NSEventModifierFlagDeviceIndependentFlagsMask NSDeviceIndependentModifierFlagsMask
+#define NSEventMaskAny NSAnyEventMask
+#define NSEventTypeApplicationDefined NSApplicationDefined
+#define NSEventTypeKeyUp NSKeyUp
+#endif
+
 @interface osx_app_t : NSWindow {
   NSView* view;
   @public bool closed;
@@ -642,34 +676,34 @@ extern surface_t* buffer;
   
   track = [[NSTrackingArea alloc] initWithRect:[self bounds]
                                        options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow | NSTrackingEnabledDuringMouseDrag | NSTrackingCursorUpdate | NSTrackingInVisibleRect | NSTrackingAssumeInside | NSTrackingMouseMoved
-                                                owner:self
-                                             userInfo:nil];
+                                         owner:self
+                                      userInfo:nil];
   
   [self addTrackingArea:track];
   [super updateTrackingAreas];
 }
 
--(void)mouseDown:(NSEvent *)event {
+-(void)mouseDown:(NSEvent*)event {
   
 }
 
--(void)mouseDragged:(NSEvent *)event {
+-(void)mouseDragged:(NSEvent*)event {
   [self mouseMoved:event];
 }
 
--(void)mouseUp:(NSEvent *)event {
+-(void)mouseUp:(NSEvent*)event {
   
 }
 
--(void)mouseEntered:(NSEvent *)event {
+-(void)mouseEntered:(NSEvent*)event {
   
 }
 
--(void)mouseExited:(NSEvent *)event {
+-(void)mouseExited:(NSEvent*)event {
   
 }
 
--(void)mouseMoved:(NSEvent *)event {
+-(void)mouseMoved:(NSEvent*)event {
   
 }
 
@@ -698,7 +732,7 @@ extern surface_t* buffer;
   CGImageRelease(img);
 }
 
-- (void)dealloc {
+-(void)dealloc {
   [track release];
   [super dealloc];
 }

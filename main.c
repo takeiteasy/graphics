@@ -3,10 +3,10 @@
 
 /* TODO:
  *  - Chroma key to blit
- *  - 4,8,24,32 bpp BMP loading
+ *  - BMP RLE8/4 loading
  *  - Fix OSX draw offset (0, 22)
  *  - ANSI colour escapes for print()
- *  - HSV, HSL, INT to RGB macros
+ *  - HSV, HSL, INT to RGB functions
  *  - Window event callbacks mouse, keyboard, etc
  *  - Optional API init, like SDL
  *  - Extended surface functions, rotate, filters, etc
@@ -43,8 +43,8 @@ int main(int argc, const char* argv[]) {
   
   surface_t* rnd = surface(50, 50);
   
-//  surface_t* c = load_bmp_from_file("/Users/roryb/Desktop/Uncompressed-24.bmp");
-  surface_t* c = string(WHITE, "test string");
+  surface_t* c = load_bmp_from_file("/Users/roryb/Desktop/Uncompressed-24.bmp");
+  surface_t* d = string(WHITE, "test string");
   
   rect_t  tmpr  = { 0, 100, 100, 100 };
   point_t tmpp  = { 0, 22 };
@@ -59,6 +59,7 @@ int main(int argc, const char* argv[]) {
     blit(win, &tmpp, test, &tmpr);
     
     blit(win, &tmpp2, c, NULL);
+    blit(win, &tmpp2, d, NULL);
     
     xline(win, 135, 110, 160, THISTLE);
     yline(win, 135, 110, 160, THISTLE);
@@ -78,6 +79,7 @@ int main(int argc, const char* argv[]) {
   }
   
   destroy(&c);
+  destroy(&d);
   destroy(&test);
   destroy(&rnd);
   release();
