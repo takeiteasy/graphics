@@ -1,6 +1,6 @@
 //
-//  app.h
-//  app
+//  graphics.h
+//  graphics
 //
 //  Created by Rory B. Bellows on 26/11/2017.
 //  Copyright © 2017 Rory B. Bellows. All rights reserved.
@@ -17,8 +17,6 @@ extern "C" {
 #include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
-#include <errno.h>
-#include <math.h>
 
 #define RGB(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
   

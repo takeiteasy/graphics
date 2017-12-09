@@ -3,7 +3,7 @@
 
 /* TODO:
  *  - Chroma key to blit
- *  - BMP RLE8/4 loading
+ *  - BMP RLE8/4 loading + OS/2 BMP
  *  - Fix OSX draw offset (0, 22)
  *  - ANSI colour escapes for print()
  *  - HSV, HSL, INT to RGB functions
@@ -13,6 +13,7 @@
  *  - stb_image/stb_truetype extras
  *  - Test on Linux/Windows
  *  - Add copyright for borrowed stuff
+ *  - Native system timer
  */
 
 #define WIDTH  640
@@ -46,9 +47,9 @@ int main(int argc, const char* argv[]) {
   surface_t* c = load_bmp_from_file("/Users/roryb/Desktop/Uncompressed-24.bmp");
   surface_t* d = string(WHITE, "test string");
   
-  rect_t  tmpr  = { 0, 100, 100, 100 };
-  point_t tmpp  = { 0, 22 };
-  point_t tmpp1  = { 101, 22 };
+  rect_t  tmpr = { 0, 100, 100, 100 };
+  point_t tmpp = { 0, 22 };
+  point_t tmpp1 = { 101, 22 };
   point_t tmpp2 = { 5, 227 };
   point_t tmpp3 = { 475, 175 };
   
