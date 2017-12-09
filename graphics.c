@@ -62,9 +62,14 @@ const static unsigned char b64_table[] = {
 }
 
 static void (*__mouse_move_cb)(int, int);
+static void (*__mouse_enter_cb)(bool);
 
 void mouse_move_cb(void (*fn)(int, int)) {
   SWAP_POINTERS(__mouse_move_cb, fn);
+}
+
+void mouse_entered_cb(void (*fn)(bool)) {
+  SWAP_POINTERS(__mouse_enter_cb, fn);
 }
 
 unsigned char* base64_decode(const char* ascii, int len, int *flen) {
@@ -686,11 +691,13 @@ extern surface_t* buffer;
 }
 
 -(void)mouseEntered:(NSEvent*)event {
-  
+  if (__mouse_enter_cb)
+    __mouse_enter_cb(true);
 }
 
 -(void)mouseExited:(NSEvent*)event {
-  
+  if (__mouse_enter_cb)
+    __mouse_enter_cb(false);
 }
 
 -(void)mouseMoved:(NSEvent*)event {

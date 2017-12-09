@@ -203,6 +203,7 @@ void init_default_font(void);
 const char* get_last_error(void);
   
 void mouse_move_cb(void (*fn)(int, int));
+void mouse_entered_cb(void (*fn)(bool));
 
 #ifdef __cplusplus
 }

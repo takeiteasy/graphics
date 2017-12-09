@@ -22,8 +22,16 @@
 #define RND_255 (rand() % 256)
 #define RND_RBG RGB(RND_255, RND_255, RND_255)
 
-void test_cb(int x, int y) {
+static int mx = 0, my = 0;
+
+void test_cb_move(int x, int y) {
+  mx = x;
+  my = y;
   printf("(%d, %d)\n", x, y);
+}
+
+void test_cb_enter(bool entered) {
+  printf("%s!\n", (entered ? "entered" : "exited"));
 }
 
 void fill_rnd(surface_t* s) {
@@ -40,7 +48,8 @@ int main(int argc, const char* argv[]) {
     return 1;
   }
   
-  mouse_move_cb(test_cb);
+  mouse_move_cb(test_cb_move);
+  mouse_entered_cb(test_cb_enter);
   
   surface_t* test = surface(200, 200);
   rect(test, 0, 0, 100, 100, MAROON, true);
@@ -70,8 +79,8 @@ int main(int argc, const char* argv[]) {
     
     xline(win, 135, 110, 160, THISTLE);
     yline(win, 135, 110, 160, THISTLE);
-    line(win, 0, 0, 300, 300, THISTLE);
-    circle(win, 300, 300, 30, THISTLE, false);
+    line(win, 0, 0, mx, my, THISTLE);
+    circle(win, mx, my, 30, THISTLE, false);
     circle(win, 350, 350, 30, RND_RBG, true);
     rect(win, 425, 125, 150, 150, PALEGOLDENROD, false);
     rect(win, 450, 150, 100, 100, PALEGOLDENROD, true);
