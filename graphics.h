@@ -69,6 +69,9 @@ void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* st
 void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...);
 surface_t* string(int col, const char* str);
 surface_t* string_f(int col, const char* fmt, ...);
+void rgb(int c, int* r, int* g, int* b);
+surface_t* copy(surface_t* s);
+void iterate(surface_t*, int (*fn)(int, int, int));
 
 surface_t* screen(const char* title, int w, int h);
 bool redraw(void);

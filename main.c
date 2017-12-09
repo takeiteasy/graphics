@@ -1,4 +1,3 @@
-#define GRAPHICS_EXTRA_COLORS
 #include "graphics.h"
 
 /* TODO:
@@ -34,6 +33,10 @@ void test_cb_enter(bool entered) {
   printf("%s!\n", (entered ? "entered" : "exited"));
 }
 
+int invert(int x, int y, int c) {
+  return RGB(255 - ((c >> 16) & 0xFF), 255 - ((c >> 8) & 0xFF), 255 - (c & 0xFF));
+}
+
 void fill_rnd(surface_t* s) {
   int x, y;
   for (x = 0; x < s->w; ++x)
@@ -54,12 +57,17 @@ int main(int argc, const char* argv[]) {
   surface_t* rnd = surface(50, 50);
   
   surface_t* c = load_bmp_from_file("/Users/roryb/Desktop/Uncompressed-24.bmp");
-  surface_t* d = string(WHITE, "test string");
+  surface_t* e = copy(c);
+  iterate(e, invert);
   
   rect_t  tmpr = { 150, 50, 50, 50 };
   point_t tmpp = { 10, 150 };
   point_t tmpp2 = { 5, 227 };
-  point_t tmpp3 = { 475, 175 };
+  point_t tmpp3 = { 350, 125 };
+  point_t tmpp4 = { tmpp2.x + c->w + 5, tmpp2.y };
+  point_t tmpp5 = { 10, 110 };
+  
+  surface_t* d = string_f(WHITE, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", tmpr.x, tmpr.y, tmpr.w, tmpr.h);
   
   for (;;) {
     fill(win, WHITE);
@@ -69,9 +77,11 @@ int main(int argc, const char* argv[]) {
     for (int y = 32; y < win->h; y += 32)
       xline(win, y, 0, win->w, GRAY);
     
-    blit(win, &tmpp2, c, NULL);
+    blit(win, &tmpp5, d, NULL);
     blit(win, &tmpp, c, &tmpr);
-    blit(c, NULL, d, NULL);
+    
+    blit(win, &tmpp2, c, NULL);
+    blit(win, &tmpp4, e, NULL);
     
     rect(win, 150, 50, 100, 100, BLUE, false);
     rect(win, 200, 100, 100, 100, BLUE, false);
@@ -80,22 +90,24 @@ int main(int argc, const char* argv[]) {
     line(win, 150, 150, 200, 200, BLUE);
     line(win, 250, 150, 300, 200, BLUE);
     
-    circle(win, 352, 400, 30, RGB(255, 0, 0), true);
-    circle(win, 382, 400, 30, RGB(255, 127, 0), true);
-    circle(win, 412, 400, 30, RGB(255, 255, 0), true);
-    circle(win, 442, 400, 30, RGB(0, 255, 0), true);
-    circle(win, 472, 400, 30, RGB(0, 0, 255), true);
-    circle(win, 502, 400, 30, RGB(75, 0, 130), true);
-    circle(win, 532, 400, 30, RGB(148, 0, 211), true);
-    
-    
-    rect(win, 425, 125, 150, 150, RED, false);
-    rect(win, 450, 150, 100, 100, RED, true);
+    circle(win, 352, 32, 30, RGB(255, 0, 0), true);
+    circle(win, 382, 32, 30, RGB(255, 127, 0), true);
+    circle(win, 412, 32, 30, RGB(255, 255, 0), true);
+    circle(win, 442, 32, 30, RGB(0, 255, 0), true);
+    circle(win, 472, 32, 30, RGB(0, 0, 255), true);
+    circle(win, 502, 32, 30, RGB(75, 0, 130), true);
+    circle(win, 532, 32, 30, RGB(148, 0, 211), true);
     
     fill_rnd(rnd);
     blit(win, &tmpp3, rnd, NULL);
     
     print_f(win, 10, 8, BLACK, "mouse x,y: (%d, %d)\nA S T H E T I C", mx, my);
+    
+    int r, g, b;
+    rgb(pget(win, mx, my), &r, &g, &b);
+    rect(win, 20, 50, 10, 10, RGB(r, 0, 0), true);
+    rect(win, 40, 50, 10, 10, RGB(0, g, 0), true);
+    rect(win, 60, 50, 10, 10, RGB(0, 0, b), true);
     
     line(win, 0, 0, mx, my, MAGENTA);
     circle(win, mx, my, 30, MAGENTA, false);
@@ -106,6 +118,7 @@ int main(int argc, const char* argv[]) {
   
   destroy(&c);
   destroy(&d);
+  destroy(&e);
   destroy(&rnd);
   release();
   return 0;
