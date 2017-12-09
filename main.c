@@ -4,7 +4,6 @@
 /* TODO:
  *  - Chroma key to blit
  *  - RLE8/4 loading + OS/2 BMP
- *  - Fix OSX draw offset (0, 22)
  *  - ANSI colour escapes for print()
  *  - HSV, HSL, INT to RGB functions
  *  - Window event callbacks mouse, keyboard, etc
@@ -23,6 +22,10 @@
 #define RND_255 (rand() % 256)
 #define RND_RBG RGB(RND_255, RND_255, RND_255)
 
+void test_cb(int x, int y) {
+  printf("(%d, %d)\n", x, y);
+}
+
 void fill_rnd(surface_t* s) {
   int x, y;
   for (x = 0; x < s->w; ++x)
@@ -36,6 +39,8 @@ int main(int argc, const char* argv[]) {
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
   }
+  
+  mouse_move_cb(test_cb);
   
   surface_t* test = surface(200, 200);
   rect(test, 0, 0, 100, 100, MAROON, true);

@@ -6,8 +6,8 @@
 //  Copyright © 2017 Rory B. Bellows. All rights reserved.
 //
 
-#ifndef app_h
-#define app_h
+#ifndef graphics_h
+#define graphics_h
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -17,6 +17,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
+#include <math.h>
 
 #define RGB(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
   
@@ -194,14 +195,16 @@ void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* st
 void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...);
 surface_t* string(int col, const char* str);
 surface_t* string_f(int col, const char* fmt, ...);
-void init_default_font(void);
 
 surface_t* screen(const char* title, int w, int h);
 bool redraw(void);
 void release(void);
+void init_default_font(void);
 const char* get_last_error(void);
+  
+void mouse_move_cb(void (*fn)(int, int));
 
 #ifdef __cplusplus
 }
 #endif
-#endif /* app_h */
+#endif /* graphics_h */

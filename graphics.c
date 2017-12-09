@@ -54,6 +54,19 @@ const static unsigned char b64_table[] = {
   0,   0,   0,   0,   0,   0,
 };
 
+#define SWAP_POINTERS(x, y) { \
+  void* t; \
+  t = x; \
+  x = y; \
+  y = t; \
+}
+
+static void (*__mouse_move_cb)(int, int);
+
+void mouse_move_cb(void (*fn)(int, int)) {
+  SWAP_POINTERS(__mouse_move_cb, fn);
+}
+
 unsigned char* base64_decode(const char* ascii, int len, int *flen) {
   int cb = 0, pad = 0, n, A, B, C, D;;
   
@@ -479,8 +492,8 @@ surface_t* load_bmp_from_mem(unsigned char* data) {
             BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
           }
           break;
-        case 32:
         case 24:
+        case 32:
           for (i = (s - 1); i != -1; --i, off += (info.bits == 32 ? 4 : 3))
             BMP_SET(RGB(data[off], data[off + 1], data[off + 2]));
           break;
@@ -681,7 +694,8 @@ extern surface_t* buffer;
 }
 
 -(void)mouseMoved:(NSEvent*)event {
-  
+  if (__mouse_move_cb)
+    __mouse_move_cb((int)floor([event locationInWindow].x - 1), (int)floor(buffer->h - 1 - [event locationInWindow].y));
 }
 
 -(NSRect)resizeRect {
@@ -787,10 +801,10 @@ extern surface_t* buffer;
 }
 
 -(void)win_changed:(NSNotification *)n { (void)n; }
--(void)win_close                       { closed = true; }
--(NSView*)contentView                  { return view; }
--(BOOL)canBecomeKeyWindow              { return YES;  }
--(BOOL)canBecomeMainWindow             { return YES;  }
+-(void)win_close { closed = true; }
+-(NSView*)contentView { return view; }
+-(BOOL)canBecomeKeyWindow { return YES; }
+-(BOOL)canBecomeMainWindow { return YES; }
 
 -(NSRect)contentRectForFrameRect:(NSRect)f {
   f.origin = NSZeroPoint;
@@ -815,7 +829,7 @@ surface_t* screen(const char* t, int w, int h) {
   [NSApplication sharedApplication];
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
   
-  app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h)
+  app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h + 22)
                                      styleMask:NSWindowStyleMaskClosable | NSWindowStyleMaskTitled
                                        backing:NSBackingStoreBuffered
                                          defer:NO];
