@@ -26,11 +26,27 @@ static int mx = 0, my = 0;
 void test_cb_move(int x, int y) {
   mx = x;
   my = y;
-  printf("(%d, %d)\n", x, y);
+  printf("(mx:%d, my:%d)\n", x, y);
 }
 
 void test_cb_enter(bool entered) {
-  printf("%s!\n", (entered ? "entered" : "exited"));
+  printf("mouse %s\n", (entered ? "entered" : "exited"));
+}
+
+void test_cb_down(MOUSE_e btn, MOD_e mod) {
+  printf("%d down\n", btn);
+}
+
+void test_cb_up(MOUSE_e btn, MOD_e mod) {
+  printf("%d up\n", btn);
+}
+
+void test_cb_kdown(KEY_e k, MOD_e mod) {
+  printf("%d key down\n", k);
+}
+
+void test_cb_kup(KEY_e k, MOD_e mod) {
+  printf("%d key up\n", k);
 }
 
 int invert(int x, int y, int c) {
@@ -53,6 +69,10 @@ int main(int argc, const char* argv[]) {
   
   mouse_move_cb(test_cb_move);
   mouse_entered_cb(test_cb_enter);
+  mouse_down_cb(test_cb_down);
+  mouse_up_cb(test_cb_up);
+  key_down_cb(test_cb_kdown);
+  key_up_cb(test_cb_kup);
   
   surface_t* rnd = surface(50, 50);
   
@@ -60,8 +80,8 @@ int main(int argc, const char* argv[]) {
   surface_t* e = copy(c);
   iterate(e, invert);
   
-  rect_t  tmpr = { 150, 50, 50, 50 };
-  point_t tmpp = { 10, 150 };
+  rect_t  tmpr  = { 150, 50, 50, 50 };
+  point_t tmpp  = { 10, 150 };
   point_t tmpp2 = { 5, 227 };
   point_t tmpp3 = { 350, 125 };
   point_t tmpp4 = { tmpp2.x + c->w + 5, tmpp2.y };
@@ -69,6 +89,7 @@ int main(int argc, const char* argv[]) {
   
   surface_t* d = string_f(WHITE, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", tmpr.x, tmpr.y, tmpr.w, tmpr.h);
   
+  int r, g, b, col;
   for (;;) {
     fill(win, WHITE);
     
@@ -103,14 +124,15 @@ int main(int argc, const char* argv[]) {
     
     print_f(win, 10, 8, BLACK, "mouse x,y: (%d, %d)\nA S T H E T I C", mx, my);
     
-    int r, g, b;
-    rgb(pget(win, mx, my), &r, &g, &b);
-    rect(win, 20, 50, 10, 10, RGB(r, 0, 0), true);
-    rect(win, 40, 50, 10, 10, RGB(0, g, 0), true);
-    rect(win, 60, 50, 10, 10, RGB(0, 0, b), true);
+    col = pget(win, mx, my);
+    rgb(col, &r, &g, &b);
+    rect(win, 15, 50, 10, 10, RGB(r, 0, 0), true);
+    rect(win, 35, 50, 10, 10, RGB(0, g, 0), true);
+    rect(win, 55, 50, 10, 10, RGB(0, 0, b), true);
+    print_f(win, 15, 40, RED, "rgb(%d, %d, %d)", r, g, b);
     
-    line(win, 0, 0, mx, my, MAGENTA);
-    circle(win, mx, my, 30, MAGENTA, false);
+    line(win, 0, 0, mx, my, col);
+    circle(win, mx, my, 30, col, false);
     
     if (!redraw())
       break;

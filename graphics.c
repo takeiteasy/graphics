@@ -66,6 +66,10 @@ const static unsigned char b64_table[] = {
 static int mx = 0, my = 0;
 static void (*__mouse_move_cb)(int, int);
 static void (*__mouse_enter_cb)(bool);
+static void (*__mouse_down_cb)(MOUSE_e, MOD_e);
+static void (*__mouse_up_cb)(MOUSE_e, MOD_e);
+static void (*__key_down_cb)(KEY_e, MOD_e);
+static void (*__key_up_cb)(KEY_e, MOD_e);
 
 void mouse_move_cb(void (*fn)(int, int)) {
   SWAP_POINTERS(__mouse_move_cb, fn);
@@ -75,11 +79,27 @@ void mouse_entered_cb(void (*fn)(bool)) {
   SWAP_POINTERS(__mouse_enter_cb, fn);
 }
 
+void mouse_down_cb(void (*fn)(MOUSE_e, MOD_e)) {
+  SWAP_POINTERS(__mouse_down_cb, fn);
+}
+
+void mouse_up_cb(void (*fn)(MOUSE_e, MOD_e)) {
+  SWAP_POINTERS(__mouse_up_cb, fn);
+};
+
 void mouse_pos(int* x, int* y) {
   if (!x || !y)
     return;
   *x = mx;
   *y = my;
+}
+
+void key_down_cb(void (*fn)(KEY_e, MOD_e)) {
+  SWAP_POINTERS(__key_down_cb, fn);
+}
+
+void key_up_cb(void (*fn)(KEY_e, MOD_e)) {
+  SWAP_POINTERS(__key_up_cb, fn);
 }
 
 unsigned char* base64_decode(const char* ascii, int len, int *flen) {
@@ -665,6 +685,155 @@ void iterate(surface_t* s, int (*fn)(int x, int y, int col)) {
 #define NSEventTypeKeyUp NSKeyUp
 #endif
 
+static short int keycodes[256];
+static short int scancodes[KEY_LAST + 1];
+
+void init_sys_keymap() {
+  memset(keycodes,  -1, sizeof(keycodes));
+  memset(scancodes, -1, sizeof(scancodes));
+  
+  keycodes[0x1D] = KEY_0;
+  keycodes[0x12] = KEY_1;
+  keycodes[0x13] = KEY_2;
+  keycodes[0x14] = KEY_3;
+  keycodes[0x15] = KEY_4;
+  keycodes[0x17] = KEY_5;
+  keycodes[0x16] = KEY_6;
+  keycodes[0x1A] = KEY_7;
+  keycodes[0x1C] = KEY_8;
+  keycodes[0x19] = KEY_9;
+  keycodes[0x00] = KEY_A;
+  keycodes[0x0B] = KEY_B;
+  keycodes[0x08] = KEY_C;
+  keycodes[0x02] = KEY_D;
+  keycodes[0x0E] = KEY_E;
+  keycodes[0x03] = KEY_F;
+  keycodes[0x05] = KEY_G;
+  keycodes[0x04] = KEY_H;
+  keycodes[0x22] = KEY_I;
+  keycodes[0x26] = KEY_J;
+  keycodes[0x28] = KEY_K;
+  keycodes[0x25] = KEY_L;
+  keycodes[0x2E] = KEY_M;
+  keycodes[0x2D] = KEY_N;
+  keycodes[0x1F] = KEY_O;
+  keycodes[0x23] = KEY_P;
+  keycodes[0x0C] = KEY_Q;
+  keycodes[0x0F] = KEY_R;
+  keycodes[0x01] = KEY_S;
+  keycodes[0x11] = KEY_T;
+  keycodes[0x20] = KEY_U;
+  keycodes[0x09] = KEY_V;
+  keycodes[0x0D] = KEY_W;
+  keycodes[0x07] = KEY_X;
+  keycodes[0x10] = KEY_Y;
+  keycodes[0x06] = KEY_Z;
+
+  keycodes[0x27] = KEY_APOSTROPHE;
+  keycodes[0x2A] = KEY_BACKSLASH;
+  keycodes[0x2B] = KEY_COMMA;
+  keycodes[0x18] = KEY_EQUAL;
+  keycodes[0x32] = KEY_GRAVE_ACCENT;
+  keycodes[0x21] = KEY_LEFT_BRACKET;
+  keycodes[0x1B] = KEY_MINUS;
+  keycodes[0x2F] = KEY_PERIOD;
+  keycodes[0x1E] = KEY_RIGHT_BRACKET;
+  keycodes[0x29] = KEY_SEMICOLON;
+  keycodes[0x2C] = KEY_SLASH;
+  keycodes[0x0A] = KEY_WORLD_1;
+  
+  keycodes[0x33] = KEY_BACKSPACE;
+  keycodes[0x39] = KEY_CAPS_LOCK;
+  keycodes[0x75] = KEY_DELETE;
+  keycodes[0x7D] = KEY_DOWN;
+  keycodes[0x77] = KEY_END;
+  keycodes[0x24] = KEY_ENTER;
+  keycodes[0x35] = KEY_ESCAPE;
+  keycodes[0x7A] = KEY_F1;
+  keycodes[0x78] = KEY_F2;
+  keycodes[0x63] = KEY_F3;
+  keycodes[0x76] = KEY_F4;
+  keycodes[0x60] = KEY_F5;
+  keycodes[0x61] = KEY_F6;
+  keycodes[0x62] = KEY_F7;
+  keycodes[0x64] = KEY_F8;
+  keycodes[0x65] = KEY_F9;
+  keycodes[0x6D] = KEY_F10;
+  keycodes[0x67] = KEY_F11;
+  keycodes[0x6F] = KEY_F12;
+  keycodes[0x69] = KEY_F13;
+  keycodes[0x6B] = KEY_F14;
+  keycodes[0x71] = KEY_F15;
+  keycodes[0x6A] = KEY_F16;
+  keycodes[0x40] = KEY_F17;
+  keycodes[0x4F] = KEY_F18;
+  keycodes[0x50] = KEY_F19;
+  keycodes[0x5A] = KEY_F20;
+  keycodes[0x73] = KEY_HOME;
+  keycodes[0x72] = KEY_INSERT;
+  keycodes[0x7B] = KEY_LEFT;
+  keycodes[0x3A] = KEY_LEFT_ALT;
+  keycodes[0x3B] = KEY_LEFT_CONTROL;
+  keycodes[0x38] = KEY_LEFT_SHIFT;
+  keycodes[0x37] = KEY_LEFT_SUPER;
+  keycodes[0x6E] = KEY_MENU;
+  keycodes[0x47] = KEY_NUM_LOCK;
+  keycodes[0x79] = KEY_PAGE_DOWN;
+  keycodes[0x74] = KEY_PAGE_UP;
+  keycodes[0x7C] = KEY_RIGHT;
+  keycodes[0x3D] = KEY_RIGHT_ALT;
+  keycodes[0x3E] = KEY_RIGHT_CONTROL;
+  keycodes[0x3C] = KEY_RIGHT_SHIFT;
+  keycodes[0x36] = KEY_RIGHT_SUPER;
+  keycodes[0x31] = KEY_SPACE;
+  keycodes[0x30] = KEY_TAB;
+  keycodes[0x7E] = KEY_UP;
+  
+  keycodes[0x52] = KEY_KP_0;
+  keycodes[0x53] = KEY_KP_1;
+  keycodes[0x54] = KEY_KP_2;
+  keycodes[0x55] = KEY_KP_3;
+  keycodes[0x56] = KEY_KP_4;
+  keycodes[0x57] = KEY_KP_5;
+  keycodes[0x58] = KEY_KP_6;
+  keycodes[0x59] = KEY_KP_7;
+  keycodes[0x5B] = KEY_KP_8;
+  keycodes[0x5C] = KEY_KP_9;
+  keycodes[0x45] = KEY_KP_ADD;
+  keycodes[0x41] = KEY_KP_DECIMAL;
+  keycodes[0x4B] = KEY_KP_DIVIDE;
+  keycodes[0x4C] = KEY_KP_ENTER;
+  keycodes[0x51] = KEY_KP_EQUAL;
+  keycodes[0x43] = KEY_KP_MULTIPLY;
+  keycodes[0x4E] = KEY_KP_SUBTRACT;
+  
+  for (int sc = 0;  sc < 256; ++sc) {
+    if (keycodes[sc] >= 0)
+      scancodes[keycodes[sc]] = sc;
+  }
+}
+
+static int translate_mod(NSUInteger flags) {
+  int mods = 0;
+  
+  if (flags & NSEventModifierFlagShift)
+    mods |= MOD_SHIFT;
+  if (flags & NSEventModifierFlagControl)
+    mods |= MOD_CONTROL;
+  if (flags & NSEventModifierFlagOption)
+    mods |= MOD_ALT;
+  if (flags & NSEventModifierFlagCommand)
+    mods |= MOD_SUPER;
+  if (flags & NSEventModifierFlagCapsLock)
+    mods |= MOD_CAPS_LOCK;
+  
+  return mods;
+}
+
+static int translate_key(unsigned int key) {
+  return (key >= sizeof(keycodes) / sizeof(keycodes[0]) ?  KEY_UNKNOWN : keycodes[key]);
+}
+
 @interface osx_app_t : NSWindow {
   NSView* view;
   @public bool closed;
@@ -673,6 +842,23 @@ void iterate(surface_t* s, int (*fn)(int x, int y, int col)) {
 
 @interface osx_view_t : NSView {
   NSTrackingArea* track;
+}
+@end
+
+@interface AppDelegate : NSApplication {}
+@end
+
+@implementation AppDelegate
+-(BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication*)theApplication {
+  (void)theApplication;
+  return YES;
+}
+
+-(void)sendEvent:(NSEvent *)event {
+  if ([event type] == NSEventTypeKeyUp && ([event modifierFlags] & NSEventModifierFlagCommand))
+    [[self keyWindow] sendEvent:event];
+  else
+    [super sendEvent:event];
 }
 @end
 
@@ -707,7 +893,8 @@ extern surface_t* buffer;
 }
 
 -(void)mouseDown:(NSEvent*)event {
-  
+  if (__mouse_down_cb)
+    __mouse_down_cb(MOUSE_LEFT, translate_mod([event modifierFlags]));
 }
 
 -(void)mouseDragged:(NSEvent*)event {
@@ -715,7 +902,8 @@ extern surface_t* buffer;
 }
 
 -(void)mouseUp:(NSEvent*)event {
-  
+  if (__mouse_up_cb)
+    __mouse_up_cb(MOUSE_RIGHT, translate_mod([event modifierFlags]));
 }
 
 -(void)mouseEntered:(NSEvent*)event {
@@ -733,6 +921,45 @@ extern surface_t* buffer;
   my = (int)floor(buffer->h - 1 - [event locationInWindow].y);
   if (__mouse_move_cb)
     __mouse_move_cb(mx, my);
+}
+
+-(void)rightMouseDown:(NSEvent*)event {
+  if (__mouse_down_cb)
+    __mouse_down_cb(MOUSE_RIGHT, translate_mod([event modifierFlags]));
+}
+
+-(void)rightMouseDragged:(NSEvent*)event {
+  [self mouseMoved:event];
+}
+
+-(void)rightMouseUp:(NSEvent*)event {
+  if (__mouse_up_cb)
+    __mouse_up_cb(MOUSE_RIGHT, translate_mod([event modifierFlags]));
+}
+
+-(void)otherMouseDown:(NSEvent*)event {
+  if (__mouse_down_cb)
+    __mouse_down_cb((int)[event buttonNumber], translate_mod([event modifierFlags]));
+}
+
+-(void)otherMouseDragged:(NSEvent*)event {
+  [self mouseMoved:event];
+}
+
+-(void)otherMouseUp:(NSEvent*)event {
+  if (__mouse_up_cb)
+    __mouse_up_cb((int)[event buttonNumber], translate_mod([event modifierFlags]));
+}
+
+-(void)keyDown:(NSEvent *)event {
+  if (__key_down_cb)
+    __key_down_cb(translate_key([event keyCode]), translate_mod([event modifierFlags]));
+  [self interpretKeyEvents:[NSArray arrayWithObject:event]];
+}
+
+-(void)keyUp:(NSEvent *)event {
+  if (__key_up_cb)
+    __key_up_cb(translate_key([event keyCode]), translate_mod([event modifierFlags]));
 }
 
 -(NSRect)resizeRect {
@@ -759,6 +986,9 @@ extern surface_t* buffer;
   
   CGImageRelease(img);
 }
+
+-(BOOL)acceptsFirstResponder { return YES; }
+-(BOOL)performKeyEquivalent:(NSEvent*)event { return YES; }
 
 -(void)dealloc {
   [track release];
@@ -826,6 +1056,7 @@ extern surface_t* buffer;
   if (!fv) {
     fv = [[[osx_view_t alloc] initWithFrame:b] autorelease];
     [super setContentView:fv];
+    [super makeFirstResponder:fv];
   }
   
   if (view)
@@ -861,10 +1092,24 @@ surface_t* screen(const char* t, int w, int h) {
   buffer->h = h;
   
   init_default_font();
+  init_sys_keymap();
   
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+  
+  id menubar = [NSMenu alloc];
+  id appMenuItem = [NSMenuItem alloc];
+  [menubar addItem:appMenuItem];
+  [NSApp setMainMenu:menubar];
+  id appMenu = [NSMenu alloc];
+  id appName = [[NSProcessInfo processInfo] processName];
+  id quitTitle = [@"Quit" stringByAppendingString:appName];
+  id quitMenuItem = [[NSMenuItem alloc] initWithTitle:quitTitle
+                                               action:@selector(terminate:)
+                                        keyEquivalent:@"q"];
+  [appMenu addItem:quitMenuItem];
+  [appMenuItem setSubmenu:appMenu];
   
   app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h + 22)
                                      styleMask:NSWindowStyleMaskClosable | NSWindowStyleMaskTitled
@@ -873,6 +1118,13 @@ surface_t* screen(const char* t, int w, int h) {
   if (!app)
     return NULL;
   
+  id app_del = [AppDelegate alloc];
+  if (!app_del)
+    [NSApp terminate:nil];
+  
+  [app setDelegate:app_del];
+  [app setAcceptsMouseMovedEvents:YES];
+  [app setRestorable:NO];
   [app setTitle:[NSString stringWithUTF8String:t]];
   [app setReleasedWhenClosed:NO];
   [app performSelectorOnMainThread:@selector(makeKeyAndOrderFront:) withObject:nil waitUntilDone:YES];
@@ -891,16 +1143,8 @@ bool redraw() {
                                   untilDate:[NSDate distantPast]
                                      inMode:NSDefaultRunLoopMode
                                     dequeue:YES];
-  if (e) {
-    switch ([e type]) {
-      case NSEventTypeKeyDown:
-      case  NSEventTypeKeyUp:
-        ret = false;
-        break;
-      default :
-        [NSApp sendEvent:e];
-    }
-  }
+  
+  [NSApp sendEvent:e];
   [pool release];
   
   if (app->closed)
@@ -917,210 +1161,7 @@ void release() {
   [pool drain];
 }
 #elif defined(_WIN32)
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <stdlib.h>
-
-static WNDCLASS wc;
-static HWND wnd;
-static int close = 0;
-static int width;
-static int height;
-static HDC hdc;
-static void* buffer;
-static BITMAPINFO* bitmapInfo;
-
-static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-  LRESULT res = 0;
-  switch (message) {
-    case WM_PAINT:
-      if (buffer) {
-        StretchDIBits(hdc, 0, 0, width, height, 0, 0, width, height, buffer, bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
-        ValidateRect(hWnd, NULL);
-      }
-      break;
-    case WM_KEYDOWN:
-      if ((wParam&0xFF) == 27)
-        close = 1;
-      break;
-    case WM_CLOSE:
-      close = 1;
-      break;
-    default:
-      res = DefWindowProc(hWnd, message, wParam, lParam);
-  }
-  return res;
-}
-
-int screen(const char* title, int width, int height) {
-  wc.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
-  wc.lpfnWndProc = WndProc;
-  wc.hCursor = LoadCursor(0, IDC_ARROW);
-  wc.lpszClassName = title;
-  RegisterClass(&wc);
-  
-  RECT rect    = { 0 };
-  rect.right   = width;
-  rect.bottom  = height;
-  AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
-  rect.right  -= rect.left;
-  rect.bottom -= rect.top;
-  
-  width  = width;
-  height = height;
-  
-  wnd = CreateWindowEx(0, title, title,
-                       WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
-                       CW_USEDEFAULT, CW_USEDEFAULT,
-                       rect.right, rect.bottom,
-                       0, 0, 0, 0);
-  
-  if (!wnd)
-    return 0;
-  
-  ShowWindow(wnd, SW_NORMAL);
-  
-  bitmapInfo = (BITMAPINFO*)calloc(1, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
-  bitmapInfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-  bitmapInfo->bmiHeader.biPlanes = 1;
-  bitmapInfo->bmiHeader.biBitCount = 32;
-  bitmapInfo->bmiHeader.biCompression = BI_BITFIELDS;
-  bitmapInfo->bmiHeader.biWidth = width;
-  bitmapInfo->bmiHeader.biHeight = -height;
-  bitmapInfo->bmiColors[0].rgbRed = 0xff;
-  bitmapInfo->bmiColors[1].rgbGreen = 0xff;
-  bitmapInfo->bmiColors[2].rgbBlue = 0xff;
-  
-  hdc = GetDC(wnd);
-  
-  return 1;
-}
-
-int redraw(void* buffer) {
-  MSG msg;
-  buffer = buffer;
-  
-  InvalidateRect(wnd, NULL, TRUE);
-  SendMessage(wnd, WM_PAINT, 0, 0);
-  while (PeekMessage(&msg, wnd, 0, 0, PM_REMOVE)) {
-    TranslateMessage(&msg);
-    DispatchMessage(&msg);
-  }
-  
-  if (close == 1)
-    return 0;
-  
-  return 1;
-}
-
-void release() {
-  buffer = 0;
-  free(bitmapInfo);
-  ReleaseDC(wnd, hdc);
-  DestroyWindow(wnd);
-}
+#error WinAPI not implemented
 #else
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-
-static Display* display;
-static int screen;
-static int width;
-static int height;
-static Window window;
-static GC gc;
-static XImage *ximage;
-
-int screen(const char* title, int width, int height) {
-  int depth, i, formatCount, convDepth = -1;
-  XPixmapFormatValues* formats;
-  XSetWindowAttributes windowAttributes;
-  XSizeHints sizeHints;
-  Visual* visual;
-  
-  display = XOpenDisplay(0);
-  
-  if (!display)
-    return -1;
-  
-  screen  = DefaultScreen(display);
-  visual  = DefaultVisual(display, screen);
-  formats = XListPixmapFormats(display, &formatCount);
-  depth   = DefaultDepth(display, screen);
-  Window defaultRootWindow = DefaultRootWindow(display);
-  
-  for (i = 0; i < formatCount; ++i) {
-    if (depth == formats[i].depth) {
-      convDepth = formats[i].bitper_pixel;
-      break;
-    }
-  }
-  XFree(formats);
-  
-  if (convDepth != 32) {
-    XCloseDisplay(display);
-    return -1;
-  }
-  
-  int screenWidth  = DisplayWidth(display, screen);
-  int screenHeight = DisplayHeight(display, screen);
-  
-  windowAttributes.border_pixel     = BlackPixel(display, screen);
-  windowAttributes.background_pixel = BlackPixel(display, screen);
-  windowAttributes.backing_store    = NotUseful;
-  
-  window = XCreateWindow(display, defaultRootWindow, (screenWidth - width) / 2,
-                         (screenHeight - height) / 2, width, height, 0, depth, InputOutput,
-                         visual, CWBackPixel | CWBorderPixel | CWBackingStore,
-                         &windowAttributes);
-  if (!window)
-    return 0;
-  
-  XSelectInput(display, window, KeyPressMask | KeyReleaseMask);
-  XStoreName(display, window, title);
-  
-  sizeHints.flags = PPosition | PMinSize | PMaxSize;
-  sizeHints.x = 0;
-  sizeHints.y = 0;
-  sizeHints.min_width = width;
-  sizeHints.max_width = width;
-  sizeHints.min_height = height;
-  sizeHints.max_height = height;
-  
-  XSetWMNormalHints(display, window, &sizeHints);
-  XClearWindow(display, window);
-  XMapRaised(display, window);
-  XFlush(display);
-  
-  gc = DefaultGC(display, screen);
-  ximage = XCreateImage(display, CopyFromParent, depth, ZPixmap, 0, NULL, width, height, 32, width * 4);
-  
-  width  = width;
-  height = height;
-  
-  return 1;
-}
-
-int redraw(void* buffer) {
-  ximage->data = (char*)buffer;
-  
-  XPutImage(display, window, gc, ximage, 0, 0, 0, 0, width, height);
-  XFlush(display);
-  
-  if (!XPending(display))
-    return 0;
-  
-  XEvent event;
-  XNextEvent(display, &event);
-  KeySym sym = XLookupKeysym(&event.xkey, 0);
-  
-  return 1;
-}
-
-void release(void) {
-  ximage->data = NULL;
-  XDestroyImage(ximage);
-  XDestroyWindow(display, window);
-  XCloseDisplay(display);
-}
+#error X11 not implemented
 #endif
