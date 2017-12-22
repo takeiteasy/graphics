@@ -19,9 +19,8 @@
 #define HEIGHT 480
 
 #define RND_255 (rand() % 256)
-#define RND_RBG RGB(RND_255, RND_255, RND_255)
 
-static int mx = 0, my = 0;
+static int mx = 0, my = 0, running = 1;
 
 void test_cb_move(int x, int y) {
   mx = x;
@@ -42,6 +41,8 @@ void test_cb_up(MOUSE_e btn, MOD_e mod) {
 }
 
 void test_cb_kdown(KEY_e k, MOD_e mod) {
+  if (k == KEY_Q && mod == MOD_SUPER)
+    running = 0;
   printf("%d key down\n", k);
 }
 
@@ -53,15 +54,12 @@ int invert(int x, int y, int c) {
   return RGB(255 - ((c >> 16) & 0xFF), 255 - ((c >> 8) & 0xFF), 255 - (c & 0xFF));
 }
 
-void fill_rnd(surface_t* s) {
-  int x, y;
-  for (x = 0; x < s->w; ++x)
-    for (y = 0; y < s->h; ++y)
-      pset(s, x, y, RND_RBG);
+int rnd(int x, int y, int c) {
+  return RGB(RND_255, RND_255, RND_255);
 }
 
 int main(int argc, const char* argv[]) {
-  surface_t* win = screen("test", WIDTH, HEIGHT);
+  surface_t* win = screen(NULL, WIDTH, HEIGHT);
   if (!win) {
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
@@ -74,9 +72,9 @@ int main(int argc, const char* argv[]) {
   key_down_cb(test_cb_kdown);
   key_up_cb(test_cb_kup);
   
-  surface_t* rnd = surface(50, 50);
+  surface_t* a = surface(50, 50);
   
-  surface_t* c = load_bmp_from_file("/Users/roryb/Desktop/Uncompressed-24.bmp");
+  surface_t* c = load_bmp_from_file("/Users/roryb/Documents/Uncompressed-24.bmp");
   surface_t* e = copy(c);
   iterate(e, invert);
   
@@ -86,11 +84,18 @@ int main(int argc, const char* argv[]) {
   point_t tmpp3 = { 350, 125 };
   point_t tmpp4 = { tmpp2.x + c->w + 5, tmpp2.y };
   point_t tmpp5 = { 10, 110 };
+  point_t tmpp6 = { 425, 110 };
   
-  surface_t* d = string_f(WHITE, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", tmpr.x, tmpr.y, tmpr.w, tmpr.h);
+  surface_t* d = string_f(RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", tmpr.x, tmpr.y, tmpr.w, tmpr.h);
+  
+  surface_t* f = surface(100, 100);
+  rect(f, 0, 0, 50, 50, RGB(255, 0, 0), true);
+  rect(f, 50, 50, 50, 50, RGB(0, 255, 0), true);
+  rect(f, 50, 0, 50, 50, RGB(0, 0, 255), true);
+  rect(f, 0, 50, 50, 50, RGB(255, 255, 0), true);
   
   int r, g, b, col;
-  for (;;) {
+  while (running) {
     fill(win, WHITE);
     
     for (int x = 32; x < win->w; x += 32)
@@ -98,11 +103,13 @@ int main(int argc, const char* argv[]) {
     for (int y = 32; y < win->h; y += 32)
       xline(win, y, 0, win->w, GRAY);
     
-    blit(win, &tmpp5, d, NULL);
+    blit_chroma(win, &tmpp5, d, NULL, LIME);
     blit(win, &tmpp, c, &tmpr);
     
     blit(win, &tmpp2, c, NULL);
     blit(win, &tmpp4, e, NULL);
+    
+    blit_chroma(win, &tmpp6, f, NULL, LIME);
     
     rect(win, 150, 50, 100, 100, BLUE, false);
     rect(win, 200, 100, 100, 100, BLUE, false);
@@ -119,8 +126,8 @@ int main(int argc, const char* argv[]) {
     circle(win, 502, 32, 30, RGB(75, 0, 130), true);
     circle(win, 532, 32, 30, RGB(148, 0, 211), true);
     
-    fill_rnd(rnd);
-    blit(win, &tmpp3, rnd, NULL);
+    iterate(a, rnd);
+    blit(win, &tmpp3, a, NULL);
     
     print_f(win, 10, 8, BLACK, "mouse x,y: (%d, %d)\nA S T H E T I C", mx, my);
     
@@ -141,7 +148,7 @@ int main(int argc, const char* argv[]) {
   destroy(&c);
   destroy(&d);
   destroy(&e);
-  destroy(&rnd);
+  destroy(&a);
   release();
   return 0;
 }

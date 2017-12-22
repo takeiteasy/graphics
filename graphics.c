@@ -246,6 +246,37 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   return true;
 }
 
+bool blit_chroma(surface_t* dst, point_t* p, surface_t* src, rect_t* r, int key) {
+  int offset_x = 0,      offset_y = 0,
+  from_x   = 0,      from_y   = 0,
+  width    = src->w, height   = src->h;
+  if (p) {
+    offset_x = p->x;
+    offset_y = p->y;
+  }
+  if (r) {
+    from_x = r->x;
+    from_y = r->y;
+    width  = r->w;
+    height = r->h;
+  }
+  int to_x = offset_x + width, to_y = offset_y + height;
+  if (to_x > dst->w || to_y > dst->h) {
+    SET_LAST_ERROR("blit() failed! src w/h outside bounds of dst");
+    return false;
+  }
+  
+  int x, y, c;
+  for (x = 0; x < width; ++x) {
+    for (y = 0; y < height; ++y) {
+      c = XYGET(src, from_x + x, from_y + y);
+      if (c != key)
+        XYSET(dst, offset_x + x, offset_y + y, c);
+    }
+  }
+  return true;
+}
+
 bool yline(surface_t* s, int x, int y1, int y2, int col) {
   if (y2 < y1) {
     y1 += y2;
@@ -605,7 +636,7 @@ void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* 
   free(buffer);
 }
 
-surface_t* string(int col, const char* str) {
+surface_t* string(int col, int bg, const char* str) {
   int w = 0, x = 0, h = 8;
   char* c = (char*)str;
   while (c != NULL && *c != '\0') {
@@ -622,11 +653,12 @@ surface_t* string(int col, const char* str) {
     w = x;
   
   surface_t* ret = surface(w, h);
+  fill(ret, bg);
   print(ret, 0, 0, col, str);
   return ret;
 }
 
-surface_t* string_f(int col, const char* fmt, ...) {
+surface_t* string_f(int col, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   size_t buffer_size = 0;
   
@@ -643,7 +675,7 @@ surface_t* string_f(int col, const char* fmt, ...) {
     va_end(argptr);
   }
   
-  surface_t* ret = string(col, buffer);
+  surface_t* ret = string(col, bg, buffer);
   free(buffer);
   return ret;
 }
@@ -892,6 +924,14 @@ extern surface_t* buffer;
   [super updateTrackingAreas];
 }
 
+-(BOOL)acceptsFirstResponder {
+  return YES;
+}
+
+//-(BOOL)performKeyEquivalent:(NSEvent*)event {
+//  return YES;
+//}
+
 -(void)mouseDown:(NSEvent*)event {
   if (__mouse_down_cb)
     __mouse_down_cb(MOUSE_LEFT, translate_mod([event modifierFlags]));
@@ -954,7 +994,6 @@ extern surface_t* buffer;
 -(void)keyDown:(NSEvent *)event {
   if (__key_down_cb)
     __key_down_cb(translate_key([event keyCode]), translate_mod([event modifierFlags]));
-  [self interpretKeyEvents:[NSArray arrayWithObject:event]];
 }
 
 -(void)keyUp:(NSEvent *)event {
@@ -986,9 +1025,6 @@ extern surface_t* buffer;
   
   CGImageRelease(img);
 }
-
--(BOOL)acceptsFirstResponder { return YES; }
--(BOOL)performKeyEquivalent:(NSEvent*)event { return YES; }
 
 -(void)dealloc {
   [track release];
@@ -1068,16 +1104,31 @@ extern surface_t* buffer;
   [fv addSubview:view];
 }
 
--(void)win_changed:(NSNotification *)n { (void)n; }
--(void)win_close { closed = true; }
--(NSView*)contentView { return view; }
--(BOOL)canBecomeKeyWindow { return YES; }
--(BOOL)canBecomeMainWindow { return YES; }
+-(void)win_changed:(NSNotification *)n {
+  (void)n;
+}
+
+-(void)win_close {
+  closed = true;
+}
+
+-(NSView*)contentView {
+  return view;
+}
+
+-(BOOL)canBecomeKeyWindow {
+  return YES;
+}
+
+-(BOOL)canBecomeMainWindow {
+  return YES;
+}
 
 -(NSRect)contentRectForFrameRect:(NSRect)f {
   f.origin = NSZeroPoint;
   return NSInsetRect(f, 0, 0);
 }
+
 +(NSRect)frameRectForContentRect:(NSRect)r
                        styleMask:(NSWindowStyleMask)s {
   (void)s;
@@ -1098,19 +1149,6 @@ surface_t* screen(const char* t, int w, int h) {
   [NSApplication sharedApplication];
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
   
-  id menubar = [NSMenu alloc];
-  id appMenuItem = [NSMenuItem alloc];
-  [menubar addItem:appMenuItem];
-  [NSApp setMainMenu:menubar];
-  id appMenu = [NSMenu alloc];
-  id appName = [[NSProcessInfo processInfo] processName];
-  id quitTitle = [@"Quit" stringByAppendingString:appName];
-  id quitMenuItem = [[NSMenuItem alloc] initWithTitle:quitTitle
-                                               action:@selector(terminate:)
-                                        keyEquivalent:@"q"];
-  [appMenu addItem:quitMenuItem];
-  [appMenuItem setSubmenu:appMenu];
-  
   app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h + 22)
                                      styleMask:NSWindowStyleMaskClosable | NSWindowStyleMaskTitled
                                        backing:NSBackingStoreBuffered
@@ -1125,7 +1163,7 @@ surface_t* screen(const char* t, int w, int h) {
   [app setDelegate:app_del];
   [app setAcceptsMouseMovedEvents:YES];
   [app setRestorable:NO];
-  [app setTitle:[NSString stringWithUTF8String:t]];
+  [app setTitle:(t ? [NSString stringWithUTF8String:t] : [[NSProcessInfo processInfo] processName])];
   [app setReleasedWhenClosed:NO];
   [app performSelectorOnMainThread:@selector(makeKeyAndOrderFront:) withObject:nil waitUntilDone:YES];
   [app center];
@@ -1138,13 +1176,12 @@ surface_t* screen(const char* t, int w, int h) {
 
 bool redraw() {
   bool ret = true;
-  NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-  NSEvent* e = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                  untilDate:[NSDate distantPast]
-                                     inMode:NSDefaultRunLoopMode
-                                    dequeue:YES];
   
-  [NSApp sendEvent:e];
+  NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
+  [NSApp sendEvent:[NSApp nextEventMatchingMask:NSEventMaskAny
+                                      untilDate:[NSDate distantPast]
+                                         inMode:NSDefaultRunLoopMode
+                                        dequeue:YES]];
   [pool release];
   
   if (app->closed)
