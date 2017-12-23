@@ -35,7 +35,6 @@ void test_cb_kdown(KEY_e k, MOD_e mod) {
       chroma_on = true;
     }
   }
-  printf("%d key down\n", k);
 }
 
 int main(int argc, const char* argv[]) {
@@ -53,7 +52,7 @@ int main(int argc, const char* argv[]) {
   while (running) {
     fill(win, RGB(100, 149, 237));
     
-    print_f(win, 10, 8, WHITE, "mouse x,y: (%d, %d), %d", p.x, p.y, blit(win, &p, c, NULL));
+    print_f(win, 10, 8, WHITE, "mouse x,y: (%d, %d), drawn? %s", p.x, p.y, (blit(win, &p, c, NULL) ? "yes" : "no"));
     
     if (!redraw())
       break;
