@@ -23,6 +23,8 @@ sprintf(last_error, "[ERROR] from %s in %s at %d -- " MSG, __FILE__, __FUNCTION_
 
 static unsigned int chroma_key = -1;
 
+static bool ticks_started = false;
+
 static const char* font_b64_str = "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";
 static const int font_b64_strlen = 2928;
 static bool font[256][8][8];
@@ -700,15 +702,9 @@ void iterate(surface_t* s, int (*fn)(int x, int y, int col)) {
       XYSET(s, x, y, fn(x, y, XYGET(s, x, y)));
 }
 
-#if defined(_WIN32)
-static LARGE_INTEGER ticks_start;
-#else
-static struct timespec ticks_start;
-#endif
-static bool ticks_started = false;
-
 long ticks() {
 #if defined(_WIN32)
+  static LARGE_INTEGER ticks_start;
   if (!ticks_started) {
     QueryPerformanceCounter(&ticks_start);
     ticks_started = true;
@@ -719,11 +715,12 @@ long ticks() {
   QueryPerformanceFrequency(&freq);
   
   elapsed.QuadPart = ticks_now.QuadPart - ticks_start.QuadPart;
-  elapsed.QuadPart *= 1000000;
+  elapsed.QuadPart *= 1000;
   elapsed.QuadPart /= freq.QuadPart;
   
   return elapsed.QuadPart;
 #else
+  static struct timespec ticks_start;
   if (!ticks_started) {
     clock_gettime(CLOCK_MONOTONIC, &ticks_start);
     ticks_started = true;
@@ -731,7 +728,7 @@ long ticks() {
   
   struct timespec ticks_now;
   clock_gettime(CLOCK_MONOTONIC, &ticks_now);
-  return ((ticks_now.tv_sec * (1000000)) + (ticks_now.tv_nsec / 1000)) - ((ticks_start.tv_sec * 1000000) + (ticks_start.tv_nsec / 1000));
+  return ((ticks_now.tv_sec * 1000) + (ticks_now.tv_nsec / 1000000)) - ((ticks_start.tv_sec * 1000) + (ticks_start.tv_nsec / 1000000));
 #endif
 }
 
