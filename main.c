@@ -15,17 +15,26 @@
  *  - OpenGL alternative backend ???
  */
 
-static bool running = true;
-static int mx = 0, my = 0;
+static bool running = true, chroma_on = false;
+static point_t p = { 0, 0 };
 
 void test_cb_move(int x, int y) {
-  mx = x;
-  my = y;
+  p.x = x;
+  p.y = y;
 }
 
 void test_cb_kdown(KEY_e k, MOD_e mod) {
   if (k == KEY_Q && mod == MOD_SUPER)
     running = false;
+  else if (k == KEY_SPACE) {
+    if (chroma_on) {
+      set_chroma_key(-1);
+      chroma_on = false;
+    } else {
+      set_chroma_key(WHITE);
+      chroma_on = true;
+    }
+  }
   printf("%d key down\n", k);
 }
 
@@ -40,16 +49,11 @@ int main(int argc, const char* argv[]) {
   mouse_move_cb(test_cb_move);
   
   surface_t* c = bmp("/Users/roryb/Documents/Uncompressed-24.bmp");
-  point_t p = { 0, 0 };
   
   while (running) {
     fill(win, RGB(100, 149, 237));
     
-    p.x = mx;
-    p.y = my;
-    blit(win, &p, c, NULL);
-    
-    print_f(win, 10, 8, BLACK, "mouse x,y: (%d, %d)", mx, my);
+    print_f(win, 10, 8, WHITE, "mouse x,y: (%d, %d), %d", p.x, p.y, blit(win, &p, c, NULL));
     
     if (!redraw())
       break;

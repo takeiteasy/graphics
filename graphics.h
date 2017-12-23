@@ -56,7 +56,6 @@ void fill(surface_t* s, int col);
 bool pset(surface_t* s, int x, int y, int col);
 int pget(surface_t* s, int x, int y);
 bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
-bool blit_chroma(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, int key);
 bool yline(surface_t* s, int x, int y1, int y2, int col);
 bool xline(surface_t* s, int y, int x1, int x2, int col);
 bool line(surface_t* s, int x1, int y1, int x2, int y2, int col);
@@ -74,6 +73,7 @@ surface_t* string_f(int col, int bg, const char* fmt, ...);
 void rgb(int c, int* r, int* g, int* b);
 surface_t* copy(surface_t* s);
 void iterate(surface_t*, int (*fn)(int, int, int));
+void set_chroma_key(unsigned int c);
   
 typedef enum {
   MOUSE_0,
