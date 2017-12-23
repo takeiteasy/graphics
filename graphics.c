@@ -207,6 +207,7 @@ bool pset(surface_t* s, int x, int y, int col) {
     SET_LAST_ERROR("pset() failed! x/y outside of bounds");
     return false;
   }
+  
   XYSET(s, x, y, col);
   return true;
 }
@@ -216,6 +217,7 @@ int pget(surface_t* s, int x, int y) {
     SET_LAST_ERROR("pget() failed! x/y outside of bounds");
     return 0;
   }
+  
   return XYGET(s, x, y);
 }
 
@@ -233,11 +235,26 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
     width  = r->w;
     height = r->h;
   }
-  int to_x = offset_x + width, to_y = offset_y + height;
-  if (to_x > dst->w || to_y > dst->h) {
-    SET_LAST_ERROR("blit() failed! src w/h outside bounds of dst");
-    return false;
+  
+  if (offset_x < 0) {
+    from_x += abs(offset_x);
+    width -= abs(offset_x);
+    offset_x = 0;
   }
+  if (offset_y < 0) {
+    from_y += abs(offset_y);
+    height -= abs(offset_y);
+    offset_y = 0;
+  }
+  
+  int to_x = offset_x + width, to_y = offset_y + height;
+  if (to_x > dst->w)
+    width += (dst->w - to_x);
+  if (to_y > dst->h)
+    height += (dst->h - to_y);
+  
+  if (offset_x > dst->w || offset_y > dst->h || to_x < 0 || to_y < 0)
+    return false;
   
   int x, y;
   for (x = 0; x < width; ++x)
@@ -247,7 +264,7 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
 }
 
 bool blit_chroma(surface_t* dst, point_t* p, surface_t* src, rect_t* r, int key) {
-  int offset_x = 0,      offset_y = 0,
+  int offset_x = 0,  offset_y = 0,
   from_x   = 0,      from_y   = 0,
   width    = src->w, height   = src->h;
   if (p) {
@@ -260,11 +277,26 @@ bool blit_chroma(surface_t* dst, point_t* p, surface_t* src, rect_t* r, int key)
     width  = r->w;
     height = r->h;
   }
-  int to_x = offset_x + width, to_y = offset_y + height;
-  if (to_x > dst->w || to_y > dst->h) {
-    SET_LAST_ERROR("blit() failed! src w/h outside bounds of dst");
-    return false;
+  
+  if (offset_x < 0) {
+    from_x += abs(offset_x);
+    width -= abs(offset_x);
+    offset_x = 0;
   }
+  if (offset_y < 0) {
+    from_y += abs(offset_y);
+    height -= abs(offset_y);
+    offset_y = 0;
+  }
+  
+  int to_x = offset_x + width, to_y = offset_y + height;
+  if (to_x > dst->w)
+    width += (dst->w - to_x);
+  if (to_y > dst->h)
+    height += (dst->h - to_y);
+  
+  if (offset_x > dst->w || offset_y > dst->h)
+    return false;
   
   int x, y, c;
   for (x = 0; x < width; ++x) {
