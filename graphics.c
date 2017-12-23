@@ -699,6 +699,42 @@ void iterate(surface_t* s, int (*fn)(int x, int y, int col)) {
     for (y = 0; y < s->h; ++y)
       XYSET(s, x, y, fn(x, y, XYGET(s, x, y)));
 }
+
+#if defined(_WIN32)
+static LARGE_INTEGER ticks_start;
+#else
+static struct timespec ticks_start;
+#endif
+static bool ticks_started = false;
+
+long ticks() {
+#if defined(_WIN32)
+  if (!ticks_started) {
+    QueryPerformanceCounter(&ticks_start);
+    ticks_started = true;
+  }
+  
+  LARGE_INTEGER ticks_now, freq, elapsed;
+  QueryPerformanceCounter(&ticks_now);
+  QueryPerformanceFrequency(&freq);
+  
+  elapsed.QuadPart = ticks_now.QuadPart - ticks_start.QuadPart;
+  elapsed.QuadPart *= 1000000;
+  elapsed.QuadPart /= freq.QuadPart;
+  
+  return elapsed.QuadPart;
+#else
+  if (!ticks_started) {
+    clock_gettime(CLOCK_MONOTONIC, &ticks_start);
+    ticks_started = true;
+  }
+  
+  struct timespec ticks_now;
+  clock_gettime(CLOCK_MONOTONIC, &ticks_now);
+  return ((ticks_now.tv_sec * (1000000)) + (ticks_now.tv_nsec / 1000)) - ((ticks_start.tv_sec * 1000000) + (ticks_start.tv_nsec / 1000));
+#endif
+}
+
 #if defined(__APPLE__)
 #import <Cocoa/Cocoa.h>
 

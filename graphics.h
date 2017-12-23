@@ -18,6 +18,7 @@ extern "C" {
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 #define RGB(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
   
@@ -74,7 +75,8 @@ void rgb(int c, int* r, int* g, int* b);
 surface_t* copy(surface_t* s);
 void iterate(surface_t*, int (*fn)(int, int, int));
 void set_chroma_key(unsigned int c);
-  
+long ticks(void);
+
 typedef enum {
   MOUSE_0,
   MOUSE_1,

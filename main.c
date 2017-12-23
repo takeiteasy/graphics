@@ -1,7 +1,6 @@
 #include "graphics.h"
 
 /* TODO:
- *  - Chroma key to blit
  *  - RLE8/4 loading + OS/2 BMP
  *  - ANSI colour escapes for print()
  *  - HSV, HSL, INT to RGB functions
@@ -52,7 +51,7 @@ int main(int argc, const char* argv[]) {
   while (running) {
     fill(win, RGB(100, 149, 237));
     
-    print_f(win, 10, 8, WHITE, "mouse x,y: (%d, %d), drawn? %s", p.x, p.y, (blit(win, &p, c, NULL) ? "yes" : "no"));
+    print_f(win, 10, 8, WHITE, "mouse x,y: (%d, %d), drawn? %s, ticks %ld", p.x, p.y, (blit(win, &p, c, NULL) ? "yes" : "no"), ticks());
     
     if (!redraw())
       break;
