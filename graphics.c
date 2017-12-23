@@ -154,7 +154,7 @@ unsigned char* base64_decode(const char* ascii, int len, int *flen) {
 void init_default_font() {
   int size;
   unsigned char* f = base64_decode(font_b64_str, font_b64_strlen, &size);
-  surface_t* img = load_bmp_from_mem(f);
+  surface_t* img = bmp_mem(f);
   
   size_t c, x, y;
   for(c = 0; c < 256; ++c)
@@ -440,24 +440,6 @@ bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
   return true;
 }
 
-unsigned char* load_file_to_mem(const char* path) {
-  FILE *file = fopen(path, "rb");
-  if (!file) {
-    SET_LAST_ERROR("fopen() failed: %s\n", path);
-    return NULL;
-  }
-  
-  fseek(file, 0, SEEK_END);
-  size_t length = ftell(file);
-  rewind(file);
-  
-  unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
-  fread(data, 1, length, file);
-  fclose(file);
-  
-  return data;
-}
-
 typedef struct {
   unsigned short type; /* Magic identifier */
   unsigned int size; /* File size in bytes */
@@ -496,7 +478,7 @@ off += s;
 
 #define BMP_SET(c) (ret->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
 
-surface_t* load_bmp_from_mem(unsigned char* data) {
+surface_t* bmp_mem(unsigned char* data) {
   int off = 0;
   BMPHEADER header;
   BMPINFOHEADER info;
@@ -585,10 +567,33 @@ surface_t* load_bmp_from_mem(unsigned char* data) {
   return ret;
 }
 
-surface_t* load_bmp_from_file(const char* path) {
-  unsigned char* data = load_file_to_mem(path);
-  surface_t* ret = load_bmp_from_mem(data);
+surface_t* bmp_fp(FILE* fp) {
+  if (!fp) {
+    SET_LAST_ERROR("bmp_fp() failed: file pointer null\n");
+    return NULL;
+  }
+  
+  fseek(fp, 0, SEEK_END);
+  size_t length = ftell(fp);
+  rewind(fp);
+  
+  unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
+  fread(data, 1, length, fp);
+  
+  surface_t* ret = bmp_mem(data);
   free(data);
+  return ret;
+}
+
+surface_t* bmp(const char* path) {
+  FILE* fp = fopen(path, "rb");
+  if (!fp) {
+    SET_LAST_ERROR("fopen() failed: %s\n", path);
+    return NULL;
+  }
+  
+  surface_t* ret = bmp_fp(fp);
+  fclose(fp);
   return ret;
 }
 

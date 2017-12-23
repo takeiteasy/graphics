@@ -15,9 +15,6 @@
  *  - OpenGL alternative backend ???
  */
 
-#define WIDTH  640
-#define HEIGHT 480
-
 #define RND_255 (rand() % 256)
 
 static int mx = 0, my = 0, running = 1;
@@ -59,7 +56,7 @@ int rnd(int x, int y, int c) {
 }
 
 int main(int argc, const char* argv[]) {
-  surface_t* win = screen(NULL, WIDTH, HEIGHT);
+  surface_t* win = screen(NULL, 640, 480);
   if (!win) {
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
@@ -74,7 +71,7 @@ int main(int argc, const char* argv[]) {
   
   surface_t* a = surface(50, 50);
   
-  surface_t* c = load_bmp_from_file("/Users/roryb/Documents/Uncompressed-24.bmp");
+  surface_t* c = bmp("/Users/roryb/Documents/Uncompressed-24.bmp");
   surface_t* e = copy(c);
   iterate(e, invert);
   
@@ -85,8 +82,16 @@ int main(int argc, const char* argv[]) {
   point_t tmpp4 = { tmpp2.x + c->w + 5, tmpp2.y };
   point_t tmpp5 = { 10, 110 };
   point_t tmpp6 = { 425, 110 };
+  point_t tmpp7 = { 482, 170 };
   
   surface_t* d = string_f(RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", tmpr.x, tmpr.y, tmpr.w, tmpr.h);
+  surface_t* h = string(RED, LIME, "NO\nGREEN\nHERE");
+  surface_t* k = string(LIME, BLACK, "WOW");
+  surface_t* l = surface(50, 50);
+  fill(l, BLACK);
+  point_t tmmp8 = { 13, 20 };
+  blit(l, &tmmp8, k, NULL);
+  destroy(&k);
   
   surface_t* f = surface(100, 100);
   rect(f, 0, 0, 50, 50, RGB(255, 0, 0), true);
@@ -110,13 +115,14 @@ int main(int argc, const char* argv[]) {
     blit(win, &tmpp4, e, NULL);
     
     blit_chroma(win, &tmpp6, f, NULL, LIME);
+    blit_chroma(win, &tmpp7, h, NULL, LIME);
     
-    rect(win, 150, 50, 100, 100, BLUE, false);
-    rect(win, 200, 100, 100, 100, BLUE, false);
-    line(win, 150, 50, 200, 100, BLUE);
-    line(win, 250, 50, 300, 100, BLUE);
-    line(win, 150, 150, 200, 200, BLUE);
-    line(win, 250, 150, 300, 200, BLUE);
+    rect(win, 150, 50, 100, 100, RGB(RND_255, RND_255, RND_255), false);
+    rect(win, 200, 100, 100, 100, RGB(RND_255, RND_255, RND_255), false);
+    line(win, 150, 50, 200, 100, RGB(RND_255, RND_255, RND_255));
+    line(win, 250, 50, 300, 100, RGB(RND_255, RND_255, RND_255));
+    line(win, 150, 150, 200, 200, RGB(RND_255, RND_255, RND_255));
+    line(win, 250, 150, 300, 200, RGB(RND_255, RND_255, RND_255));
     
     circle(win, 352, 32, 30, RGB(255, 0, 0), true);
     circle(win, 382, 32, 30, RGB(255, 127, 0), true);
@@ -127,6 +133,7 @@ int main(int argc, const char* argv[]) {
     circle(win, 532, 32, 30, RGB(148, 0, 211), true);
     
     iterate(a, rnd);
+    blit_chroma(a, NULL, l, NULL, LIME);
     blit(win, &tmpp3, a, NULL);
     
     print_f(win, 10, 8, BLACK, "mouse x,y: (%d, %d)\nA S T H E T I C", mx, my);
@@ -149,6 +156,8 @@ int main(int argc, const char* argv[]) {
   destroy(&d);
   destroy(&e);
   destroy(&a);
+  destroy(&h);
+  destroy(&l);
   release();
   return 0;
 }
