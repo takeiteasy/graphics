@@ -9,6 +9,9 @@
 #include "graphics.h"
 
 #define XYSET(s, x, y, v) (s->buf[(y) * s->w + (x)] = (v))
+#define XYSETSAFE(s, x, y, v) \
+if (x > 0 && y > 0 && x <= s->w && y <= s->h) \
+  s->buf[(y) * s->w + (x)] = (v);
 #define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
 
 static char last_error[1024];
@@ -230,9 +233,9 @@ int pget(surface_t* s, int x, int y) {
 }
 
 bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
-  int offset_x = 0,  offset_y = 0,
-  from_x   = 0,      from_y   = 0,
-  width    = src->w, height   = src->h;
+  int offset_x = 0, offset_y = 0,
+  from_x = 0, from_y = 0,
+  width = src->w, height = src->h;
   if (p) {
     offset_x = p->x;
     offset_y = p->y;
@@ -276,15 +279,15 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
 }
 
 bool yline(surface_t* s, int x, int y1, int y2, int col) {
+  if (x < 0 || x >= s->w)
+    return false;
+  
   if (y2 < y1) {
     y1 += y2;
     y2  = y1 - y2;
     y1 -= y2;
   }
-  if (y2 < 0 || y1 >= s->h  || x < 0 || x >= s->w) {
-    SET_LAST_ERROR("yline() failed! x/y outside bounds of dst");
-    return false;
-  }
+  
   if (y1 < 0)
     y1 = 0;
   if (y2 >= s->h)
@@ -296,15 +299,13 @@ bool yline(surface_t* s, int x, int y1, int y2, int col) {
 }
 
 bool xline(surface_t* s, int y, int x1, int x2, int col) {
+  if (y < 0 || y >= s->h)
+    return false;
+  
   if (x2 < x1) {
     x1 += x2;
     x2  = x1 - x2;
     x1 -= x2;
-  }
-  
-  if (x2 < 0 || x1 >= s->w || y < 0 || y >= s->h) {
-    SET_LAST_ERROR("xline() failed! x/y outside bounds of dst");
-    return false;
   }
   
   if (x1 < 0)
@@ -318,32 +319,46 @@ bool xline(surface_t* s, int y, int x1, int x2, int col) {
 }
 
 bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
-  if (x1 < 0 || x1 > s->w - 1 || x2 < 0 || x2 > s->w - 1 || y1 < 0 || y1 > s->h - 1 || y2 < 0 || y2 > s->h - 1) {
-    SET_LAST_ERROR("line() failed! x1/y1/x2/y2 outside bounds of dst");
-    return false;
-  }
+  if (x1 == x2)
+    return yline(s, x1, y1, y2, col);
+  if (y1 == y2)
+    return xline(s, y1, x1, x2, col);
   
-  int dx = abs(x2 - x1), dy = abs(y2 - y1);
-  int x = x1, y = y1;
   int xi1, xi2, yi1, yi2, d, n, na, np, p;
-  
-  if (x2 >= x1) {
+  if (x2 > x1) {
+    if (x2 > s->w)
+      x2 = s->w;
+    if (x1 < 0)
+      x1 = 0;
     xi1 = 1;
     xi2 = 1;
   } else {
+    if (x1 > s->w)
+      x1 = s->w;
+    if (x2 < 0)
+      x2 = 0;
     xi1 = -1;
     xi2 = -1;
   }
   
-  if(y2 >= y1) {
+  if(y2 > y1) {
+    if (y2 > s->h)
+      y2 = s->h;
+    if (y1 < 0)
+      y1 = 0;
     yi1 = 1;
     yi2 = 1;
   } else  {
+    if (y1 > s->h)
+      y1 = s->h;
+    if (y2 < 0)
+      y2 = 0;
     yi1 = -1;
     yi2 = -1;
   }
   
-  if (dx >= dy) {
+  int x = x1, y = y1, dx = abs(x2 - x1), dy = abs(y2 - y1);
+  if (dx > dy) {
     xi1 = 0;
     yi2 = 0;
     d = dx;
@@ -374,10 +389,8 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
 }
 
 bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
-  if (xc - r < 0 || xc + r >= s->w || yc - r < 0 || yc + r >= s->h) {
-    SET_LAST_ERROR("circle() failed! x/y outside bounds of dst");
+  if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
     return false;
-  }
   
   int x = 0, y = r, p = 3 - (r << 1);
   int pb = yc + r + 1, pd = yc + r + 1;
@@ -403,16 +416,16 @@ bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
       if (h != d && h != f)
         xline(s, h, e, g, col);
     } else {
-      XYSET(s, a, b, col);
-      XYSET(s, c, d, col);
-      XYSET(s, e, f, col);
-      XYSET(s, g, f, col);
+      XYSETSAFE(s, a, b, col);
+      XYSETSAFE(s, c, d, col);
+      XYSETSAFE(s, e, f, col);
+      XYSETSAFE(s, g, f, col);
       
       if (x > 0) {
-        XYSET(s, a, d, col);
-        XYSET(s, c, b, col);
-        XYSET(s, e, h, col);
-        XYSET(s, g, h, col);
+        XYSETSAFE(s, a, d, col);
+        XYSETSAFE(s, c, b, col);
+        XYSETSAFE(s, e, h, col);
+        XYSETSAFE(s, g, h, col);
       }
     }
     
@@ -424,8 +437,25 @@ bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
 }
 
 bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
-  w = x + w;
-  h = y + h;
+  if (x < 0) {
+    w += x;
+    x  = 0;
+  }
+  if (y < 0) {
+    h += y;
+    y  = 0;
+  }
+  
+  w += x;
+  h += y;
+  if (w < 0 || h < 0 || x > s->w || y > s->h)
+    return false;
+  
+  if (w > s->w)
+    w = s->w;
+  if (h > s->h)
+    h = s->h;
+  
   if (fill) {
     for (; y < h; ++y)
       xline(s, y, x, w, col);

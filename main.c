@@ -51,7 +51,14 @@ int main(int argc, const char* argv[]) {
   while (running) {
     fill(win, RGB(100, 149, 237));
     
-    print_f(win, 10, 8, WHITE, "mouse x,y: (%d, %d), drawn? %s, ticks %ld", p.x, p.y, (blit(win, &p, c, NULL) ? "yes" : "no"), ticks());
+    yline(win, p.x, -10, 490, RED);
+    xline(win, p.y, -10, 650, LIME);
+    line(win, -10, -10, 650, 490, YELLOW);
+    line(win, -10, 490, 650, -10, YELLOW);
+    
+    circle(win, p.x, p.y, 30, BLUE, false);
+    
+    print_f(win, 10, 8, WHITE, "mouse: (x:%d, y:%d)\nticks: %ld \002", p.x, p.y, ticks());
     
     if (!redraw())
       break;

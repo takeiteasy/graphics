@@ -40,15 +40,15 @@ extern "C" {
 #define NAVY RGB(0, 0, 128)
 
 typedef struct {
-  unsigned int* buf, w, h;
+  int* buf, w, h;
 } surface_t;
 
 typedef struct {
-  unsigned int x, y, w, h;
+  int x, y, w, h;
 } rect_t;
 
 typedef struct {
-  unsigned int x, y;
+  int x, y;
 } point_t;
 
 surface_t* surface(unsigned int, unsigned int);
