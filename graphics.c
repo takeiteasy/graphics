@@ -1069,64 +1069,38 @@ surface_t* bmp(const char* path) {
   return ret;
 }
 
+#define PRINT_LETTER(map, max_r, ch) \
+int i, j; \
+if (ch >= max_r || ch < 0) \
+  ch = 0; \
+for (i = 0; i < 8; ++i) \
+  for (j = 0; j < 8; ++j) \
+    if (map[ch][i] & 1 << j) \
+      XYSETSAFE(s, x + j, y + i, col);
+
 void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col) {
-  int i, j, c = (int)ch;
-  if (c > 127 || c < 0)
-    c = (int)'?';
-  for (i = 0; i < 8; ++i)
-    for (j = 0; j < 8; ++j)
-      if (font8x8_basic[c][i] & 1 << j)
-        XYSETSAFE(s, x + j, y + i, col);
+  int c = (int)ch;
+  PRINT_LETTER(font8x8_basic, 128, c);
 }
 
 void letter_block(surface_t* s, int ch, unsigned int x, unsigned int y, int col) {
-  int i, j;
-  if (ch > 31 || ch < 0)
-    ch = 8;
-  for (i = 0; i < 8; ++i)
-    for (j = 0; j < 8; ++j)
-      if (font8x8_block[ch][i] & 1 << j)
-        XYSETSAFE(s, x + j, y + i, col);
+  PRINT_LETTER(font8x8_block, 32, ch);
 }
 
 void letter_box(surface_t* s, int ch, unsigned int x, unsigned int y, int col) {
-  int i, j;
-  if (ch > 127 || ch < 0)
-    ch = 8;
-  for (i = 0; i < 8; ++i)
-    for (j = 0; j < 8; ++j)
-      if (font8x8_box[ch][i] & 1 << j)
-        XYSETSAFE(s, x + j, y + i, col);
+  PRINT_LETTER(font8x8_box, 128, ch);
 }
 
 void letter_extra(surface_t* s, int ch, unsigned int x, unsigned int y, int col) {
-  int i, j;
-  if (ch > 131 || ch < 0)
-    ch = 5;
-  for (i = 0; i < 8; ++i)
-    for (j = 0; j < 8; ++j)
-      if (font8x8_extra[ch][i] & 1 << j)
-        XYSETSAFE(s, x + j, y + i, col);
+  PRINT_LETTER(font8x8_extra, 132, ch);
 }
 
 void letter_greek(surface_t* s, int ch, unsigned int x, unsigned int y, int col) {
-  int i, j;
-  if (ch > 57 || ch < 0)
-    ch = 5;
-  for (i = 0; i < 8; ++i)
-    for (j = 0; j < 8; ++j)
-      if (font8x8_greek[ch][i] & 1 << j)
-        XYSETSAFE(s, x + j, y + i, col);
+  PRINT_LETTER(font8x8_greek, 58, ch);
 }
 
 void letter_hiragana(surface_t* s, int ch, unsigned int x, unsigned int y, int col) {
-  int i, j;
-  if (ch > 95 || ch < 0)
-    ch = 5;
-  for (i = 0; i < 8; ++i)
-    for (j = 0; j < 8; ++j)
-      if (font8x8_hiragana[ch][i] & 1 << j)
-        XYSETSAFE(s, x + j, y + i, col);
+  PRINT_LETTER(font8x8_hiragana, 96, ch);
 }
 
 void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str) {

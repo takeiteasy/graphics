@@ -1,11 +1,13 @@
+#define GRAPHICS_EXTRA_COLORS
+#define GRAPHICS_EXTRA_CHARMAPS
 #include "graphics.h"
 
 /* TODO:
- *  - Replace font system
  *  - ANSI colour escapes for print()
- *  - Test on Linux/Windows
+ *  - Linux/Windows window code
  *  - Add copyright for borrowed stuff
- *  - OpenGL alternative backend ???
+ *  - OpenGL alternative backend (maybe?)
+ *  - Add GRAPHICS_EXTRA_CHARMAPS for library build
  *
  * EXTRA:
  *  - Extended surface functions, resize, rotate, filters, etc
@@ -111,7 +113,16 @@ int main(int argc, const char* argv[]) {
 //    circle(win, 502, 32, 30, INDIGO, true);
 //    circle(win, 532, 32, 30, VIOLET, true);
     
-    print_f(win, 400, 70, BLACK, "mouse x,y: (%d, %d)\nA S T H E T I C", mx, my);
+    print_f(win, 400, 88, BLACK, "mouse x,y: (%d, %d)", mx, my);
+    
+    x = 0;
+    y = 0;
+    PRINT_CHAR_MAP(letter, 33, 128, MAROON);
+    PRINT_CHAR_MAP(letter_block, 0, 32, DARK_RED);
+    PRINT_CHAR_MAP(letter_box, 0, 128, BROWN);
+    PRINT_CHAR_MAP(letter_extra, 0, 132, FIREBRICK);
+    PRINT_CHAR_MAP(letter_greek, 0, 58, CRIMSON);
+    PRINT_CHAR_MAP(letter_hiragana, 0, 96, RED);
     
     get_mouse_pos(&mx, &my);
     col = pget(win, mx, my);
@@ -124,15 +135,6 @@ int main(int argc, const char* argv[]) {
     
     line(win, 0, 0, mx, my, col);
     circle(win, mx, my, 30, col, false);
-    
-    x = 0;
-    y = 0;
-    PRINT_CHAR_MAP(letter, 33, 128, RED);
-    PRINT_CHAR_MAP(letter_block, 0, 32, ORANGE);
-    PRINT_CHAR_MAP(letter_box, 0, 128, GOLDEN_ROD);
-    PRINT_CHAR_MAP(letter_extra, 0, 132, LIME);
-    PRINT_CHAR_MAP(letter_greek, 0, 58, BLUE);
-    PRINT_CHAR_MAP(letter_hiragana, 0, 96, INDIGO);
     
     while (poll_events(&ue)) {
       switch (ue.type) {
