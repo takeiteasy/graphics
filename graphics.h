@@ -23,7 +23,6 @@ extern "C" {
 
 #define RGB(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
 
-#if defined(GRAPHICS_EXTRA_COLORS)
 #define ALICE_BLUE RGB(240, 248, 255)
 #define ANTIQUE_WHITE RGB(250, 235, 215)
 #define AQUA RGB(0, 255, 255)
@@ -147,7 +146,6 @@ extern "C" {
 #define WHEAT RGB(245, 222, 179)
 #define WHITE_SMOKE RGB(245, 245, 245)
 #define YELLOW_GREEN RGB(154, 205, 50)
-#endif
 
 #define BLACK RGB(0, 0, 0)
 #define BLUE RGB(0, 0, 255)
@@ -194,13 +192,11 @@ surface_t* bmp_mem(unsigned char* data);
 surface_t* bmp_fp(FILE* fp);
 surface_t* bmp(const char* path);
 void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col);
-#if defined(GRAPHICS_EXTRA_CHARMAPS)
 void letter_block(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
 void letter_box(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
 void letter_extra(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
 void letter_greek(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
 void letter_hiragana(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
-#endif
 void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str);
 void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...);
 surface_t* string(int col, int bg, const char* str);

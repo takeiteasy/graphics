@@ -1,17 +1,14 @@
-#define GRAPHICS_EXTRA_COLORS
-#define GRAPHICS_EXTRA_CHARMAPS
 #include "graphics.h"
 
 /* TODO:
  *  - ANSI colour escapes for print()
  *  - Linux/Windows window code
- *  - Add copyright for borrowed stuff
- *  - OpenGL alternative backend (maybe?)
  *  - Add GRAPHICS_EXTRA_CHARMAPS for library build
  *
  * EXTRA:
  *  - Extended surface functions, resize, rotate, filters, etc
  *  - stb_image/stb_truetype
+ *  - OpenGL alternative backend (maybe?)
  */
 
 #define TICK_INTERVAL 30
@@ -19,7 +16,9 @@ static long next_time;
 
 long time_left(void) {
   long now = ticks();
-  return (next_time <= now ? 0 : next_time - now);
+  long ret = (next_time <= now ? 0 : next_time - now);
+  next_time += TICK_INTERVAL;
+  return ret;
 }
 
 static int mx = 0, my = 0, running = 1;
@@ -36,13 +35,13 @@ int rnd(int x, int y, int c) {
 
 #define PRINT_CHAR_MAP(fn, min_i, max_i, c) \
 for (i = min_i; i < max_i; ++i, x += 8) { \
-  if (x > win->w) { \
-    x  = 0; \
+  if (x + 8 > win->w) { \
+    x  = 5; \
     y += 8; \
   } \
   fn(win, i, x, y, c); \
 } \
-x  = 0;\
+x  = 5;\
 y += 8;
 
 int main(int argc, const char* argv[]) {
@@ -105,18 +104,18 @@ int main(int argc, const char* argv[]) {
     blit(a, NULL, l, NULL, LIME);
     blit(win, &tmpp3, a, NULL, LIME);
     
-//    circle(win, 352, 32, 30, RED,    true);
-//    circle(win, 382, 32, 30, ORANGE, true);
-//    circle(win, 412, 32, 30, YELLOW, true);
-//    circle(win, 442, 32, 30, LIME,   true);
-//    circle(win, 472, 32, 30, BLUE,   true);
-//    circle(win, 502, 32, 30, INDIGO, true);
-//    circle(win, 532, 32, 30, VIOLET, true);
+    circle(win, 352, 32, 30, RED,    true);
+    circle(win, 382, 32, 30, ORANGE, true);
+    circle(win, 412, 32, 30, YELLOW, true);
+    circle(win, 442, 32, 30, LIME,   true);
+    circle(win, 472, 32, 30, BLUE,   true);
+    circle(win, 502, 32, 30, INDIGO, true);
+    circle(win, 532, 32, 30, VIOLET, true);
     
     print_f(win, 400, 88, BLACK, "mouse x,y: (%d, %d)", mx, my);
     
-    x = 0;
-    y = 0;
+    x = 5;
+    y = 5;
     PRINT_CHAR_MAP(letter, 33, 128, MAROON);
     PRINT_CHAR_MAP(letter_block, 0, 32, DARK_RED);
     PRINT_CHAR_MAP(letter_box, 0, 128, BROWN);
@@ -153,7 +152,6 @@ int main(int argc, const char* argv[]) {
     }
     render();
     delay(time_left());
-    next_time += TICK_INTERVAL;
   }
   
   destroy(&c);
