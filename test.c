@@ -52,7 +52,7 @@ int main(int argc, const char* argv[]) {
   }
   
   surface_t* a = surface(50, 50);
-  surface_t* c = bmp("/Users/roryb/Documents/Uncompressed-24.bmp");
+  surface_t* c = bmp("Uncompressed-24.bmp");
   surface_t* e = copy(c);
   iterate(e, invert);
   
