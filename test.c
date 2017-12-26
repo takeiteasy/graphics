@@ -4,6 +4,7 @@
  *  - ANSI colour escapes for print()
  *  - Linux/Windows window code
  *  - Add GRAPHICS_EXTRA_CHARMAPS for library build
+ *  - Documentation & comments
  *
  * EXTRA:
  *  - Extended surface functions, resize, rotate, filters, etc
