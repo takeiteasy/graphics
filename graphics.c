@@ -1143,7 +1143,7 @@ surface_t* screen(const char* t, int w, int h) {
   return buffer;
 }
 
-bool should_close(){
+bool should_close() {
   return app->closed;
 }
 
@@ -1218,6 +1218,7 @@ void release() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   if (app)
   	[app close];
+  destroy(&buffer);
   [pool drain];
 }
 #elif defined(_WIN32)
