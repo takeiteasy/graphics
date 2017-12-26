@@ -17,6 +17,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
+#include <unistd.h>
 #include <math.h>
 #include <time.h>
 
@@ -75,6 +76,7 @@ void rgb(int c, int* r, int* g, int* b);
 surface_t* copy(surface_t* s);
 void iterate(surface_t*, int (*fn)(int, int, int));
 long ticks(void);
+void delay(long ms);
 
 typedef enum {
   MOUSE_0,

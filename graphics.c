@@ -711,6 +711,14 @@ long ticks() {
 #endif
 }
 
+void delay(long ms) {
+#if defined(_WIN32)
+  Sleep((DWORD)ms);
+#else
+  usleep((unsigned int)(ms * 1000));
+#endif
+}
+
 #if defined(__APPLE__)
 #import <Cocoa/Cocoa.h>
 

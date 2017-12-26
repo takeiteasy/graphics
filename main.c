@@ -14,6 +14,14 @@
 
 #define RND_255 (rand() % 256)
 
+#define TICK_INTERVAL 30
+static long next_time;
+
+long time_left(void) {
+  long now = ticks();
+  return (next_time <= now ? 0 : next_time - now);
+}
+
 static int mx = 0, my = 0, running = 1;
 
 int invert(int x, int y, int c) {
@@ -62,6 +70,7 @@ int main(int argc, const char* argv[]) {
   
   int r, g, b, col;
   user_event_t ue;
+  next_time = ticks() + TICK_INTERVAL;
   while (running) {
     fill(win, WHITE);
     
@@ -127,6 +136,8 @@ int main(int argc, const char* argv[]) {
       }
     }
     render();
+    delay(time_left());
+    next_time += TICK_INTERVAL;
   }
   
   destroy(&c);
