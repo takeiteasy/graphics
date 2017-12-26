@@ -61,50 +61,13 @@ const static unsigned char b64_table[] = {
   0,   0,   0,   0,   0,   0,
 };
 
-#define SWAP_POINTERS(x, y) { \
-  void* t; \
-  t = x; \
-  x = y; \
-  y = t; \
-}
-
 static int mx = 0, my = 0;
-static void (*__mouse_move_cb)(int, int);
-static void (*__mouse_enter_cb)(bool);
-static void (*__mouse_down_cb)(MOUSE_e, MOD_e);
-static void (*__mouse_up_cb)(MOUSE_e, MOD_e);
-static void (*__key_down_cb)(KEY_e, MOD_e);
-static void (*__key_up_cb)(KEY_e, MOD_e);
 
-void mouse_move_cb(void (*fn)(int, int)) {
-  SWAP_POINTERS(__mouse_move_cb, fn);
-}
-
-void mouse_entered_cb(void (*fn)(bool)) {
-  SWAP_POINTERS(__mouse_enter_cb, fn);
-}
-
-void mouse_down_cb(void (*fn)(MOUSE_e, MOD_e)) {
-  SWAP_POINTERS(__mouse_down_cb, fn);
-}
-
-void mouse_up_cb(void (*fn)(MOUSE_e, MOD_e)) {
-  SWAP_POINTERS(__mouse_up_cb, fn);
-}
-
-void mouse_pos(int* x, int* y) {
+void get_mouse_pos(int* x, int* y) {
   if (!x || !y)
     return;
   *x = mx;
   *y = my;
-}
-
-void key_down_cb(void (*fn)(KEY_e, MOD_e)) {
-  SWAP_POINTERS(__key_down_cb, fn);
-}
-
-void key_up_cb(void (*fn)(KEY_e, MOD_e)) {
-  SWAP_POINTERS(__key_up_cb, fn);
 }
 
 unsigned char* base64_decode(const char* ascii, int len, int *flen) {
@@ -489,11 +452,6 @@ typedef struct {
   unsigned short count; /* bits per pixel */
 } BMPCOREHEADER;
 
-//typedef struct {
-//  BMPCOREHEADER header;
-//  unsigned char colors[3];
-//} BMPCOREIFNOHEADER;
-
 #define BMP_GET(d, b, s) \
 memcpy(d, b + off, s); \
 off += s;
@@ -504,7 +462,6 @@ surface_t* bmp_mem(unsigned char* data) {
   int off = 0;
   BMPHEADER header;
   BMPINFOHEADER info;
-//  BMPCOREHEADER core;
   BMP_GET(&header, data, sizeof(BMPHEADER));
   BMP_GET(&info, data, sizeof(BMPINFOHEADER));
   
@@ -574,9 +531,7 @@ surface_t* bmp_mem(unsigned char* data) {
       }
       break;
     case 1: // RLE8
-//      break;
     case 2: // RLE4
-//      break;
     default:
       SET_LAST_ERROR("load_bmp_from_mem() failed. Unsupported compression: %d", info.compression);
       destroy(&ret);
@@ -776,126 +731,126 @@ long ticks() {
 #endif
 
 static short int keycodes[256];
-static short int scancodes[KEY_LAST + 1];
+static short int scancodes[KB_KEY_LAST + 1];
 
 void init_sys_keymap() {
   memset(keycodes,  -1, sizeof(keycodes));
   memset(scancodes, -1, sizeof(scancodes));
   
-  keycodes[0x1D] = KEY_0;
-  keycodes[0x12] = KEY_1;
-  keycodes[0x13] = KEY_2;
-  keycodes[0x14] = KEY_3;
-  keycodes[0x15] = KEY_4;
-  keycodes[0x17] = KEY_5;
-  keycodes[0x16] = KEY_6;
-  keycodes[0x1A] = KEY_7;
-  keycodes[0x1C] = KEY_8;
-  keycodes[0x19] = KEY_9;
-  keycodes[0x00] = KEY_A;
-  keycodes[0x0B] = KEY_B;
-  keycodes[0x08] = KEY_C;
-  keycodes[0x02] = KEY_D;
-  keycodes[0x0E] = KEY_E;
-  keycodes[0x03] = KEY_F;
-  keycodes[0x05] = KEY_G;
-  keycodes[0x04] = KEY_H;
-  keycodes[0x22] = KEY_I;
-  keycodes[0x26] = KEY_J;
-  keycodes[0x28] = KEY_K;
-  keycodes[0x25] = KEY_L;
-  keycodes[0x2E] = KEY_M;
-  keycodes[0x2D] = KEY_N;
-  keycodes[0x1F] = KEY_O;
-  keycodes[0x23] = KEY_P;
-  keycodes[0x0C] = KEY_Q;
-  keycodes[0x0F] = KEY_R;
-  keycodes[0x01] = KEY_S;
-  keycodes[0x11] = KEY_T;
-  keycodes[0x20] = KEY_U;
-  keycodes[0x09] = KEY_V;
-  keycodes[0x0D] = KEY_W;
-  keycodes[0x07] = KEY_X;
-  keycodes[0x10] = KEY_Y;
-  keycodes[0x06] = KEY_Z;
+  keycodes[0x1D] = KB_KEY_0;
+  keycodes[0x12] = KB_KEY_1;
+  keycodes[0x13] = KB_KEY_2;
+  keycodes[0x14] = KB_KEY_3;
+  keycodes[0x15] = KB_KEY_4;
+  keycodes[0x17] = KB_KEY_5;
+  keycodes[0x16] = KB_KEY_6;
+  keycodes[0x1A] = KB_KEY_7;
+  keycodes[0x1C] = KB_KEY_8;
+  keycodes[0x19] = KB_KEY_9;
+  keycodes[0x00] = KB_KEY_A;
+  keycodes[0x0B] = KB_KEY_B;
+  keycodes[0x08] = KB_KEY_C;
+  keycodes[0x02] = KB_KEY_D;
+  keycodes[0x0E] = KB_KEY_E;
+  keycodes[0x03] = KB_KEY_F;
+  keycodes[0x05] = KB_KEY_G;
+  keycodes[0x04] = KB_KEY_H;
+  keycodes[0x22] = KB_KEY_I;
+  keycodes[0x26] = KB_KEY_J;
+  keycodes[0x28] = KB_KEY_K;
+  keycodes[0x25] = KB_KEY_L;
+  keycodes[0x2E] = KB_KEY_M;
+  keycodes[0x2D] = KB_KEY_N;
+  keycodes[0x1F] = KB_KEY_O;
+  keycodes[0x23] = KB_KEY_P;
+  keycodes[0x0C] = KB_KEY_Q;
+  keycodes[0x0F] = KB_KEY_R;
+  keycodes[0x01] = KB_KEY_S;
+  keycodes[0x11] = KB_KEY_T;
+  keycodes[0x20] = KB_KEY_U;
+  keycodes[0x09] = KB_KEY_V;
+  keycodes[0x0D] = KB_KEY_W;
+  keycodes[0x07] = KB_KEY_X;
+  keycodes[0x10] = KB_KEY_Y;
+  keycodes[0x06] = KB_KEY_Z;
 
-  keycodes[0x27] = KEY_APOSTROPHE;
-  keycodes[0x2A] = KEY_BACKSLASH;
-  keycodes[0x2B] = KEY_COMMA;
-  keycodes[0x18] = KEY_EQUAL;
-  keycodes[0x32] = KEY_GRAVE_ACCENT;
-  keycodes[0x21] = KEY_LEFT_BRACKET;
-  keycodes[0x1B] = KEY_MINUS;
-  keycodes[0x2F] = KEY_PERIOD;
-  keycodes[0x1E] = KEY_RIGHT_BRACKET;
-  keycodes[0x29] = KEY_SEMICOLON;
-  keycodes[0x2C] = KEY_SLASH;
-  keycodes[0x0A] = KEY_WORLD_1;
+  keycodes[0x27] = KB_KEY_APOSTROPHE;
+  keycodes[0x2A] = KB_KEY_BACKSLASH;
+  keycodes[0x2B] = KB_KEY_COMMA;
+  keycodes[0x18] = KB_KEY_EQUAL;
+  keycodes[0x32] = KB_KEY_GRAVE_ACCENT;
+  keycodes[0x21] = KB_KEY_LEFT_BRACKET;
+  keycodes[0x1B] = KB_KEY_MINUS;
+  keycodes[0x2F] = KB_KEY_PERIOD;
+  keycodes[0x1E] = KB_KEY_RIGHT_BRACKET;
+  keycodes[0x29] = KB_KEY_SEMICOLON;
+  keycodes[0x2C] = KB_KEY_SLASH;
+  keycodes[0x0A] = KB_KEY_WORLD_1;
   
-  keycodes[0x33] = KEY_BACKSPACE;
-  keycodes[0x39] = KEY_CAPS_LOCK;
-  keycodes[0x75] = KEY_DELETE;
-  keycodes[0x7D] = KEY_DOWN;
-  keycodes[0x77] = KEY_END;
-  keycodes[0x24] = KEY_ENTER;
-  keycodes[0x35] = KEY_ESCAPE;
-  keycodes[0x7A] = KEY_F1;
-  keycodes[0x78] = KEY_F2;
-  keycodes[0x63] = KEY_F3;
-  keycodes[0x76] = KEY_F4;
-  keycodes[0x60] = KEY_F5;
-  keycodes[0x61] = KEY_F6;
-  keycodes[0x62] = KEY_F7;
-  keycodes[0x64] = KEY_F8;
-  keycodes[0x65] = KEY_F9;
-  keycodes[0x6D] = KEY_F10;
-  keycodes[0x67] = KEY_F11;
-  keycodes[0x6F] = KEY_F12;
-  keycodes[0x69] = KEY_F13;
-  keycodes[0x6B] = KEY_F14;
-  keycodes[0x71] = KEY_F15;
-  keycodes[0x6A] = KEY_F16;
-  keycodes[0x40] = KEY_F17;
-  keycodes[0x4F] = KEY_F18;
-  keycodes[0x50] = KEY_F19;
-  keycodes[0x5A] = KEY_F20;
-  keycodes[0x73] = KEY_HOME;
-  keycodes[0x72] = KEY_INSERT;
-  keycodes[0x7B] = KEY_LEFT;
-  keycodes[0x3A] = KEY_LEFT_ALT;
-  keycodes[0x3B] = KEY_LEFT_CONTROL;
-  keycodes[0x38] = KEY_LEFT_SHIFT;
-  keycodes[0x37] = KEY_LEFT_SUPER;
-  keycodes[0x6E] = KEY_MENU;
-  keycodes[0x47] = KEY_NUM_LOCK;
-  keycodes[0x79] = KEY_PAGE_DOWN;
-  keycodes[0x74] = KEY_PAGE_UP;
-  keycodes[0x7C] = KEY_RIGHT;
-  keycodes[0x3D] = KEY_RIGHT_ALT;
-  keycodes[0x3E] = KEY_RIGHT_CONTROL;
-  keycodes[0x3C] = KEY_RIGHT_SHIFT;
-  keycodes[0x36] = KEY_RIGHT_SUPER;
-  keycodes[0x31] = KEY_SPACE;
-  keycodes[0x30] = KEY_TAB;
-  keycodes[0x7E] = KEY_UP;
+  keycodes[0x33] = KB_KEY_BACKSPACE;
+  keycodes[0x39] = KB_KEY_CAPS_LOCK;
+  keycodes[0x75] = KB_KEY_DELETE;
+  keycodes[0x7D] = KB_KEY_DOWN;
+  keycodes[0x77] = KB_KEY_END;
+  keycodes[0x24] = KB_KEY_ENTER;
+  keycodes[0x35] = KB_KEY_ESCAPE;
+  keycodes[0x7A] = KB_KEY_F1;
+  keycodes[0x78] = KB_KEY_F2;
+  keycodes[0x63] = KB_KEY_F3;
+  keycodes[0x76] = KB_KEY_F4;
+  keycodes[0x60] = KB_KEY_F5;
+  keycodes[0x61] = KB_KEY_F6;
+  keycodes[0x62] = KB_KEY_F7;
+  keycodes[0x64] = KB_KEY_F8;
+  keycodes[0x65] = KB_KEY_F9;
+  keycodes[0x6D] = KB_KEY_F10;
+  keycodes[0x67] = KB_KEY_F11;
+  keycodes[0x6F] = KB_KEY_F12;
+  keycodes[0x69] = KB_KEY_F13;
+  keycodes[0x6B] = KB_KEY_F14;
+  keycodes[0x71] = KB_KEY_F15;
+  keycodes[0x6A] = KB_KEY_F16;
+  keycodes[0x40] = KB_KEY_F17;
+  keycodes[0x4F] = KB_KEY_F18;
+  keycodes[0x50] = KB_KEY_F19;
+  keycodes[0x5A] = KB_KEY_F20;
+  keycodes[0x73] = KB_KEY_HOME;
+  keycodes[0x72] = KB_KEY_INSERT;
+  keycodes[0x7B] = KB_KEY_LEFT;
+  keycodes[0x3A] = KB_KEY_LEFT_ALT;
+  keycodes[0x3B] = KB_KEY_LEFT_CONTROL;
+  keycodes[0x38] = KB_KEY_LEFT_SHIFT;
+  keycodes[0x37] = KB_KEY_LEFT_SUPER;
+  keycodes[0x6E] = KB_KEY_MENU;
+  keycodes[0x47] = KB_KEY_NUM_LOCK;
+  keycodes[0x79] = KB_KEY_PAGE_DOWN;
+  keycodes[0x74] = KB_KEY_PAGE_UP;
+  keycodes[0x7C] = KB_KEY_RIGHT;
+  keycodes[0x3D] = KB_KEY_RIGHT_ALT;
+  keycodes[0x3E] = KB_KEY_RIGHT_CONTROL;
+  keycodes[0x3C] = KB_KEY_RIGHT_SHIFT;
+  keycodes[0x36] = KB_KEY_RIGHT_SUPER;
+  keycodes[0x31] = KB_KEY_SPACE;
+  keycodes[0x30] = KB_KEY_TAB;
+  keycodes[0x7E] = KB_KEY_UP;
   
-  keycodes[0x52] = KEY_KP_0;
-  keycodes[0x53] = KEY_KP_1;
-  keycodes[0x54] = KEY_KP_2;
-  keycodes[0x55] = KEY_KP_3;
-  keycodes[0x56] = KEY_KP_4;
-  keycodes[0x57] = KEY_KP_5;
-  keycodes[0x58] = KEY_KP_6;
-  keycodes[0x59] = KEY_KP_7;
-  keycodes[0x5B] = KEY_KP_8;
-  keycodes[0x5C] = KEY_KP_9;
-  keycodes[0x45] = KEY_KP_ADD;
-  keycodes[0x41] = KEY_KP_DECIMAL;
-  keycodes[0x4B] = KEY_KP_DIVIDE;
-  keycodes[0x4C] = KEY_KP_ENTER;
-  keycodes[0x51] = KEY_KP_EQUAL;
-  keycodes[0x43] = KEY_KP_MULTIPLY;
-  keycodes[0x4E] = KEY_KP_SUBTRACT;
+  keycodes[0x52] = KB_KEY_KP_0;
+  keycodes[0x53] = KB_KEY_KP_1;
+  keycodes[0x54] = KB_KEY_KP_2;
+  keycodes[0x55] = KB_KEY_KP_3;
+  keycodes[0x56] = KB_KEY_KP_4;
+  keycodes[0x57] = KB_KEY_KP_5;
+  keycodes[0x58] = KB_KEY_KP_6;
+  keycodes[0x59] = KB_KEY_KP_7;
+  keycodes[0x5B] = KB_KEY_KP_8;
+  keycodes[0x5C] = KB_KEY_KP_9;
+  keycodes[0x45] = KB_KEY_KP_ADD;
+  keycodes[0x41] = KB_KEY_KP_DECIMAL;
+  keycodes[0x4B] = KB_KEY_KP_DIVIDE;
+  keycodes[0x4C] = KB_KEY_KP_ENTER;
+  keycodes[0x51] = KB_KEY_KP_EQUAL;
+  keycodes[0x43] = KB_KEY_KP_MULTIPLY;
+  keycodes[0x4E] = KB_KEY_KP_SUBTRACT;
   
   for (int sc = 0;  sc < 256; ++sc) {
     if (keycodes[sc] >= 0)
@@ -907,21 +862,21 @@ static int translate_mod(NSUInteger flags) {
   int mods = 0;
   
   if (flags & NSEventModifierFlagShift)
-    mods |= MOD_SHIFT;
+    mods |= KB_MOD_SHIFT;
   if (flags & NSEventModifierFlagControl)
-    mods |= MOD_CONTROL;
+    mods |= KB_MOD_CONTROL;
   if (flags & NSEventModifierFlagOption)
-    mods |= MOD_ALT;
+    mods |= KB_MOD_ALT;
   if (flags & NSEventModifierFlagCommand)
-    mods |= MOD_SUPER;
+    mods |= KB_MOD_SUPER;
   if (flags & NSEventModifierFlagCapsLock)
-    mods |= MOD_CAPS_LOCK;
+    mods |= KB_MOD_CAPS_LOCK;
   
   return mods;
 }
 
 static int translate_key(unsigned int key) {
-  return (key >= sizeof(keycodes) / sizeof(keycodes[0]) ?  KEY_UNKNOWN : keycodes[key]);
+  return (key >= sizeof(keycodes) / sizeof(keycodes[0]) ?  KEYBOARD_KEY_DOWN : keycodes[key]);
 }
 
 @interface osx_app_t : NSWindow {
@@ -986,77 +941,25 @@ extern surface_t* buffer;
   return YES;
 }
 
-//-(BOOL)performKeyEquivalent:(NSEvent*)event {
-//  return YES;
-//}
-
--(void)mouseDown:(NSEvent*)event {
-  if (__mouse_down_cb)
-    __mouse_down_cb(MOUSE_LEFT, translate_mod([event modifierFlags]));
+-(BOOL)performKeyEquivalent:(NSEvent*)event {
+  return YES;
 }
 
 -(void)mouseDragged:(NSEvent*)event {
   [self mouseMoved:event];
 }
 
--(void)mouseUp:(NSEvent*)event {
-  if (__mouse_up_cb)
-    __mouse_up_cb(MOUSE_RIGHT, translate_mod([event modifierFlags]));
-}
-
--(void)mouseEntered:(NSEvent*)event {
-  if (__mouse_enter_cb)
-    __mouse_enter_cb(true);
-}
-
--(void)mouseExited:(NSEvent*)event {
-  if (__mouse_enter_cb)
-    __mouse_enter_cb(false);
-}
-
 -(void)mouseMoved:(NSEvent*)event {
   mx = (int)floor([event locationInWindow].x - 1);
   my = (int)floor(buffer->h - 1 - [event locationInWindow].y);
-  if (__mouse_move_cb)
-    __mouse_move_cb(mx, my);
-}
-
--(void)rightMouseDown:(NSEvent*)event {
-  if (__mouse_down_cb)
-    __mouse_down_cb(MOUSE_RIGHT, translate_mod([event modifierFlags]));
 }
 
 -(void)rightMouseDragged:(NSEvent*)event {
   [self mouseMoved:event];
 }
 
--(void)rightMouseUp:(NSEvent*)event {
-  if (__mouse_up_cb)
-    __mouse_up_cb(MOUSE_RIGHT, translate_mod([event modifierFlags]));
-}
-
--(void)otherMouseDown:(NSEvent*)event {
-  if (__mouse_down_cb)
-    __mouse_down_cb((int)[event buttonNumber], translate_mod([event modifierFlags]));
-}
-
 -(void)otherMouseDragged:(NSEvent*)event {
   [self mouseMoved:event];
-}
-
--(void)otherMouseUp:(NSEvent*)event {
-  if (__mouse_up_cb)
-    __mouse_up_cb((int)[event buttonNumber], translate_mod([event modifierFlags]));
-}
-
--(void)keyDown:(NSEvent *)event {
-  if (__key_down_cb)
-    __key_down_cb(translate_key([event keyCode]), translate_mod([event modifierFlags]));
-}
-
--(void)keyUp:(NSEvent *)event {
-  if (__key_up_cb)
-    __key_up_cb(translate_key([event keyCode]), translate_mod([event modifierFlags]));
 }
 
 -(NSRect)resizeRect {
@@ -1232,21 +1135,75 @@ surface_t* screen(const char* t, int w, int h) {
   return buffer;
 }
 
-bool redraw() {
-  bool ret = true;
-  
-  NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-  [NSApp sendEvent:[NSApp nextEventMatchingMask:NSEventMaskAny
-                                      untilDate:[NSDate distantPast]
-                                         inMode:NSDefaultRunLoopMode
-                                        dequeue:YES]];
-  [pool release];
-  
-  if (app->closed)
-    ret = false;
-  [[app contentView] setNeedsDisplay:YES];
+bool should_close(){
+  return app->closed;
+}
 
+bool poll_events(user_event_t* ue) {
+  bool ret = true;
+  NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
+  NSEvent* e = [NSApp nextEventMatchingMask:NSEventMaskAny
+                                  untilDate:[NSDate distantPast]
+                                     inMode:NSDefaultRunLoopMode
+                                    dequeue:YES];
+  
+  if (ue) {
+    memset(ue, 0, sizeof(user_event_t));
+    if (e) {
+      switch ([e type]) {
+        case NSEventTypeKeyUp:
+          ue->type = KEYBOARD_KEY_UP;
+          ue->sym = translate_key([e keyCode]);
+          ue->mod = translate_mod([e modifierFlags]);
+          break;
+        case NSEventTypeKeyDown:
+          ue->type = KEYBOARD_KEY_DOWN;
+          ue->sym = translate_key([e keyCode]);
+          ue->mod = translate_mod([e modifierFlags]);
+          break;
+        case NSEventTypeLeftMouseUp:
+        case NSEventTypeRightMouseUp:
+        case NSEventTypeOtherMouseUp:
+          ue->type = MOUSE_BTN_UP;
+          ue->btn = (mousebtn_t)[e buttonNumber];
+          ue->mod = translate_mod([e modifierFlags]);
+          ue->data1 = mx;
+          ue->data2 = my;
+          break;
+        case NSEventTypeLeftMouseDown:
+        case NSEventTypeRightMouseDown:
+        case NSEventTypeOtherMouseDown:
+          ue->type = MOUSE_BTN_DOWN;
+          ue->btn = (mousebtn_t)[e buttonNumber];
+          ue->mod = translate_mod([e modifierFlags]);
+          ue->data1 = mx;
+          ue->data2 = my;
+          break;
+        case NSEventTypeScrollWheel:
+          ue->type = SCROLL_WHEEL;
+          ue->data1 = [e deltaX];
+          ue->data2 = [e deltaY];
+          break;
+        default:
+          if (app->closed) {
+            ue->type = WINDOW_CLOSED;
+            ret = true;
+          } else
+            ret = false;
+          break;
+      }
+      [NSApp sendEvent:e];
+    } else
+      ret = false;
+  } else
+    ret = false;
+  
+  [pool release];
   return ret;
+}
+
+void render() {
+  [[app contentView] setNeedsDisplay:YES];
 }
 
 void release() {
