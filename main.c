@@ -32,6 +32,17 @@ int rnd(int x, int y, int c) {
   return RGB(RND_255, RND_255, RND_255);
 }
 
+#define PRINT_CHAR_MAP(fn, min_i, max_i, c) \
+for (i = min_i; i < max_i; ++i, x += 8) { \
+  if (x > win->w) { \
+    x  = 0; \
+    y += 8; \
+  } \
+  fn(win, i, x, y, c); \
+} \
+x  = 0;\
+y += 8;
+
 int main(int argc, const char* argv[]) {
   surface_t* win = screen(NULL, 640, 480);
   if (!win) {
@@ -63,12 +74,12 @@ int main(int argc, const char* argv[]) {
   destroy(&k);
   
   surface_t* f = surface(100, 100);
-  rect(f, 0,  0,  50, 50, RGB(255, 0, 0), true);
-  rect(f, 50, 50, 50, 50, RGB(0, 255, 0), true);
-  rect(f, 50, 0,  50, 50, RGB(0, 0, 255), true);
-  rect(f, 0,  50, 50, 50, RGB(255, 255, 0), true);
+  rect(f, 0,  0,  50, 50, RED, true);
+  rect(f, 50, 50, 50, 50, LIME, true);
+  rect(f, 50, 0,  50, 50, BLUE, true);
+  rect(f, 0,  50, 50, 50, YELLOW, true);
   
-  int r, g, b, col;
+  int col, i, x, y;
   user_event_t ue;
   next_time = ticks() + TICK_INTERVAL;
   while (running) {
@@ -88,28 +99,22 @@ int main(int argc, const char* argv[]) {
     blit(win, &tmpp6, f, NULL, LIME);
     blit(win, &tmpp7, h, NULL, LIME);
     
-    circle(win, 352, 32, 30, RGB(255, 0,   0),   true);
-    circle(win, 382, 32, 30, RGB(255, 127, 0),   true);
-    circle(win, 412, 32, 30, RGB(255, 255, 0),   true);
-    circle(win, 442, 32, 30, RGB(0,   255, 0),   true);
-    circle(win, 472, 32, 30, RGB(0,   0,   255), true);
-    circle(win, 502, 32, 30, RGB(75,  0,   130), true);
-    circle(win, 532, 32, 30, RGB(148, 0,   211), true);
-    
     iterate(a, rnd);
     blit(a, NULL, l, NULL, LIME);
     blit(win, &tmpp3, a, NULL, LIME);
     
-    print_f(win, 10, 8, BLACK, "mouse x,y: (%d, %d)\nA S T H E T I C", mx, my);
+//    circle(win, 352, 32, 30, RED,    true);
+//    circle(win, 382, 32, 30, ORANGE, true);
+//    circle(win, 412, 32, 30, YELLOW, true);
+//    circle(win, 442, 32, 30, LIME,   true);
+//    circle(win, 472, 32, 30, BLUE,   true);
+//    circle(win, 502, 32, 30, INDIGO, true);
+//    circle(win, 532, 32, 30, VIOLET, true);
+    
+    print_f(win, 400, 70, BLACK, "mouse x,y: (%d, %d)\nA S T H E T I C", mx, my);
     
     get_mouse_pos(&mx, &my);
     col = pget(win, mx, my);
-    rgb(col, &r, &g, &b);
-    rect(win, 15, 50, 10, 10, RGB(r, 0, 0), true);
-    rect(win, 35, 50, 10, 10, RGB(0, g, 0), true);
-    rect(win, 55, 50, 10, 10, RGB(0, 0, b), true);
-    print_f(win, 15, 40, RED, "rgb(%d, %d, %d)", r, g, b);
-    
     rect(win, 150, 50,  100, 100, col, false);
     rect(win, 200, 100, 100, 100, col, false);
     line(win, 150, 50,  200, 100, col);
@@ -119,6 +124,15 @@ int main(int argc, const char* argv[]) {
     
     line(win, 0, 0, mx, my, col);
     circle(win, mx, my, 30, col, false);
+    
+    x = 0;
+    y = 0;
+    PRINT_CHAR_MAP(letter, 33, 128, RED);
+    PRINT_CHAR_MAP(letter_block, 0, 32, ORANGE);
+    PRINT_CHAR_MAP(letter_box, 0, 128, GOLDEN_ROD);
+    PRINT_CHAR_MAP(letter_extra, 0, 132, LIME);
+    PRINT_CHAR_MAP(letter_greek, 0, 58, BLUE);
+    PRINT_CHAR_MAP(letter_hiragana, 0, 96, INDIGO);
     
     while (poll_events(&ue)) {
       switch (ue.type) {
