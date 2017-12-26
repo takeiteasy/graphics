@@ -190,7 +190,7 @@ unsigned char* load_file_to_mem(const char* path);
 surface_t* bmp_mem(unsigned char* data);
 surface_t* bmp_fp(FILE* fp);
 surface_t* bmp(const char* path);
-void letter(surface_t* s, unsigned char c, unsigned int x, unsigned int y, int col);
+void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col);
 void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str);
 void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...);
 surface_t* string(int col, int bg, const char* str);
@@ -375,8 +375,6 @@ bool should_close(void);
 bool poll_events(user_event_t* e);
 void render(void);
 void release(void);
-void init_default_font(void);
-void init_sys_keymap(void);
 const char* get_last_error(void);
 void get_mouse_pos(int* x, int* y);
 
