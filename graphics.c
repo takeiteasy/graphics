@@ -6,6 +6,10 @@
 //  Copyright © 2017 Rory B. Bellows. All rights reserved.
 //
 
+#if defined(_WIN32)
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include "graphics.h"
 
 #define XYSET(s, x, y, v) (s->buf[(y) * s->w + (x)] = (v))
@@ -19,6 +23,10 @@ static char last_error[1024];
 const char* get_last_error() {
   return last_error;
 }
+
+static short int keycodes[256];
+static short int scancodes[KB_KEY_LAST + 1];
+static surface_t* buffer;
 
 #define SET_LAST_ERROR(MSG, ...) \
 memset(last_error, 0, 1024); \
@@ -920,12 +928,20 @@ bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
   return true;
 }
 
+#if defined(_MSC_VER)
+#define ALIGN_STRUCT(x) __declspec(align(x))
+#else
+#define ALIGN_STRUCT(x) __attribute__((aligned(x)))
+#endif
+
+#pragma pack(1)
 typedef struct {
   unsigned short type; /* Magic identifier */
   unsigned int size; /* File size in bytes */
   unsigned int reserved;
   unsigned int offset; /* Offset to image data, bytes */
-} __attribute__((packed, aligned(2))) BMPHEADER;
+} ALIGN_STRUCT(2) BMPHEADER;
+#pragma pack()
 
 typedef struct {
   unsigned int size; /* Header size in bytes */
@@ -1210,15 +1226,11 @@ long ticks() {
     ticks_started = true;
   }
   
-  LARGE_INTEGER ticks_now, freq, elapsed;
+  LARGE_INTEGER ticks_now, freq;
   QueryPerformanceCounter(&ticks_now);
   QueryPerformanceFrequency(&freq);
   
-  elapsed.QuadPart = ticks_now.QuadPart - ticks_start.QuadPart;
-  elapsed.QuadPart *= 1000;
-  elapsed.QuadPart /= freq.QuadPart;
-  
-  return elapsed.QuadPart;
+  return ((ticks_now.QuadPart - ticks_start.QuadPart) * 1000) / freq.QuadPart;
 #else
   static struct timespec ticks_start;
   if (!ticks_started) {
@@ -1258,9 +1270,6 @@ void delay(long ms) {
 #define NSEventTypeApplicationDefined NSApplicationDefined
 #define NSEventTypeKeyUp NSKeyUp
 #endif
-
-static short int keycodes[256];
-static short int scancodes[KB_KEY_LAST + 1];
 
 static int translate_mod(NSUInteger flags) {
   int mods = 0;
@@ -1311,7 +1320,6 @@ static int translate_key(unsigned int key) {
 }
 @end
 
-static surface_t* buffer;
 static osx_app_t* app;
 
 @implementation osx_view_t
@@ -1638,12 +1646,18 @@ surface_t* screen(const char* t, int w, int h) {
                                      styleMask:NSWindowStyleMaskClosable | NSWindowStyleMaskTitled
                                        backing:NSBackingStoreBuffered
                                          defer:NO];
-  if (!app)
-    return NULL;
+  if (!app) {
+	  release();
+	  SET_LAST_ERROR("[osx_app_t initWithContentRect] failed");
+	  return NULL;
+  }
   
   id app_del = [AppDelegate alloc];
-  if (!app_del)
-    [NSApp terminate:nil];
+    if (!app_del) {
+	  release();
+	  SET_LAST_ERROR("[AppDelegate alloc] failed");
+	  [NSApp terminate:nil];
+  }
   
   [app setDelegate:app_del];
   [app setAcceptsMouseMovedEvents:YES];
@@ -1689,15 +1703,11 @@ bool poll_events(user_event_t* ue) {
         case NSEventTypeRightMouseUp:
         case NSEventTypeOtherMouseUp:
           ue->type = MOUSE_BTN_UP;
-          ue->btn = (mousebtn_t)[e buttonNumber];
-          ue->mod = translate_mod([e modifierFlags]);
-          ue->data1 = mx;
-          ue->data2 = my;
-          break;
         case NSEventTypeLeftMouseDown:
         case NSEventTypeRightMouseDown:
         case NSEventTypeOtherMouseDown:
-          ue->type = MOUSE_BTN_DOWN;
+          if (ue->type != MOUSE_BTN_UP)
+            ue->type = MOUSE_BTN_DOWN;
           ue->btn = (mousebtn_t)[e buttonNumber];
           ue->mod = translate_mod([e modifierFlags]);
           ue->data1 = mx;
@@ -1738,7 +1748,368 @@ void release() {
   [pool drain];
 }
 #elif defined(_WIN32)
-#error WinAPI not implemented
+static WNDCLASS wnd;
+static HWND hwnd;
+static bool closed = false;
+static HDC hdc;
+static BITMAPINFO* bmpinfo;
+static user_event_t* tmp_ue;
+static bool event_fired = false;
+
+static int translate_mod() {
+  int mods = 0;
+
+  if (GetKeyState(VK_SHIFT) & 0x8000)
+    mods |= KB_MOD_SHIFT;
+  if (GetKeyState(VK_CONTROL) & 0x8000)
+    mods |= KB_MOD_CONTROL;
+  if (GetKeyState(VK_MENU) & 0x8000)
+    mods |= KB_MOD_ALT;
+  if ((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000)
+    mods |= KB_MOD_SUPER;
+  if (GetKeyState(VK_CAPITAL) & 1)
+    mods |= KB_MOD_CAPS_LOCK;
+  if (GetKeyState(VK_NUMLOCK) & 1)
+    mods |= KB_MOD_NUM_LOCK;
+
+  return mods;
+}
+
+static int translate_key(WPARAM wParam, LPARAM lParam) {
+  if (wParam == VK_CONTROL) {
+    MSG next;
+    DWORD time;
+
+    if (lParam & 0x01000000)
+      return KB_KEY_RIGHT_CONTROL;
+
+    time = GetMessageTime();
+    if (PeekMessageW(&next, NULL, 0, 0, PM_NOREMOVE))
+      if (next.message == WM_KEYDOWN || next.message == WM_SYSKEYDOWN || next.message == WM_KEYUP || next.message == WM_SYSKEYUP)
+        if (next.wParam == VK_MENU && (next.lParam & 0x01000000) && next.time == time)
+          return KB_KEY_UNKNOWN;
+
+    return KB_KEY_LEFT_CONTROL;
+  }
+
+  if (wParam == VK_PROCESSKEY)
+    return KB_KEY_UNKNOWN;
+
+  return keycodes[HIWORD(lParam) & 0x1FF];
+}
+
+static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	LRESULT res = 0;
+	switch (message) {
+		case WM_PAINT:
+			if (buffer) {
+				StretchDIBits(hdc, 0, 0, buffer->w, buffer->h, 0, 0, buffer->w, buffer->h, buffer->buf, bmpinfo, DIB_RGB_COLORS, SRCCOPY);
+				ValidateRect(hWnd, NULL);
+			}
+			break;
+    case WM_CLOSE:
+      closed = true;
+      if (tmp_ue)
+        tmp_ue->type = WINDOW_CLOSED;
+      break;
+    case WM_CHAR:
+    case WM_SYSCHAR:
+    case WM_UNICHAR: {
+      const bool plain = (message != WM_SYSCHAR);
+      if (message == WM_UNICHAR && wParam == UNICODE_NOCHAR)
+        return FALSE;
+      tmp_ue->type = KEYBOARD_KEY_UP;
+      tmp_ue->mod = translate_mod();
+      tmp_ue->sym = (unsigned int)wParam;
+      break;
+    }
+    case WM_KEYDOWN:
+    case WM_SYSKEYDOWN:
+    case WM_KEYUP:
+    case WM_SYSKEYUP: {
+      const int key = translate_key(wParam, lParam);
+      const int scancode = (lParam >> 16) & 0x1ff;
+      const int action = ((lParam >> 31) & 1) ? KEYBOARD_KEY_UP : KEYBOARD_KEY_DOWN;
+      const int mods = translate_mod();
+
+      if (key == KB_KEY_UNKNOWN) {
+        tmp_ue = NULL;
+        return FALSE;
+      }
+
+      if (action == KEYBOARD_KEY_UP && wParam == VK_SHIFT) {
+        tmp_ue->type = action;
+        tmp_ue->mod = mods;
+        tmp_ue->sym = KB_KEY_LEFT_SHIFT;
+      } else if (wParam == VK_SNAPSHOT) {
+        tmp_ue->type = KEYBOARD_KEY_UP;
+        tmp_ue->mod = mods;
+        tmp_ue->sym = key;
+      } else {
+        tmp_ue->type = action;
+        tmp_ue->mod = mods;
+        tmp_ue->sym = key;
+      }
+      break;
+    }
+    case WM_LBUTTONDOWN:
+    case WM_RBUTTONDOWN:
+    case WM_MBUTTONDOWN:
+    case WM_XBUTTONDOWN:
+    case WM_LBUTTONUP:
+    case WM_RBUTTONUP:
+    case WM_MBUTTONUP:
+    case WM_XBUTTONUP: {
+      int button, action = MOUSE_BTN_UP;
+
+      switch (message) {
+      case WM_LBUTTONDOWN:
+        action = MOUSE_BTN_DOWN;
+      case WM_LBUTTONUP:
+        button = MOUSE_BTN_0;
+        break;
+      case WM_RBUTTONDOWN:
+        action = MOUSE_BTN_DOWN;
+      case WM_RBUTTONUP:
+        button = MOUSE_BTN_1;
+      case WM_MBUTTONDOWN:
+        action = MOUSE_BTN_DOWN;
+      case WM_MBUTTONUP:
+        button = MOUSE_BTN_2;
+      default:
+        button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? MOUSE_BTN_4 : MOUSE_BTN_5);
+        if (message == WM_XBUTTONDOWN)
+          action = MOUSE_BTN_DOWN;
+      }
+
+      tmp_ue->type = action;
+      tmp_ue->btn = button;
+      tmp_ue->mod = translate_mod();
+      tmp_ue->data1 = mx;
+      tmp_ue->data2 = my;
+      break;
+    }
+    case WM_MOUSEWHEEL:
+    case WM_MOUSEHWHEEL:
+      tmp_ue->type = SCROLL_WHEEL;
+      tmp_ue->data1 = -((SHORT)HIWORD(wParam) / (double)WHEEL_DELTA);
+      tmp_ue->data2 = (SHORT)HIWORD(wParam) / (double)WHEEL_DELTA;
+      break;
+    case WM_MOUSEMOVE:
+      mx = GET_X_LPARAM(lParam);
+      my = GET_Y_LPARAM(lParam);
+      break;
+		default:
+			res = DefWindowProc(hWnd, message, wParam, lParam);
+	}
+	return res;
+}
+
+surface_t* screen(const char* t, int w, int h) {
+	if (!(buffer = surface(w, h)))
+		return NULL;
+	buffer->w = w;
+	buffer->h = h;
+
+	memset(keycodes, -1, sizeof(keycodes));
+	memset(scancodes, -1, sizeof(scancodes));
+
+	keycodes[0x00B] = KB_KEY_0;
+	keycodes[0x002] = KB_KEY_1;
+	keycodes[0x003] = KB_KEY_2;
+	keycodes[0x004] = KB_KEY_3;
+	keycodes[0x005] = KB_KEY_4;
+	keycodes[0x006] = KB_KEY_5;
+	keycodes[0x007] = KB_KEY_6;
+	keycodes[0x008] = KB_KEY_7;
+	keycodes[0x009] = KB_KEY_8;
+	keycodes[0x00A] = KB_KEY_9;
+	keycodes[0x01E] = KB_KEY_A;
+	keycodes[0x030] = KB_KEY_B;
+	keycodes[0x02E] = KB_KEY_C;
+	keycodes[0x020] = KB_KEY_D;
+	keycodes[0x012] = KB_KEY_E;
+	keycodes[0x021] = KB_KEY_F;
+	keycodes[0x022] = KB_KEY_G;
+	keycodes[0x023] = KB_KEY_H;
+	keycodes[0x017] = KB_KEY_I;
+	keycodes[0x024] = KB_KEY_J;
+	keycodes[0x025] = KB_KEY_K;
+	keycodes[0x026] = KB_KEY_L;
+	keycodes[0x032] = KB_KEY_M;
+	keycodes[0x031] = KB_KEY_N;
+	keycodes[0x018] = KB_KEY_O;
+	keycodes[0x019] = KB_KEY_P;
+	keycodes[0x010] = KB_KEY_Q;
+	keycodes[0x013] = KB_KEY_R;
+	keycodes[0x01F] = KB_KEY_S;
+	keycodes[0x014] = KB_KEY_T;
+	keycodes[0x016] = KB_KEY_U;
+	keycodes[0x02F] = KB_KEY_V;
+	keycodes[0x011] = KB_KEY_W;
+	keycodes[0x02D] = KB_KEY_X;
+	keycodes[0x015] = KB_KEY_Y;
+	keycodes[0x02C] = KB_KEY_Z;
+
+	keycodes[0x028] = KB_KEY_APOSTROPHE;
+	keycodes[0x02B] = KB_KEY_BACKSLASH;
+	keycodes[0x033] = KB_KEY_COMMA;
+	keycodes[0x00D] = KB_KEY_EQUAL;
+	keycodes[0x029] = KB_KEY_GRAVE_ACCENT;
+	keycodes[0x01A] = KB_KEY_LEFT_BRACKET;
+	keycodes[0x00C] = KB_KEY_MINUS;
+	keycodes[0x034] = KB_KEY_PERIOD;
+	keycodes[0x01B] = KB_KEY_RIGHT_BRACKET;
+	keycodes[0x027] = KB_KEY_SEMICOLON;
+	keycodes[0x035] = KB_KEY_SLASH;
+	keycodes[0x056] = KB_KEY_WORLD_2;
+
+	keycodes[0x00E] = KB_KEY_BACKSPACE;
+	keycodes[0x153] = KB_KEY_DELETE;
+	keycodes[0x14F] = KB_KEY_END;
+	keycodes[0x01C] = KB_KEY_ENTER;
+	keycodes[0x001] = KB_KEY_ESCAPE;
+	keycodes[0x147] = KB_KEY_HOME;
+	keycodes[0x152] = KB_KEY_INSERT;
+	keycodes[0x15D] = KB_KEY_MENU;
+	keycodes[0x151] = KB_KEY_PAGE_DOWN;
+	keycodes[0x149] = KB_KEY_PAGE_UP;
+	keycodes[0x045] = KB_KEY_PAUSE;
+	keycodes[0x146] = KB_KEY_PAUSE;
+	keycodes[0x039] = KB_KEY_SPACE;
+	keycodes[0x00F] = KB_KEY_TAB;
+	keycodes[0x03A] = KB_KEY_CAPS_LOCK;
+	keycodes[0x145] = KB_KEY_NUM_LOCK;
+	keycodes[0x046] = KB_KEY_SCROLL_LOCK;
+	keycodes[0x03B] = KB_KEY_F1;
+	keycodes[0x03C] = KB_KEY_F2;
+	keycodes[0x03D] = KB_KEY_F3;
+	keycodes[0x03E] = KB_KEY_F4;
+	keycodes[0x03F] = KB_KEY_F5;
+	keycodes[0x040] = KB_KEY_F6;
+	keycodes[0x041] = KB_KEY_F7;
+	keycodes[0x042] = KB_KEY_F8;
+	keycodes[0x043] = KB_KEY_F9;
+	keycodes[0x044] = KB_KEY_F10;
+	keycodes[0x057] = KB_KEY_F11;
+	keycodes[0x058] = KB_KEY_F12;
+	keycodes[0x064] = KB_KEY_F13;
+	keycodes[0x065] = KB_KEY_F14;
+	keycodes[0x066] = KB_KEY_F15;
+	keycodes[0x067] = KB_KEY_F16;
+	keycodes[0x068] = KB_KEY_F17;
+	keycodes[0x069] = KB_KEY_F18;
+	keycodes[0x06A] = KB_KEY_F19;
+	keycodes[0x06B] = KB_KEY_F20;
+	keycodes[0x06C] = KB_KEY_F21;
+	keycodes[0x06D] = KB_KEY_F22;
+	keycodes[0x06E] = KB_KEY_F23;
+	keycodes[0x076] = KB_KEY_F24;
+	keycodes[0x038] = KB_KEY_LEFT_ALT;
+	keycodes[0x01D] = KB_KEY_LEFT_CONTROL;
+	keycodes[0x02A] = KB_KEY_LEFT_SHIFT;
+	keycodes[0x15B] = KB_KEY_LEFT_SUPER;
+	keycodes[0x137] = KB_KEY_PRINT_SCREEN;
+	keycodes[0x138] = KB_KEY_RIGHT_ALT;
+	keycodes[0x11D] = KB_KEY_RIGHT_CONTROL;
+	keycodes[0x036] = KB_KEY_RIGHT_SHIFT;
+	keycodes[0x15C] = KB_KEY_RIGHT_SUPER;
+	keycodes[0x150] = KB_KEY_DOWN;
+	keycodes[0x14B] = KB_KEY_LEFT;
+	keycodes[0x14D] = KB_KEY_RIGHT;
+	keycodes[0x148] = KB_KEY_UP;
+
+	keycodes[0x052] = KB_KEY_KP_0;
+	keycodes[0x04F] = KB_KEY_KP_1;
+	keycodes[0x050] = KB_KEY_KP_2;
+	keycodes[0x051] = KB_KEY_KP_3;
+	keycodes[0x04B] = KB_KEY_KP_4;
+	keycodes[0x04C] = KB_KEY_KP_5;
+	keycodes[0x04D] = KB_KEY_KP_6;
+	keycodes[0x047] = KB_KEY_KP_7;
+	keycodes[0x048] = KB_KEY_KP_8;
+	keycodes[0x049] = KB_KEY_KP_9;
+	keycodes[0x04E] = KB_KEY_KP_ADD;
+	keycodes[0x053] = KB_KEY_KP_DECIMAL;
+	keycodes[0x135] = KB_KEY_KP_DIVIDE;
+	keycodes[0x11C] = KB_KEY_KP_ENTER;
+	keycodes[0x037] = KB_KEY_KP_MULTIPLY;
+	keycodes[0x04A] = KB_KEY_KP_SUBTRACT;
+
+	for (int sc = 0; sc < 512; sc++) {
+		if (keycodes[sc] > 0)
+			scancodes[keycodes[sc]] = sc;
+	}
+
+	RECT rect = { 0 };
+
+	wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
+	wnd.lpfnWndProc = WndProc;
+	wnd.hCursor = LoadCursor(0, IDC_ARROW);
+	wnd.lpszClassName = t;
+	RegisterClass(&wnd);
+
+	rect.right = w;
+	rect.bottom = h;
+
+	AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
+
+	rect.right -= rect.left;
+	rect.bottom -= rect.top;
+
+	if (!(hwnd = CreateWindowEx(0, t, t, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME, CW_USEDEFAULT, CW_USEDEFAULT, rect.right, rect.bottom, 0, 0, 0, 0))) {
+		release();
+		SET_LAST_ERROR("CreateWindowEx() failed: %s", GetLastError());
+		return NULL;
+	}
+
+	ShowWindow(hwnd, SW_NORMAL);
+
+	bmpinfo = (BITMAPINFO*)calloc(1, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
+	bmpinfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bmpinfo->bmiHeader.biPlanes = 1;
+	bmpinfo->bmiHeader.biBitCount = 32;
+	bmpinfo->bmiHeader.biCompression = BI_BITFIELDS;
+	bmpinfo->bmiHeader.biWidth = w;
+	bmpinfo->bmiHeader.biHeight = -h;
+	bmpinfo->bmiColors[0].rgbRed = 0xff;
+	bmpinfo->bmiColors[1].rgbGreen = 0xff;
+	bmpinfo->bmiColors[2].rgbBlue = 0xff;
+
+	hdc = GetDC(hwnd);
+
+	return buffer;
+}
+
+bool should_close() {
+	return closed;
+}
+
+bool poll_events(user_event_t* ue) {
+  if (!ue)
+    return false;
+  memset(ue, 0, sizeof(user_event_t));
+  tmp_ue = ue;
+
+  MSG msg;
+  if (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+    return !!tmp_ue;
+  }
+	return false;
+}
+
+void render() {
+	InvalidateRect(hwnd, NULL, TRUE);
+	SendMessage(hwnd, WM_PAINT, 0, 0);
+}
+
+void release() {
+	destroy(&buffer);
+	ReleaseDC(hwnd, hdc);
+	DestroyWindow(hwnd);
+}
 #else
-#error X11 not implemented
+#error X11 not implemented yet
 #endif

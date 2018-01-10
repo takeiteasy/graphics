@@ -17,9 +17,17 @@ extern "C" {
 #include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <time.h>
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <windowsx.h>
+#include <shellapi.h>
+#else
+#include <unistd.h>
+#endif // defined(_WIN32)
+
 
 #define RGB(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
 
@@ -187,7 +195,6 @@ bool xline(surface_t* s, int y, int x1, int x2, int col);
 bool line(surface_t* s, int x1, int y1, int x2, int y2, int col);
 bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill);
 bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill);
-unsigned char* load_file_to_mem(const char* path);
 surface_t* bmp_mem(unsigned char* data);
 surface_t* bmp_fp(FILE* fp);
 surface_t* bmp(const char* path);
@@ -203,7 +210,7 @@ surface_t* string(int col, int bg, const char* str);
 surface_t* string_f(int col, int bg, const char* fmt, ...);
 void rgb(int c, int* r, int* g, int* b);
 surface_t* copy(surface_t* s);
-void iterate(surface_t*, int (*fn)(int, int, int));
+void iterate(surface_t* s, int(*fn)(int x, int y, int col));
 long ticks(void);
 void delay(long ms);
 

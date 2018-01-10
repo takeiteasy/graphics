@@ -2,7 +2,7 @@
 
 /* TODO:
  *  - ANSI colour escapes for print()
- *  - Linux/Windows window code
+ *  - Linux X11/Wayland window code
  *  - Add GRAPHICS_EXTRA_CHARMAPS for library build
  *  - Documentation & comments
  *
@@ -46,14 +46,20 @@ x  = 5;\
 y += 8;
 
 int main(int argc, const char* argv[]) {
-  surface_t* win = screen(NULL, 640, 480);
+  surface_t* win = screen("test", 640, 480);
   if (!win) {
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
   }
   
   surface_t* a = surface(50, 50);
+#if defined(__APPLE__)
   surface_t* c = bmp("Uncompressed-24.bmp");
+#elif defined(_WIN32)
+  surface_t* c = bmp("C:\\Users\\DESKTOP\\source\\repos\\graphics_windows\\Debug\\Uncompressed-24.bmp");
+#else
+  surface_t* c = NULL;
+#endif
   surface_t* e = copy(c);
   iterate(e, invert);
   
@@ -144,6 +150,9 @@ int main(int argc, const char* argv[]) {
         case KEYBOARD_KEY_DOWN:
 #if defined(__APPLE__)
           if (ue.sym == KB_KEY_Q && ue.mod & KB_MOD_SUPER)
+            running = 0;
+#else
+          if (ue.sym == KB_KEY_F4 && ue.mod & KB_MOD_ALT)
             running = 0;
 #endif
           break;
