@@ -1,10 +1,14 @@
 #include "graphics.h"
 
 /* TODO:
- *  - ANSI colour escapes for print()
+ *  - Colour escapes for print()
  *  - Linux X11/Wayland window code
+ *  - Window resize events
+ *  - Fullscreening
+ *  - Cursor lock/hide
+ *  - Any other window events
  *  - Add GRAPHICS_EXTRA_CHARMAPS for library build
- *  - Documentation & comments
+ *  - Documentation, comments & more examples
  *
  * EXTRA:
  *  - Extended surface functions, resize, rotate, filters, etc

@@ -1,4 +1,3 @@
-*.xcodeproj
 a.out
 libgraphics.a
 libgraphics.dylib
