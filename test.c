@@ -60,7 +60,7 @@ int main(int argc, const char* argv[]) {
 #if defined(__APPLE__)
   surface_t* c = bmp("Uncompressed-24.bmp");
 #elif defined(_WIN32)
-  surface_t* c = bmp("C:\\Users\\DESKTOP\\source\\repos\\graphics_windows\\Debug\\Uncompressed-24.bmp");
+  surface_t* c = bmp("C:\\Users\\DESKTOP\\Documents\\git\\graphics.h\\x64\\Debug\\Uncompressed-24.bmp");
 #else
   surface_t* c = NULL;
 #endif

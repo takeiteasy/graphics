@@ -3,3 +3,4 @@ libgraphics.a
 libgraphics.dylib
 Debug/
 .vs/
+x64/
