@@ -642,7 +642,7 @@ surface_t* surface(unsigned int w, unsigned int h) {
     SET_LAST_ERROR("malloc() failed");
     return NULL;
   }
-  
+
   ret->w = w;
   ret->h = h;
   size_t s = w * h * sizeof(unsigned int) + 1;
@@ -652,7 +652,7 @@ surface_t* surface(unsigned int w, unsigned int h) {
     return NULL;
   }
   memset(ret->buf, 0, s);
-  
+
   return ret;
 }
 
@@ -677,7 +677,7 @@ bool pset(surface_t* s, int x, int y, int col) {
     SET_LAST_ERROR("pset() failed! x/y outside of bounds");
     return false;
   }
-  
+
   XYSET(s, x, y, col);
   return true;
 }
@@ -687,7 +687,7 @@ int pget(surface_t* s, int x, int y) {
     SET_LAST_ERROR("pget() failed! x/y outside of bounds");
     return 0;
   }
-  
+
   return XYGET(s, x, y);
 }
 
@@ -705,7 +705,7 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, int chroma) {
     width  = r->w;
     height = r->h;
   }
-  
+
   if (offset_x < 0) {
     from_x += abs(offset_x);
     width -= abs(offset_x);
@@ -716,16 +716,16 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, int chroma) {
     height -= abs(offset_y);
     offset_y = 0;
   }
-  
+
   int to_x = offset_x + width, to_y = offset_y + height;
   if (to_x > dst->w)
     width += (dst->w - to_x);
   if (to_y > dst->h)
     height += (dst->h - to_y);
-  
+
   if (offset_x > dst->w || offset_y > dst->h || to_x < 0 || to_y < 0)
     return false;
-  
+
   int x, y, c;
   for (x = 0; x < width; ++x) {
     for (y = 0; y < height; ++y) {
@@ -740,18 +740,18 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, int chroma) {
 bool yline(surface_t* s, int x, int y1, int y2, int col) {
   if (x < 0 || x >= s->w)
     return false;
-  
+
   if (y2 < y1) {
     y1 += y2;
     y2  = y1 - y2;
     y1 -= y2;
   }
-  
+
   if (y1 < 0)
     y1 = 0;
   if (y2 >= s->h)
     y2 = s->h - 1;
-  
+
   for(int y = y1; y <= y2; y++)
     XYSET(s, x, y, col);
   return true;
@@ -760,18 +760,18 @@ bool yline(surface_t* s, int x, int y1, int y2, int col) {
 bool xline(surface_t* s, int y, int x1, int x2, int col) {
   if (y < 0 || y >= s->h)
     return false;
-  
+
   if (x2 < x1) {
     x1 += x2;
     x2  = x1 - x2;
     x1 -= x2;
   }
-  
+
   if (x1 < 0)
     x1 = 0;
   if (x2 >= s->w)
     x2 = s->w - 1;
-  
+
   for(int x = x1; x <= x2; x++)
     XYSET(s, x, y, col);
   return true;
@@ -782,7 +782,7 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
     return yline(s, x1, y1, y2, col);
   if (y1 == y2)
     return xline(s, y1, x1, x2, col);
-  
+
   int xi1, xi2, yi1, yi2, d, n, na, np, p;
   if (x2 > x1) {
     if (x2 > s->w)
@@ -799,7 +799,7 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
     xi1 = -1;
     xi2 = -1;
   }
-  
+
   if(y2 > y1) {
     if (y2 > s->h)
       y2 = s->h;
@@ -815,7 +815,7 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
     yi1 = -1;
     yi2 = -1;
   }
-  
+
   int x = x1, y = y1, dx = abs(x2 - x1), dy = abs(y2 - y1);
   if (dx > dy) {
     xi1 = 0;
@@ -832,7 +832,7 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
     na = dx;
     np = dy;
   }
-  
+
   for (p = 0; p <= np; ++p) {
     XYSET(s, x % s->w, y % s->h, col);
     n += na;
@@ -850,11 +850,11 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
 bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
   if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
     return false;
-  
+
   int x = 0, y = r, p = 3 - (r << 1);
   int pb = yc + r + 1, pd = yc + r + 1;
   int a, b, c, d, e, f, g, h;
-  
+
   while (x <= y) {
     a = xc + x;
     b = yc + y;
@@ -864,7 +864,7 @@ bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
     f = yc + x;
     g = xc - y;
     h = yc - x;
-    
+
     if (fill) {
       if (b != pb)
         xline(s, b, a, c, col);
@@ -879,7 +879,7 @@ bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
       XYSETSAFE(s, c, d, col);
       XYSETSAFE(s, e, f, col);
       XYSETSAFE(s, g, f, col);
-      
+
       if (x > 0) {
         XYSETSAFE(s, a, d, col);
         XYSETSAFE(s, c, b, col);
@@ -887,7 +887,7 @@ bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
         XYSETSAFE(s, g, h, col);
       }
     }
-    
+
     pb = b;
     pd = d;
     p += (p < 0 ? (x++ << 2) + 6 : ((x++ - y--) << 2) + 10);
@@ -904,17 +904,17 @@ bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
     h += y;
     y  = 0;
   }
-  
+
   w += x;
   h += y;
   if (w < 0 || h < 0 || x > s->w || y > s->h)
     return false;
-  
+
   if (w > s->w)
     w = s->w;
   if (h > s->h)
     h = s->h;
-  
+
   if (fill) {
     for (; y < h; ++y)
       xline(s, y, x, w, col);
@@ -974,12 +974,12 @@ surface_t* bmp_mem(unsigned char* data) {
   BMPINFOHEADER info;
   BMP_GET(&header, data, sizeof(BMPHEADER));
   BMP_GET(&info, data, sizeof(BMPINFOHEADER));
-  
+
   if (header.type != 0x4D42) {
     SET_LAST_ERROR("loadbmp() failed: invalid BMP signiture '%d'", header.type);
     return NULL;
   }
-  
+
   unsigned char* color_map = NULL;
   int color_map_size = 0;
   if (info.bits <= 8) {
@@ -991,7 +991,7 @@ surface_t* bmp_mem(unsigned char* data) {
     }
     BMP_GET(color_map, data, color_map_size);
   }
-  
+
   surface_t* ret = surface(info.width, info.height);
   if (!ret) {
     if (color_map)
@@ -999,7 +999,7 @@ surface_t* bmp_mem(unsigned char* data) {
     SET_LAST_ERROR("malloc() failed");
     return NULL;
   }
-  
+
   off = header.offset;
   int i, j, c, s = info.width * info.height;
   unsigned char color;
@@ -1047,10 +1047,10 @@ surface_t* bmp_mem(unsigned char* data) {
       destroy(&ret);
       break;
   }
-  
+
   if (color_map)
     free(color_map);
-  
+
   return ret;
 }
 
@@ -1059,14 +1059,14 @@ surface_t* bmp_fp(FILE* fp) {
     SET_LAST_ERROR("bmp_fp() failed: file pointer null\n");
     return NULL;
   }
-  
+
   fseek(fp, 0, SEEK_END);
   size_t length = ftell(fp);
   rewind(fp);
-  
+
   unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
   fread(data, 1, length, fp);
-  
+
   surface_t* ret = bmp_mem(data);
   free(data);
   return ret;
@@ -1078,7 +1078,7 @@ surface_t* bmp(const char* path) {
     SET_LAST_ERROR("fopen() failed: %s\n", path);
     return NULL;
   }
-  
+
   surface_t* ret = bmp_fp(fp);
   fclose(fp);
   return ret;
@@ -1136,12 +1136,12 @@ void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* st
 void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...) {
   char *buffer = NULL;
   size_t buffer_size = 0;
-  
+
   va_list argptr;
   va_start(argptr, fmt);
   int length = vsnprintf(buffer, buffer_size, fmt, argptr);
   va_end(argptr);
-  
+
   if (length + 1 > buffer_size) {
     buffer_size = length + 1;
     buffer = realloc(buffer, buffer_size);
@@ -1149,7 +1149,7 @@ void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* 
     vsnprintf(buffer, buffer_size, fmt, argptr);
     va_end(argptr);
   }
-  
+
   print(s, x, y, col, buffer);
   free(buffer);
 }
@@ -1169,7 +1169,7 @@ surface_t* string(int col, int bg, const char* str) {
   }
   if (x > w)
     w = x;
-  
+
   surface_t* ret = surface(w, h);
   fill(ret, bg);
   print(ret, 0, 0, col, str);
@@ -1179,12 +1179,12 @@ surface_t* string(int col, int bg, const char* str) {
 surface_t* string_f(int col, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   size_t buffer_size = 0;
-  
+
   va_list argptr;
   va_start(argptr, fmt);
   int length = vsnprintf(buffer, buffer_size, fmt, argptr);
   va_end(argptr);
-  
+
   if (length + 1 > buffer_size) {
     buffer_size = length + 1;
     buffer = realloc(buffer, buffer_size);
@@ -1192,7 +1192,7 @@ surface_t* string_f(int col, int bg, const char* fmt, ...) {
     vsnprintf(buffer, buffer_size, fmt, argptr);
     va_end(argptr);
   }
-  
+
   surface_t* ret = string(col, bg, buffer);
   free(buffer);
   return ret;
@@ -1224,11 +1224,11 @@ long ticks() {
     QueryPerformanceCounter(&ticks_start);
     ticks_started = true;
   }
-  
+
   LARGE_INTEGER ticks_now, freq;
   QueryPerformanceCounter(&ticks_now);
   QueryPerformanceFrequency(&freq);
-  
+
   return ((ticks_now.QuadPart - ticks_start.QuadPart) * 1000) / freq.QuadPart;
 #else
   static struct timespec ticks_start;
@@ -1236,7 +1236,7 @@ long ticks() {
     clock_gettime(CLOCK_MONOTONIC, &ticks_start);
     ticks_started = true;
   }
-  
+
   struct timespec ticks_now;
   clock_gettime(CLOCK_MONOTONIC, &ticks_now);
   return ((ticks_now.tv_sec * 1000) + (ticks_now.tv_nsec / 1000000)) - ((ticks_start.tv_sec * 1000) + (ticks_start.tv_nsec / 1000000));
@@ -1272,7 +1272,7 @@ void delay(long ms) {
 
 static int translate_mod(NSUInteger flags) {
   int mods = 0;
-  
+
   if (flags & NSEventModifierFlagShift)
     mods |= KB_MOD_SHIFT;
   if (flags & NSEventModifierFlagControl)
@@ -1283,7 +1283,7 @@ static int translate_mod(NSUInteger flags) {
     mods |= KB_MOD_SUPER;
   if (flags & NSEventModifierFlagCapsLock)
     mods |= KB_MOD_CAPS_LOCK;
-  
+
   return mods;
 }
 
@@ -1338,12 +1338,12 @@ extern surface_t* buffer;
     [self removeTrackingArea:track];
     [track release];
   }
-  
+
   track = [[NSTrackingArea alloc] initWithRect:[self bounds]
                                        options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow | NSTrackingEnabledDuringMouseDrag | NSTrackingCursorUpdate | NSTrackingInVisibleRect | NSTrackingAssumeInside | NSTrackingMouseMoved
                                          owner:self
                                       userInfo:nil];
-  
+
   [self addTrackingArea:track];
   [super updateTrackingAreas];
 }
@@ -1380,21 +1380,21 @@ extern surface_t* buffer;
 
 -(void)drawRect:(NSRect)r {
   (void)r;
-  
+
   if (!buffer)
     return;
-  
+
   CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
-  
+
   CGColorSpaceRef s = CGColorSpaceCreateDeviceRGB();
   CGDataProviderRef p = CGDataProviderCreateWithData(NULL, buffer->buf, buffer->w * buffer->h * 4, NULL);
   CGImageRef img = CGImageCreate(buffer->w, buffer->h, 8, 32, buffer->w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, false, kCGRenderingIntentDefault);
-  
+
   CGColorSpaceRelease(s);
   CGDataProviderRelease(p);
-  
+
   CGContextDrawImage(ctx, CGRectMake(0, 0, buffer->w, buffer->h), img);
-  
+
   CGImageRelease(img);
 }
 
@@ -1413,7 +1413,7 @@ extern surface_t* buffer;
   if (self) {
     [self setOpaque:YES];
     [self setBackgroundColor:[NSColor clearColor]];
-    
+
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(win_changed:)
                                                  name:NSWindowDidBecomeMainNotification
@@ -1426,7 +1426,7 @@ extern surface_t* buffer;
                                              selector:@selector(win_close)
                                                  name:NSWindowWillCloseNotification
                                                object:self];
-    
+
     closed = false;
   }
   return self;
@@ -1442,19 +1442,19 @@ extern surface_t* buffer;
   NSSize childBoundsSize = [view bounds].size;
   sizeDelta.width -= childBoundsSize.width;
   sizeDelta.height -= childBoundsSize.height;
-  
+
   osx_view_t* fv = [super contentView];
   NSSize ns  = [fv bounds].size;
   ns.width  += sizeDelta.width;
   ns.height += sizeDelta.height;
-  
+
   [super setContentSize:ns];
 }
 
 -(void)setContentView:(NSView *)v {
   if ([view isEqualTo:v])
     return;
-  
+
   NSRect b = [self frame];
   b.origin = NSZeroPoint;
   osx_view_t* fv = [super contentView];
@@ -1463,10 +1463,10 @@ extern surface_t* buffer;
     [super setContentView:fv];
     [super makeFirstResponder:fv];
   }
-  
+
   if (view)
     [view removeFromSuperview];
-  
+
   view = v;
   [view setFrame:[self contentRectForFrameRect:b]];
   [view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
@@ -1509,10 +1509,10 @@ surface_t* screen(const char* t, int w, int h) {
     return NULL;
   buffer->w = w;
   buffer->h = h;
-  
+
   memset(keycodes,  -1, sizeof(keycodes));
   memset(scancodes, -1, sizeof(scancodes));
-  
+
   keycodes[0x1D] = KB_KEY_0;
   keycodes[0x12] = KB_KEY_1;
   keycodes[0x13] = KB_KEY_2;
@@ -1549,7 +1549,7 @@ surface_t* screen(const char* t, int w, int h) {
   keycodes[0x07] = KB_KEY_X;
   keycodes[0x10] = KB_KEY_Y;
   keycodes[0x06] = KB_KEY_Z;
-  
+
   keycodes[0x27] = KB_KEY_APOSTROPHE;
   keycodes[0x2A] = KB_KEY_BACKSLASH;
   keycodes[0x2B] = KB_KEY_COMMA;
@@ -1562,7 +1562,7 @@ surface_t* screen(const char* t, int w, int h) {
   keycodes[0x29] = KB_KEY_SEMICOLON;
   keycodes[0x2C] = KB_KEY_SLASH;
   keycodes[0x0A] = KB_KEY_WORLD_1;
-  
+
   keycodes[0x33] = KB_KEY_BACKSPACE;
   keycodes[0x39] = KB_KEY_CAPS_LOCK;
   keycodes[0x75] = KB_KEY_DELETE;
@@ -1609,7 +1609,7 @@ surface_t* screen(const char* t, int w, int h) {
   keycodes[0x31] = KB_KEY_SPACE;
   keycodes[0x30] = KB_KEY_TAB;
   keycodes[0x7E] = KB_KEY_UP;
-  
+
   keycodes[0x52] = KB_KEY_KP_0;
   keycodes[0x53] = KB_KEY_KP_1;
   keycodes[0x54] = KB_KEY_KP_2;
@@ -1627,16 +1627,16 @@ surface_t* screen(const char* t, int w, int h) {
   keycodes[0x51] = KB_KEY_KP_EQUAL;
   keycodes[0x43] = KB_KEY_KP_MULTIPLY;
   keycodes[0x4E] = KB_KEY_KP_SUBTRACT;
-  
+
   for (int sc = 0;  sc < 256; ++sc) {
     if (keycodes[sc] >= 0)
       scancodes[keycodes[sc]] = sc;
   }
-  
+
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-  
+
   app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h + 22)
                                      styleMask:NSWindowStyleMaskClosable | NSWindowStyleMaskTitled
                                        backing:NSBackingStoreBuffered
@@ -1646,14 +1646,14 @@ surface_t* screen(const char* t, int w, int h) {
     SET_LAST_ERROR("[osx_app_t initWithContentRect] failed");
     return NULL;
   }
-  
+
   id app_del = [AppDelegate alloc];
   if (!app_del) {
     release();
     SET_LAST_ERROR("[AppDelegate alloc] failed");
     [NSApp terminate:nil];
   }
-  
+
   [app setDelegate:app_del];
   [app setAcceptsMouseMovedEvents:YES];
   [app setRestorable:NO];
@@ -1661,10 +1661,10 @@ surface_t* screen(const char* t, int w, int h) {
   [app setReleasedWhenClosed:NO];
   [app performSelectorOnMainThread:@selector(makeKeyAndOrderFront:) withObject:nil waitUntilDone:YES];
   [app center];
-  
+
   [NSApp activateIgnoringOtherApps:YES];
   [pool drain];
-  
+
   return buffer;
 }
 
@@ -1679,7 +1679,7 @@ bool poll_events(user_event_t* ue) {
                                   untilDate:[NSDate distantPast]
                                      inMode:NSDefaultRunLoopMode
                                     dequeue:YES];
-  
+
   if (ue) {
     memset(ue, 0, sizeof(user_event_t));
     if (e) {
@@ -1728,7 +1728,7 @@ bool poll_events(user_event_t* ue) {
     [NSApp sendEvent:e];
     ret = false;
   }
-  
+
   [pool release];
   return ret;
 }
@@ -1755,7 +1755,7 @@ static bool event_fired = false;
 
 static int translate_mod() {
   int mods = 0;
-  
+
   if (GetKeyState(VK_SHIFT) & 0x8000)
     mods |= KB_MOD_SHIFT;
   if (GetKeyState(VK_CONTROL) & 0x8000)
@@ -1768,7 +1768,7 @@ static int translate_mod() {
     mods |= KB_MOD_CAPS_LOCK;
   if (GetKeyState(VK_NUMLOCK) & 1)
     mods |= KB_MOD_NUM_LOCK;
-  
+
   return mods;
 }
 
@@ -1776,22 +1776,22 @@ static int translate_key(WPARAM wParam, LPARAM lParam) {
   if (wParam == VK_CONTROL) {
     MSG next;
     DWORD time;
-    
+
     if (lParam & 0x01000000)
       return KB_KEY_RIGHT_CONTROL;
-    
+
     time = GetMessageTime();
     if (PeekMessageW(&next, NULL, 0, 0, PM_NOREMOVE))
       if (next.message == WM_KEYDOWN || next.message == WM_SYSKEYDOWN || next.message == WM_KEYUP || next.message == WM_SYSKEYUP)
         if (next.wParam == VK_MENU && (next.lParam & 0x01000000) && next.time == time)
           return KB_KEY_UNKNOWN;
-    
+
     return KB_KEY_LEFT_CONTROL;
   }
-  
+
   if (wParam == VK_PROCESSKEY)
     return KB_KEY_UNKNOWN;
-  
+
   return keycodes[HIWORD(lParam) & 0x1FF];
 }
 
@@ -1828,12 +1828,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       const int scancode = (lParam >> 16) & 0x1ff;
       const int action = ((lParam >> 31) & 1) ? KEYBOARD_KEY_UP : KEYBOARD_KEY_DOWN;
       const int mods = translate_mod();
-      
+
       if (key == KB_KEY_UNKNOWN) {
         tmp_ue = NULL;
         return FALSE;
       }
-      
+
       if (action == KEYBOARD_KEY_UP && wParam == VK_SHIFT) {
         tmp_ue->type = action;
         tmp_ue->mod = mods;
@@ -1858,7 +1858,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
     case WM_MBUTTONUP:
     case WM_XBUTTONUP: {
       int button, action = MOUSE_BTN_UP;
-      
+
       switch (message) {
         case WM_LBUTTONDOWN:
           action = MOUSE_BTN_DOWN;
@@ -1878,7 +1878,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
           if (message == WM_XBUTTONDOWN)
             action = MOUSE_BTN_DOWN;
       }
-      
+
       tmp_ue->type = action;
       tmp_ue->btn = button;
       tmp_ue->mod = translate_mod();
@@ -1907,10 +1907,10 @@ surface_t* screen(const char* t, int w, int h) {
     return NULL;
   buffer->w = w;
   buffer->h = h;
-  
+
   memset(keycodes, -1, sizeof(keycodes));
   memset(scancodes, -1, sizeof(scancodes));
-  
+
   keycodes[0x00B] = KB_KEY_0;
   keycodes[0x002] = KB_KEY_1;
   keycodes[0x003] = KB_KEY_2;
@@ -1947,7 +1947,7 @@ surface_t* screen(const char* t, int w, int h) {
   keycodes[0x02D] = KB_KEY_X;
   keycodes[0x015] = KB_KEY_Y;
   keycodes[0x02C] = KB_KEY_Z;
-  
+
   keycodes[0x028] = KB_KEY_APOSTROPHE;
   keycodes[0x02B] = KB_KEY_BACKSLASH;
   keycodes[0x033] = KB_KEY_COMMA;
@@ -1960,7 +1960,7 @@ surface_t* screen(const char* t, int w, int h) {
   keycodes[0x027] = KB_KEY_SEMICOLON;
   keycodes[0x035] = KB_KEY_SLASH;
   keycodes[0x056] = KB_KEY_WORLD_2;
-  
+
   keycodes[0x00E] = KB_KEY_BACKSPACE;
   keycodes[0x153] = KB_KEY_DELETE;
   keycodes[0x14F] = KB_KEY_END;
@@ -2015,7 +2015,7 @@ surface_t* screen(const char* t, int w, int h) {
   keycodes[0x14B] = KB_KEY_LEFT;
   keycodes[0x14D] = KB_KEY_RIGHT;
   keycodes[0x148] = KB_KEY_UP;
-  
+
   keycodes[0x052] = KB_KEY_KP_0;
   keycodes[0x04F] = KB_KEY_KP_1;
   keycodes[0x050] = KB_KEY_KP_2;
@@ -2032,36 +2032,36 @@ surface_t* screen(const char* t, int w, int h) {
   keycodes[0x11C] = KB_KEY_KP_ENTER;
   keycodes[0x037] = KB_KEY_KP_MULTIPLY;
   keycodes[0x04A] = KB_KEY_KP_SUBTRACT;
-  
+
   for (int sc = 0; sc < 512; sc++) {
     if (keycodes[sc] > 0)
       scancodes[keycodes[sc]] = sc;
   }
-  
+
   RECT rect = { 0 };
-  
+
   wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
   wnd.lpfnWndProc = WndProc;
   wnd.hCursor = LoadCursor(0, IDC_ARROW);
   wnd.lpszClassName = t;
   RegisterClass(&wnd);
-  
+
   rect.right = w;
   rect.bottom = h;
-  
+
   AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
-  
+
   rect.right -= rect.left;
   rect.bottom -= rect.top;
-  
+
   if (!(hwnd = CreateWindowEx(0, t, t, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME, CW_USEDEFAULT, CW_USEDEFAULT, rect.right, rect.bottom, 0, 0, 0, 0))) {
     release();
     SET_LAST_ERROR("CreateWindowEx() failed: %s", GetLastError());
     return NULL;
   }
-  
+
   ShowWindow(hwnd, SW_NORMAL);
-  
+
   bmpinfo = (BITMAPINFO*)calloc(1, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
   bmpinfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
   bmpinfo->bmiHeader.biPlanes = 1;
@@ -2072,9 +2072,9 @@ surface_t* screen(const char* t, int w, int h) {
   bmpinfo->bmiColors[0].rgbRed = 0xff;
   bmpinfo->bmiColors[1].rgbGreen = 0xff;
   bmpinfo->bmiColors[2].rgbBlue = 0xff;
-  
+
   hdc = GetDC(hwnd);
-  
+
   return buffer;
 }
 
@@ -2087,7 +2087,7 @@ bool poll_events(user_event_t* ue) {
     return false;
   memset(ue, 0, sizeof(user_event_t));
   tmp_ue = ue;
-  
+
   MSG msg;
   if (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
     TranslateMessage(&msg);
@@ -2114,18 +2114,288 @@ static surface_t* buffer;
 static Window win;
 static GC gc;
 static XImage* img;
+static XEvent event;
+static KeySym sym;
+
+#define Button6 6
+#define Button7 7
+
+static int translate_keycode(int scancode) {
+  if (scancode < 8 || scancode > 255)
+    return KB_KEY_UNKNOWN;
+
+  int _sym = XkbKeycodeToKeysym(display, scancode, 0, 1);
+  switch (_sym) {
+  case XK_KP_0:           return KB_KEY_KP_0;
+  case XK_KP_1:           return KB_KEY_KP_1;
+  case XK_KP_2:           return KB_KEY_KP_2;
+  case XK_KP_3:           return KB_KEY_KP_3;
+  case XK_KP_4:           return KB_KEY_KP_4;
+  case XK_KP_5:           return KB_KEY_KP_5;
+  case XK_KP_6:           return KB_KEY_KP_6;
+  case XK_KP_7:           return KB_KEY_KP_7;
+  case XK_KP_8:           return KB_KEY_KP_8;
+  case XK_KP_9:           return KB_KEY_KP_9;
+  case XK_KP_Separator:
+  case XK_KP_Decimal:     return KB_KEY_KP_DECIMAL;
+  case XK_KP_Equal:       return KB_KEY_KP_EQUAL;
+  case XK_KP_Enter:       return KB_KEY_KP_ENTER;
+  default:
+    break;
+  }
+  _sym = XkbKeycodeToKeysym(display, scancode, 0, 0);
+
+  switch (_sym) {
+  case XK_Escape:         return KB_KEY_ESCAPE;
+  case XK_Tab:            return KB_KEY_TAB;
+  case XK_Shift_L:        return KB_KEY_LEFT_SHIFT;
+  case XK_Shift_R:        return KB_KEY_RIGHT_SHIFT;
+  case XK_Control_L:      return KB_KEY_LEFT_CONTROL;
+  case XK_Control_R:      return KB_KEY_RIGHT_CONTROL;
+  case XK_Meta_L:
+  case XK_Alt_L:          return KB_KEY_LEFT_ALT;
+  case XK_Mode_switch: // Mapped to Alt_R on many keyboards
+  case XK_ISO_Level3_Shift: // AltGr on at least some machines
+  case XK_Meta_R:
+  case XK_Alt_R:          return KB_KEY_RIGHT_ALT;
+  case XK_Super_L:        return KB_KEY_LEFT_SUPER;
+  case XK_Super_R:        return KB_KEY_RIGHT_SUPER;
+  case XK_Menu:           return KB_KEY_MENU;
+  case XK_Num_Lock:       return KB_KEY_NUM_LOCK;
+  case XK_Caps_Lock:      return KB_KEY_CAPS_LOCK;
+  case XK_Print:          return KB_KEY_PRINT_SCREEN;
+  case XK_Scroll_Lock:    return KB_KEY_SCROLL_LOCK;
+  case XK_Pause:          return KB_KEY_PAUSE;
+  case XK_Delete:         return KB_KEY_DELETE;
+  case XK_BackSpace:      return KB_KEY_BACKSPACE;
+  case XK_Return:         return KB_KEY_ENTER;
+  case XK_Home:           return KB_KEY_HOME;
+  case XK_End:            return KB_KEY_END;
+  case XK_Page_Up:        return KB_KEY_PAGE_UP;
+  case XK_Page_Down:      return KB_KEY_PAGE_DOWN;
+  case XK_Insert:         return KB_KEY_INSERT;
+  case XK_Left:           return KB_KEY_LEFT;
+  case XK_Right:          return KB_KEY_RIGHT;
+  case XK_Down:           return KB_KEY_DOWN;
+  case XK_Up:             return KB_KEY_UP;
+  case XK_F1:             return KB_KEY_F1;
+  case XK_F2:             return KB_KEY_F2;
+  case XK_F3:             return KB_KEY_F3;
+  case XK_F4:             return KB_KEY_F4;
+  case XK_F5:             return KB_KEY_F5;
+  case XK_F6:             return KB_KEY_F6;
+  case XK_F7:             return KB_KEY_F7;
+  case XK_F8:             return KB_KEY_F8;
+  case XK_F9:             return KB_KEY_F9;
+  case XK_F10:            return KB_KEY_F10;
+  case XK_F11:            return KB_KEY_F11;
+  case XK_F12:            return KB_KEY_F12;
+  case XK_F13:            return KB_KEY_F13;
+  case XK_F14:            return KB_KEY_F14;
+  case XK_F15:            return KB_KEY_F15;
+  case XK_F16:            return KB_KEY_F16;
+  case XK_F17:            return KB_KEY_F17;
+  case XK_F18:            return KB_KEY_F18;
+  case XK_F19:            return KB_KEY_F19;
+  case XK_F20:            return KB_KEY_F20;
+  case XK_F21:            return KB_KEY_F21;
+  case XK_F22:            return KB_KEY_F22;
+  case XK_F23:            return KB_KEY_F23;
+  case XK_F24:            return KB_KEY_F24;
+  case XK_F25:            return KB_KEY_F25;
+
+  // Numeric keypad
+  case XK_KP_Divide:      return KB_KEY_KP_DIVIDE;
+  case XK_KP_Multiply:    return KB_KEY_KP_MULTIPLY;
+  case XK_KP_Subtract:    return KB_KEY_KP_SUBTRACT;
+  case XK_KP_Add:         return KB_KEY_KP_ADD;
+
+  // These should have been detected in secondary keysym test above!
+  case XK_KP_Insert:      return KB_KEY_KP_0;
+  case XK_KP_End:         return KB_KEY_KP_1;
+  case XK_KP_Down:        return KB_KEY_KP_2;
+  case XK_KP_Page_Down:   return KB_KEY_KP_3;
+  case XK_KP_Left:        return KB_KEY_KP_4;
+  case XK_KP_Right:       return KB_KEY_KP_6;
+  case XK_KP_Home:        return KB_KEY_KP_7;
+  case XK_KP_Up:          return KB_KEY_KP_8;
+  case XK_KP_Page_Up:     return KB_KEY_KP_9;
+  case XK_KP_Delete:      return KB_KEY_KP_DECIMAL;
+  case XK_KP_Equal:       return KB_KEY_KP_EQUAL;
+  case XK_KP_Enter:       return KB_KEY_KP_ENTER;
+
+  // Last resort: Check for printable keys (should not happen if the XKB
+  // extension is available). This will give a layout dependent mapping
+  // (which is wrong, and we may miss some keys, especially on non-US
+  // keyboards), but it's better than nothing...
+  case XK_a:              return KB_KEY_A;
+  case XK_b:              return KB_KEY_B;
+  case XK_c:              return KB_KEY_C;
+  case XK_d:              return KB_KEY_D;
+  case XK_e:              return KB_KEY_E;
+  case XK_f:              return KB_KEY_F;
+  case XK_g:              return KB_KEY_G;
+  case XK_h:              return KB_KEY_H;
+  case XK_i:              return KB_KEY_I;
+  case XK_j:              return KB_KEY_J;
+  case XK_k:              return KB_KEY_K;
+  case XK_l:              return KB_KEY_L;
+  case XK_m:              return KB_KEY_M;
+  case XK_n:              return KB_KEY_N;
+  case XK_o:              return KB_KEY_O;
+  case XK_p:              return KB_KEY_P;
+  case XK_q:              return KB_KEY_Q;
+  case XK_r:              return KB_KEY_R;
+  case XK_s:              return KB_KEY_S;
+  case XK_t:              return KB_KEY_T;
+  case XK_u:              return KB_KEY_U;
+  case XK_v:              return KB_KEY_V;
+  case XK_w:              return KB_KEY_W;
+  case XK_x:              return KB_KEY_X;
+  case XK_y:              return KB_KEY_Y;
+  case XK_z:              return KB_KEY_Z;
+  case XK_1:              return KB_KEY_1;
+  case XK_2:              return KB_KEY_2;
+  case XK_3:              return KB_KEY_3;
+  case XK_4:              return KB_KEY_4;
+  case XK_5:              return KB_KEY_5;
+  case XK_6:              return KB_KEY_6;
+  case XK_7:              return KB_KEY_7;
+  case XK_8:              return KB_KEY_8;
+  case XK_9:              return KB_KEY_9;
+  case XK_0:              return KB_KEY_0;
+  case XK_space:          return KB_KEY_SPACE;
+  case XK_minus:          return KB_KEY_MINUS;
+  case XK_equal:          return KB_KEY_EQUAL;
+  case XK_bracketleft:    return KB_KEY_LEFT_BRACKET;
+  case XK_bracketright:   return KB_KEY_RIGHT_BRACKET;
+  case XK_backslash:      return KB_KEY_BACKSLASH;
+  case XK_semicolon:      return KB_KEY_SEMICOLON;
+  case XK_apostrophe:     return KB_KEY_APOSTROPHE;
+  case XK_grave:          return KB_KEY_GRAVE_ACCENT;
+  case XK_comma:          return KB_KEY_COMMA;
+  case XK_period:         return KB_KEY_PERIOD;
+  case XK_slash:          return KB_KEY_SLASH;
+  case XK_less:           return KB_KEY_WORLD_1; // At least in some layouts...
+  default:
+    break;
+  }
+
+  return KB_KEY_UNKNOWN;
+}
+
+static int translate_key(int scancode) {
+  if (scancode < 0 || scancode > 255)
+    return KB_KEY_UNKNOWN;
+  return keycodes[scancode];
+}
+
+static int translate_mod(int state) {
+  int mods = 0;
+
+  if (state & ShiftMask)
+    mods |= KB_MOD_SHIFT;
+  if (state & ControlMask)
+    mods |= KB_MOD_CONTROL;
+  if (state & Mod1Mask)
+    mods |= KB_MOD_ALT;
+  if (state & Mod4Mask)
+    mods |= KB_MOD_SUPER;
+  if (state & LockMask)
+    mods |= KB_MOD_CAPS_LOCK;
+  if (state & Mod2Mask)
+    mods |= KB_MOD_NUM_LOCK;
+
+  return mods;
+}
 
 surface_t* screen(const char* title, int w, int h) {
   if (!(buffer = surface(w, h)))
     return NULL;
   buffer->w = w;
   buffer->h = h;
-  
+
   display = XOpenDisplay(0);
   if (!display) {
     release();
     SET_LAST_ERROR("XOpenDisplay(0) failed!");
     return NULL;
+  }
+
+  memset(keycodes, -1, sizeof(keycodes));
+  memset(scancodes, -1, sizeof(scancodes));
+
+  int scancode, key;
+  char name[XkbKeyNameLength + 1];
+  XkbDescPtr desc = XkbGetMap(display, 0, XkbUseCoreKbd);
+  XkbGetNames(display, XkbKeyNamesMask, desc);
+
+  for (scancode = desc->min_key_code;  scancode <= desc->max_key_code;  scancode++) {
+    memcpy(name, desc->names->keys[scancode].name, XkbKeyNameLength);
+    name[XkbKeyNameLength] = '\0';
+
+    if      (strcmp(name, "TLDE") == 0) key = KB_KEY_GRAVE_ACCENT;
+    else if (strcmp(name, "AE01") == 0) key = KB_KEY_1;
+    else if (strcmp(name, "AE02") == 0) key = KB_KEY_2;
+    else if (strcmp(name, "AE03") == 0) key = KB_KEY_3;
+    else if (strcmp(name, "AE04") == 0) key = KB_KEY_4;
+    else if (strcmp(name, "AE05") == 0) key = KB_KEY_5;
+    else if (strcmp(name, "AE06") == 0) key = KB_KEY_6;
+    else if (strcmp(name, "AE07") == 0) key = KB_KEY_7;
+    else if (strcmp(name, "AE08") == 0) key = KB_KEY_8;
+    else if (strcmp(name, "AE09") == 0) key = KB_KEY_9;
+    else if (strcmp(name, "AE10") == 0) key = KB_KEY_0;
+    else if (strcmp(name, "AE11") == 0) key = KB_KEY_MINUS;
+    else if (strcmp(name, "AE12") == 0) key = KB_KEY_EQUAL;
+    else if (strcmp(name, "AD01") == 0) key = KB_KEY_Q;
+    else if (strcmp(name, "AD02") == 0) key = KB_KEY_W;
+    else if (strcmp(name, "AD03") == 0) key = KB_KEY_E;
+    else if (strcmp(name, "AD04") == 0) key = KB_KEY_R;
+    else if (strcmp(name, "AD05") == 0) key = KB_KEY_T;
+    else if (strcmp(name, "AD06") == 0) key = KB_KEY_Y;
+    else if (strcmp(name, "AD07") == 0) key = KB_KEY_U;
+    else if (strcmp(name, "AD08") == 0) key = KB_KEY_I;
+    else if (strcmp(name, "AD09") == 0) key = KB_KEY_O;
+    else if (strcmp(name, "AD10") == 0) key = KB_KEY_P;
+    else if (strcmp(name, "AD11") == 0) key = KB_KEY_LEFT_BRACKET;
+    else if (strcmp(name, "AD12") == 0) key = KB_KEY_RIGHT_BRACKET;
+    else if (strcmp(name, "AC01") == 0) key = KB_KEY_A;
+    else if (strcmp(name, "AC02") == 0) key = KB_KEY_S;
+    else if (strcmp(name, "AC03") == 0) key = KB_KEY_D;
+    else if (strcmp(name, "AC04") == 0) key = KB_KEY_F;
+    else if (strcmp(name, "AC05") == 0) key = KB_KEY_G;
+    else if (strcmp(name, "AC06") == 0) key = KB_KEY_H;
+    else if (strcmp(name, "AC07") == 0) key = KB_KEY_J;
+    else if (strcmp(name, "AC08") == 0) key = KB_KEY_K;
+    else if (strcmp(name, "AC09") == 0) key = KB_KEY_L;
+    else if (strcmp(name, "AC10") == 0) key = KB_KEY_SEMICOLON;
+    else if (strcmp(name, "AC11") == 0) key = KB_KEY_APOSTROPHE;
+    else if (strcmp(name, "AB01") == 0) key = KB_KEY_Z;
+    else if (strcmp(name, "AB02") == 0) key = KB_KEY_X;
+    else if (strcmp(name, "AB03") == 0) key = KB_KEY_C;
+    else if (strcmp(name, "AB04") == 0) key = KB_KEY_V;
+    else if (strcmp(name, "AB05") == 0) key = KB_KEY_B;
+    else if (strcmp(name, "AB06") == 0) key = KB_KEY_N;
+    else if (strcmp(name, "AB07") == 0) key = KB_KEY_M;
+    else if (strcmp(name, "AB08") == 0) key = KB_KEY_COMMA;
+    else if (strcmp(name, "AB09") == 0) key = KB_KEY_PERIOD;
+    else if (strcmp(name, "AB10") == 0) key = KB_KEY_SLASH;
+    else if (strcmp(name, "BKSL") == 0) key = KB_KEY_BACKSLASH;
+    else if (strcmp(name, "LSGT") == 0) key = KB_KEY_WORLD_1;
+    else                                key = KB_KEY_UNKNOWN;
+
+    if ((scancode >= 0) && (scancode < 256))
+      keycodes[scancode] = key;
+  }
+
+  XkbFreeNames(desc, XkbKeyNamesMask, True);
+  XkbFreeKeyboard(desc, 0, True);
+
+  for (scancode = 0;  scancode < 256;  scancode++) {
+    if (keycodes[scancode] < 0)
+      keycodes[scancode] = translate_keycode(scancode);
+    if (keycodes[scancode] > 0)
+      scancodes[keycodes[scancode]] = scancode;
   }
 
   int screen = DefaultScreen(display);
@@ -2168,7 +2438,7 @@ surface_t* screen(const char* title, int w, int h) {
     return NULL;
   }
 
-  XSelectInput(display, win, KeyPressMask | KeyReleaseMask);
+  XSelectInput(display, win, KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask);
   XStoreName(display, win, title);
 
   XSizeHints hints;
@@ -2197,7 +2467,86 @@ bool should_close() {
 }
 
 bool poll_events(user_event_t* ue) {
-  return false;
+  if (!ue || !XPending(display))
+    return false;
+
+  XNextEvent(display, &event);
+  switch (event.type) {
+  case KeyPress:
+    ue->type = KEYBOARD_KEY_DOWN;
+    ue->sym  = translate_key(event.xkey.keycode);
+    ue->mod  = translate_mod(event.xkey.state);
+    break;
+  case KeyRelease:
+    ue->type = KEYBOARD_KEY_UP;
+    ue->sym  = translate_key(event.xkey.keycode);
+    ue->mod  = translate_mod(event.xkey.state);
+    break;
+  case ButtonPress:
+    ue->type = MOUSE_BTN_DOWN;
+    ue->mod  = translate_mod(event.xkey.state);
+    switch (event.xbutton.button) {
+    case Button1:
+      ue->btn = MOUSE_BTN_0;
+      break;
+    case Button2:
+      ue->btn = MOUSE_BTN_1;
+      break;
+    case Button3:
+      ue->btn = MOUSE_BTN_2;
+      break;
+    case Button4:
+      ue->type = SCROLL_WHEEL;
+      ue->data1 = 0;
+      ue->data2 = 1;
+      break;
+    case Button5:
+      ue->type = SCROLL_WHEEL;
+      ue->data1 =  0;
+      ue->data2 = -1;
+      break;
+    case Button6:
+      ue->type = SCROLL_WHEEL;
+      ue->data1 = 1;
+      ue->data2 = 0;
+      break;
+    case Button7:
+      ue->type = SCROLL_WHEEL;
+      ue->data1 = -1;
+      ue->data2 =  0;
+      break;
+    default:
+      ue->btn = (event.xbutton.button - Button1 - 4);
+    }
+    break;
+  case ButtonRelease:
+    ue->type = MOUSE_BTN_UP;
+    ue->mod  = translate_mod(event.xkey.state);
+    switch (event.xbutton.button) {
+    case Button1:
+      ue->btn = MOUSE_BTN_0;
+      break;
+    case Button2:
+      ue->btn = MOUSE_BTN_1;
+      break;
+    case Button3:
+      ue->btn = MOUSE_BTN_2;
+      break;
+    default:
+      ue->btn = (event.xbutton.button - Button1 - 4);
+    }
+    break;
+  case MotionNotify:
+    mx = event.xmotion.x;
+    my = event.xmotion.y;
+    break;
+  case DestroyNotify:
+    ue->type = WINDOW_CLOSED;
+    closed = true;
+  default:
+    break;
+  }
+  return true;
 }
 
 void render() {

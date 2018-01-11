@@ -11,7 +11,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-  
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -30,6 +30,8 @@ extern "C" {
 #if defined(__linux__) || defined(__unix__)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/XKBlib.h>
+#include <X11/keysym.h>
 #endif
 
 
@@ -234,7 +236,7 @@ typedef enum {
 #define MOUSE_LEFT   MOUSE_BTN_0
 #define MOUSE_RIGHT  MOUSE_BTN_1
 #define MOUSE_MIDDLE MOUSE_BTN_2
-  
+
 typedef enum {
   KB_KEY_SPACE = 32,
   KB_KEY_APOSTROPHE = 39,

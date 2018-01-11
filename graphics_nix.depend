@@ -1,8 +1,8 @@
 # depslib dependency file v1.0
-1515671845 source:/home/reimu/Desktop/graphics.h/graphics.c
+1515681534 source:/home/reimu/Desktop/graphics.h/graphics.c
 	"graphics.h"
 
-1515671538 /home/reimu/Desktop/graphics.h/graphics.h
+1515681128 /home/reimu/Desktop/graphics.h/graphics.h
 	<stdio.h>
 	<stdlib.h>
 	<stdbool.h>
@@ -16,7 +16,9 @@
 	<unistd.h>
 	<X11/Xlib.h>
 	<X11/Xutil.h>
+	<X11/XKBlib.h>
+	<X11/keysym.h>
 
-1515673597 source:/home/reimu/Desktop/graphics.h/test.c
+1515674522 source:/home/reimu/Desktop/graphics.h/test.c
 	"graphics.h"
 
