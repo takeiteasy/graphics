@@ -2108,5 +2108,109 @@ void release() {
   DestroyWindow(hwnd);
 }
 #else
-#error X11 not implemented yet
+static Display* display;
+static bool closed = false;
+static surface_t* buffer;
+static Window win;
+static GC gc;
+static XImage* img;
+
+surface_t* screen(const char* title, int w, int h) {
+  if (!(buffer = surface(w, h)))
+    return NULL;
+  buffer->w = w;
+  buffer->h = h;
+  
+  display = XOpenDisplay(0);
+  if (!display) {
+    release();
+    SET_LAST_ERROR("XOpenDisplay(0) failed!");
+    return NULL;
+  }
+
+  int screen = DefaultScreen(display);
+  Visual* visual = DefaultVisual(display, screen);
+  int format_c;
+  XPixmapFormatValues* formats = XListPixmapFormats(display, &format_c);
+  int depth = DefaultDepth(display, screen);
+  Window default_root_win = DefaultRootWindow(display);
+
+  int c_depth;
+  for (int i = 0; i < format_c; ++i) {
+    if (depth == formats[i].depth) {
+      c_depth = formats[i].bits_per_pixel;
+      break;
+    }
+  }
+  XFree(formats);
+
+  if (c_depth != 32) {
+    release();
+    SET_LAST_ERROR("Invalid display depth: %d", c_depth);
+    return NULL;
+  }
+
+  int s_width = DisplayWidth(display, screen);
+  int s_height = DisplayHeight(display, screen);
+
+  XSetWindowAttributes win_attrib;
+  win_attrib.border_pixel = BlackPixel(display, screen);
+  win_attrib.background_pixel = BlackPixel(display, screen);
+  win_attrib.backing_store = NotUseful;
+
+  win = XCreateWindow(display, default_root_win, (s_width - w) / 2,
+		      (s_height - h) / 2, w, h, 0, depth, InputOutput,
+		      visual, CWBackPixel | CWBorderPixel | CWBackingStore,
+		      &win_attrib);
+  if (!win) {
+    release();
+    SET_LAST_ERROR("XCreateWindow() failed!");
+    return NULL;
+  }
+
+  XSelectInput(display, win, KeyPressMask | KeyReleaseMask);
+  XStoreName(display, win, title);
+
+  XSizeHints hints;
+  hints.flags = PPosition | PMinSize | PMaxSize;
+  hints.x = 0;
+  hints.y = 0;
+  hints.min_width = w;
+  hints.max_width = w;
+  hints.min_height = h;
+  hints.max_height = h;
+
+  XSetWMNormalHints(display, win, &hints);
+  XClearWindow(display, win);
+  XMapRaised(display, win);
+  XFlush(display);
+
+  gc = DefaultGC(display, screen);
+
+  img = XCreateImage(display, CopyFromParent, depth, ZPixmap, 0, NULL, w, h, 32, w * 4);
+
+  return buffer;
+}
+
+bool should_close() {
+  return closed;
+}
+
+bool poll_events(user_event_t* ue) {
+  return false;
+}
+
+void render() {
+  img->data = (char*)buffer->buf;
+  XPutImage(display, win, gc, img, 0, 0, 0, 0, buffer->w, buffer->h);
+  XFlush(display);
+}
+
+void release() {
+  destroy(&buffer);
+  img->data = NULL;
+  XDestroyImage(img);
+  XDestroyWindow(display, win);
+  XCloseDisplay(display);
+}
 #endif

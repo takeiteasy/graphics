@@ -27,6 +27,10 @@ extern "C" {
 #else
 #include <unistd.h>
 #endif // defined(_WIN32)
+#if defined(__linux__) || defined(__unix__)
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#endif
 
 
 #define RGB(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b

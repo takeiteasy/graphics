@@ -4,3 +4,5 @@ libgraphics.dylib
 Debug/
 .vs/
 x64/
+bin/
+obj/

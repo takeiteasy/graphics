@@ -1,0 +1,22 @@
+# depslib dependency file v1.0
+1515671845 source:/home/reimu/Desktop/graphics.h/graphics.c
+	"graphics.h"
+
+1515671538 /home/reimu/Desktop/graphics.h/graphics.h
+	<stdio.h>
+	<stdlib.h>
+	<stdbool.h>
+	<stdarg.h>
+	<string.h>
+	<math.h>
+	<time.h>
+	<windows.h>
+	<windowsx.h>
+	<shellapi.h>
+	<unistd.h>
+	<X11/Xlib.h>
+	<X11/Xutil.h>
+
+1515673597 source:/home/reimu/Desktop/graphics.h/test.c
+	"graphics.h"
+

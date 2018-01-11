@@ -55,18 +55,18 @@ int main(int argc, const char* argv[]) {
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
   }
-  
+
   surface_t* a = surface(50, 50);
 #if defined(__APPLE__)
   surface_t* c = bmp("Uncompressed-24.bmp");
 #elif defined(_WIN32)
   surface_t* c = bmp("C:\\Users\\DESKTOP\\Documents\\git\\graphics.h\\x64\\Debug\\Uncompressed-24.bmp");
 #else
-  surface_t* c = NULL;
+  surface_t* c = bmp("/home/reimu/Desktop/graphics.h/Uncompressed-24.bmp");
 #endif
   surface_t* e = copy(c);
   iterate(e, invert);
-  
+
   rect_t  tmpr  = { 150, 50, 50, 50 };
   point_t tmpp  = { 10, 150 };
   point_t tmpp2 = { 5, 227 };
@@ -75,7 +75,7 @@ int main(int argc, const char* argv[]) {
   point_t tmpp5 = { 10, 110 };
   point_t tmpp6 = { 425, 110 };
   point_t tmpp7 = { 482, 170 };
-  
+
   surface_t* d = string_f(RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", tmpr.x, tmpr.y, tmpr.w, tmpr.h);
   surface_t* h = string(RED, LIME, "NO\nGREEN\nHERE");
   surface_t* k = string(LIME, BLACK, "WOW");
@@ -84,37 +84,37 @@ int main(int argc, const char* argv[]) {
   point_t tmmp8 = { 13, 20 };
   blit(l, &tmmp8, k, NULL, -1);
   destroy(&k);
-  
+
   surface_t* f = surface(100, 100);
   rect(f, 0,  0,  50, 50, RED, true);
   rect(f, 50, 50, 50, 50, LIME, true);
   rect(f, 50, 0,  50, 50, BLUE, true);
   rect(f, 0,  50, 50, 50, YELLOW, true);
-  
+
   int col, i, x, y;
   user_event_t ue;
   next_time = ticks() + TICK_INTERVAL;
   while (running) {
     fill(win, WHITE);
-    
+
     for (int x = 32; x < win->w; x += 32)
       yline(win, x, 0, win->h, GRAY);
     for (int y = 32; y < win->h; y += 32)
       xline(win, y, 0, win->w, GRAY);
-    
+
     blit(win, &tmpp5, d, NULL, LIME);
     blit(win, &tmpp, c, &tmpr, LIME);
-    
+
     blit(win, &tmpp2, c, NULL, LIME);
     blit(win, &tmpp4, e, NULL, LIME);
-    
+
     blit(win, &tmpp6, f, NULL, LIME);
     blit(win, &tmpp7, h, NULL, LIME);
-    
+
     iterate(a, rnd);
     blit(a, NULL, l, NULL, LIME);
     blit(win, &tmpp3, a, NULL, LIME);
-    
+
     circle(win, 352, 32, 30, RED,    true);
     circle(win, 382, 32, 30, ORANGE, true);
     circle(win, 412, 32, 30, YELLOW, true);
@@ -122,9 +122,9 @@ int main(int argc, const char* argv[]) {
     circle(win, 472, 32, 30, BLUE,   true);
     circle(win, 502, 32, 30, INDIGO, true);
     circle(win, 532, 32, 30, VIOLET, true);
-    
+
     print_f(win, 400, 88, BLACK, "mouse x,y: (%d, %d)", mx, my);
-    
+
     x = 5;
     y = 5;
     PRINT_CHAR_MAP(letter, 33, 128, MAROON);
@@ -133,7 +133,7 @@ int main(int argc, const char* argv[]) {
     PRINT_CHAR_MAP(letter_extra, 0, 132, FIREBRICK);
     PRINT_CHAR_MAP(letter_greek, 0, 58, CRIMSON);
     PRINT_CHAR_MAP(letter_hiragana, 0, 96, RED);
-    
+
     get_mouse_pos(&mx, &my);
     col = pget(win, mx, my);
     rect(win, 150, 50,  100, 100, col, false);
@@ -142,10 +142,10 @@ int main(int argc, const char* argv[]) {
     line(win, 250, 50,  300, 100, col);
     line(win, 150, 150, 200, 200, col);
     line(win, 250, 150, 300, 200, col);
-    
+
     line(win, 0, 0, mx, my, col);
     circle(win, mx, my, 30, col, false);
-    
+
     while (poll_events(&ue)) {
       switch (ue.type) {
         case WINDOW_CLOSED:
@@ -167,7 +167,7 @@ int main(int argc, const char* argv[]) {
     render();
     delay(time_left());
   }
-  
+
   destroy(&c);
   destroy(&d);
   destroy(&e);
