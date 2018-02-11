@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		886DF6E31FF273B100055E47 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 886DF6E01FF273B100055E47 /* graphics.c */; settings = {COMPILER_FLAGS = "-fno-objc-arc -x objective-c"; }; };
-		886DF6E41FF273B100055E47 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 886DF6E21FF273B100055E47 /* test.c */; };
+		88D03A5A2030A6DE00FB8EE4 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88D03A572030A6DE00FB8EE4 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
+		88D03A5B2030A6DE00FB8EE4 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 88D03A592030A6DE00FB8EE4 /* test.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,9 +25,9 @@
 
 /* Begin PBXFileReference section */
 		883668E61FCE5C8B0079BE12 /* rtestset */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = rtestset; sourceTree = BUILT_PRODUCTS_DIR; };
-		886DF6E01FF273B100055E47 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = graphics.c; sourceTree = "<group>"; };
-		886DF6E11FF273B100055E47 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = graphics.h; sourceTree = "<group>"; };
-		886DF6E21FF273B100055E47 /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		88D03A572030A6DE00FB8EE4 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../graphics.c; sourceTree = "<group>"; };
+		88D03A582030A6DE00FB8EE4 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../graphics.h; sourceTree = "<group>"; };
+		88D03A592030A6DE00FB8EE4 /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = test.c; path = ../test.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,9 +68,9 @@
 		886DF6DF1FF2739900055E47 /* graphics */ = {
 			isa = PBXGroup;
 			children = (
-				886DF6E01FF273B100055E47 /* graphics.c */,
-				886DF6E11FF273B100055E47 /* graphics.h */,
-				886DF6E21FF273B100055E47 /* test.c */,
+				88D03A572030A6DE00FB8EE4 /* graphics.c */,
+				88D03A582030A6DE00FB8EE4 /* graphics.h */,
+				88D03A592030A6DE00FB8EE4 /* test.c */,
 			);
 			name = graphics;
 			sourceTree = "<group>";
@@ -110,7 +110,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 883668E11FCE5C8B0079BE12 /* Build configuration list for PBXProject "rtestset" */;
+			buildConfigurationList = 883668E11FCE5C8B0079BE12 /* Build configuration list for PBXProject "graphics_xcode" */;
 			compatibilityVersion = "Xcode 8.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -132,8 +132,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				886DF6E31FF273B100055E47 /* graphics.c in Sources */,
-				886DF6E41FF273B100055E47 /* test.c in Sources */,
+				88D03A5A2030A6DE00FB8EE4 /* graphics.c in Sources */,
+				88D03A5B2030A6DE00FB8EE4 /* test.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -262,7 +262,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		883668E11FCE5C8B0079BE12 /* Build configuration list for PBXProject "rtestset" */ = {
+		883668E11FCE5C8B0079BE12 /* Build configuration list for PBXProject "graphics_xcode" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				883668EB1FCE5C8B0079BE12 /* Debug */,
