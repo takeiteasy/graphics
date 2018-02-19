@@ -7,29 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		88D03A5A2030A6DE00FB8EE4 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88D03A572030A6DE00FB8EE4 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
+		88D03B5F203A1C0B00FB8EE4 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88D03B5D203A1C0B00FB8EE4 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
+		88D03B60203A1C0B00FB8EE4 /* graphics.h in Headers */ = {isa = PBXBuildFile; fileRef = 88D03B5E203A1C0B00FB8EE4 /* graphics.h */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXCopyFilesBuildPhase section */
-		883668E41FCE5C8B0079BE12 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 1;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
 /* Begin PBXFileReference section */
-		883668E61FCE5C8B0079BE12 /* rtestset */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = rtestset; sourceTree = BUILT_PRODUCTS_DIR; };
-		88D03A572030A6DE00FB8EE4 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../graphics.c; sourceTree = "<group>"; };
-		88D03A582030A6DE00FB8EE4 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../graphics.h; sourceTree = "<group>"; };
+		88D03B55203A1BF900FB8EE4 /* libgraphics_osx_lib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libgraphics_osx_lib.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		88D03B5D203A1C0B00FB8EE4 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../../graphics.c; sourceTree = "<group>"; };
+		88D03B5E203A1C0B00FB8EE4 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../../graphics.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		883668E31FCE5C8B0079BE12 /* Frameworks */ = {
+		88D03B52203A1BF900FB8EE4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -39,104 +28,107 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		883668DD1FCE5C8B0079BE12 = {
+		88D03B4C203A1BF900FB8EE4 = {
 			isa = PBXGroup;
 			children = (
-				886DF6DF1FF2739900055E47 /* graphics */,
-				883668E71FCE5C8B0079BE12 /* Products */,
-				883668F01FCE5C9D0079BE12 /* Frameworks */,
+				88D03B5C203A1BFF00FB8EE4 /* graphics */,
+				88D03B56203A1BF900FB8EE4 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		883668E71FCE5C8B0079BE12 /* Products */ = {
+		88D03B56203A1BF900FB8EE4 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				883668E61FCE5C8B0079BE12 /* rtestset */,
+				88D03B55203A1BF900FB8EE4 /* libgraphics_osx_lib.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		883668F01FCE5C9D0079BE12 /* Frameworks */ = {
+		88D03B5C203A1BFF00FB8EE4 /* graphics */ = {
 			isa = PBXGroup;
 			children = (
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		886DF6DF1FF2739900055E47 /* graphics */ = {
-			isa = PBXGroup;
-			children = (
-				88D03A572030A6DE00FB8EE4 /* graphics.c */,
-				88D03A582030A6DE00FB8EE4 /* graphics.h */,
+				88D03B5D203A1C0B00FB8EE4 /* graphics.c */,
+				88D03B5E203A1C0B00FB8EE4 /* graphics.h */,
 			);
 			name = graphics;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
+/* Begin PBXHeadersBuildPhase section */
+		88D03B53203A1BF900FB8EE4 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				88D03B60203A1C0B00FB8EE4 /* graphics.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
 /* Begin PBXNativeTarget section */
-		883668E51FCE5C8B0079BE12 /* rtestset */ = {
+		88D03B54203A1BF900FB8EE4 /* graphics_osx_lib */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 883668ED1FCE5C8B0079BE12 /* Build configuration list for PBXNativeTarget "rtestset" */;
+			buildConfigurationList = 88D03B59203A1BF900FB8EE4 /* Build configuration list for PBXNativeTarget "graphics_osx_lib" */;
 			buildPhases = (
-				883668E21FCE5C8B0079BE12 /* Sources */,
-				883668E31FCE5C8B0079BE12 /* Frameworks */,
-				883668E41FCE5C8B0079BE12 /* CopyFiles */,
+				88D03B51203A1BF900FB8EE4 /* Sources */,
+				88D03B52203A1BF900FB8EE4 /* Frameworks */,
+				88D03B53203A1BF900FB8EE4 /* Headers */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = rtestset;
-			productName = rtestset;
-			productReference = 883668E61FCE5C8B0079BE12 /* rtestset */;
-			productType = "com.apple.product-type.tool";
+			name = graphics_osx_lib;
+			productName = graphics_osx_lib;
+			productReference = 88D03B55203A1BF900FB8EE4 /* libgraphics_osx_lib.a */;
+			productType = "com.apple.product-type.library.static";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		883668DE1FCE5C8B0079BE12 /* Project object */ = {
+		88D03B4D203A1BF900FB8EE4 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0910;
+				LastUpgradeCheck = 0920;
 				ORGANIZATIONNAME = "Rory B. Bellows";
 				TargetAttributes = {
-					883668E51FCE5C8B0079BE12 = {
-						CreatedOnToolsVersion = 9.1;
+					88D03B54203A1BF900FB8EE4 = {
+						CreatedOnToolsVersion = 9.2;
 						ProvisioningStyle = Automatic;
 					};
 				};
 			};
-			buildConfigurationList = 883668E11FCE5C8B0079BE12 /* Build configuration list for PBXProject "graphics_xcode" */;
+			buildConfigurationList = 88D03B50203A1BF900FB8EE4 /* Build configuration list for PBXProject "graphics_osx_lib" */;
 			compatibilityVersion = "Xcode 8.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 			);
-			mainGroup = 883668DD1FCE5C8B0079BE12;
-			productRefGroup = 883668E71FCE5C8B0079BE12 /* Products */;
+			mainGroup = 88D03B4C203A1BF900FB8EE4;
+			productRefGroup = 88D03B56203A1BF900FB8EE4 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				883668E51FCE5C8B0079BE12 /* rtestset */,
+				88D03B54203A1BF900FB8EE4 /* graphics_osx_lib */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
-		883668E21FCE5C8B0079BE12 /* Sources */ = {
+		88D03B51203A1BF900FB8EE4 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88D03A5A2030A6DE00FB8EE4 /* graphics.c in Sources */,
+				88D03B5F203A1C0B00FB8EE4 /* graphics.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		883668EB1FCE5C8B0079BE12 /* Debug */ = {
+		88D03B57203A1BF900FB8EE4 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -191,7 +183,7 @@
 			};
 			name = Debug;
 		};
-		883668EC1FCE5C8B0079BE12 /* Release */ = {
+		88D03B58203A1BF900FB8EE4 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -239,18 +231,20 @@
 			};
 			name = Release;
 		};
-		883668EE1FCE5C8B0079BE12 /* Debug */ = {
+		88D03B5A203A1BF900FB8EE4 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				EXECUTABLE_PREFIX = lib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
 		};
-		883668EF1FCE5C8B0079BE12 /* Release */ = {
+		88D03B5B203A1BF900FB8EE4 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				EXECUTABLE_PREFIX = lib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -258,25 +252,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		883668E11FCE5C8B0079BE12 /* Build configuration list for PBXProject "graphics_xcode" */ = {
+		88D03B50203A1BF900FB8EE4 /* Build configuration list for PBXProject "graphics_osx_lib" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				883668EB1FCE5C8B0079BE12 /* Debug */,
-				883668EC1FCE5C8B0079BE12 /* Release */,
+				88D03B57203A1BF900FB8EE4 /* Debug */,
+				88D03B58203A1BF900FB8EE4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		883668ED1FCE5C8B0079BE12 /* Build configuration list for PBXNativeTarget "rtestset" */ = {
+		88D03B59203A1BF900FB8EE4 /* Build configuration list for PBXNativeTarget "graphics_osx_lib" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				883668EE1FCE5C8B0079BE12 /* Debug */,
-				883668EF1FCE5C8B0079BE12 /* Release */,
+				88D03B5A203A1BF900FB8EE4 /* Debug */,
+				88D03B5B203A1BF900FB8EE4 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 883668DE1FCE5C8B0079BE12 /* Project object */;
+	rootObject = 88D03B4D203A1BF900FB8EE4 /* Project object */;
 }

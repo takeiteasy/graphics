@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:graphics_osx_gl_test/graphics_osx_gl_test.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:graphics_osx_test/graphics_osx_test.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:graphics_osx_lib/graphics_osx_lib.xcodeproj">
+   </FileRef>
+</Workspace>
