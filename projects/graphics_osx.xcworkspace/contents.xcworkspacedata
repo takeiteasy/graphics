@@ -2,7 +2,7 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:graphics_osx_mb_test/graphics_osx_mb_test.xcodeproj">
+      location = "group:graphics_osx_lua_test/graphics_osx_lua_test.xcodeproj">
    </FileRef>
    <FileRef
       location = "group:graphics_osx_gl_test/graphics_osx_gl_test.xcodeproj">

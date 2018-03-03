@@ -1253,6 +1253,8 @@ void delay(long ms) {
 
 #if defined(__APPLE__)
 #import <Cocoa/Cocoa.h>
+#import <OpenGL/OpenGL.h>
+#import <OpenGL/gl3.h>
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED < 101200
 #define NSWindowStyleMaskBorderless NSBorderlessWindowMask
@@ -1297,7 +1299,7 @@ static int translate_key(unsigned int key) {
 }
 @end
 
-@interface osx_view_t : NSView {
+@interface osx_view_t : NSOpenGLView {
   NSTrackingArea* track;
 }
 @end
@@ -1325,10 +1327,23 @@ static osx_app_t* app;
 extern surface_t* buffer;
 
 -(id)initWithFrame:(CGRect)r {
-  self = [super initWithFrame:r];
+  NSOpenGLPixelFormatAttribute pixelFormatAttributes[] =
+  {
+    NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
+    NSOpenGLPFAColorSize, 24,
+    NSOpenGLPFAAlphaSize, 8,
+    NSOpenGLPFADoubleBuffer,
+    NSOpenGLPFAAccelerated,
+    NSOpenGLPFANoRecovery,
+    0
+  };
+  NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:pixelFormatAttributes];
+  self = [super initWithFrame:r pixelFormat:pixelFormat];
+  
   if (self != nil) {
     track = nil;
     [self updateTrackingAreas];
+    [[self openGLContext] makeCurrentContext];
   }
   return self;
 }
@@ -1384,18 +1399,10 @@ extern surface_t* buffer;
   if (!buffer)
     return;
 
-  CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
-
-  CGColorSpaceRef s = CGColorSpaceCreateDeviceRGB();
-  CGDataProviderRef p = CGDataProviderCreateWithData(NULL, buffer->buf, buffer->w * buffer->h * 4, NULL);
-  CGImageRef img = CGImageCreate(buffer->w, buffer->h, 8, 32, buffer->w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, false, kCGRenderingIntentDefault);
-
-  CGColorSpaceRelease(s);
-  CGDataProviderRelease(p);
-
-  CGContextDrawImage(ctx, CGRectMake(0, 0, buffer->w, buffer->h), img);
-
-  CGImageRelease(img);
+  [super drawRect:r];
+  glClearColor(1.0, 0.0, 0.0, 1.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+  [[self openGLContext] flushBuffer];
 }
 
 -(void)dealloc {

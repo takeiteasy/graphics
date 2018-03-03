@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		88DF079F203A86A5005D113F /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 88DF079E203A86A5005D113F /* main.c */; };
-		88DF07A7203A8876005D113F /* my_basic.c in Sources */ = {isa = PBXBuildFile; fileRef = 88DF07A5203A8876005D113F /* my_basic.c */; };
-		88DF07A9203A887A005D113F /* libgraphics_osx_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 88DF07AA203A887A005D113F /* libgraphics_osx_lib.a */; };
+		8834C7D9203B633700058439 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 8834C7D8203B633700058439 /* main.c */; };
+		8834C7E0203B634200058439 /* libgraphics_osx_lib.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8834C7E1203B634200058439 /* libgraphics_osx_lib.a */; };
+		8834C7E7203B6EB700058439 /* liblua.5.3.4.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 8834C7E2203B635700058439 /* liblua.5.3.4.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		88DF0799203A86A5005D113F /* CopyFiles */ = {
+		8834C7D3203B633700058439 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = /usr/share/man/man1/;
@@ -25,56 +25,59 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		88DF079B203A86A5005D113F /* graphics_osx_mb_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics_osx_mb_test; sourceTree = BUILT_PRODUCTS_DIR; };
-		88DF079E203A86A5005D113F /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
-		88DF07A5203A8876005D113F /* my_basic.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = my_basic.c; sourceTree = "<group>"; };
-		88DF07A6203A8876005D113F /* my_basic.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = my_basic.h; sourceTree = "<group>"; };
-		88DF07AA203A887A005D113F /* libgraphics_osx_lib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libgraphics_osx_lib.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		8834C7D5203B633700058439 /* graphics_osx_lua_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics_osx_lua_test; sourceTree = BUILT_PRODUCTS_DIR; };
+		8834C7D8203B633700058439 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
+		8834C7E1203B634200058439 /* libgraphics_osx_lib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libgraphics_osx_lib.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		8834C7E2203B635700058439 /* liblua.5.3.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = liblua.5.3.4.dylib; path = ../../../../../../../usr/local/Cellar/lua/5.3.4_2/lib/liblua.5.3.4.dylib; sourceTree = "<group>"; };
+		8834C7E4203B6BCC00058439 /* test.lua */ = {isa = PBXFileReference; lastKnownFileType = text; path = test.lua; sourceTree = "<group>"; };
+		8834C7E5203B6E7600058439 /* liblua.5.1.5.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = liblua.5.1.5.dylib; path = "../../../../../../../usr/local/Cellar/lua@5.1/5.1.5_5/lib/liblua.5.1.5.dylib"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		88DF0798203A86A5005D113F /* Frameworks */ = {
+		8834C7D2203B633700058439 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88DF07A9203A887A005D113F /* libgraphics_osx_lib.a in Frameworks */,
+				8834C7E7203B6EB700058439 /* liblua.5.3.4.dylib in Frameworks */,
+				8834C7E0203B634200058439 /* libgraphics_osx_lib.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		88DF0792203A86A5005D113F = {
+		8834C7CC203B633700058439 = {
 			isa = PBXGroup;
 			children = (
-				88DF079D203A86A5005D113F /* graphics_osx_mb_test */,
-				88DF079C203A86A5005D113F /* Products */,
-				88DF07A8203A887A005D113F /* Frameworks */,
+				8834C7D7203B633700058439 /* graphics_osx_lua_test */,
+				8834C7D6203B633700058439 /* Products */,
+				8834C7DF203B634200058439 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
-		88DF079C203A86A5005D113F /* Products */ = {
+		8834C7D6203B633700058439 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				88DF079B203A86A5005D113F /* graphics_osx_mb_test */,
+				8834C7D5203B633700058439 /* graphics_osx_lua_test */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		88DF079D203A86A5005D113F /* graphics_osx_mb_test */ = {
+		8834C7D7203B633700058439 /* graphics_osx_lua_test */ = {
 			isa = PBXGroup;
 			children = (
-				88DF07A5203A8876005D113F /* my_basic.c */,
-				88DF07A6203A8876005D113F /* my_basic.h */,
-				88DF079E203A86A5005D113F /* main.c */,
+				8834C7D8203B633700058439 /* main.c */,
+				8834C7E4203B6BCC00058439 /* test.lua */,
 			);
-			path = graphics_osx_mb_test;
+			path = graphics_osx_lua_test;
 			sourceTree = "<group>";
 		};
-		88DF07A8203A887A005D113F /* Frameworks */ = {
+		8834C7DF203B634200058439 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				88DF07AA203A887A005D113F /* libgraphics_osx_lib.a */,
+				8834C7E5203B6E7600058439 /* liblua.5.1.5.dylib */,
+				8834C7E2203B635700058439 /* liblua.5.3.4.dylib */,
+				8834C7E1203B634200058439 /* libgraphics_osx_lib.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -82,69 +85,68 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		88DF079A203A86A5005D113F /* graphics_osx_mb_test */ = {
+		8834C7D4203B633700058439 /* graphics_osx_lua_test */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 88DF07A2203A86A5005D113F /* Build configuration list for PBXNativeTarget "graphics_osx_mb_test" */;
+			buildConfigurationList = 8834C7DC203B633700058439 /* Build configuration list for PBXNativeTarget "graphics_osx_lua_test" */;
 			buildPhases = (
-				88DF0797203A86A5005D113F /* Sources */,
-				88DF0798203A86A5005D113F /* Frameworks */,
-				88DF0799203A86A5005D113F /* CopyFiles */,
+				8834C7D1203B633700058439 /* Sources */,
+				8834C7D2203B633700058439 /* Frameworks */,
+				8834C7D3203B633700058439 /* CopyFiles */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = graphics_osx_mb_test;
-			productName = graphics_osx_mb_test;
-			productReference = 88DF079B203A86A5005D113F /* graphics_osx_mb_test */;
+			name = graphics_osx_lua_test;
+			productName = graphics_osx_lua_test;
+			productReference = 8834C7D5203B633700058439 /* graphics_osx_lua_test */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		88DF0793203A86A5005D113F /* Project object */ = {
+		8834C7CD203B633700058439 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				LastUpgradeCheck = 0920;
 				ORGANIZATIONNAME = "Rory B. Bellows";
 				TargetAttributes = {
-					88DF079A203A86A5005D113F = {
+					8834C7D4203B633700058439 = {
 						CreatedOnToolsVersion = 9.2;
 						ProvisioningStyle = Automatic;
 					};
 				};
 			};
-			buildConfigurationList = 88DF0796203A86A5005D113F /* Build configuration list for PBXProject "graphics_osx_mb_test" */;
+			buildConfigurationList = 8834C7D0203B633700058439 /* Build configuration list for PBXProject "graphics_osx_lua_test" */;
 			compatibilityVersion = "Xcode 8.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 			);
-			mainGroup = 88DF0792203A86A5005D113F;
-			productRefGroup = 88DF079C203A86A5005D113F /* Products */;
+			mainGroup = 8834C7CC203B633700058439;
+			productRefGroup = 8834C7D6203B633700058439 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				88DF079A203A86A5005D113F /* graphics_osx_mb_test */,
+				8834C7D4203B633700058439 /* graphics_osx_lua_test */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
-		88DF0797203A86A5005D113F /* Sources */ = {
+		8834C7D1203B633700058439 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88DF07A7203A8876005D113F /* my_basic.c in Sources */,
-				88DF079F203A86A5005D113F /* main.c in Sources */,
+				8834C7D9203B633700058439 /* main.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		88DF07A0203A86A5005D113F /* Debug */ = {
+		8834C7DA203B633700058439 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -199,7 +201,7 @@
 			};
 			name = Debug;
 		};
-		88DF07A1203A86A5005D113F /* Release */ = {
+		8834C7DB203B633700058439 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -247,18 +249,30 @@
 			};
 			name = Release;
 		};
-		88DF07A3203A86A5005D113F /* Debug */ = {
+		8834C7DD203B633700058439 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				HEADER_SEARCH_PATHS = /usr/local/include;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/usr/local/Cellar/lua/5.3.4_2/lib,
+					"/usr/local/Cellar/lua@5.1/5.1.5_5/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
 		};
-		88DF07A4203A86A5005D113F /* Release */ = {
+		8834C7DE203B633700058439 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				HEADER_SEARCH_PATHS = /usr/local/include;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/usr/local/Cellar/lua/5.3.4_2/lib,
+					"/usr/local/Cellar/lua@5.1/5.1.5_5/lib",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -266,25 +280,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		88DF0796203A86A5005D113F /* Build configuration list for PBXProject "graphics_osx_mb_test" */ = {
+		8834C7D0203B633700058439 /* Build configuration list for PBXProject "graphics_osx_lua_test" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				88DF07A0203A86A5005D113F /* Debug */,
-				88DF07A1203A86A5005D113F /* Release */,
+				8834C7DA203B633700058439 /* Debug */,
+				8834C7DB203B633700058439 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		88DF07A2203A86A5005D113F /* Build configuration list for PBXNativeTarget "graphics_osx_mb_test" */ = {
+		8834C7DC203B633700058439 /* Build configuration list for PBXNativeTarget "graphics_osx_lua_test" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				88DF07A3203A86A5005D113F /* Debug */,
-				88DF07A4203A86A5005D113F /* Release */,
+				8834C7DD203B633700058439 /* Debug */,
+				8834C7DE203B633700058439 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 88DF0793203A86A5005D113F /* Project object */;
+	rootObject = 8834C7CD203B633700058439 /* Project object */;
 }
