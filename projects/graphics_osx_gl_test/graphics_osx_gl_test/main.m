@@ -11,6 +11,8 @@
 
 int main(int argc, const char * argv[]) {
   surface_t* test = screen("test", 640, 480);
+  if (!test)
+    return 1;
   
   user_event_t ue;
   while (!should_close()) {

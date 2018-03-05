@@ -629,6 +629,97 @@ char font8x8_extra[132][8] = {
 
 static int mx = 0, my = 0;
 
+typedef union {
+  struct {
+    float xx; float yx; float zx; float wx;
+    float xy; float yy; float zy; float wy;
+    float xz; float yz; float zz; float wz;
+    float xw; float yw; float zw; float ww;
+  };
+  float m[16];
+  float m2[4][4];
+} mat4;
+
+mat4 mat4_zero() {
+  mat4 mat;
+  
+  mat.xx = 0.0f;
+  mat.xy = 0.0f;
+  mat.xz = 0.0f;
+  mat.xw = 0.0f;
+  
+  mat.yx = 0.0f;
+  mat.yy = 0.0f;
+  mat.yz = 0.0f;
+  mat.yw = 0.0f;
+  
+  mat.zx = 0.0f;
+  mat.zy = 0.0f;
+  mat.zz = 0.0f;
+  mat.zw = 0.0f;
+  
+  mat.wx = 0.0f;
+  mat.wy = 0.0f;
+  mat.wz = 0.0f;
+  mat.ww = 0.0f;
+  
+  return mat;
+}
+
+mat4 mat4_id() {
+  mat4 mat = mat4_zero();
+  mat.xx = 1.0f;
+  mat.yy = 1.0f;
+  mat.zz = 1.0f;
+  mat.ww = 1.0f;
+  return mat;
+}
+
+mat4 mat4_orthographic(float left, float right, float bottom, float top, float clip_near, float clip_far) {
+  mat4 m = mat4_id();
+  m.xx = 2.0f / (right - left);
+  m.yy = 2.0f / (top - bottom);
+  m.xw = - (right + left) / (right - left);
+  m.yw = - (top + bottom) / (top - bottom);
+  m.zz = - 2.0f / (clip_far - clip_near);
+  m.zw = - (clip_far + clip_near) / (clip_far - clip_near);
+  return m;
+}
+
+mat4 mat4_translation(float x, float y, float z) {
+  mat4 m = mat4_id();
+  m.xw = x;
+  m.yw = y;
+  m.zw = z;
+  return m;
+}
+
+mat4 mat4_mul_mat4(mat4 m1, mat4 m2) {
+  mat4 mat;
+  
+  mat.xx = (m1.xx * m2.xx) + (m1.xy * m2.yx) + (m1.xz * m2.zx) + (m1.xw * m2.wx);
+  mat.xy = (m1.xx * m2.xy) + (m1.xy * m2.yy) + (m1.xz * m2.zy) + (m1.xw * m2.wy);
+  mat.xz = (m1.xx * m2.xz) + (m1.xy * m2.yz) + (m1.xz * m2.zz) + (m1.xw * m2.wz);
+  mat.xw = (m1.xx * m2.xw) + (m1.xy * m2.yw) + (m1.xz * m2.zw) + (m1.xw * m2.ww);
+  
+  mat.yx = (m1.yx * m2.xx) + (m1.yy * m2.yx) + (m1.yz * m2.zx) + (m1.yw * m2.wx);
+  mat.yy = (m1.yx * m2.xy) + (m1.yy * m2.yy) + (m1.yz * m2.zy) + (m1.yw * m2.wy);
+  mat.yz = (m1.yx * m2.xz) + (m1.yy * m2.yz) + (m1.yz * m2.zz) + (m1.yw * m2.wz);
+  mat.yw = (m1.yx * m2.xw) + (m1.yy * m2.yw) + (m1.yz * m2.zw) + (m1.yw * m2.ww);
+  
+  mat.zx = (m1.zx * m2.xx) + (m1.zy * m2.yx) + (m1.zz * m2.zx) + (m1.zw * m2.wx);
+  mat.zy = (m1.zx * m2.xy) + (m1.zy * m2.yy) + (m1.zz * m2.zy) + (m1.zw * m2.wy);
+  mat.zz = (m1.zx * m2.xz) + (m1.zy * m2.yz) + (m1.zz * m2.zz) + (m1.zw * m2.wz);
+  mat.zw = (m1.zx * m2.xw) + (m1.zy * m2.yw) + (m1.zz * m2.zw) + (m1.zw * m2.ww);
+  
+  mat.wx = (m1.wx * m2.xx) + (m1.wy * m2.yx) + (m1.wz * m2.zx) + (m1.ww * m2.wx);
+  mat.wy = (m1.wx * m2.xy) + (m1.wy * m2.yy) + (m1.wz * m2.zy) + (m1.ww * m2.wy);
+  mat.wz = (m1.wx * m2.xz) + (m1.wy * m2.yz) + (m1.wz * m2.zz) + (m1.ww * m2.wz);
+  mat.ww = (m1.wx * m2.xw) + (m1.wy * m2.yw) + (m1.wz * m2.zw) + (m1.ww * m2.ww);
+  
+  return mat;
+}
+
 void get_mouse_pos(int* x, int* y) {
   if (!x || !y)
     return;
@@ -1293,6 +1384,47 @@ static int translate_key(unsigned int key) {
   return (key >= sizeof(keycodes) / sizeof(keycodes[0]) ?  KEYBOARD_KEY_DOWN : keycodes[key]);
 }
 
+void print_shader_log(GLuint s) {
+  if (glIsShader(s)) {
+    int log_len = 0, max_len = 0;
+    glGetShaderiv(s, GL_INFO_LOG_LENGTH, &max_len);
+    char* log = malloc(sizeof(char) * max_len);
+    
+    glGetShaderInfoLog(s, max_len, &log_len, log);
+    if (log_len >  0)
+      printf("%s\n", log);
+    
+    free(log);
+  }
+}
+
+GLuint load_shader(const GLchar* src, GLenum type) {
+  GLuint s = glCreateShader(type);
+  glShaderSource(s, 1, &src, NULL);
+  glCompileShader(s);
+  
+  GLint res = GL_FALSE;
+  glGetShaderiv(s, GL_COMPILE_STATUS, &res);
+  if (!res) {
+    print_shader_log(s);
+    return 0;
+  }
+  
+  return s;
+}
+
+GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
+  GLuint sp = glCreateProgram();
+  GLuint vs = load_shader(vs_src, GL_VERTEX_SHADER);
+  GLuint fs = load_shader(fs_src, GL_FRAGMENT_SHADER);
+  glAttachShader(sp, vs);
+  glAttachShader(sp, fs);
+  glLinkProgram(sp);
+  glDeleteShader(vs);
+  glDeleteShader(fs);
+  return sp;
+}
+
 @interface osx_app_t : NSWindow {
   NSView* view;
   @public bool closed;
@@ -1301,6 +1433,7 @@ static int translate_key(unsigned int key) {
 
 @interface osx_view_t : NSOpenGLView {
   NSTrackingArea* track;
+  GLuint vao, shader, texture;
 }
 @end
 
@@ -1327,8 +1460,7 @@ static osx_app_t* app;
 extern surface_t* buffer;
 
 -(id)initWithFrame:(CGRect)r {
-  NSOpenGLPixelFormatAttribute pixelFormatAttributes[] =
-  {
+  NSOpenGLPixelFormatAttribute pixelFormatAttributes[] = {
     NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
     NSOpenGLPFAColorSize, 24,
     NSOpenGLPFAAlphaSize, 8,
@@ -1344,6 +1476,80 @@ extern surface_t* buffer;
     track = nil;
     [self updateTrackingAreas];
     [[self openGLContext] makeCurrentContext];
+    
+    glViewport(0, 0, r.size.width, r.size.height);
+    glClearColor(0.f, 0.f, 0.f, 1.f);
+    
+    fill(buffer, RED);
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (GLvoid*)buffer->buf);
+    
+    GLfloat vertices_position[8] = {
+      -1.0, -1.0,
+       1.0, -1.0,
+       1.0,  1.0,
+      -1.0,  1.0,
+    };
+    
+    GLfloat texture_coord[8] = {
+      0.0, 0.0,
+      1.0, 0.0,
+      1.0, 1.0,
+      0.0, 1.0,
+    };
+    
+    GLuint indices[6] = {
+      0, 1, 2,
+      2, 3, 0
+    };
+    
+    const char* vs_src =
+    "#version 150\n"
+    "in vec4 position;"
+    "in vec2 texture_coord;"
+    "out vec2 texture_coord_from_vshader;"
+    "void main() {"
+    "  gl_Position = position;"
+    "  texture_coord_from_vshader = texture_coord;"
+    "}";
+    
+    const char* fs_src =
+    "#version 150\n"
+    "in vec2 texture_coord_from_vshader;"
+    "out vec4 out_color;"
+    "uniform sampler2D texture_sampler;"
+    "void main() {"
+    "  out_color = texture(texture_sampler, texture_coord_from_vshader);"
+    "}";
+    
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    
+    GLuint vbo;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_position) + sizeof(texture_coord), NULL, GL_STATIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position);\
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
+    
+    GLuint ebo;
+    glGenBuffers(1, &ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    
+    shader = create_shader(vs_src, fs_src);
+    glUseProgram(shader);
+    
+    GLint position_attribute = glGetAttribLocation(shader, "position");
+    glVertexAttribPointer(position_attribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(position_attribute);
+    
+    GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
+    glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
+    glEnableVertexAttribArray(texture_coord_attribute);
   }
   return self;
 }
@@ -1400,8 +1606,9 @@ extern surface_t* buffer;
     return;
 
   [super drawRect:r];
-  glClearColor(1.0, 0.0, 0.0, 1.0);
   glClear(GL_COLOR_BUFFER_BIT);
+  glBindVertexArray(vao);
+  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
   [[self openGLContext] flushBuffer];
 }
 
@@ -1750,823 +1957,5 @@ void release() {
     [app close];
   destroy(&buffer);
   [pool drain];
-}
-#elif defined(_WIN32)
-static WNDCLASS wnd;
-static HWND hwnd;
-static bool closed = false;
-static HDC hdc;
-static BITMAPINFO* bmpinfo;
-static user_event_t* tmp_ue;
-static bool event_fired = false;
-
-static int translate_mod() {
-  int mods = 0;
-
-  if (GetKeyState(VK_SHIFT) & 0x8000)
-    mods |= KB_MOD_SHIFT;
-  if (GetKeyState(VK_CONTROL) & 0x8000)
-    mods |= KB_MOD_CONTROL;
-  if (GetKeyState(VK_MENU) & 0x8000)
-    mods |= KB_MOD_ALT;
-  if ((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000)
-    mods |= KB_MOD_SUPER;
-  if (GetKeyState(VK_CAPITAL) & 1)
-    mods |= KB_MOD_CAPS_LOCK;
-  if (GetKeyState(VK_NUMLOCK) & 1)
-    mods |= KB_MOD_NUM_LOCK;
-
-  return mods;
-}
-
-static int translate_key(WPARAM wParam, LPARAM lParam) {
-  if (wParam == VK_CONTROL) {
-    MSG next;
-    DWORD time;
-
-    if (lParam & 0x01000000)
-      return KB_KEY_RIGHT_CONTROL;
-
-    time = GetMessageTime();
-    if (PeekMessageW(&next, NULL, 0, 0, PM_NOREMOVE))
-      if (next.message == WM_KEYDOWN || next.message == WM_SYSKEYDOWN || next.message == WM_KEYUP || next.message == WM_SYSKEYUP)
-        if (next.wParam == VK_MENU && (next.lParam & 0x01000000) && next.time == time)
-          return KB_KEY_UNKNOWN;
-
-    return KB_KEY_LEFT_CONTROL;
-  }
-
-  if (wParam == VK_PROCESSKEY)
-    return KB_KEY_UNKNOWN;
-
-  return keycodes[HIWORD(lParam) & 0x1FF];
-}
-
-static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-  LRESULT res = 0;
-  switch (message) {
-    case WM_PAINT:
-      if (buffer) {
-        StretchDIBits(hdc, 0, 0, buffer->w, buffer->h, 0, 0, buffer->w, buffer->h, buffer->buf, bmpinfo, DIB_RGB_COLORS, SRCCOPY);
-        ValidateRect(hWnd, NULL);
-      }
-      break;
-    case WM_CLOSE:
-      closed = true;
-      if (tmp_ue)
-        tmp_ue->type = WINDOW_CLOSED;
-      break;
-    case WM_CHAR:
-    case WM_SYSCHAR:
-    case WM_UNICHAR: {
-      const bool plain = (message != WM_SYSCHAR);
-      if (message == WM_UNICHAR && wParam == UNICODE_NOCHAR)
-        return FALSE;
-      tmp_ue->type = KEYBOARD_KEY_UP;
-      tmp_ue->mod = translate_mod();
-      tmp_ue->sym = (unsigned int)wParam;
-      break;
-    }
-    case WM_KEYDOWN:
-    case WM_SYSKEYDOWN:
-    case WM_KEYUP:
-    case WM_SYSKEYUP: {
-      const int key = translate_key(wParam, lParam);
-      const int scancode = (lParam >> 16) & 0x1ff;
-      const int action = ((lParam >> 31) & 1) ? KEYBOARD_KEY_UP : KEYBOARD_KEY_DOWN;
-      const int mods = translate_mod();
-
-      if (key == KB_KEY_UNKNOWN) {
-        tmp_ue = NULL;
-        return FALSE;
-      }
-
-      if (action == KEYBOARD_KEY_UP && wParam == VK_SHIFT) {
-        tmp_ue->type = action;
-        tmp_ue->mod = mods;
-        tmp_ue->sym = KB_KEY_LEFT_SHIFT;
-      } else if (wParam == VK_SNAPSHOT) {
-        tmp_ue->type = KEYBOARD_KEY_UP;
-        tmp_ue->mod = mods;
-        tmp_ue->sym = key;
-      } else {
-        tmp_ue->type = action;
-        tmp_ue->mod = mods;
-        tmp_ue->sym = key;
-      }
-      break;
-    }
-    case WM_LBUTTONDOWN:
-    case WM_RBUTTONDOWN:
-    case WM_MBUTTONDOWN:
-    case WM_XBUTTONDOWN:
-    case WM_LBUTTONUP:
-    case WM_RBUTTONUP:
-    case WM_MBUTTONUP:
-    case WM_XBUTTONUP: {
-      int button, action = MOUSE_BTN_UP;
-
-      switch (message) {
-        case WM_LBUTTONDOWN:
-          action = MOUSE_BTN_DOWN;
-        case WM_LBUTTONUP:
-          button = MOUSE_BTN_0;
-          break;
-        case WM_RBUTTONDOWN:
-          action = MOUSE_BTN_DOWN;
-        case WM_RBUTTONUP:
-          button = MOUSE_BTN_1;
-        case WM_MBUTTONDOWN:
-          action = MOUSE_BTN_DOWN;
-        case WM_MBUTTONUP:
-          button = MOUSE_BTN_2;
-        default:
-          button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? MOUSE_BTN_4 : MOUSE_BTN_5);
-          if (message == WM_XBUTTONDOWN)
-            action = MOUSE_BTN_DOWN;
-      }
-
-      tmp_ue->type = action;
-      tmp_ue->btn = button;
-      tmp_ue->mod = translate_mod();
-      tmp_ue->data1 = mx;
-      tmp_ue->data2 = my;
-      break;
-    }
-    case WM_MOUSEWHEEL:
-    case WM_MOUSEHWHEEL:
-      tmp_ue->type = SCROLL_WHEEL;
-      tmp_ue->data1 = -((SHORT)HIWORD(wParam) / (double)WHEEL_DELTA);
-      tmp_ue->data2 = (SHORT)HIWORD(wParam) / (double)WHEEL_DELTA;
-      break;
-    case WM_MOUSEMOVE:
-      mx = GET_X_LPARAM(lParam);
-      my = GET_Y_LPARAM(lParam);
-      break;
-    default:
-      res = DefWindowProc(hWnd, message, wParam, lParam);
-  }
-  return res;
-}
-
-surface_t* screen(const char* t, int w, int h) {
-  if (!(buffer = surface(w, h)))
-    return NULL;
-  buffer->w = w;
-  buffer->h = h;
-
-  memset(keycodes, -1, sizeof(keycodes));
-  memset(scancodes, -1, sizeof(scancodes));
-
-  keycodes[0x00B] = KB_KEY_0;
-  keycodes[0x002] = KB_KEY_1;
-  keycodes[0x003] = KB_KEY_2;
-  keycodes[0x004] = KB_KEY_3;
-  keycodes[0x005] = KB_KEY_4;
-  keycodes[0x006] = KB_KEY_5;
-  keycodes[0x007] = KB_KEY_6;
-  keycodes[0x008] = KB_KEY_7;
-  keycodes[0x009] = KB_KEY_8;
-  keycodes[0x00A] = KB_KEY_9;
-  keycodes[0x01E] = KB_KEY_A;
-  keycodes[0x030] = KB_KEY_B;
-  keycodes[0x02E] = KB_KEY_C;
-  keycodes[0x020] = KB_KEY_D;
-  keycodes[0x012] = KB_KEY_E;
-  keycodes[0x021] = KB_KEY_F;
-  keycodes[0x022] = KB_KEY_G;
-  keycodes[0x023] = KB_KEY_H;
-  keycodes[0x017] = KB_KEY_I;
-  keycodes[0x024] = KB_KEY_J;
-  keycodes[0x025] = KB_KEY_K;
-  keycodes[0x026] = KB_KEY_L;
-  keycodes[0x032] = KB_KEY_M;
-  keycodes[0x031] = KB_KEY_N;
-  keycodes[0x018] = KB_KEY_O;
-  keycodes[0x019] = KB_KEY_P;
-  keycodes[0x010] = KB_KEY_Q;
-  keycodes[0x013] = KB_KEY_R;
-  keycodes[0x01F] = KB_KEY_S;
-  keycodes[0x014] = KB_KEY_T;
-  keycodes[0x016] = KB_KEY_U;
-  keycodes[0x02F] = KB_KEY_V;
-  keycodes[0x011] = KB_KEY_W;
-  keycodes[0x02D] = KB_KEY_X;
-  keycodes[0x015] = KB_KEY_Y;
-  keycodes[0x02C] = KB_KEY_Z;
-
-  keycodes[0x028] = KB_KEY_APOSTROPHE;
-  keycodes[0x02B] = KB_KEY_BACKSLASH;
-  keycodes[0x033] = KB_KEY_COMMA;
-  keycodes[0x00D] = KB_KEY_EQUAL;
-  keycodes[0x029] = KB_KEY_GRAVE_ACCENT;
-  keycodes[0x01A] = KB_KEY_LEFT_BRACKET;
-  keycodes[0x00C] = KB_KEY_MINUS;
-  keycodes[0x034] = KB_KEY_PERIOD;
-  keycodes[0x01B] = KB_KEY_RIGHT_BRACKET;
-  keycodes[0x027] = KB_KEY_SEMICOLON;
-  keycodes[0x035] = KB_KEY_SLASH;
-  keycodes[0x056] = KB_KEY_WORLD_2;
-
-  keycodes[0x00E] = KB_KEY_BACKSPACE;
-  keycodes[0x153] = KB_KEY_DELETE;
-  keycodes[0x14F] = KB_KEY_END;
-  keycodes[0x01C] = KB_KEY_ENTER;
-  keycodes[0x001] = KB_KEY_ESCAPE;
-  keycodes[0x147] = KB_KEY_HOME;
-  keycodes[0x152] = KB_KEY_INSERT;
-  keycodes[0x15D] = KB_KEY_MENU;
-  keycodes[0x151] = KB_KEY_PAGE_DOWN;
-  keycodes[0x149] = KB_KEY_PAGE_UP;
-  keycodes[0x045] = KB_KEY_PAUSE;
-  keycodes[0x146] = KB_KEY_PAUSE;
-  keycodes[0x039] = KB_KEY_SPACE;
-  keycodes[0x00F] = KB_KEY_TAB;
-  keycodes[0x03A] = KB_KEY_CAPS_LOCK;
-  keycodes[0x145] = KB_KEY_NUM_LOCK;
-  keycodes[0x046] = KB_KEY_SCROLL_LOCK;
-  keycodes[0x03B] = KB_KEY_F1;
-  keycodes[0x03C] = KB_KEY_F2;
-  keycodes[0x03D] = KB_KEY_F3;
-  keycodes[0x03E] = KB_KEY_F4;
-  keycodes[0x03F] = KB_KEY_F5;
-  keycodes[0x040] = KB_KEY_F6;
-  keycodes[0x041] = KB_KEY_F7;
-  keycodes[0x042] = KB_KEY_F8;
-  keycodes[0x043] = KB_KEY_F9;
-  keycodes[0x044] = KB_KEY_F10;
-  keycodes[0x057] = KB_KEY_F11;
-  keycodes[0x058] = KB_KEY_F12;
-  keycodes[0x064] = KB_KEY_F13;
-  keycodes[0x065] = KB_KEY_F14;
-  keycodes[0x066] = KB_KEY_F15;
-  keycodes[0x067] = KB_KEY_F16;
-  keycodes[0x068] = KB_KEY_F17;
-  keycodes[0x069] = KB_KEY_F18;
-  keycodes[0x06A] = KB_KEY_F19;
-  keycodes[0x06B] = KB_KEY_F20;
-  keycodes[0x06C] = KB_KEY_F21;
-  keycodes[0x06D] = KB_KEY_F22;
-  keycodes[0x06E] = KB_KEY_F23;
-  keycodes[0x076] = KB_KEY_F24;
-  keycodes[0x038] = KB_KEY_LEFT_ALT;
-  keycodes[0x01D] = KB_KEY_LEFT_CONTROL;
-  keycodes[0x02A] = KB_KEY_LEFT_SHIFT;
-  keycodes[0x15B] = KB_KEY_LEFT_SUPER;
-  keycodes[0x137] = KB_KEY_PRINT_SCREEN;
-  keycodes[0x138] = KB_KEY_RIGHT_ALT;
-  keycodes[0x11D] = KB_KEY_RIGHT_CONTROL;
-  keycodes[0x036] = KB_KEY_RIGHT_SHIFT;
-  keycodes[0x15C] = KB_KEY_RIGHT_SUPER;
-  keycodes[0x150] = KB_KEY_DOWN;
-  keycodes[0x14B] = KB_KEY_LEFT;
-  keycodes[0x14D] = KB_KEY_RIGHT;
-  keycodes[0x148] = KB_KEY_UP;
-
-  keycodes[0x052] = KB_KEY_KP_0;
-  keycodes[0x04F] = KB_KEY_KP_1;
-  keycodes[0x050] = KB_KEY_KP_2;
-  keycodes[0x051] = KB_KEY_KP_3;
-  keycodes[0x04B] = KB_KEY_KP_4;
-  keycodes[0x04C] = KB_KEY_KP_5;
-  keycodes[0x04D] = KB_KEY_KP_6;
-  keycodes[0x047] = KB_KEY_KP_7;
-  keycodes[0x048] = KB_KEY_KP_8;
-  keycodes[0x049] = KB_KEY_KP_9;
-  keycodes[0x04E] = KB_KEY_KP_ADD;
-  keycodes[0x053] = KB_KEY_KP_DECIMAL;
-  keycodes[0x135] = KB_KEY_KP_DIVIDE;
-  keycodes[0x11C] = KB_KEY_KP_ENTER;
-  keycodes[0x037] = KB_KEY_KP_MULTIPLY;
-  keycodes[0x04A] = KB_KEY_KP_SUBTRACT;
-
-  for (int sc = 0; sc < 512; sc++) {
-    if (keycodes[sc] > 0)
-      scancodes[keycodes[sc]] = sc;
-  }
-
-  RECT rect = { 0 };
-
-  wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
-  wnd.lpfnWndProc = WndProc;
-  wnd.hCursor = LoadCursor(0, IDC_ARROW);
-  wnd.lpszClassName = t;
-  RegisterClass(&wnd);
-
-  rect.right = w;
-  rect.bottom = h;
-
-  AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
-
-  rect.right -= rect.left;
-  rect.bottom -= rect.top;
-
-  if (!(hwnd = CreateWindowEx(0, t, t, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME, CW_USEDEFAULT, CW_USEDEFAULT, rect.right, rect.bottom, 0, 0, 0, 0))) {
-    release();
-    SET_LAST_ERROR("CreateWindowEx() failed: %s", GetLastError());
-    return NULL;
-  }
-
-  ShowWindow(hwnd, SW_NORMAL);
-
-  bmpinfo = (BITMAPINFO*)calloc(1, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
-  bmpinfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-  bmpinfo->bmiHeader.biPlanes = 1;
-  bmpinfo->bmiHeader.biBitCount = 32;
-  bmpinfo->bmiHeader.biCompression = BI_BITFIELDS;
-  bmpinfo->bmiHeader.biWidth = w;
-  bmpinfo->bmiHeader.biHeight = -h;
-  bmpinfo->bmiColors[0].rgbRed = 0xff;
-  bmpinfo->bmiColors[1].rgbGreen = 0xff;
-  bmpinfo->bmiColors[2].rgbBlue = 0xff;
-
-  hdc = GetDC(hwnd);
-
-  return buffer;
-}
-
-bool should_close() {
-  return closed;
-}
-
-bool poll_events(user_event_t* ue) {
-  if (!ue)
-    return false;
-  memset(ue, 0, sizeof(user_event_t));
-  tmp_ue = ue;
-
-  MSG msg;
-  if (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
-    TranslateMessage(&msg);
-    DispatchMessage(&msg);
-    return !!tmp_ue;
-  }
-  return false;
-}
-
-void render() {
-  InvalidateRect(hwnd, NULL, TRUE);
-  SendMessage(hwnd, WM_PAINT, 0, 0);
-}
-
-void release() {
-  destroy(&buffer);
-  ReleaseDC(hwnd, hdc);
-  DestroyWindow(hwnd);
-}
-#else
-static Display* display;
-static bool closed = false;
-static surface_t* buffer;
-static Window win;
-static GC gc;
-static XImage* img;
-static XEvent event;
-static KeySym sym;
-
-#define Button6 6
-#define Button7 7
-
-static int translate_keycode(int scancode) {
-  if (scancode < 8 || scancode > 255)
-    return KB_KEY_UNKNOWN;
-
-  int _sym = XkbKeycodeToKeysym(display, scancode, 0, 1);
-  switch (_sym) {
-  case XK_KP_0:           return KB_KEY_KP_0;
-  case XK_KP_1:           return KB_KEY_KP_1;
-  case XK_KP_2:           return KB_KEY_KP_2;
-  case XK_KP_3:           return KB_KEY_KP_3;
-  case XK_KP_4:           return KB_KEY_KP_4;
-  case XK_KP_5:           return KB_KEY_KP_5;
-  case XK_KP_6:           return KB_KEY_KP_6;
-  case XK_KP_7:           return KB_KEY_KP_7;
-  case XK_KP_8:           return KB_KEY_KP_8;
-  case XK_KP_9:           return KB_KEY_KP_9;
-  case XK_KP_Separator:
-  case XK_KP_Decimal:     return KB_KEY_KP_DECIMAL;
-  case XK_KP_Equal:       return KB_KEY_KP_EQUAL;
-  case XK_KP_Enter:       return KB_KEY_KP_ENTER;
-  default:
-    break;
-  }
-  _sym = XkbKeycodeToKeysym(display, scancode, 0, 0);
-
-  switch (_sym) {
-  case XK_Escape:         return KB_KEY_ESCAPE;
-  case XK_Tab:            return KB_KEY_TAB;
-  case XK_Shift_L:        return KB_KEY_LEFT_SHIFT;
-  case XK_Shift_R:        return KB_KEY_RIGHT_SHIFT;
-  case XK_Control_L:      return KB_KEY_LEFT_CONTROL;
-  case XK_Control_R:      return KB_KEY_RIGHT_CONTROL;
-  case XK_Meta_L:
-  case XK_Alt_L:          return KB_KEY_LEFT_ALT;
-  case XK_Mode_switch: // Mapped to Alt_R on many keyboards
-  case XK_ISO_Level3_Shift: // AltGr on at least some machines
-  case XK_Meta_R:
-  case XK_Alt_R:          return KB_KEY_RIGHT_ALT;
-  case XK_Super_L:        return KB_KEY_LEFT_SUPER;
-  case XK_Super_R:        return KB_KEY_RIGHT_SUPER;
-  case XK_Menu:           return KB_KEY_MENU;
-  case XK_Num_Lock:       return KB_KEY_NUM_LOCK;
-  case XK_Caps_Lock:      return KB_KEY_CAPS_LOCK;
-  case XK_Print:          return KB_KEY_PRINT_SCREEN;
-  case XK_Scroll_Lock:    return KB_KEY_SCROLL_LOCK;
-  case XK_Pause:          return KB_KEY_PAUSE;
-  case XK_Delete:         return KB_KEY_DELETE;
-  case XK_BackSpace:      return KB_KEY_BACKSPACE;
-  case XK_Return:         return KB_KEY_ENTER;
-  case XK_Home:           return KB_KEY_HOME;
-  case XK_End:            return KB_KEY_END;
-  case XK_Page_Up:        return KB_KEY_PAGE_UP;
-  case XK_Page_Down:      return KB_KEY_PAGE_DOWN;
-  case XK_Insert:         return KB_KEY_INSERT;
-  case XK_Left:           return KB_KEY_LEFT;
-  case XK_Right:          return KB_KEY_RIGHT;
-  case XK_Down:           return KB_KEY_DOWN;
-  case XK_Up:             return KB_KEY_UP;
-  case XK_F1:             return KB_KEY_F1;
-  case XK_F2:             return KB_KEY_F2;
-  case XK_F3:             return KB_KEY_F3;
-  case XK_F4:             return KB_KEY_F4;
-  case XK_F5:             return KB_KEY_F5;
-  case XK_F6:             return KB_KEY_F6;
-  case XK_F7:             return KB_KEY_F7;
-  case XK_F8:             return KB_KEY_F8;
-  case XK_F9:             return KB_KEY_F9;
-  case XK_F10:            return KB_KEY_F10;
-  case XK_F11:            return KB_KEY_F11;
-  case XK_F12:            return KB_KEY_F12;
-  case XK_F13:            return KB_KEY_F13;
-  case XK_F14:            return KB_KEY_F14;
-  case XK_F15:            return KB_KEY_F15;
-  case XK_F16:            return KB_KEY_F16;
-  case XK_F17:            return KB_KEY_F17;
-  case XK_F18:            return KB_KEY_F18;
-  case XK_F19:            return KB_KEY_F19;
-  case XK_F20:            return KB_KEY_F20;
-  case XK_F21:            return KB_KEY_F21;
-  case XK_F22:            return KB_KEY_F22;
-  case XK_F23:            return KB_KEY_F23;
-  case XK_F24:            return KB_KEY_F24;
-  case XK_F25:            return KB_KEY_F25;
-
-  // Numeric keypad
-  case XK_KP_Divide:      return KB_KEY_KP_DIVIDE;
-  case XK_KP_Multiply:    return KB_KEY_KP_MULTIPLY;
-  case XK_KP_Subtract:    return KB_KEY_KP_SUBTRACT;
-  case XK_KP_Add:         return KB_KEY_KP_ADD;
-
-  // These should have been detected in secondary keysym test above!
-  case XK_KP_Insert:      return KB_KEY_KP_0;
-  case XK_KP_End:         return KB_KEY_KP_1;
-  case XK_KP_Down:        return KB_KEY_KP_2;
-  case XK_KP_Page_Down:   return KB_KEY_KP_3;
-  case XK_KP_Left:        return KB_KEY_KP_4;
-  case XK_KP_Right:       return KB_KEY_KP_6;
-  case XK_KP_Home:        return KB_KEY_KP_7;
-  case XK_KP_Up:          return KB_KEY_KP_8;
-  case XK_KP_Page_Up:     return KB_KEY_KP_9;
-  case XK_KP_Delete:      return KB_KEY_KP_DECIMAL;
-  case XK_KP_Equal:       return KB_KEY_KP_EQUAL;
-  case XK_KP_Enter:       return KB_KEY_KP_ENTER;
-
-  // Last resort: Check for printable keys (should not happen if the XKB
-  // extension is available). This will give a layout dependent mapping
-  // (which is wrong, and we may miss some keys, especially on non-US
-  // keyboards), but it's better than nothing...
-  case XK_a:              return KB_KEY_A;
-  case XK_b:              return KB_KEY_B;
-  case XK_c:              return KB_KEY_C;
-  case XK_d:              return KB_KEY_D;
-  case XK_e:              return KB_KEY_E;
-  case XK_f:              return KB_KEY_F;
-  case XK_g:              return KB_KEY_G;
-  case XK_h:              return KB_KEY_H;
-  case XK_i:              return KB_KEY_I;
-  case XK_j:              return KB_KEY_J;
-  case XK_k:              return KB_KEY_K;
-  case XK_l:              return KB_KEY_L;
-  case XK_m:              return KB_KEY_M;
-  case XK_n:              return KB_KEY_N;
-  case XK_o:              return KB_KEY_O;
-  case XK_p:              return KB_KEY_P;
-  case XK_q:              return KB_KEY_Q;
-  case XK_r:              return KB_KEY_R;
-  case XK_s:              return KB_KEY_S;
-  case XK_t:              return KB_KEY_T;
-  case XK_u:              return KB_KEY_U;
-  case XK_v:              return KB_KEY_V;
-  case XK_w:              return KB_KEY_W;
-  case XK_x:              return KB_KEY_X;
-  case XK_y:              return KB_KEY_Y;
-  case XK_z:              return KB_KEY_Z;
-  case XK_1:              return KB_KEY_1;
-  case XK_2:              return KB_KEY_2;
-  case XK_3:              return KB_KEY_3;
-  case XK_4:              return KB_KEY_4;
-  case XK_5:              return KB_KEY_5;
-  case XK_6:              return KB_KEY_6;
-  case XK_7:              return KB_KEY_7;
-  case XK_8:              return KB_KEY_8;
-  case XK_9:              return KB_KEY_9;
-  case XK_0:              return KB_KEY_0;
-  case XK_space:          return KB_KEY_SPACE;
-  case XK_minus:          return KB_KEY_MINUS;
-  case XK_equal:          return KB_KEY_EQUAL;
-  case XK_bracketleft:    return KB_KEY_LEFT_BRACKET;
-  case XK_bracketright:   return KB_KEY_RIGHT_BRACKET;
-  case XK_backslash:      return KB_KEY_BACKSLASH;
-  case XK_semicolon:      return KB_KEY_SEMICOLON;
-  case XK_apostrophe:     return KB_KEY_APOSTROPHE;
-  case XK_grave:          return KB_KEY_GRAVE_ACCENT;
-  case XK_comma:          return KB_KEY_COMMA;
-  case XK_period:         return KB_KEY_PERIOD;
-  case XK_slash:          return KB_KEY_SLASH;
-  case XK_less:           return KB_KEY_WORLD_1; // At least in some layouts...
-  default:
-    break;
-  }
-
-  return KB_KEY_UNKNOWN;
-}
-
-static int translate_key(int scancode) {
-  if (scancode < 0 || scancode > 255)
-    return KB_KEY_UNKNOWN;
-  return keycodes[scancode];
-}
-
-static int translate_mod(int state) {
-  int mods = 0;
-
-  if (state & ShiftMask)
-    mods |= KB_MOD_SHIFT;
-  if (state & ControlMask)
-    mods |= KB_MOD_CONTROL;
-  if (state & Mod1Mask)
-    mods |= KB_MOD_ALT;
-  if (state & Mod4Mask)
-    mods |= KB_MOD_SUPER;
-  if (state & LockMask)
-    mods |= KB_MOD_CAPS_LOCK;
-  if (state & Mod2Mask)
-    mods |= KB_MOD_NUM_LOCK;
-
-  return mods;
-}
-
-surface_t* screen(const char* title, int w, int h) {
-  if (!(buffer = surface(w, h)))
-    return NULL;
-  buffer->w = w;
-  buffer->h = h;
-
-  display = XOpenDisplay(0);
-  if (!display) {
-    release();
-    SET_LAST_ERROR("XOpenDisplay(0) failed!");
-    return NULL;
-  }
-
-  memset(keycodes, -1, sizeof(keycodes));
-  memset(scancodes, -1, sizeof(scancodes));
-
-  int scancode, key;
-  char name[XkbKeyNameLength + 1];
-  XkbDescPtr desc = XkbGetMap(display, 0, XkbUseCoreKbd);
-  XkbGetNames(display, XkbKeyNamesMask, desc);
-
-  for (scancode = desc->min_key_code;  scancode <= desc->max_key_code;  scancode++) {
-    memcpy(name, desc->names->keys[scancode].name, XkbKeyNameLength);
-    name[XkbKeyNameLength] = '\0';
-
-    if      (strcmp(name, "TLDE") == 0) key = KB_KEY_GRAVE_ACCENT;
-    else if (strcmp(name, "AE01") == 0) key = KB_KEY_1;
-    else if (strcmp(name, "AE02") == 0) key = KB_KEY_2;
-    else if (strcmp(name, "AE03") == 0) key = KB_KEY_3;
-    else if (strcmp(name, "AE04") == 0) key = KB_KEY_4;
-    else if (strcmp(name, "AE05") == 0) key = KB_KEY_5;
-    else if (strcmp(name, "AE06") == 0) key = KB_KEY_6;
-    else if (strcmp(name, "AE07") == 0) key = KB_KEY_7;
-    else if (strcmp(name, "AE08") == 0) key = KB_KEY_8;
-    else if (strcmp(name, "AE09") == 0) key = KB_KEY_9;
-    else if (strcmp(name, "AE10") == 0) key = KB_KEY_0;
-    else if (strcmp(name, "AE11") == 0) key = KB_KEY_MINUS;
-    else if (strcmp(name, "AE12") == 0) key = KB_KEY_EQUAL;
-    else if (strcmp(name, "AD01") == 0) key = KB_KEY_Q;
-    else if (strcmp(name, "AD02") == 0) key = KB_KEY_W;
-    else if (strcmp(name, "AD03") == 0) key = KB_KEY_E;
-    else if (strcmp(name, "AD04") == 0) key = KB_KEY_R;
-    else if (strcmp(name, "AD05") == 0) key = KB_KEY_T;
-    else if (strcmp(name, "AD06") == 0) key = KB_KEY_Y;
-    else if (strcmp(name, "AD07") == 0) key = KB_KEY_U;
-    else if (strcmp(name, "AD08") == 0) key = KB_KEY_I;
-    else if (strcmp(name, "AD09") == 0) key = KB_KEY_O;
-    else if (strcmp(name, "AD10") == 0) key = KB_KEY_P;
-    else if (strcmp(name, "AD11") == 0) key = KB_KEY_LEFT_BRACKET;
-    else if (strcmp(name, "AD12") == 0) key = KB_KEY_RIGHT_BRACKET;
-    else if (strcmp(name, "AC01") == 0) key = KB_KEY_A;
-    else if (strcmp(name, "AC02") == 0) key = KB_KEY_S;
-    else if (strcmp(name, "AC03") == 0) key = KB_KEY_D;
-    else if (strcmp(name, "AC04") == 0) key = KB_KEY_F;
-    else if (strcmp(name, "AC05") == 0) key = KB_KEY_G;
-    else if (strcmp(name, "AC06") == 0) key = KB_KEY_H;
-    else if (strcmp(name, "AC07") == 0) key = KB_KEY_J;
-    else if (strcmp(name, "AC08") == 0) key = KB_KEY_K;
-    else if (strcmp(name, "AC09") == 0) key = KB_KEY_L;
-    else if (strcmp(name, "AC10") == 0) key = KB_KEY_SEMICOLON;
-    else if (strcmp(name, "AC11") == 0) key = KB_KEY_APOSTROPHE;
-    else if (strcmp(name, "AB01") == 0) key = KB_KEY_Z;
-    else if (strcmp(name, "AB02") == 0) key = KB_KEY_X;
-    else if (strcmp(name, "AB03") == 0) key = KB_KEY_C;
-    else if (strcmp(name, "AB04") == 0) key = KB_KEY_V;
-    else if (strcmp(name, "AB05") == 0) key = KB_KEY_B;
-    else if (strcmp(name, "AB06") == 0) key = KB_KEY_N;
-    else if (strcmp(name, "AB07") == 0) key = KB_KEY_M;
-    else if (strcmp(name, "AB08") == 0) key = KB_KEY_COMMA;
-    else if (strcmp(name, "AB09") == 0) key = KB_KEY_PERIOD;
-    else if (strcmp(name, "AB10") == 0) key = KB_KEY_SLASH;
-    else if (strcmp(name, "BKSL") == 0) key = KB_KEY_BACKSLASH;
-    else if (strcmp(name, "LSGT") == 0) key = KB_KEY_WORLD_1;
-    else                                key = KB_KEY_UNKNOWN;
-
-    if ((scancode >= 0) && (scancode < 256))
-      keycodes[scancode] = key;
-  }
-
-  XkbFreeNames(desc, XkbKeyNamesMask, True);
-  XkbFreeKeyboard(desc, 0, True);
-
-  for (scancode = 0;  scancode < 256;  scancode++) {
-    if (keycodes[scancode] < 0)
-      keycodes[scancode] = translate_keycode(scancode);
-    if (keycodes[scancode] > 0)
-      scancodes[keycodes[scancode]] = scancode;
-  }
-
-  int screen = DefaultScreen(display);
-  Visual* visual = DefaultVisual(display, screen);
-  int format_c;
-  XPixmapFormatValues* formats = XListPixmapFormats(display, &format_c);
-  int depth = DefaultDepth(display, screen);
-  Window default_root_win = DefaultRootWindow(display);
-
-  int c_depth;
-  for (int i = 0; i < format_c; ++i) {
-    if (depth == formats[i].depth) {
-      c_depth = formats[i].bits_per_pixel;
-      break;
-    }
-  }
-  XFree(formats);
-
-  if (c_depth != 32) {
-    release();
-    SET_LAST_ERROR("Invalid display depth: %d", c_depth);
-    return NULL;
-  }
-
-  int s_width = DisplayWidth(display, screen);
-  int s_height = DisplayHeight(display, screen);
-
-  XSetWindowAttributes win_attrib;
-  win_attrib.border_pixel = BlackPixel(display, screen);
-  win_attrib.background_pixel = BlackPixel(display, screen);
-  win_attrib.backing_store = NotUseful;
-
-  win = XCreateWindow(display, default_root_win, (s_width - w) / 2,
-		      (s_height - h) / 2, w, h, 0, depth, InputOutput,
-		      visual, CWBackPixel | CWBorderPixel | CWBackingStore,
-		      &win_attrib);
-  if (!win) {
-    release();
-    SET_LAST_ERROR("XCreateWindow() failed!");
-    return NULL;
-  }
-
-  XSelectInput(display, win, KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask);
-  XStoreName(display, win, title);
-
-  XSizeHints hints;
-  hints.flags = PPosition | PMinSize | PMaxSize;
-  hints.x = 0;
-  hints.y = 0;
-  hints.min_width = w;
-  hints.max_width = w;
-  hints.min_height = h;
-  hints.max_height = h;
-
-  XSetWMNormalHints(display, win, &hints);
-  XClearWindow(display, win);
-  XMapRaised(display, win);
-  XFlush(display);
-
-  gc = DefaultGC(display, screen);
-
-  img = XCreateImage(display, CopyFromParent, depth, ZPixmap, 0, NULL, w, h, 32, w * 4);
-
-  return buffer;
-}
-
-bool should_close() {
-  return closed;
-}
-
-bool poll_events(user_event_t* ue) {
-  if (!ue || !XPending(display))
-    return false;
-
-  XNextEvent(display, &event);
-  switch (event.type) {
-  case KeyPress:
-    ue->type = KEYBOARD_KEY_DOWN;
-    ue->sym  = translate_key(event.xkey.keycode);
-    ue->mod  = translate_mod(event.xkey.state);
-    break;
-  case KeyRelease:
-    ue->type = KEYBOARD_KEY_UP;
-    ue->sym  = translate_key(event.xkey.keycode);
-    ue->mod  = translate_mod(event.xkey.state);
-    break;
-  case ButtonPress:
-    ue->type = MOUSE_BTN_DOWN;
-    ue->mod  = translate_mod(event.xkey.state);
-    switch (event.xbutton.button) {
-    case Button1:
-      ue->btn = MOUSE_BTN_0;
-      break;
-    case Button2:
-      ue->btn = MOUSE_BTN_1;
-      break;
-    case Button3:
-      ue->btn = MOUSE_BTN_2;
-      break;
-    case Button4:
-      ue->type = SCROLL_WHEEL;
-      ue->data1 = 0;
-      ue->data2 = 1;
-      break;
-    case Button5:
-      ue->type = SCROLL_WHEEL;
-      ue->data1 =  0;
-      ue->data2 = -1;
-      break;
-    case Button6:
-      ue->type = SCROLL_WHEEL;
-      ue->data1 = 1;
-      ue->data2 = 0;
-      break;
-    case Button7:
-      ue->type = SCROLL_WHEEL;
-      ue->data1 = -1;
-      ue->data2 =  0;
-      break;
-    default:
-      ue->btn = (event.xbutton.button - Button1 - 4);
-    }
-    break;
-  case ButtonRelease:
-    ue->type = MOUSE_BTN_UP;
-    ue->mod  = translate_mod(event.xkey.state);
-    switch (event.xbutton.button) {
-    case Button1:
-      ue->btn = MOUSE_BTN_0;
-      break;
-    case Button2:
-      ue->btn = MOUSE_BTN_1;
-      break;
-    case Button3:
-      ue->btn = MOUSE_BTN_2;
-      break;
-    default:
-      ue->btn = (event.xbutton.button - Button1 - 4);
-    }
-    break;
-  case MotionNotify:
-    mx = event.xmotion.x;
-    my = event.xmotion.y;
-    break;
-  case DestroyNotify:
-    ue->type = WINDOW_CLOSED;
-    closed = true;
-  default:
-    break;
-  }
-  return true;
-}
-
-void render() {
-  img->data = (char*)buffer->buf;
-  XPutImage(display, win, gc, img, 0, 0, 0, 0, buffer->w, buffer->h);
-  XFlush(display);
-}
-
-void release() {
-  destroy(&buffer);
-  img->data = NULL;
-  XDestroyImage(img);
-  XDestroyWindow(display, win);
-  XCloseDisplay(display);
 }
 #endif

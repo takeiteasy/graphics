@@ -11,8 +11,6 @@
 		88B0B5EC204AACD600BE9A54 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0B5EA204AACD600BE9A54 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
 		88D03B9A203A4CDD00FB8EE4 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 88D03B99203A4CDD00FB8EE4 /* main.m */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
 		88DF0784203A4E9E005D113F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88DF0783203A4E9E005D113F /* OpenGL.framework */; };
-		88DF078B203A4F6E005D113F /* glad.c in Sources */ = {isa = PBXBuildFile; fileRef = 88DF0789203A4F6E005D113F /* glad.c */; };
-		88DF078E203A52B5005D113F /* linalgb.c in Sources */ = {isa = PBXBuildFile; fileRef = 88DF078D203A52B5005D113F /* linalgb.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -35,11 +33,6 @@
 		88D03B99203A4CDD00FB8EE4 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		88DF0782203A4E91005D113F /* libgraphics_osx_lib.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libgraphics_osx_lib.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		88DF0783203A4E9E005D113F /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
-		88DF0788203A4F6E005D113F /* glad.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = glad.h; sourceTree = "<group>"; };
-		88DF0789203A4F6E005D113F /* glad.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = glad.c; sourceTree = "<group>"; };
-		88DF078A203A4F6E005D113F /* khrplatform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = khrplatform.h; sourceTree = "<group>"; };
-		88DF078C203A52B5005D113F /* linalgb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = linalgb.h; sourceTree = "<group>"; };
-		88DF078D203A52B5005D113F /* linalgb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = linalgb.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,7 +51,6 @@
 		88D03B8D203A4CDD00FB8EE4 = {
 			isa = PBXGroup;
 			children = (
-				88DF0787203A4F6E005D113F /* 3rdparty */,
 				88D03B98203A4CDD00FB8EE4 /* graphics_osx_gl_test */,
 				88D03B97203A4CDD00FB8EE4 /* Products */,
 				88DF0780203A4E91005D113F /* Frameworks */,
@@ -91,19 +83,6 @@
 				88DF0782203A4E91005D113F /* libgraphics_osx_lib.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		88DF0787203A4F6E005D113F /* 3rdparty */ = {
-			isa = PBXGroup;
-			children = (
-				88DF078D203A52B5005D113F /* linalgb.c */,
-				88DF078C203A52B5005D113F /* linalgb.h */,
-				88DF0788203A4F6E005D113F /* glad.h */,
-				88DF0789203A4F6E005D113F /* glad.c */,
-				88DF078A203A4F6E005D113F /* khrplatform.h */,
-			);
-			name = 3rdparty;
-			path = graphics_osx_gl_test/3rdparty;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -165,8 +144,6 @@
 			files = (
 				88B0B5EC204AACD600BE9A54 /* graphics.c in Sources */,
 				88D03B9A203A4CDD00FB8EE4 /* main.m in Sources */,
-				88DF078B203A4F6E005D113F /* glad.c in Sources */,
-				88DF078E203A52B5005D113F /* linalgb.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
