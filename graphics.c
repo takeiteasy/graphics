@@ -1433,7 +1433,7 @@ extern surface_t* buffer;
     "out vec2 texture_coord_from_vshader;"
     "void main() {"
     "  gl_Position = position;"
-    "  texture_coord_from_vshader = texture_coord;"
+    "  texture_coord_from_vshader = vec2(texture_coord.s, 1.0f - texture_coord.t);"
     "}";
     
     const char* fs_src =

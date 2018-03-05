@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		88B0B5EF204D09C900BE9A54 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0B5ED204D09C900BE9A54 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
+		88B0B5F1204D132D00BE9A54 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0B5F0204D132D00BE9A54 /* Cocoa.framework */; };
+		88B0B5F3204D133100BE9A54 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0B5F2204D133100BE9A54 /* OpenGL.framework */; };
 		88D03B89203A1CE500FB8EE4 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 88D03B88203A1CE500FB8EE4 /* test.c */; };
 /* End PBXBuildFile section */
 
@@ -26,6 +28,8 @@
 /* Begin PBXFileReference section */
 		88B0B5ED204D09C900BE9A54 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../../graphics.c; sourceTree = "<group>"; };
 		88B0B5EE204D09C900BE9A54 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../../graphics.h; sourceTree = "<group>"; };
+		88B0B5F0204D132D00BE9A54 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		88B0B5F2204D133100BE9A54 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		88D03B7D203A1CC400FB8EE4 /* graphics_osx_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics_osx_test; sourceTree = BUILT_PRODUCTS_DIR; };
 		88D03B88203A1CE500FB8EE4 /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = test.c; path = ../../test.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -35,6 +39,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				88B0B5F3204D133100BE9A54 /* OpenGL.framework in Frameworks */,
+				88B0B5F1204D132D00BE9A54 /* Cocoa.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +77,8 @@
 		88D03B8A203A1CE900FB8EE4 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				88B0B5F2204D133100BE9A54 /* OpenGL.framework */,
+				88B0B5F0204D132D00BE9A54 /* Cocoa.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -249,6 +257,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					GRAPHICS_EXTRA_COLOURS,
+					GRAPHICS_OPENGL_BACKEND,
 					GRAPHICS_EXTRA_FONTS,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -261,6 +270,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					GRAPHICS_EXTRA_COLOURS,
+					GRAPHICS_OPENGL_BACKEND,
 					GRAPHICS_EXTRA_FONTS,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";

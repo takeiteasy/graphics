@@ -7,12 +7,12 @@
  *  - Fullscreening
  *  - Cursor lock/hide
  *  - Any other window events
- *  - Documentation, comments & more examples
- *
- * EXTRA:
+ *  - Documentation & comments
  *  - Extended surface functions, resize, rotate, filters, etc
- *  - stb_image/stb_truetype
- *  - Windows/Linux OpenGL backend
+ *  - stb_image/stb_truetype tests
+ *  - Windows/X11/Wayland OpenGL backend
+ *  - mjs playground
+ *  - C++ wrapper
  */
 
 #define TICK_INTERVAL 30
