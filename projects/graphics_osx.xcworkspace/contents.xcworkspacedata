@@ -5,12 +5,6 @@
       location = "group:graphics_osx_lua_test/graphics_osx_lua_test.xcodeproj">
    </FileRef>
    <FileRef
-      location = "group:graphics_osx_gl_test/graphics_osx_gl_test.xcodeproj">
-   </FileRef>
-   <FileRef
       location = "group:graphics_osx_test/graphics_osx_test.xcodeproj">
-   </FileRef>
-   <FileRef
-      location = "group:graphics_osx_lib/graphics_osx_lib.xcodeproj">
    </FileRef>
 </Workspace>

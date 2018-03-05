@@ -166,6 +166,7 @@ char font8x8_basic[128][8] = {
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}    // U+007F
 };
 
+#if defined(GRAPHICS_EXTRA_FONTS)
 char font8x8_block[32][8] = {
   { 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00},   // U+2580 (top half)
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF},   // U+2581 (box 1/8)
@@ -626,6 +627,7 @@ char font8x8_extra[132][8] = {
   { 0x00, 0x00, 0x06, 0x3E, 0x66, 0x3E, 0x06, 0x00},   // U+00FE (thorn)
   { 0x00, 0x33, 0x00, 0x33, 0x33, 0x3E, 0x30, 0x1F}    // U+00FF (y umlaut)
 };
+#endif
 
 static int mx = 0, my = 0;
 
@@ -1098,6 +1100,7 @@ void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int 
   PRINT_LETTER(font8x8_basic, 128, c);
 }
 
+#if defined(GRAPHICS_EXTRA_FONTS)
 void letter_block(surface_t* s, int ch, unsigned int x, unsigned int y, int col) {
   PRINT_LETTER(font8x8_block, 32, ch);
 }
@@ -1117,6 +1120,7 @@ void letter_greek(surface_t* s, int ch, unsigned int x, unsigned int y, int col)
 void letter_hiragana(surface_t* s, int ch, unsigned int x, unsigned int y, int col) {
   PRINT_LETTER(font8x8_hiragana, 96, ch);
 }
+#endif
 
 void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str) {
   int u = x, v = y;
@@ -1251,6 +1255,56 @@ void delay(long ms) {
 #endif
 }
 
+#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(__APPLE__)
+#import <OpenGL/OpenGL.h>
+#import <OpenGL/gl3.h>
+#else
+#error Not implemented yet
+#endif
+
+void print_shader_log(GLuint s) {
+  if (glIsShader(s)) {
+    int log_len = 0, max_len = 0;
+    glGetShaderiv(s, GL_INFO_LOG_LENGTH, &max_len);
+    char* log = malloc(sizeof(char) * max_len);
+    
+    glGetShaderInfoLog(s, max_len, &log_len, log);
+    if (log_len >  0)
+      printf("ERROR!   %s\n", log);
+    
+    free(log);
+  }
+}
+
+GLuint load_shader(const GLchar* src, GLenum type) {
+  GLuint s = glCreateShader(type);
+  glShaderSource(s, 1, &src, NULL);
+  glCompileShader(s);
+  
+  GLint res = GL_FALSE;
+  glGetShaderiv(s, GL_COMPILE_STATUS, &res);
+  if (!res) {
+    print_shader_log(s);
+    return 0;
+  }
+  
+  return s;
+}
+
+GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
+  GLuint sp = glCreateProgram();
+  GLuint vs = load_shader(vs_src, GL_VERTEX_SHADER);
+  GLuint fs = load_shader(fs_src, GL_FRAGMENT_SHADER);
+  glAttachShader(sp, vs);
+  glAttachShader(sp, fs);
+  glLinkProgram(sp);
+  glDeleteShader(vs);
+  glDeleteShader(fs);
+  return sp;
+}
+#endif
+
 #if defined(__APPLE__)
 #import <Cocoa/Cocoa.h>
 
@@ -1297,9 +1351,16 @@ static int translate_key(unsigned int key) {
 }
 @end
 
+#if defined(GRAPHICS_OPENGL_BACKEND)
+@interface osx_view_t : NSOpenGLView {
+  NSTrackingArea* track;
+  GLuint vao, shader, texture;
+}
+#else
 @interface osx_view_t : NSView {
   NSTrackingArea* track;
 }
+#endif
 @end
 
 @interface AppDelegate : NSApplication {}
@@ -1325,11 +1386,100 @@ static osx_app_t* app;
 extern surface_t* buffer;
 
 -(id)initWithFrame:(CGRect)r {
+#if defined(GRAPHICS_OPENGL_BACKEND)
+  NSOpenGLPixelFormatAttribute pixelFormatAttributes[] = {
+    NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
+    NSOpenGLPFAColorSize, 24,
+    NSOpenGLPFAAlphaSize, 8,
+    NSOpenGLPFADoubleBuffer,
+    NSOpenGLPFAAccelerated,
+    NSOpenGLPFANoRecovery,
+    0
+  };
+  NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:pixelFormatAttributes];
+  self = [super initWithFrame:r pixelFormat:pixelFormat];
+  
+  if (self != nil) {
+    track = nil;
+    [self updateTrackingAreas];
+    [[self openGLContext] makeCurrentContext];
+    
+    glViewport(0, 0, r.size.width, r.size.height);
+    glClearColor(0.f, 0.f, 0.f, 1.f);
+    
+    GLfloat vertices_position[8] = {
+      -1.0, -1.0,
+      1.0, -1.0,
+      1.0,  1.0,
+      -1.0,  1.0,
+    };
+    
+    GLfloat texture_coord[8] = {
+      0.0, 0.0,
+      1.0, 0.0,
+      1.0, 1.0,
+      0.0, 1.0,
+    };
+    
+    GLuint indices[6] = {
+      0, 1, 2,
+      2, 3, 0
+    };
+    
+    const char* vs_src =
+    "#version 150\n"
+    "in vec4 position;"
+    "in vec2 texture_coord;"
+    "out vec2 texture_coord_from_vshader;"
+    "void main() {"
+    "  gl_Position = position;"
+    "  texture_coord_from_vshader = texture_coord;"
+    "}";
+    
+    const char* fs_src =
+    "#version 150\n"
+    "in vec2 texture_coord_from_vshader;"
+    "out vec4 out_color;"
+    "uniform sampler2D texture_sampler;"
+    "void main() {"
+    "  out_color = texture(texture_sampler, texture_coord_from_vshader);"
+    "}";
+    
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+    
+    GLuint vbo;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_position) + sizeof(texture_coord), NULL, GL_STATIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position);\
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
+    
+    GLuint ebo;
+    glGenBuffers(1, &ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    
+    shader = create_shader(vs_src, fs_src);
+    glUseProgram(shader);
+    
+    GLint position_attribute = glGetAttribLocation(shader, "position");
+    glVertexAttribPointer(position_attribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(position_attribute);
+    
+    GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
+    glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
+    glEnableVertexAttribArray(texture_coord_attribute);
+    
+    glGenTextures(1, &texture);
+  }
+#else
   self = [super initWithFrame:r];
   if (self != nil) {
     track = nil;
     [self updateTrackingAreas];
   }
+#endif
   return self;
 }
 
@@ -1384,6 +1534,18 @@ extern surface_t* buffer;
   if (!buffer)
     return;
 
+#if defined(GRAPHICS_OPENGL_BACKEND)
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (GLvoid*)buffer->buf);
+  
+  [super drawRect:r];
+  glClear(GL_COLOR_BUFFER_BIT);
+  glBindVertexArray(vao);
+  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+  [[self openGLContext] flushBuffer];
+#else
   CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
 
   CGColorSpaceRef s = CGColorSpaceCreateDeviceRGB();
@@ -1396,9 +1558,15 @@ extern surface_t* buffer;
   CGContextDrawImage(ctx, CGRectMake(0, 0, buffer->w, buffer->h), img);
 
   CGImageRelease(img);
+#endif
 }
 
 -(void)dealloc {
+#if defined(GRAPHICS_OPENGL_BACKEND)
+  glDeleteTextures(1, &texture);
+  glDeleteProgram(shader);
+  glDeleteVertexArrays(1, &vao);
+#endif
   [track release];
   [super dealloc];
 }

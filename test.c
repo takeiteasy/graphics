@@ -2,18 +2,17 @@
 
 /* TODO:
  *  - Colour escapes for print()
- *  - Linux X11/Wayland window code
+ *  - Wayland window code
  *  - Window resize events
  *  - Fullscreening
  *  - Cursor lock/hide
  *  - Any other window events
- *  - Add GRAPHICS_EXTRA_CHARMAPS for library build
  *  - Documentation, comments & more examples
  *
  * EXTRA:
  *  - Extended surface functions, resize, rotate, filters, etc
  *  - stb_image/stb_truetype
- *  - OpenGL alternative backend (maybe?)
+ *  - Windows/Linux OpenGL backend
  */
 
 #define TICK_INTERVAL 30
