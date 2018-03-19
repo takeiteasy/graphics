@@ -205,6 +205,7 @@ extern "C" {
   surface_t* bmp_mem(unsigned char* data);
   surface_t* bmp_fp(FILE* fp);
   surface_t* bmp(const char* path);
+  int save_bmp(surface_t* s, const char* path);
   void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col);
 #if defined(GRAPHICS_EXTRA_FONTS)
   void letter_block(surface_t* s, int ch, unsigned int x, unsigned int y, int col);

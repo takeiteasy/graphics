@@ -1086,6 +1086,71 @@ surface_t* bmp(const char* path) {
   return ret;
 }
 
+int save_bmp(surface_t* s, const char* path) {
+  const int filesize = 54 + 3 * s->w * s->h;
+  unsigned char* img = (unsigned char *)malloc(3 * s->w * s->h);
+  if (!img) {
+    SET_LAST_ERROR("save_bmp() failed: out of memory\n");
+    return 0;
+  }
+  memset(img, 0, 3 * s->w * s->h);
+  
+  for(int i = 0; i < s->w; ++i) {
+    for(int j = s->h; j > 0; --j) {
+      int x = i, y = (s->h - 1) - j;
+      int r, g, b;
+      rgb(XYGET(s, i, y), &r, &g, &b);
+      img[(x + y * s->w) * 3 + 2] = (unsigned char)r;
+      img[(x + y * s->w) * 3 + 1] = (unsigned char)g;
+      img[(x + y * s->w) * 3 + 0] = (unsigned char)b;
+    }
+  }
+  
+  unsigned char header[14] = {'B', 'M',
+                              0, 0, 0, 0,
+                              0, 0,
+                              0, 0,
+                              54, 0, 0, 0};
+  unsigned char info[40] = {40, 0, 0, 0,
+                            0, 0, 0, 0,
+                            0, 0, 0, 0,
+                            1, 0,
+                            24, 0};
+  unsigned char pad[3] = {0, 0, 0};
+  
+  header[2]  = (unsigned char)(filesize);
+  header[3]  = (unsigned char)(filesize >> 8);
+  header[4]  = (unsigned char)(filesize >> 16);
+  header[5]  = (unsigned char)(filesize >> 24);
+  
+  info[4]  = (unsigned char)(s->w);
+  info[5]  = (unsigned char)(s->w >> 8);
+  info[6]  = (unsigned char)(s->w >> 16);
+  info[7]  = (unsigned char)(s->w >> 24);
+  info[8]  = (unsigned char)(s->h);
+  info[9]  = (unsigned char)(s->h >> 8);
+  info[10] = (unsigned char)(s->h >> 16);
+  info[11] = (unsigned char)(s->h >> 24);
+  
+  FILE* fp = fopen(path, "wb");
+  if (!fp) {
+    SET_LAST_ERROR("fopen() failed: %s\n", path);
+    return 0;
+  }
+  
+  fwrite(header, 1, 14, fp);
+  fwrite(info, 1, 40, fp);
+  for(int i = 0; i < s->h; ++i) {
+    fwrite(img + (s->w * (s->h - i - 1) * 3), 3, s->w, fp);
+    fwrite(pad, 1, (4 - (s->w * 3) % 4) % 4,fp);
+  }
+  
+  free(img);
+  fclose(fp);
+  
+  return 1;
+}
+
 #define PRINT_LETTER(map, max_r, ch) \
 int i, j; \
 if (ch >= max_r || ch < 0) \

@@ -12,8 +12,6 @@
  *  - Extended surface functions, resize, rotate, filters, etc
  *  - stb_image/stb_truetype tests
  *  - Windows/X11/Wayland OpenGL backend
- *  - Undecided embedded scripting language playground
- *  - C++ wrapper
  *  - Independent screen & window size
  */
 
@@ -160,6 +158,8 @@ int main(int argc, const char* argv[]) {
           if (ue.sym == KB_KEY_F4 && ue.mod & KB_MOD_ALT)
             running = 0;
 #endif
+          if (ue.sym == KB_KEY_SPACE)
+            save_bmp(win, "test.bmp");
           break;
         default:
           break;
