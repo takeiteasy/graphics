@@ -1,6 +1,7 @@
-#include "graphics.h"
+#include "../graphics.h"
 
 /* TODO:
+ *  - FIX BMP LOADING, TOTALLY FUCKED ATM
  *  - Colour escapes for print()
  *  - Wayland window code
  *  - Window resize events
@@ -151,20 +152,30 @@ int main(int argc, const char* argv[]) {
           running = 0;
           break;
         case KEYBOARD_KEY_DOWN:
+          switch (ue.sym) {
 #if defined(__APPLE__)
-          if (ue.sym == KB_KEY_Q && ue.mod & KB_MOD_SUPER)
-            running = 0;
+            case KB_KEY_Q:
+              if (ue.mod & KB_MOD_SUPER)
+                running = 0;
+              break;
 #else
-          if (ue.sym == KB_KEY_F4 && ue.mod & KB_MOD_ALT)
-            running = 0;
+            case KB_KEY_F4
+              if (ue.mod & KB_MOD_ALT)
+                running = 0;
+              break;
 #endif
-          if (ue.sym == KB_KEY_SPACE)
-            save_bmp(win, "test.bmp");
+            case KB_KEY_SPACE:
+              save_bmp(win, "test.bmp");
+              break;
+            default:
+              break;
+          }
           break;
         default:
           break;
       }
     }
+    
     render();
     delay(time_left());
   }

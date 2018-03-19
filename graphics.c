@@ -1097,24 +1097,23 @@ int save_bmp(surface_t* s, const char* path) {
   
   for(int i = 0; i < s->w; ++i) {
     for(int j = s->h; j > 0; --j) {
-      int x = i, y = (s->h - 1) - j;
-      int r, g, b;
+      int y = (s->h - 1) - j, r, g, b;
       rgb(XYGET(s, i, y), &r, &g, &b);
-      img[(x + y * s->w) * 3 + 2] = (unsigned char)r;
-      img[(x + y * s->w) * 3 + 1] = (unsigned char)g;
-      img[(x + y * s->w) * 3 + 0] = (unsigned char)b;
+      img[(i + y * s->w) * 3 + 2] = (unsigned char)r;
+      img[(i + y * s->w) * 3 + 1] = (unsigned char)g;
+      img[(i + y * s->w) * 3 + 0] = (unsigned char)b;
     }
   }
   
   unsigned char header[14] = {'B', 'M',
-                              0, 0, 0, 0,
-                              0, 0,
-                              0, 0,
-                              54, 0, 0, 0};
+                               0,  0, 0, 0,
+                               0,  0,
+                               0,  0,
+                               54, 0, 0, 0};
   unsigned char info[40] = {40, 0, 0, 0,
-                            0, 0, 0, 0,
-                            0, 0, 0, 0,
-                            1, 0,
+                            0,  0, 0, 0,
+                            0,  0, 0, 0,
+                            1,  0,
                             24, 0};
   unsigned char pad[3] = {0, 0, 0};
   
@@ -1147,7 +1146,6 @@ int save_bmp(surface_t* s, const char* path) {
   
   free(img);
   fclose(fp);
-  
   return 1;
 }
 

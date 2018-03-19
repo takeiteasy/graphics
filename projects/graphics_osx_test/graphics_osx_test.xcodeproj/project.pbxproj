@@ -7,10 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8847E0C7206027AA00C9816E /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 8847E0C6206027AA00C9816E /* test.c */; };
 		88B0B5EF204D09C900BE9A54 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0B5ED204D09C900BE9A54 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
 		88B0B5F1204D132D00BE9A54 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0B5F0204D132D00BE9A54 /* Cocoa.framework */; };
 		88B0B5F3204D133100BE9A54 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0B5F2204D133100BE9A54 /* OpenGL.framework */; };
-		88D03B89203A1CE500FB8EE4 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 88D03B88203A1CE500FB8EE4 /* test.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -26,12 +26,12 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		8847E0C6206027AA00C9816E /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = test.c; path = ../../tests/test.c; sourceTree = "<group>"; };
 		88B0B5ED204D09C900BE9A54 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../../graphics.c; sourceTree = "<group>"; };
 		88B0B5EE204D09C900BE9A54 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../../graphics.h; sourceTree = "<group>"; };
 		88B0B5F0204D132D00BE9A54 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		88B0B5F2204D133100BE9A54 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		88D03B7D203A1CC400FB8EE4 /* graphics_osx_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics_osx_test; sourceTree = BUILT_PRODUCTS_DIR; };
-		88D03B88203A1CE500FB8EE4 /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = test.c; path = ../../test.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,9 +67,9 @@
 		88D03B87203A1CD900FB8EE4 /* test */ = {
 			isa = PBXGroup;
 			children = (
+				8847E0C6206027AA00C9816E /* test.c */,
 				88B0B5ED204D09C900BE9A54 /* graphics.c */,
 				88B0B5EE204D09C900BE9A54 /* graphics.h */,
-				88D03B88203A1CE500FB8EE4 /* test.c */,
 			);
 			name = test;
 			sourceTree = "<group>";
@@ -141,7 +141,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				88B0B5EF204D09C900BE9A54 /* graphics.c in Sources */,
-				88D03B89203A1CE500FB8EE4 /* test.c in Sources */,
+				8847E0C7206027AA00C9816E /* test.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
