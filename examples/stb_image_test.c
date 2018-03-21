@@ -43,7 +43,6 @@ int main(int argc, const char* argv[]) {
     render();
   }
   
-  
   destroy(&img);
   release();
   return 0;

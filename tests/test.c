@@ -92,6 +92,7 @@ int main(int argc, const char* argv[]) {
   rect(f, 0,  50, 50, 50, YELLOW, true);
 
   int col, i, x, y;
+  long sine_i = 0;
   user_event_t ue;
   next_time = ticks() + TICK_INTERVAL;
   while (running) {
@@ -145,6 +146,16 @@ int main(int argc, const char* argv[]) {
 
     line(win, 0, 0, mx, my, col);
     circle(win, mx, my, 30, col, false);
+    
+    int last_x = 0, last_y = 240;
+    for (long i = sine_i; i < (sine_i + 641); ++i) {
+      float x = (float)(i - sine_i);
+      float y = 240.f + (100.f * sin(i * (3.141 / 180.f)));
+      line(win, last_x, last_y, x, y, col);
+      last_x = x;
+      last_y = y;
+    }
+    sine_i += 5;
 
     while (poll_events(&ue)) {
       switch (ue.type) {
