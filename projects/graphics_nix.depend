@@ -1,8 +1,13 @@
 # depslib dependency file v1.0
-1515681534 source:/home/reimu/Desktop/graphics.h/graphics.c
+1528484139 source:/home/reimu/Desktop/graphics.h/graphics.c
 	"graphics.h"
+	<GL/GL.h>
+	<GL/GLU.h>
+	<dlfcn.h>
+	<gl/GL.h>
+	<gl/GLU.h>
 
-1515681128 /home/reimu/Desktop/graphics.h/graphics.h
+1528484139 /home/reimu/Desktop/graphics.h/graphics.h
 	<stdio.h>
 	<stdlib.h>
 	<stdbool.h>
@@ -21,4 +26,7 @@
 
 1515674522 source:/home/reimu/Desktop/graphics.h/test.c
 	"graphics.h"
+
+1528484139 source:/home/reimu/Desktop/graphics.h/tests/test.c
+	"../graphics.h"
 
