@@ -11,6 +11,25 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* TODO:
+*  - FIX BMP LOADING, TOTALLY FUCKED ATM
+*  - Repalce BMP loading with TGA?
+*  - Colour escapes for print()
+*  - Wayland window code?
+*  - Window resize events
+*  - Fullscreening
+*  - Cursor lock/hide
+*  - Any other window events?
+*  - AA functions for line & circle
+*  - Documentation & comments
+*  - Extended surface functions, resize, rotate, filters, etc
+*  - X11 OpenGL backend
+*  - Independent screen & window size
+*  - Joystick/Gamepad input
+*  - Make OpenGL stuff less redundant
+*  - DirectX/Metal backends?
+*/
   
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,22 +1,4 @@
 #include "../graphics.h"
-
-/* TODO:
- *  - FIX BMP LOADING, TOTALLY FUCKED ATM
- *  - Colour escapes for print()
- *  - Wayland window code
- *  - Window resize events
- *  - Fullscreening
- *  - Cursor lock/hide
- *  - Any other window events
- *  - AA functions for line & circle
- *  - Documentation & comments
- *  - Extended surface functions, resize, rotate, filters, etc
- *  - Windows/X11/Wayland OpenGL backend
- *  - Independent screen & window size
- *  - Joystick/Gamepad input
- *  - Make OpenGL stuff less redundant
- */
-
 #define TICK_INTERVAL 30
 static long next_time;
 

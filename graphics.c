@@ -2383,6 +2383,7 @@ surface_t* screen(const char* t, int w, int h) {
       scancodes[keycodes[sc]] = sc;
   }
 
+  RECT rect = { 0 };
 #if defined(GRAPHICS_OPENGL_BACKEND)
   static HINSTANCE hinst = 0;
   if (!hinst) {
@@ -2398,16 +2399,24 @@ surface_t* screen(const char* t, int w, int h) {
     wnd.lpszMenuName = NULL;
     wnd.lpszClassName = t;
 
+    rect.right = w;
+    rect.bottom = h;
+
+    AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
+
+    rect.right -= rect.left;
+    rect.bottom -= rect.top;
+
     if (!RegisterClass(&wnd)) {
       release();
-      SET_LAST_ERROR("CreateWindowEx() failed: %s", GetLastError())
+      SET_LAST_ERROR("RegisterClass() failed: %s", GetLastError());
       return NULL;
     }
   }
 
-  if (!(hwnd = CreateWindow(t, t, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, 640, 480, NULL, NULL, hinst, NULL))) {
+  if (!(hwnd = CreateWindow(t, t, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME, CW_USEDEFAULT, CW_USEDEFAULT, rect.right, rect.bottom, NULL, NULL, hinst, NULL))) {
     release();
-    SET_LAST_ERROR("CreateWindowEx() failed: %s", GetLastError())
+    SET_LAST_ERROR("CreateWindow() failed: %s", GetLastError());
     return NULL;
   }
   hdc = GetDC(hwnd);
@@ -2421,13 +2430,15 @@ surface_t* screen(const char* t, int w, int h) {
 
   int pf = ChoosePixelFormat(hdc, &pfd);
   if (pf == 0) {
-    MessageBox(NULL, "ChoosePixelFormat() failed: Cannot find a suitable pixel format.", "Error", MB_OK);
-    return -1;
+    release();
+    SET_LAST_ERROR("ChoosePixelFormat() failed: %s", GetLastError());
+    return NULL;
   }
 
   if (SetPixelFormat(hdc, pf, &pfd) == FALSE) {
-    MessageBox(NULL, "SetPixelFormat() failed: Cannot set format specified.", "Error", MB_OK);
-    return -1;
+    release();
+    SET_LAST_ERROR("SetPixelFormat() failed: %s", GetLastError());
+    return NULL;
   }
 
   DescribePixelFormat(hdc, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
@@ -2438,17 +2449,19 @@ surface_t* screen(const char* t, int w, int h) {
   HINSTANCE dll = LoadLibraryA("opengl32.dll");
   typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
   if (!dll) {
-    OutputDebugStringA("opengl32.dll not found.\n");
-    return false;
+    release();
+    SET_LAST_ERROR("LoadLibraryA() failed: opengl32.dll not found");
+    return NULL;
   }
   wglGetProcAddressproc* wglGetProcAddress = (wglGetProcAddressproc*)GetProcAddress(dll, "wglGetProcAddress");
 
-#define GLE(ret, name, ...)                                                                      \
-            gl##name = (name##proc *)wglGetProcAddress("gl" #name);                              \
-            if (!gl##name) {                                                                     \
-              OutputDebugStringA("Function gl" #name " couldn't be loaded from opengl32.dll\n"); \
-              return false;                                                                      \
-            }
+#define GLE(ret, name, ...) \
+  gl##name = (name##proc*)wglGetProcAddress("gl" #name); \
+  if (!gl##name) { \
+    release(); \
+    SET_LAST_ERROR("wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
+    return NULL; \
+  }
   PAPAYA_GL_LIST
   PAPAYA_GL_LIST_WIN32
 #undef GLE
@@ -2503,8 +2516,8 @@ surface_t* screen(const char* t, int w, int h) {
   glGenBuffers(1, &vbo);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_position) + sizeof(texture_coord), NULL, GL_STATIC_DRAW);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position); \
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position);
+  glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
 
   GLuint ebo;
   glGenBuffers(1, &ebo);
@@ -2524,8 +2537,6 @@ surface_t* screen(const char* t, int w, int h) {
 
   glGenTextures(1, &texture);
 #else
-  RECT rect = { 0 };
-
   wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
   wnd.lpfnWndProc = WndProc;
   wnd.hCursor = LoadCursor(0, IDC_ARROW);
