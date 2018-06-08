@@ -6,9 +6,13 @@ Keyboard and mouse events, line, rect, circle primitives, BMP loading (1, 4, 8, 
 
 See ```graphics.h``` for TODO list and basic example. Still a WIP, API subject to change a lot.
 
-![screenshot](https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot_osx.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot_osx.png">
+</p>
 
-![screenshot](https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot_win.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot_win.png">
+</p>
 
 ## License
 
