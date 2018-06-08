@@ -1345,6 +1345,7 @@ void delay(long ms) {
 #define GL_TEXTURE0                       0x84C0
 #define GL_VERTEX_SHADER                  0x8B31
 #define GL_INFO_LOG_LENGTH                0x8B84
+#define GL_BGRA                           0x80E1
 
 typedef char GLchar;
 typedef ptrdiff_t GLintptr;
@@ -1394,6 +1395,8 @@ typedef ptrdiff_t GLsizeiptr;
     GLE(GLboolean, IsShader,                GLuint shader) \
     GLE(void,      DeleteProgram,           GLuint program) \
     GLE(void,      DeleteShader,            GLuint shader) \
+    GLE(void,      BindVertexArray,         GLuint array) \
+    GLE(void,      GenVertexArrays,         GLsizei n, GLuint *arrays) \
     /* end */
 
 #define GLE(ret, name, ...) typedef ret GLDECL name##proc(__VA_ARGS__); extern name##proc * gl##name;
@@ -2067,6 +2070,7 @@ static HDC hdc;
 static PIXELFORMATDESCRIPTOR pfd;
 static HGLRC hrc;
 static PAINTSTRUCT ps;
+static GLuint vao, shader, texture;
 #else
 static BITMAPINFO* bmpinfo;
 #endif
@@ -2121,15 +2125,14 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
     case WM_PAINT:
       if (buffer) {
 #if defined(GRAPHICS_OPENGL_BACKEND)
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (GLvoid*)buffer->buf);
+
         glClear(GL_COLOR_BUFFER_BIT);
-        glBegin(GL_TRIANGLES);
-        glColor3f(1.0f, 0.0f, 0.0f);
-        glVertex2i(0, 1);
-        glColor3f(0.0f, 1.0f, 0.0f);
-        glVertex2i(-1, -1);
-        glColor3f(0.0f, 0.0f, 1.0f);
-        glVertex2i(1, -1);
-        glEnd();
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         glFlush();
 
         BeginPaint(hwnd, &ps);
@@ -2450,7 +2453,76 @@ surface_t* screen(const char* t, int w, int h) {
   PAPAYA_GL_LIST_WIN32
 #undef GLE
 
-    ShowWindow(hwnd, SW_NORMAL);
+  ShowWindow(hwnd, SW_NORMAL);
+
+  glViewport(0, 0, w, h);
+  glClearColor(0.f, 0.f, 0.f, 1.f);
+
+  GLfloat vertices_position[8] = {
+    -1.0, -1.0,
+    1.0, -1.0,
+    1.0,  1.0,
+    -1.0,  1.0,
+  };
+
+  GLfloat texture_coord[8] = {
+    0.0, 0.0,
+    1.0, 0.0,
+    1.0, 1.0,
+    0.0, 1.0,
+  };
+
+  GLuint indices[6] = {
+    0, 1, 2,
+    2, 3, 0
+  };
+
+  const char* vs_src =
+    "#version 150\n"
+    "in vec4 position;"
+    "in vec2 texture_coord;"
+    "out vec2 texture_coord_from_vshader;"
+    "void main() {"
+    "  gl_Position = position;"
+    "  texture_coord_from_vshader = vec2(texture_coord.s, 1.0f - texture_coord.t);"
+    "}";
+
+  const char* fs_src =
+    "#version 150\n"
+    "in vec2 texture_coord_from_vshader;"
+    "out vec4 out_color;"
+    "uniform sampler2D texture_sampler;"
+    "void main() {"
+    "  out_color = texture(texture_sampler, texture_coord_from_vshader);"
+    "}";
+
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+
+  GLuint vbo;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_position) + sizeof(texture_coord), NULL, GL_STATIC_DRAW);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position); \
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
+
+  GLuint ebo;
+  glGenBuffers(1, &ebo);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+  shader = create_shader(vs_src, fs_src);
+  glUseProgram(shader);
+
+  GLint position_attribute = glGetAttribLocation(shader, "position");
+  glVertexAttribPointer(position_attribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+  glEnableVertexAttribArray(position_attribute);
+
+  GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
+  glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
+  glEnableVertexAttribArray(texture_coord_attribute);
+
+  glGenTextures(1, &texture);
 #else
   RECT rect = { 0 };
 

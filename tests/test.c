@@ -14,6 +14,7 @@
  *  - Windows/X11/Wayland OpenGL backend
  *  - Independent screen & window size
  *  - Joystick/Gamepad input
+ *  - Make OpenGL stuff less redundant
  */
 
 #define TICK_INTERVAL 30
