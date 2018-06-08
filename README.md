@@ -4,9 +4,11 @@ Cross platform 2D software rendering graphics library, sort of a remake of the o
 
 Keyboard and mouse events, line, rect, circle primitives, BMP loading (1, 4, 8, 24 & 32 bpp) and internal font rendering adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8).
 
-See ```test.c``` for TODO list and basic example. Still a WIP, API subject to change a lot.
+See ```graphics.h``` for TODO list and basic example. Still a WIP, API subject to change a lot.
 
-![screenshot](https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot.png)
+![screenshot](https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot_osx.png)
+
+![screenshot](https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot_win.png)
 
 ## License
 
