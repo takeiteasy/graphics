@@ -1322,6 +1322,89 @@ void delay(long ms) {
 #if defined(__APPLE__)
 #import <OpenGL/OpenGL.h>
 #import <OpenGL/gl3.h>
+#elif defined(_WIN32)
+#define GLDECL WINAPI
+
+#define GL_ARRAY_BUFFER                   0x8892 // Acquired from:
+#define GL_ARRAY_BUFFER_BINDING           0x8894 // https://www.opengl.org/registry/api/GL/glext.h
+#define GL_COLOR_ATTACHMENT0              0x8CE0
+#define GL_COMPILE_STATUS                 0x8B81
+#define GL_CURRENT_PROGRAM                0x8B8D
+#define GL_DYNAMIC_DRAW                   0x88E8
+#define GL_ELEMENT_ARRAY_BUFFER           0x8893
+#define GL_ELEMENT_ARRAY_BUFFER_BINDING   0x8895
+#define GL_FRAGMENT_SHADER                0x8B30
+#define GL_FRAMEBUFFER                    0x8D40
+#define GL_FRAMEBUFFER_COMPLETE           0x8CD5
+#define GL_FUNC_ADD                       0x8006
+#define GL_INVALID_FRAMEBUFFER_OPERATION  0x0506
+#define GL_MAJOR_VERSION                  0x821B
+#define GL_MINOR_VERSION                  0x821C
+#define GL_STATIC_DRAW                    0x88E4
+#define GL_STREAM_DRAW                    0x88E0
+#define GL_TEXTURE0                       0x84C0
+#define GL_VERTEX_SHADER                  0x8B31
+#define GL_INFO_LOG_LENGTH                0x8B84
+
+typedef char GLchar;
+typedef ptrdiff_t GLintptr;
+typedef ptrdiff_t GLsizeiptr;
+
+#define PAPAYA_GL_LIST_WIN32 \
+    /* ret, name, params */ \
+    GLE(void,      BlendEquation,           GLenum mode) \
+    GLE(void,      ActiveTexture,           GLenum texture) \
+/* end */
+
+#include <gl/GL.h>
+#include <gl/GLU.h>
+
+#define PAPAYA_GL_LIST \
+    /* ret, name, params */ \
+    GLE(void,      AttachShader,            GLuint program, GLuint shader) \
+    GLE(void,      BindBuffer,              GLenum target, GLuint buffer) \
+    GLE(void,      BindFramebuffer,         GLenum target, GLuint framebuffer) \
+    GLE(void,      BufferData,              GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage) \
+    GLE(void,      BufferSubData,           GLenum target, GLintptr offset, GLsizeiptr size, const GLvoid * data) \
+    GLE(GLenum,    CheckFramebufferStatus,  GLenum target) \
+    GLE(void,      ClearBufferfv,           GLenum buffer, GLint drawbuffer, const GLfloat * value) \
+    GLE(void,      CompileShader,           GLuint shader) \
+    GLE(GLuint,    CreateProgram,           void) \
+    GLE(GLuint,    CreateShader,            GLenum type) \
+    GLE(void,      DeleteBuffers,           GLsizei n, const GLuint *buffers) \
+    GLE(void,      DeleteFramebuffers,      GLsizei n, const GLuint *framebuffers) \
+    GLE(void,      EnableVertexAttribArray, GLuint index) \
+    GLE(void,      DrawBuffers,             GLsizei n, const GLenum *bufs) \
+    GLE(void,      FramebufferTexture2D,    GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level) \
+    GLE(void,      GenBuffers,              GLsizei n, GLuint *buffers) \
+    GLE(void,      GenFramebuffers,         GLsizei n, GLuint * framebuffers) \
+    GLE(GLint,     GetAttribLocation,       GLuint program, const GLchar *name) \
+    GLE(void,      GetShaderInfoLog,        GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog) \
+    GLE(void,      GetShaderiv,             GLuint shader, GLenum pname, GLint *params) \
+    GLE(GLint,     GetUniformLocation,      GLuint program, const GLchar *name) \
+    GLE(void,      LinkProgram,             GLuint program) \
+    GLE(void,      ShaderSource,            GLuint shader, GLsizei count, const GLchar* const *string, const GLint *length) \
+    GLE(void,      Uniform1i,               GLint location, GLint v0) \
+    GLE(void,      Uniform1f,               GLint location, GLfloat v0) \
+    GLE(void,      Uniform2f,               GLint location, GLfloat v0, GLfloat v1) \
+    GLE(void,      Uniform4f,               GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) \
+    GLE(void,      UniformMatrix4fv,        GLint location, GLsizei count, GLboolean transpose, const GLfloat *value) \
+    GLE(void,      UseProgram,              GLuint program) \
+    GLE(void,      VertexAttribPointer,     GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer) \
+    GLE(GLboolean, IsShader,                GLuint shader) \
+    GLE(void,      DeleteProgram,           GLuint program) \
+    GLE(void,      DeleteShader,            GLuint shader) \
+    /* end */
+
+#define GLE(ret, name, ...) typedef ret GLDECL name##proc(__VA_ARGS__); extern name##proc * gl##name;
+PAPAYA_GL_LIST
+PAPAYA_GL_LIST_WIN32
+#undef GLE
+
+#define GLE(ret, name, ...) name##proc * gl##name;
+PAPAYA_GL_LIST
+PAPAYA_GL_LIST_WIN32
+#undef GLE
 #else
 #error Not implemented yet
 #endif
@@ -1980,7 +2063,13 @@ static WNDCLASS wnd;
 static HWND hwnd;
 static bool closed = false;
 static HDC hdc;
+#if defined(GRAPHICS_OPENGL_BACKEND)
+static PIXELFORMATDESCRIPTOR pfd;
+static HGLRC hrc;
+static PAINTSTRUCT ps;
+#else
 static BITMAPINFO* bmpinfo;
+#endif
 static user_event_t* tmp_ue;
 static bool event_fired = false;
 
@@ -2031,9 +2120,31 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
   switch (message) {
     case WM_PAINT:
       if (buffer) {
+#if defined(GRAPHICS_OPENGL_BACKEND)
+        glClear(GL_COLOR_BUFFER_BIT);
+        glBegin(GL_TRIANGLES);
+        glColor3f(1.0f, 0.0f, 0.0f);
+        glVertex2i(0, 1);
+        glColor3f(0.0f, 1.0f, 0.0f);
+        glVertex2i(-1, -1);
+        glColor3f(0.0f, 0.0f, 1.0f);
+        glVertex2i(1, -1);
+        glEnd();
+        glFlush();
+
+        BeginPaint(hwnd, &ps);
+        EndPaint(hwnd, &ps);
+#else
         StretchDIBits(hdc, 0, 0, buffer->w, buffer->h, 0, 0, buffer->w, buffer->h, buffer->buf, bmpinfo, DIB_RGB_COLORS, SRCCOPY);
         ValidateRect(hWnd, NULL);
+#endif
       }
+      break;
+    case WM_SIZE:
+#if defined(GRAPHICS_OPENGL_BACKEND)
+      glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
+      PostMessage(hwnd, WM_PAINT, 0, 0);
+#endif
       break;
     case WM_CLOSE:
       closed = true;
@@ -2269,6 +2380,78 @@ surface_t* screen(const char* t, int w, int h) {
       scancodes[keycodes[sc]] = sc;
   }
 
+#if defined(GRAPHICS_OPENGL_BACKEND)
+  static HINSTANCE hinst = 0;
+  if (!hinst) {
+    hinst = GetModuleHandle(NULL);
+    wnd.style = CS_OWNDC;
+    wnd.lpfnWndProc = (WNDPROC)WndProc;
+    wnd.cbClsExtra = 0;
+    wnd.cbWndExtra = 0;
+    wnd.hInstance = hinst;
+    wnd.hIcon = LoadIcon(NULL, IDI_WINLOGO);
+    wnd.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wnd.hbrBackground = NULL;
+    wnd.lpszMenuName = NULL;
+    wnd.lpszClassName = t;
+
+    if (!RegisterClass(&wnd)) {
+      release();
+      SET_LAST_ERROR("CreateWindowEx() failed: %s", GetLastError())
+      return NULL;
+    }
+  }
+
+  if (!(hwnd = CreateWindow(t, t, WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, CW_USEDEFAULT, CW_USEDEFAULT, 640, 480, NULL, NULL, hinst, NULL))) {
+    release();
+    SET_LAST_ERROR("CreateWindowEx() failed: %s", GetLastError())
+    return NULL;
+  }
+  hdc = GetDC(hwnd);
+
+  memset(&pfd, 0, sizeof(pfd));
+  pfd.nSize = sizeof(pfd);
+  pfd.nVersion = 1;
+  pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
+  pfd.iPixelType = PFD_TYPE_RGBA;
+  pfd.cColorBits = 32;
+
+  int pf = ChoosePixelFormat(hdc, &pfd);
+  if (pf == 0) {
+    MessageBox(NULL, "ChoosePixelFormat() failed: Cannot find a suitable pixel format.", "Error", MB_OK);
+    return -1;
+  }
+
+  if (SetPixelFormat(hdc, pf, &pfd) == FALSE) {
+    MessageBox(NULL, "SetPixelFormat() failed: Cannot set format specified.", "Error", MB_OK);
+    return -1;
+  }
+
+  DescribePixelFormat(hdc, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
+
+  hrc = wglCreateContext(hdc);
+  wglMakeCurrent(hdc, hrc);
+
+  HINSTANCE dll = LoadLibraryA("opengl32.dll");
+  typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
+  if (!dll) {
+    OutputDebugStringA("opengl32.dll not found.\n");
+    return false;
+  }
+  wglGetProcAddressproc* wglGetProcAddress = (wglGetProcAddressproc*)GetProcAddress(dll, "wglGetProcAddress");
+
+#define GLE(ret, name, ...)                                                                      \
+            gl##name = (name##proc *)wglGetProcAddress("gl" #name);                              \
+            if (!gl##name) {                                                                     \
+              OutputDebugStringA("Function gl" #name " couldn't be loaded from opengl32.dll\n"); \
+              return false;                                                                      \
+            }
+  PAPAYA_GL_LIST
+  PAPAYA_GL_LIST_WIN32
+#undef GLE
+
+    ShowWindow(hwnd, SW_NORMAL);
+#else
   RECT rect = { 0 };
 
   wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
@@ -2305,6 +2488,7 @@ surface_t* screen(const char* t, int w, int h) {
   bmpinfo->bmiColors[2].rgbBlue = 0xff;
 
   hdc = GetDC(hwnd);
+#endif
 
   return buffer;
 }
@@ -2335,6 +2519,9 @@ void render() {
 
 void release() {
   destroy(&buffer);
+#if defined(GRAPHICS_OPENGL_BACKEND)
+  wglMakeCurrent(NULL, NULL);
+#endif
   ReleaseDC(hwnd, hdc);
   DestroyWindow(hwnd);
 }

@@ -11,9 +11,9 @@
  *  - AA functions for line & circle
  *  - Documentation & comments
  *  - Extended surface functions, resize, rotate, filters, etc
- *  - stb_image/stb_truetype tests
  *  - Windows/X11/Wayland OpenGL backend
  *  - Independent screen & window size
+ *  - Joystick/Gamepad input
  */
 
 #define TICK_INTERVAL 30
@@ -60,7 +60,7 @@ int main(int argc, const char* argv[]) {
 #if defined(__APPLE__)
   surface_t* c = bmp("/Users/roryb/Documents/git/graphics/Uncompressed-24.bmp");
 #elif defined(_WIN32)
-  surface_t* c = bmp("C:\\Users\\DESKTOP\\Documents\\git\\graphics.h\\x64\\Debug\\Uncompressed-24.bmp");
+  surface_t* c = bmp("C:\\Users\\DESKTOP\\Documents\\graphics.h\\Uncompressed-24.bmp");
 #else
   surface_t* c = bmp("/home/reimu/Desktop/graphics.h/Uncompressed-24.bmp");
 #endif
@@ -170,7 +170,7 @@ int main(int argc, const char* argv[]) {
                 running = 0;
               break;
 #else
-            case KB_KEY_F4
+            case KB_KEY_F4:
               if (ue.mod & KB_MOD_ALT)
                 running = 0;
               break;

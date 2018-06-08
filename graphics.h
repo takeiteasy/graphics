@@ -20,6 +20,7 @@ extern "C" {
 #include <math.h>
 #include <time.h>
 #if defined(_WIN32)
+#define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <windowsx.h>
