@@ -1322,26 +1322,27 @@ void delay(long ms) {
 #if defined(__APPLE__)
 #import <OpenGL/OpenGL.h>
 #import <OpenGL/gl3.h>
-#elif defined(_WIN32)
+#endif
+
+#if defined(__linux__)
+#define GLDECL // Empty define
+#define PAPAYA_GL_LIST_WIN32 // Empty define
+#include <GL/GL.h>
+#include <GL/GLU.h>
+#include <dlfcn.h>
+#endif
+
+#if defined(_WIN32)
 #define GLDECL WINAPI
 
-#define GL_ARRAY_BUFFER                   0x8892 // Acquired from:
-#define GL_ARRAY_BUFFER_BINDING           0x8894 // https://www.opengl.org/registry/api/GL/glext.h
-#define GL_COLOR_ATTACHMENT0              0x8CE0
+// Acquired from: https://www.opengl.org/registry/api/GL/glext.h
+#define GL_ARRAY_BUFFER                   0x8892
 #define GL_COMPILE_STATUS                 0x8B81
-#define GL_CURRENT_PROGRAM                0x8B8D
-#define GL_DYNAMIC_DRAW                   0x88E8
 #define GL_ELEMENT_ARRAY_BUFFER           0x8893
-#define GL_ELEMENT_ARRAY_BUFFER_BINDING   0x8895
 #define GL_FRAGMENT_SHADER                0x8B30
-#define GL_FRAMEBUFFER                    0x8D40
-#define GL_FRAMEBUFFER_COMPLETE           0x8CD5
-#define GL_FUNC_ADD                       0x8006
-#define GL_INVALID_FRAMEBUFFER_OPERATION  0x0506
 #define GL_MAJOR_VERSION                  0x821B
 #define GL_MINOR_VERSION                  0x821C
 #define GL_STATIC_DRAW                    0x88E4
-#define GL_STREAM_DRAW                    0x88E0
 #define GL_TEXTURE0                       0x84C0
 #define GL_VERTEX_SHADER                  0x8B31
 #define GL_INFO_LOG_LENGTH                0x8B84
@@ -1359,37 +1360,27 @@ typedef ptrdiff_t GLsizeiptr;
 
 #include <gl/GL.h>
 #include <gl/GLU.h>
+#endif
 
+#if defined(_WIN32) || defined(__linux__)
 #define PAPAYA_GL_LIST \
     /* ret, name, params */ \
     GLE(void,      AttachShader,            GLuint program, GLuint shader) \
     GLE(void,      BindBuffer,              GLenum target, GLuint buffer) \
-    GLE(void,      BindFramebuffer,         GLenum target, GLuint framebuffer) \
     GLE(void,      BufferData,              GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage) \
     GLE(void,      BufferSubData,           GLenum target, GLintptr offset, GLsizeiptr size, const GLvoid * data) \
-    GLE(GLenum,    CheckFramebufferStatus,  GLenum target) \
-    GLE(void,      ClearBufferfv,           GLenum buffer, GLint drawbuffer, const GLfloat * value) \
     GLE(void,      CompileShader,           GLuint shader) \
     GLE(GLuint,    CreateProgram,           void) \
     GLE(GLuint,    CreateShader,            GLenum type) \
     GLE(void,      DeleteBuffers,           GLsizei n, const GLuint *buffers) \
-    GLE(void,      DeleteFramebuffers,      GLsizei n, const GLuint *framebuffers) \
     GLE(void,      EnableVertexAttribArray, GLuint index) \
-    GLE(void,      DrawBuffers,             GLsizei n, const GLenum *bufs) \
     GLE(void,      FramebufferTexture2D,    GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level) \
     GLE(void,      GenBuffers,              GLsizei n, GLuint *buffers) \
-    GLE(void,      GenFramebuffers,         GLsizei n, GLuint * framebuffers) \
     GLE(GLint,     GetAttribLocation,       GLuint program, const GLchar *name) \
     GLE(void,      GetShaderInfoLog,        GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog) \
     GLE(void,      GetShaderiv,             GLuint shader, GLenum pname, GLint *params) \
-    GLE(GLint,     GetUniformLocation,      GLuint program, const GLchar *name) \
     GLE(void,      LinkProgram,             GLuint program) \
     GLE(void,      ShaderSource,            GLuint shader, GLsizei count, const GLchar* const *string, const GLint *length) \
-    GLE(void,      Uniform1i,               GLint location, GLint v0) \
-    GLE(void,      Uniform1f,               GLint location, GLfloat v0) \
-    GLE(void,      Uniform2f,               GLint location, GLfloat v0, GLfloat v1) \
-    GLE(void,      Uniform4f,               GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) \
-    GLE(void,      UniformMatrix4fv,        GLint location, GLsizei count, GLboolean transpose, const GLfloat *value) \
     GLE(void,      UseProgram,              GLuint program) \
     GLE(void,      VertexAttribPointer,     GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer) \
     GLE(GLboolean, IsShader,                GLuint shader) \
@@ -1397,6 +1388,7 @@ typedef ptrdiff_t GLsizeiptr;
     GLE(void,      DeleteShader,            GLuint shader) \
     GLE(void,      BindVertexArray,         GLuint array) \
     GLE(void,      GenVertexArrays,         GLsizei n, GLuint *arrays) \
+    GLE(void,      DeleteVertexArrays,      GLsizei n, const GLuint *arrays) \
     /* end */
 
 #define GLE(ret, name, ...) typedef ret GLDECL name##proc(__VA_ARGS__); extern name##proc * gl##name;
@@ -1408,8 +1400,6 @@ PAPAYA_GL_LIST_WIN32
 PAPAYA_GL_LIST
 PAPAYA_GL_LIST_WIN32
 #undef GLE
-#else
-#error Not implemented yet
 #endif
 
 void print_shader_log(GLuint s) {
@@ -1419,8 +1409,8 @@ void print_shader_log(GLuint s) {
     char* log = malloc(sizeof(char) * max_len);
     
     glGetShaderInfoLog(s, max_len, &log_len, log);
-    if (log_len >  0)
-      printf("ERROR!   %s\n", log);
+    if (log_len > 0)
+      SET_LAST_ERROR("load_shader() failed: %s", log);
     
     free(log);
   }
@@ -1451,6 +1441,141 @@ GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
   glDeleteShader(vs);
   glDeleteShader(fs);
   return sp;
+}
+
+static GLuint vao, shader, texture;
+
+bool init_gl(int w, int h) {
+#if defined(_WIN32)
+  HINSTANCE dll = LoadLibraryA("opengl32.dll");
+  typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
+  if (!dll) {
+    release();
+    SET_LAST_ERROR("LoadLibraryA() failed: opengl32.dll not found");
+    return false;
+  }
+  wglGetProcAddressproc* wglGetProcAddress = (wglGetProcAddressproc*)GetProcAddress(dll, "wglGetProcAddress");
+
+#define GLE(ret, name, ...) \
+  gl##name = (name##proc*)wglGetProcAddress("gl" #name); \
+  if (!gl##name) { \
+    release(); \
+    SET_LAST_ERROR("wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
+    return false; \
+  }
+  PAPAYA_GL_LIST
+  PAPAYA_GL_LIST_WIN32
+#undef GLE
+#elif defined(__linux__)
+  void* libGL = dlopen("libGL.so", RTLD_LAZY);
+  if (!libGL) {
+    release(); \
+    SET_LAST_ERROR("dlopen() failed: libGL.so couldn't be loaded"); \
+    return false;
+  }
+
+#define GLE(ret, name, ...) \
+  gl##name = (name##proc *) dlsym(libGL, "gl" #name); \
+  if (!gl##name) { \
+    release(); \
+    SET_LAST_ERROR("dlsym() failed: Function gl" #name " couldn't be loaded from libGL.so"); \
+    return false; \
+  }
+  PAPAYA_GL_LIST
+#undef GLE
+#endif
+
+  glViewport(0, 0, w, h);
+  glClearColor(0.f, 0.f, 0.f, 1.f);
+
+  GLfloat vertices_position[8] = {
+    -1.0, -1.0,
+    1.0, -1.0,
+    1.0,  1.0,
+    -1.0,  1.0,
+  };
+
+  GLfloat texture_coord[8] = {
+    0.0, 0.0,
+    1.0, 0.0,
+    1.0, 1.0,
+    0.0, 1.0,
+  };
+
+  GLuint indices[6] = {
+    0, 1, 2,
+    2, 3, 0
+  };
+
+  const char* vs_src =
+    "#version 150\n"
+    "in vec4 position;"
+    "in vec2 texture_coord;"
+    "out vec2 texture_coord_from_vshader;"
+    "void main() {"
+    "  gl_Position = position;"
+    "  texture_coord_from_vshader = vec2(texture_coord.s, 1.0f - texture_coord.t);"
+    "}";
+
+  const char* fs_src =
+    "#version 150\n"
+    "in vec2 texture_coord_from_vshader;"
+    "out vec4 out_color;"
+    "uniform sampler2D texture_sampler;"
+    "void main() {"
+    "  out_color = texture(texture_sampler, texture_coord_from_vshader);"
+    "}";
+
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+
+  GLuint vbo;
+  glGenBuffers(1, &vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_position) + sizeof(texture_coord), NULL, GL_STATIC_DRAW);
+  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position);
+  glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
+
+  GLuint ebo;
+  glGenBuffers(1, &ebo);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+  shader = create_shader(vs_src, fs_src);
+  glUseProgram(shader);
+
+  GLint position_attribute = glGetAttribLocation(shader, "position");
+  glVertexAttribPointer(position_attribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+  glEnableVertexAttribArray(position_attribute);
+
+  GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
+  glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
+  glEnableVertexAttribArray(texture_coord_attribute);
+
+  glGenTextures(1, &texture);
+
+  return true;
+}
+
+void draw_gl() {
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (GLvoid*)buffer->buf);
+
+  glClear(GL_COLOR_BUFFER_BIT);
+  glBindVertexArray(vao);
+  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+#if !defined(__APPLE__)
+  glFlush();
+#endif
+}
+
+void free_gl() {
+  glDeleteTextures(1, &texture);
+  glDeleteProgram(shader);
+  glDeleteVertexArrays(1, &vao);
 }
 #endif
 
@@ -1503,7 +1628,6 @@ static int translate_key(unsigned int key) {
 #if defined(GRAPHICS_OPENGL_BACKEND)
 @interface osx_view_t : NSOpenGLView {
   NSTrackingArea* track;
-  GLuint vao, shader, texture;
 }
 #else
 @interface osx_view_t : NSView {
@@ -1553,74 +1677,7 @@ extern surface_t* buffer;
     [self updateTrackingAreas];
     [[self openGLContext] makeCurrentContext];
     
-    glViewport(0, 0, r.size.width, r.size.height);
-    glClearColor(0.f, 0.f, 0.f, 1.f);
-    
-    GLfloat vertices_position[8] = {
-      -1.0, -1.0,
-      1.0, -1.0,
-      1.0,  1.0,
-      -1.0,  1.0,
-    };
-    
-    GLfloat texture_coord[8] = {
-      0.0, 0.0,
-      1.0, 0.0,
-      1.0, 1.0,
-      0.0, 1.0,
-    };
-    
-    GLuint indices[6] = {
-      0, 1, 2,
-      2, 3, 0
-    };
-    
-    const char* vs_src =
-    "#version 150\n"
-    "in vec4 position;"
-    "in vec2 texture_coord;"
-    "out vec2 texture_coord_from_vshader;"
-    "void main() {"
-    "  gl_Position = position;"
-    "  texture_coord_from_vshader = vec2(texture_coord.s, 1.0f - texture_coord.t);"
-    "}";
-    
-    const char* fs_src =
-    "#version 150\n"
-    "in vec2 texture_coord_from_vshader;"
-    "out vec4 out_color;"
-    "uniform sampler2D texture_sampler;"
-    "void main() {"
-    "  out_color = texture(texture_sampler, texture_coord_from_vshader);"
-    "}";
-    
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-    
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_position) + sizeof(texture_coord), NULL, GL_STATIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position);\
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
-    
-    GLuint ebo;
-    glGenBuffers(1, &ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-    
-    shader = create_shader(vs_src, fs_src);
-    glUseProgram(shader);
-    
-    GLint position_attribute = glGetAttribLocation(shader, "position");
-    glVertexAttribPointer(position_attribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(position_attribute);
-    
-    GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
-    glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
-    glEnableVertexAttribArray(texture_coord_attribute);
-    
-    glGenTextures(1, &texture);
+    init_gl(r.size.width, r.size.height);
   }
 #else
   self = [super initWithFrame:r];
@@ -1684,15 +1741,8 @@ extern surface_t* buffer;
     return;
 
 #if defined(GRAPHICS_OPENGL_BACKEND)
-  glBindTexture(GL_TEXTURE_2D, texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (GLvoid*)buffer->buf);
-  
-  [super drawRect:r];
-  glClear(GL_COLOR_BUFFER_BIT);
-  glBindVertexArray(vao);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+  [super drawRect : r];
+  draw_gl();
   [[self openGLContext] flushBuffer];
 #else
   CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
@@ -1712,9 +1762,7 @@ extern surface_t* buffer;
 
 -(void)dealloc {
 #if defined(GRAPHICS_OPENGL_BACKEND)
-  glDeleteTextures(1, &texture);
-  glDeleteProgram(shader);
-  glDeleteVertexArrays(1, &vao);
+  free_gl();
 #endif
   [track release];
   [super dealloc];
@@ -2070,7 +2118,6 @@ static HDC hdc;
 static PIXELFORMATDESCRIPTOR pfd;
 static HGLRC hrc;
 static PAINTSTRUCT ps;
-static GLuint vao, shader, texture;
 #else
 static BITMAPINFO* bmpinfo;
 #endif
@@ -2125,16 +2172,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
     case WM_PAINT:
       if (buffer) {
 #if defined(GRAPHICS_OPENGL_BACKEND)
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (GLvoid*)buffer->buf);
-
-        glClear(GL_COLOR_BUFFER_BIT);
-        glBindVertexArray(vao);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-        glFlush();
-
+        draw_gl();
         BeginPaint(hwnd, &ps);
         EndPaint(hwnd, &ps);
 #else
@@ -2146,7 +2184,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
     case WM_SIZE:
 #if defined(GRAPHICS_OPENGL_BACKEND)
       glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
-      PostMessage(hwnd, WM_PAINT, 0, 0);
+      PostMessage(hWnd, WM_PAINT, 0, 0);
 #endif
       break;
     case WM_CLOSE:
@@ -2446,96 +2484,8 @@ surface_t* screen(const char* t, int w, int h) {
   hrc = wglCreateContext(hdc);
   wglMakeCurrent(hdc, hrc);
 
-  HINSTANCE dll = LoadLibraryA("opengl32.dll");
-  typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
-  if (!dll) {
-    release();
-    SET_LAST_ERROR("LoadLibraryA() failed: opengl32.dll not found");
+  if (!init_gl(w, h))
     return NULL;
-  }
-  wglGetProcAddressproc* wglGetProcAddress = (wglGetProcAddressproc*)GetProcAddress(dll, "wglGetProcAddress");
-
-#define GLE(ret, name, ...) \
-  gl##name = (name##proc*)wglGetProcAddress("gl" #name); \
-  if (!gl##name) { \
-    release(); \
-    SET_LAST_ERROR("wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
-    return NULL; \
-  }
-  PAPAYA_GL_LIST
-  PAPAYA_GL_LIST_WIN32
-#undef GLE
-
-  ShowWindow(hwnd, SW_NORMAL);
-
-  glViewport(0, 0, w, h);
-  glClearColor(0.f, 0.f, 0.f, 1.f);
-
-  GLfloat vertices_position[8] = {
-    -1.0, -1.0,
-    1.0, -1.0,
-    1.0,  1.0,
-    -1.0,  1.0,
-  };
-
-  GLfloat texture_coord[8] = {
-    0.0, 0.0,
-    1.0, 0.0,
-    1.0, 1.0,
-    0.0, 1.0,
-  };
-
-  GLuint indices[6] = {
-    0, 1, 2,
-    2, 3, 0
-  };
-
-  const char* vs_src =
-    "#version 150\n"
-    "in vec4 position;"
-    "in vec2 texture_coord;"
-    "out vec2 texture_coord_from_vshader;"
-    "void main() {"
-    "  gl_Position = position;"
-    "  texture_coord_from_vshader = vec2(texture_coord.s, 1.0f - texture_coord.t);"
-    "}";
-
-  const char* fs_src =
-    "#version 150\n"
-    "in vec2 texture_coord_from_vshader;"
-    "out vec4 out_color;"
-    "uniform sampler2D texture_sampler;"
-    "void main() {"
-    "  out_color = texture(texture_sampler, texture_coord_from_vshader);"
-    "}";
-
-  glGenVertexArrays(1, &vao);
-  glBindVertexArray(vao);
-
-  GLuint vbo;
-  glGenBuffers(1, &vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_position) + sizeof(texture_coord), NULL, GL_STATIC_DRAW);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position);
-  glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
-
-  GLuint ebo;
-  glGenBuffers(1, &ebo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-  shader = create_shader(vs_src, fs_src);
-  glUseProgram(shader);
-
-  GLint position_attribute = glGetAttribLocation(shader, "position");
-  glVertexAttribPointer(position_attribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-  glEnableVertexAttribArray(position_attribute);
-
-  GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
-  glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
-  glEnableVertexAttribArray(texture_coord_attribute);
-
-  glGenTextures(1, &texture);
 #else
   wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
   wnd.lpfnWndProc = WndProc;
@@ -2557,8 +2507,6 @@ surface_t* screen(const char* t, int w, int h) {
     return NULL;
   }
 
-  ShowWindow(hwnd, SW_NORMAL);
-
   bmpinfo = (BITMAPINFO*)calloc(1, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
   bmpinfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
   bmpinfo->bmiHeader.biPlanes = 1;
@@ -2573,6 +2521,7 @@ surface_t* screen(const char* t, int w, int h) {
   hdc = GetDC(hwnd);
 #endif
 
+  ShowWindow(hwnd, SW_NORMAL);
   return buffer;
 }
 
@@ -2603,6 +2552,7 @@ void render() {
 void release() {
   destroy(&buffer);
 #if defined(GRAPHICS_OPENGL_BACKEND)
+  free_gl();
   wglMakeCurrent(NULL, NULL);
 #endif
   ReleaseDC(hwnd, hdc);
