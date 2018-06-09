@@ -14,6 +14,10 @@ See ```graphics.h``` for TODO list and basic example. Still a WIP, API subject t
   <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot_win.png">
 </p>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot_nix.png">
+</p>
+
 ## License
 
 ```Copyright (c) 2013, George Watson
