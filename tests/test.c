@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "../graphics.h"
 #define TICK_INTERVAL 30
 static long next_time;
@@ -38,6 +39,8 @@ int main(int argc, const char* argv[]) {
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
   }
+
+  // surface_t* tga_test = tga("C:\\Users\\DESKTOP\\Downloads\\lena.tga");
 
   surface_t* a = surface(50, 50);
 #if defined(__APPLE__)
@@ -139,6 +142,10 @@ int main(int argc, const char* argv[]) {
       last_y = y;
     }
     sine_i += 5;
+    
+    // fill(win, LIME);
+    // point_t testsetest = { 10, 10 };
+    // blit(win, &testsetest, tga_test, NULL, -1);
 
     while (poll_events(&ue)) {
       switch (ue.type) {

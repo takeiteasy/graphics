@@ -978,7 +978,7 @@ surface_t* bmp_mem(unsigned char* data) {
   BMP_GET(&info, data, sizeof(BMPINFOHEADER));
 
   if (header.type != 0x4D42) {
-    SET_LAST_ERROR("loadbmp() failed: invalid BMP signiture '%d'", header.type);
+    SET_LAST_ERROR("bmp_mem() failed: invalid BMP signiture '%d'", header.type);
     return NULL;
   }
 
@@ -1037,7 +1037,7 @@ surface_t* bmp_mem(unsigned char* data) {
             BMP_SET(RGB(data[off], data[off + 1], data[off + 2]));
           break;
         default:
-          SET_LAST_ERROR("load_bmp_from_mem() failed. Unsupported BPP: %d", info.bits);
+          SET_LAST_ERROR("bmp_mem() failed. Unsupported BPP: %d", info.bits);
           destroy(&ret);
           break;
       }
@@ -1045,7 +1045,7 @@ surface_t* bmp_mem(unsigned char* data) {
     case 1: // RLE8
     case 2: // RLE4
     default:
-      SET_LAST_ERROR("load_bmp_from_mem() failed. Unsupported compression: %d", info.compression);
+      SET_LAST_ERROR("bmp_mem() failed. Unsupported compression: %d", info.compression);
       destroy(&ret);
       break;
   }
@@ -1147,6 +1147,72 @@ int save_bmp(surface_t* s, const char* path) {
   free(img);
   fclose(fp);
   return 1;
+}
+
+#pragma pack(push, 1)
+typedef struct {
+  char id;
+  char color_map;
+  char type;
+  unsigned short first_entry_index;
+  unsigned short color_map_len;
+  unsigned char bpp;
+  unsigned short x_offset;
+  unsigned short y_offset;
+  unsigned short width;
+  unsigned short height;
+  unsigned char depth;
+  unsigned char descriptor;
+  char drop[3];
+} tga_t;
+#pragma pack(pop)
+#define TGA_SIZE sizeof(tga_t)
+
+surface_t* tga(const char* path) {
+  FILE* fp = fopen(path, "rb");
+  if (!fp) {
+    SET_LAST_ERROR("fopen() failed: Couldn't open \"%s\"", path);
+    return NULL;
+  }
+
+  char header_buf[TGA_SIZE];
+  if (fread(header_buf, TGA_SIZE, 1, fp) < 0) {
+    fclose(fp);
+    SET_LAST_ERROR("fread() failed: Couldn't read \"%s\"", path);
+    return NULL;
+  }
+  tga_t* header = (tga_t*)(size_t)header_buf;
+
+  if ((header->type != 2) || (header->depth < 24)) {
+    fclose(fp);
+    SET_LAST_ERROR("tga() failed: Invalid TGA type/depth \"%d/%d\", only 2/24 supported", header->type, header->depth);
+    return NULL;
+  }
+
+  size_t pixel_size = header->width * header->height * (header->depth >> 3) + 1;
+  unsigned char* pixel_buf = malloc(sizeof(char) * pixel_size);
+  if (!pixel_buf) {
+    fclose(fp);
+    SET_LAST_ERROR("malloc() failed");
+    return NULL;
+  }
+  if (fread(pixel_buf, pixel_size, 1, fp) < 0) {
+    fclose(fp);
+    free(pixel_buf);
+    return NULL;
+  }
+
+  surface_t* ret = surface(header->width, header->height);
+  size_t len = (header->width * header->height) * 3;
+  size_t p = 0, i = (header->width * header->height) - 1;
+  while (p < len) {
+    ret->buf[(i - (i % header->width)) + (header->width - (i % header->width))] = RGB((unsigned int)pixel_buf[p + 2], (unsigned int)pixel_buf[p + 1], (unsigned int)pixel_buf[p]);
+    p += 3, i -= 1;
+  }
+  fclose(fp);
+  free(pixel_buf);
+
+  return ret;
 }
 
 #define PRINT_LETTER(map, max_r, ch) \
