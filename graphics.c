@@ -1336,7 +1336,6 @@ void delay(long ms) {
 #if defined(_WIN32)
 #define GLDECL WINAPI
 
-// Acquired from: https://www.opengl.org/registry/api/GL/glext.h
 #define GL_ARRAY_BUFFER                   0x8892
 #define GL_COMPILE_STATUS                 0x8B81
 #define GL_ELEMENT_ARRAY_BUFFER           0x8893
@@ -1445,6 +1444,7 @@ GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
 }
 
 static GLuint vao, shader, texture;
+static int gl3_available = 0;
 
 bool init_gl(int w, int h) {
 #if defined(_WIN32)
@@ -1460,98 +1460,110 @@ bool init_gl(int w, int h) {
 #define GLE(ret, name, ...) \
   gl##name = (name##proc*)wglGetProcAddress("gl" #name); \
   if (!gl##name) { \
-    release(); \
     SET_LAST_ERROR("wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
-    return false; \
+    gl3_available -= 1; \
   }
   PAPAYA_GL_LIST
-  PAPAYA_GL_LIST_WIN32
+    PAPAYA_GL_LIST_WIN32
 #undef GLE
 #elif defined(__linux__)
   void* libGL = dlopen("libGL.so", RTLD_LAZY);
   if (!libGL) {
     release(); \
-    SET_LAST_ERROR("dlopen() failed: libGL.so couldn't be loaded"); \
-    return false;
+      SET_LAST_ERROR("dlopen() failed: libGL.so couldn't be loaded"); \
+      return false;
   }
 
 #define GLE(ret, name, ...) \
   gl##name = (name##proc *) dlsym(libGL, "gl" #name); \
   if (!gl##name) { \
-    release(); \
     SET_LAST_ERROR("dlsym() failed: Function gl" #name " couldn't be loaded from libGL.so"); \
-    return false; \
+    gl3_available -= 1; \
   }
   PAPAYA_GL_LIST
 #undef GLE
 #endif
 
-  glViewport(0, 0, w, h);
   glClearColor(0.f, 0.f, 0.f, 1.f);
 
-  GLfloat vertices_position[8] = {
-    -1.0, -1.0,
-    1.0, -1.0,
-    1.0,  1.0,
-    -1.0,  1.0,
-  };
+  if (gl3_available < 0) {
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0.f, w, 0.f, h, -1.f, 1.f);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
 
-  GLfloat texture_coord[8] = {
-    0.0, 0.0,
-    1.0, 0.0,
-    1.0, 1.0,
-    0.0, 1.0,
-  };
+    glLoadIdentity();
+    glDisable(GL_LIGHTING);
+    glEnable(GL_TEXTURE_2D);
+  } else {
+    glViewport(0, 0, w, h);
 
-  GLuint indices[6] = {
-    0, 1, 2,
-    2, 3, 0
-  };
+    GLfloat vertices_position[8] = {
+      -1.0, -1.0,
+      1.0, -1.0,
+      1.0,  1.0,
+      -1.0,  1.0,
+    };
 
-  const char* vs_src =
-    "#version 150\n"
-    "in vec4 position;"
-    "in vec2 texture_coord;"
-    "out vec2 texture_coord_from_vshader;"
-    "void main() {"
-    "  gl_Position = position;"
-    "  texture_coord_from_vshader = vec2(texture_coord.s, 1.0f - texture_coord.t);"
-    "}";
+    GLfloat texture_coord[8] = {
+      0.0, 0.0,
+      1.0, 0.0,
+      1.0, 1.0,
+      0.0, 1.0,
+    };
 
-  const char* fs_src =
-    "#version 150\n"
-    "in vec2 texture_coord_from_vshader;"
-    "out vec4 out_color;"
-    "uniform sampler2D texture_sampler;"
-    "void main() {"
-    "  out_color = texture(texture_sampler, texture_coord_from_vshader);"
-    "}";
+    GLuint indices[6] = {
+      0, 1, 2,
+      2, 3, 0
+    };
 
-  glGenVertexArrays(1, &vao);
-  glBindVertexArray(vao);
+    const char* vs_src =
+      "#version 150\n"
+      "in vec4 position;"
+      "in vec2 texture_coord;"
+      "out vec2 texture_coord_from_vshader;"
+      "void main() {"
+      "  gl_Position = position;"
+      "  texture_coord_from_vshader = vec2(texture_coord.s, 1.0f - texture_coord.t);"
+      "}";
 
-  GLuint vbo;
-  glGenBuffers(1, &vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, vbo);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_position) + sizeof(texture_coord), NULL, GL_STATIC_DRAW);
-  glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position);
-  glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
+    const char* fs_src =
+      "#version 150\n"
+      "in vec2 texture_coord_from_vshader;"
+      "out vec4 out_color;"
+      "uniform sampler2D texture_sampler;"
+      "void main() {"
+      "  out_color = texture(texture_sampler, texture_coord_from_vshader);"
+      "}";
 
-  GLuint ebo;
-  glGenBuffers(1, &ebo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
 
-  shader = create_shader(vs_src, fs_src);
-  glUseProgram(shader);
+    GLuint vbo;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_position) + sizeof(texture_coord), NULL, GL_STATIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position);
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
 
-  GLint position_attribute = glGetAttribLocation(shader, "position");
-  glVertexAttribPointer(position_attribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-  glEnableVertexAttribArray(position_attribute);
+    GLuint ebo;
+    glGenBuffers(1, &ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-  GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
-  glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
-  glEnableVertexAttribArray(texture_coord_attribute);
+    shader = create_shader(vs_src, fs_src);
+    glUseProgram(shader);
+
+    GLint position_attribute = glGetAttribLocation(shader, "position");
+    glVertexAttribPointer(position_attribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(position_attribute);
+
+    GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
+    glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
+    glEnableVertexAttribArray(texture_coord_attribute);
+  }
 
   glGenTextures(1, &texture);
 
@@ -1565,8 +1577,18 @@ void draw_gl() {
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (GLvoid*)buffer->buf);
 
   glClear(GL_COLOR_BUFFER_BIT);
-  glBindVertexArray(vao);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+  if (gl3_available < 0) {
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 1); glVertex3f(0, 0, 0);
+      glTexCoord2f(0, 0); glVertex3f(0, buffer->h, 0);
+      glTexCoord2f(1, 0); glVertex3f(buffer->w, buffer->h, 0);
+      glTexCoord2f(1, 1); glVertex3f(buffer->w, 0, 0);
+    glEnd();
+  } else {
+    glBindVertexArray(vao);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+  }
 
 #if !defined(__APPLE__)
   glFlush();
@@ -1575,8 +1597,10 @@ void draw_gl() {
 
 void free_gl() {
   glDeleteTextures(1, &texture);
-  glDeleteProgram(shader);
-  glDeleteVertexArrays(1, &vao);
+  if (gl3_available == 0) {
+    glDeleteProgram(shader);
+    glDeleteVertexArrays(1, &vao);
+  }
 }
 #endif
 
@@ -2423,6 +2447,14 @@ surface_t* screen(const char* t, int w, int h) {
   }
 
   RECT rect = { 0 };
+  rect.right = w;
+  rect.bottom = h;
+
+  AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
+
+  rect.right -= rect.left;
+  rect.bottom -= rect.top;
+
 #if defined(GRAPHICS_OPENGL_BACKEND)
   static HINSTANCE hinst = 0;
   if (!hinst) {
@@ -2437,14 +2469,6 @@ surface_t* screen(const char* t, int w, int h) {
     wnd.hbrBackground = NULL;
     wnd.lpszMenuName = NULL;
     wnd.lpszClassName = t;
-
-    rect.right = w;
-    rect.bottom = h;
-
-    AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
-
-    rect.right -= rect.left;
-    rect.bottom -= rect.top;
 
     if (!RegisterClass(&wnd)) {
       release();
@@ -2492,15 +2516,12 @@ surface_t* screen(const char* t, int w, int h) {
   wnd.lpfnWndProc = WndProc;
   wnd.hCursor = LoadCursor(0, IDC_ARROW);
   wnd.lpszClassName = t;
-  RegisterClass(&wnd);
 
-  rect.right = w;
-  rect.bottom = h;
-
-  AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
-
-  rect.right -= rect.left;
-  rect.bottom -= rect.top;
+  if (!RegisterClass(&wnd)) {
+    release();
+    SET_LAST_ERROR("RegisterClass() failed: %s", GetLastError());
+    return NULL;
+  }
 
   if (!(hwnd = CreateWindowEx(0, t, t, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME, CW_USEDEFAULT, CW_USEDEFAULT, rect.right, rect.bottom, 0, 0, 0, 0))) {
     release();

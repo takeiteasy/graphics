@@ -24,11 +24,9 @@ extern "C" {
 *  - AA functions for line & circle
 *  - Documentation & comments
 *  - Extended surface functions, resize, rotate, filters, etc
-*  - X11 OpenGL backend
 *  - Independent screen & window size
 *  - Joystick/Gamepad input
-*  - Make OpenGL stuff less redundant
-*  - DirectX/Metal backends?
+*  - DirectX/Metal backends
 */
   
 #include <stdio.h>
@@ -117,7 +115,7 @@ extern "C" {
 #define LIGHT_BLUE RGB(173, 216, 230)
 #define LIGHT_CORAL RGB(240, 128, 128)
 #define LIGHT_CYAN RGB(224, 255, 255)
-#define LIGHT_GOLDEN ROD YELLOW RGB(250, 250, 210)
+#define LIGHT_GOLDEN RGB(250, 250, 210)
 #define LIGHT_GRAY RGB(211, 211, 211)
 #define LIGHT_GREEN RGB(144, 238, 144)
 #define LIGHT_PINK RGB(255, 182, 193)
