@@ -1,8 +1,9 @@
 # depslib dependency file v1.0
-1528484139 source:/home/reimu/Desktop/graphics.h/graphics.c
+1528493237 source:/home/reimu/Desktop/graphics.h/graphics.c
 	"graphics.h"
-	<GL/GL.h>
-	<GL/GLU.h>
+	<GL/gl.h>
+	<GL/glu.h>
+	<GL/glx.h>
 	<dlfcn.h>
 	<gl/GL.h>
 	<gl/GLU.h>

@@ -1094,7 +1094,7 @@ int save_bmp(surface_t* s, const char* path) {
     return 0;
   }
   memset(img, 0, 3 * s->w * s->h);
-  
+
   for(int i = 0; i < s->w; ++i) {
     for(int j = s->h; j > 0; --j) {
       int y = (s->h - 1) - j, r, g, b;
@@ -1104,7 +1104,7 @@ int save_bmp(surface_t* s, const char* path) {
       img[(i + y * s->w) * 3 + 0] = (unsigned char)b;
     }
   }
-  
+
   unsigned char header[14] = {'B', 'M',
                                0,  0, 0, 0,
                                0,  0,
@@ -1116,12 +1116,12 @@ int save_bmp(surface_t* s, const char* path) {
                             1,  0,
                             24, 0};
   unsigned char pad[3] = {0, 0, 0};
-  
+
   header[2]  = (unsigned char)(filesize);
   header[3]  = (unsigned char)(filesize >> 8);
   header[4]  = (unsigned char)(filesize >> 16);
   header[5]  = (unsigned char)(filesize >> 24);
-  
+
   info[4]  = (unsigned char)(s->w);
   info[5]  = (unsigned char)(s->w >> 8);
   info[6]  = (unsigned char)(s->w >> 16);
@@ -1130,20 +1130,20 @@ int save_bmp(surface_t* s, const char* path) {
   info[9]  = (unsigned char)(s->h >> 8);
   info[10] = (unsigned char)(s->h >> 16);
   info[11] = (unsigned char)(s->h >> 24);
-  
+
   FILE* fp = fopen(path, "wb");
   if (!fp) {
     SET_LAST_ERROR("fopen() failed: %s\n", path);
     return 0;
   }
-  
+
   fwrite(header, 1, 14, fp);
   fwrite(info, 1, 40, fp);
   for(int i = 0; i < s->h; ++i) {
     fwrite(img + (s->w * (s->h - i - 1) * 3), 3, s->w, fp);
     fwrite(pad, 1, (4 - (s->w * 3) % 4) % 4,fp);
   }
-  
+
   free(img);
   fclose(fp);
   return 1;
@@ -1327,8 +1327,9 @@ void delay(long ms) {
 #if defined(__linux__)
 #define GLDECL // Empty define
 #define PAPAYA_GL_LIST_WIN32 // Empty define
-#include <GL/GL.h>
-#include <GL/GLU.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glx.h>
 #include <dlfcn.h>
 #endif
 
@@ -1407,11 +1408,11 @@ void print_shader_log(GLuint s) {
     int log_len = 0, max_len = 0;
     glGetShaderiv(s, GL_INFO_LOG_LENGTH, &max_len);
     char* log = malloc(sizeof(char) * max_len);
-    
+
     glGetShaderInfoLog(s, max_len, &log_len, log);
     if (log_len > 0)
       SET_LAST_ERROR("load_shader() failed: %s", log);
-    
+
     free(log);
   }
 }
@@ -1420,14 +1421,14 @@ GLuint load_shader(const GLchar* src, GLenum type) {
   GLuint s = glCreateShader(type);
   glShaderSource(s, 1, &src, NULL);
   glCompileShader(s);
-  
+
   GLint res = GL_FALSE;
   glGetShaderiv(s, GL_COMPILE_STATUS, &res);
   if (!res) {
     print_shader_log(s);
     return 0;
   }
-  
+
   return s;
 }
 
@@ -1671,12 +1672,12 @@ extern surface_t* buffer;
   };
   NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:pixelFormatAttributes];
   self = [super initWithFrame:r pixelFormat:pixelFormat];
-  
+
   if (self != nil) {
     track = nil;
     [self updateTrackingAreas];
     [[self openGLContext] makeCurrentContext];
-    
+
     init_gl(r.size.width, r.size.height);
   }
 #else
@@ -2564,12 +2565,23 @@ static bool closed = false;
 static surface_t* buffer;
 static Window win;
 static GC gc;
+#if defined(GRAPHICS_OPENGL_BACKEND)
+static GLXContext ctx;
+static Colormap cmap;
+#else
 static XImage* img;
+#endif
 static XEvent event;
 static KeySym sym;
 
 #define Button6 6
 #define Button7 7
+
+#if defined(GRAPHICS_OPENGL_BACKEND)
+#define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
+#define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
+typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
+#endif
 
 static int translate_keycode(int scancode) {
   if (scancode < 8 || scancode > 255)
@@ -2850,6 +2862,71 @@ surface_t* screen(const char* title, int w, int h) {
   }
 
   int screen = DefaultScreen(display);
+
+#if defined(GRAPHICS_OPENGL_BACKEND)
+  static int visual_attribs[] = {
+    GLX_X_RENDERABLE, True,
+    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+    GLX_RENDER_TYPE, GLX_RGBA_BIT,
+    GLX_RED_SIZE, 8,
+    GLX_GREEN_SIZE, 8,
+    GLX_BLUE_SIZE, 8,
+    GLX_ALPHA_SIZE, 8,
+    GLX_DEPTH_SIZE, 24,
+    GLX_STENCIL_SIZE, 8,
+    GLX_DOUBLEBUFFER, False,
+    None
+  };
+
+  int fb_count;
+  GLXFBConfig* fbc = glXChooseFBConfig(display, DefaultScreen(display), visual_attribs, &fb_count);
+  if (!fbc) {
+    release();
+    SET_LAST_ERROR("glXChooseFBConfig() failed: Failed to retreive framebuffer config");
+    return NULL;
+  }
+
+  int best_fbc = -1, worst_fbc = -1, best_num_samp = -1, worst_num_samp = 999;
+  for (int i = 0; i < fb_count; ++i) {
+    XVisualInfo* vi = glXGetVisualFromFBConfig(display, fbc[i]);
+    if (vi != 0) {
+      int samp_buf, samples;
+      glXGetFBConfigAttrib(display, fbc[i], GLX_SAMPLE_BUFFERS, &samp_buf);
+      glXGetFBConfigAttrib(display, fbc[i], GLX_SAMPLE_BUFFERS, &samples);
+
+      if (best_fbc < 0 || (samp_buf && samples > best_num_samp)) {
+        best_fbc = i;
+        best_num_samp = samples;
+      }
+
+      if (worst_fbc < 0 || !samp_buf || samples < worst_num_samp) {
+        worst_fbc = i;
+        worst_num_samp = samples;
+      }
+    }
+    XFree(vi);
+  }
+  GLXFBConfig fbc_best = fbc[best_fbc];
+  XFree(fbc);
+
+  XVisualInfo* vi = glXGetVisualFromFBConfig(display, fbc_best);
+  if (vi == 0) {
+    release();
+    SET_LAST_ERROR("glXGetVisualFromFBConfig() failed: Could not create correct visual window");
+    return NULL;
+  }
+
+  XSetWindowAttributes swa;
+  swa.colormap = cmap = XCreateColormap(display, RootWindow(display, vi->screen), vi->visual, AllocNone);
+  swa.background_pixmap = None;
+  swa.border_pixel = 0;
+  swa.event_mask = StructureNotifyMask;
+
+  win = XCreateWindow(display, RootWindow(display, vi->screen),
+                      0, 0, w, h, 0, vi->depth,
+                      InputOutput, vi->visual,
+                      CWBorderPixel | CWColormap | CWEventMask, &swa);
+#else
   Visual* visual = DefaultVisual(display, screen);
   int format_c;
   XPixmapFormatValues* formats = XListPixmapFormats(display, &format_c);
@@ -2879,10 +2956,13 @@ surface_t* screen(const char* title, int w, int h) {
   win_attrib.background_pixel = BlackPixel(display, screen);
   win_attrib.backing_store = NotUseful;
 
-  win = XCreateWindow(display, default_root_win, (s_width - w) / 2,
-		      (s_height - h) / 2, w, h, 0, depth, InputOutput,
-		      visual, CWBackPixel | CWBorderPixel | CWBackingStore,
-		      &win_attrib);
+  win = XCreateWindow(display, default_root_win,
+                      (s_width - w) / 2, (s_height - h) / 2, w, h, 0, depth,
+                      InputOutput, visual,
+                      CWBackPixel | CWBorderPixel | CWBackingStore,
+                      &win_attrib);
+#endif
+
   if (!win) {
     release();
     SET_LAST_ERROR("XCreateWindow() failed!");
@@ -2908,7 +2988,29 @@ surface_t* screen(const char* title, int w, int h) {
 
   gc = DefaultGC(display, screen);
 
+#if defined(GRAPHICS_OPENGL_BACKEND)
+  XFree(vi);
+
+  glXCreateContextAttribsARBProc glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc)glXGetProcAddressARB((const GLubyte*)"glXCreateContextAttribsARB");
+  int context_attribs[] = {
+    GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+    GLX_CONTEXT_MINOR_VERSION_ARB, 2,
+    None
+  };
+  ctx = glXCreateContextAttribsARB(display, fbc_best, 0, True, context_attribs);
+  XSync(display, False);
+
+  if (!ctx) {
+    release();
+    SET_LAST_ERROR("glXCreateContextAttribsARB() failed: Couldn't create OpenGL 3.2 context");
+    return NULL;
+  }
+
+  glXMakeCurrent(display, win, ctx);
+  init_gl(w, h);
+#else
   img = XCreateImage(display, CopyFromParent, depth, ZPixmap, 0, NULL, w, h, 32, w * 4);
+#endif
 
   return buffer;
 }
@@ -3001,15 +3103,26 @@ bool poll_events(user_event_t* ue) {
 }
 
 void render() {
+#if defined(GRAPHICS_OPENGL_BACKEND)
+  draw_gl();
+  glXSwapBuffers(display, win);
+#else
   img->data = (char*)buffer->buf;
   XPutImage(display, win, gc, img, 0, 0, 0, 0, buffer->w, buffer->h);
   XFlush(display);
+#endif
 }
 
 void release() {
   destroy(&buffer);
+#if defined(GRAPHICS_OPENGL_BACKEND)
+  glXMakeCurrent(display, 0, 0);
+  glXDestroyContext(display, ctx);
+  XFreeColormap(display, cmap);
+#else
   img->data = NULL;
   XDestroyImage(img);
+#endif
   XDestroyWindow(display, win);
   XCloseDisplay(display);
 }
