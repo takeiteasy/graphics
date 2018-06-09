@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1528493237 source:/home/reimu/Desktop/graphics.h/graphics.c
+1528571752 source:/home/reimu/Desktop/graphics.h/graphics.c
 	"graphics.h"
 	<GL/gl.h>
 	<GL/glu.h>
@@ -8,7 +8,7 @@
 	<gl/GL.h>
 	<gl/GLU.h>
 
-1528484139 /home/reimu/Desktop/graphics.h/graphics.h
+1528570793 /home/reimu/Desktop/graphics.h/graphics.h
 	<stdio.h>
 	<stdlib.h>
 	<stdbool.h>

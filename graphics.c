@@ -2602,6 +2602,28 @@ static KeySym sym;
 #define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
 #define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
 typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
+
+static bool check_ext(const char* list, const char* exts) {
+  const char *start, *where = strchr(exts, ' '), *terminator;
+  if (where || *exts == '\0')
+    return false;
+
+  for (start = list;;) {
+    where = strstr(start, exts);
+
+    if (!where)
+      break;
+
+    terminator = where + strlen(exts);
+    if (where == start || *(where - 1) == ' ')
+      if (*terminator == ' ' || *terminator == '\0')
+        return true;
+
+    start = terminator;
+  }
+
+  return false;
+}
 #endif
 
 static int translate_keycode(int scancode) {
@@ -3013,17 +3035,22 @@ surface_t* screen(const char* title, int w, int h) {
   XFree(vi);
 
   glXCreateContextAttribsARBProc glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc)glXGetProcAddressARB((const GLubyte*)"glXCreateContextAttribsARB");
-  int context_attribs[] = {
-    GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
-    GLX_CONTEXT_MINOR_VERSION_ARB, 2,
-    None
-  };
-  ctx = glXCreateContextAttribsARB(display, fbc_best, 0, True, context_attribs);
+  const char* glx_exts = glXQueryExtensionsString(display, DefaultScreen(display));
+  if (!check_ext(glx_exts, "GLX_ARB_create_context") || !glXCreateContextAttribsARB)
+    ctx = glXCreateNewContext(display, fbc_best, GLX_RGBA_TYPE, 0, True);
+  else {
+    int context_attribs[] = {
+      GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+      GLX_CONTEXT_MINOR_VERSION_ARB, 2,
+      None
+    };
+    ctx = glXCreateContextAttribsARB(display, fbc_best, 0, True, context_attribs);
+  }
   XSync(display, False);
 
   if (!ctx) {
     release();
-    SET_LAST_ERROR("glXCreateContextAttribsARB() failed: Couldn't create OpenGL 3.2 context");
+    SET_LAST_ERROR("glXCreateContextAttribsARB() failed: Couldn't create OpenGL context");
     return NULL;
   }
 
