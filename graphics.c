@@ -16,6 +16,7 @@
 if ((x) >= 0 && (y) >= 0 && (x) <= s->w && (y) <= s->h) \
   s->buf[(y) * s->w + (x)] = (v);
 #define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
+#define XYSETAA(s, x, y, v, i) (s->buf[(y) * s->w + (x)] = (alpha(c, XYGET(s, x, y), 1.f - ((float)i / 255.f))))
 
 static char last_error[1024];
 
@@ -931,6 +932,35 @@ bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
   return true;
 }
 
+void line_aa(surface_t* s, int x1, int y1, int x2, int y2, int c) {
+  int dx = abs(x2 - x1), sx = x1 < x2 ? 1 : -1;
+  int dy = abs(y2 - y1), sy = y1 < y2 ? 1 : -1;
+  int err = dx - dy, e2, x3;
+  int ed = dx + dy == 0 ? 1 : sqrt((float)dx * dx + (float)dy * dy);
+
+  for (;;) {
+    XYSETAA(s, x1, y1, c, 255 * abs(err - dx + dy) / ed);
+    e2 = err;
+    x3 = x1;
+    if (2 * e2 >= -dx) {
+      if (x1 == x2)
+        break;
+      if (e2 + dy < ed)
+        XYSETAA(s, x1, y1 + sy, c, 255 * (e2 + dy) / ed);
+      err -= dy;
+      x1 += sx;
+    }
+    if (2 * e2 <= dy) {
+      if (y1 == y2)
+        break;
+      if (dx - e2 < ed)
+        XYSETAA(s, x3 + sx, y1, c, 255 * (dx - e2) / ed);
+      err += dx;
+      y1 += sy;
+    }
+  }
+}
+
 #if defined(_MSC_VER)
 #define ALIGN_STRUCT(x) __declspec(align(x))
 #else
@@ -972,7 +1002,25 @@ off += s;
 
 #define BMP_SET(c) (ret->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
 
-surface_t* bmp_mem(unsigned char* data) {
+surface_t* bmp(const char* path) {
+  FILE* fp = fopen(path, "rb");
+  if (!fp) {
+    SET_LAST_ERROR("fopen() failed: %s\n", path);
+    return NULL;
+  }
+
+  fseek(fp, 0, SEEK_END);
+  size_t length = ftell(fp);
+  rewind(fp);
+
+  unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
+  if (!data) {
+    SET_LAST_ERROR("calloc() failed");
+    return NULL;
+  }
+  fread(data, 1, length, fp);
+  fclose(fp);
+
   int off = 0;
   BMPHEADER header;
   BMPINFOHEADER info;
@@ -980,7 +1028,7 @@ surface_t* bmp_mem(unsigned char* data) {
   BMP_GET(&info, data, sizeof(BMPINFOHEADER));
 
   if (header.type != 0x4D42) {
-    SET_LAST_ERROR("bmp_mem() failed: invalid BMP signiture '%d'", header.type);
+    SET_LAST_ERROR("bmp() failed: invalid BMP signiture '%d'", header.type);
     return NULL;
   }
 
@@ -988,7 +1036,7 @@ surface_t* bmp_mem(unsigned char* data) {
   int color_map_size = 0;
   if (info.bits <= 8) {
     color_map_size = (1 << info.bits) * 4;
-    color_map = (unsigned char*)malloc (color_map_size * sizeof(unsigned char));
+    color_map = (unsigned char*)malloc(color_map_size * sizeof(unsigned char));
     if (!color_map) {
       SET_LAST_ERROR("malloc() failed");
       return NULL;
@@ -1008,83 +1056,53 @@ surface_t* bmp_mem(unsigned char* data) {
   int i, j, c, s = info.width * info.height;
   unsigned char color;
   switch (info.compression) {
-    case 0: // RGB
-      switch (info.bits) { // BPP
-        case 1:
-          for (i = (s - 1); i != -1; ++off) {
-            for (j = 7; j >= 0; --j, --i) {
-              c = color_map[((data[off] & (1 << j)) > 0) * 4 + 1];
-              BMP_SET(RGB(c, c, c));
-            }
-          }
-          break;
-        case 4:
-          for (i = (s - 1); i != -1; --i, ++off) {
-            color = (data[off] >> 4) * 4;
-            BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
-            i--;
-            color = (data[off] & 0x0F);
-            BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
-          }
-          break;
-        case 8:
-          for (i = (s - 1); i != -1; --i, ++off) {
-            color = (data[off] * 4);
-            BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
-          }
-          break;
-        case 24:
-        case 32:
-          for (i = (s - 1); i != -1; --i, off += (info.bits == 32 ? 4 : 3))
-            BMP_SET(RGB(data[off], data[off + 1], data[off + 2]));
-          break;
-        default:
-          SET_LAST_ERROR("bmp_mem() failed. Unsupported BPP: %d", info.bits);
-          destroy(&ret);
-          break;
+  case 0: // RGB
+    switch (info.bits) { // BPP
+    case 1:
+      for (i = (s - 1); i != -1; ++off) {
+        for (j = 7; j >= 0; --j, --i) {
+          c = color_map[((data[off] & (1 << j)) > 0) * 4 + 1];
+          BMP_SET(RGB(c, c, c));
+        }
       }
       break;
-    case 1: // RLE8
-    case 2: // RLE4
+    case 4:
+      for (i = (s - 1); i != -1; --i, ++off) {
+        color = (data[off] >> 4) * 4;
+        BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
+        i--;
+        color = (data[off] & 0x0F);
+        BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
+      }
+      break;
+    case 8:
+      for (i = (s - 1); i != -1; --i, ++off) {
+        color = (data[off] * 4);
+        BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
+      }
+      break;
+    case 24:
+    case 32:
+      for (i = (s - 1); i != -1; --i, off += (info.bits == 32 ? 4 : 3))
+        BMP_SET(RGB(data[off], data[off + 1], data[off + 2]));
+      break;
     default:
-      SET_LAST_ERROR("bmp_mem() failed. Unsupported compression: %d", info.compression);
+      SET_LAST_ERROR("bmp() failed. Unsupported BPP: %d", info.bits);
       destroy(&ret);
       break;
+    }
+    break;
+  case 1: // RLE8
+  case 2: // RLE4
+  default:
+    SET_LAST_ERROR("bmp() failed. Unsupported compression: %d", info.compression);
+    destroy(&ret);
+    break;
   }
 
   if (color_map)
     free(color_map);
 
-  return ret;
-}
-
-surface_t* bmp_fp(FILE* fp) {
-  if (!fp) {
-    SET_LAST_ERROR("bmp_fp() failed: file pointer null\n");
-    return NULL;
-  }
-
-  fseek(fp, 0, SEEK_END);
-  size_t length = ftell(fp);
-  rewind(fp);
-
-  unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
-  fread(data, 1, length, fp);
-
-  surface_t* ret = bmp_mem(data);
-  free(data);
-  return ret;
-}
-
-surface_t* bmp(const char* path) {
-  FILE* fp = fopen(path, "rb");
-  if (!fp) {
-    SET_LAST_ERROR("fopen() failed: %s\n", path);
-    return NULL;
-  }
-
-  surface_t* ret = bmp_fp(fp);
-  fclose(fp);
   return ret;
 }
 

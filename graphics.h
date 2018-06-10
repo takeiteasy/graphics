@@ -203,8 +203,7 @@ extern "C" {
   bool line(surface_t* s, int x1, int y1, int x2, int y2, int col);
   bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill);
   bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill);
-  surface_t* bmp_mem(unsigned char* data);
-  surface_t* bmp_fp(FILE* fp);
+  bool line_aa(surface_t* s, int x1, int y1, int x2, int y2, int col);
   surface_t* bmp(const char* path);
   surface_t* tga(const char* path);
   int save_bmp(surface_t* s, const char* path);
