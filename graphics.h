@@ -213,7 +213,7 @@ extern "C" {
   void fill(surface_t* s, int col);
   bool pset(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
-  bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, int chroma);
+  bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, float opacity, int chroma);
   bool yline(surface_t* s, int x, int y1, int y2, int col);
   bool xline(surface_t* s, int y, int x1, int x2, int col);
   bool line(surface_t* s, int x1, int y1, int x2, int y2, int col);
@@ -239,6 +239,7 @@ extern "C" {
   void rgb(int c, int* r, int* g, int* b);
   surface_t* copy(surface_t* s);
   void iterate(surface_t* s, int(*fn)(int x, int y, int col));
+  int alpha(int c1, int c2, float i);
   long ticks(void);
   void delay(long ms);
   

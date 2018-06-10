@@ -693,7 +693,7 @@ int pget(surface_t* s, int x, int y) {
   return XYGET(s, x, y);
 }
 
-bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, int chroma) {
+bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, float opacity, int chroma) {
   int offset_x = 0, offset_y = 0,
   from_x = 0, from_y = 0,
   width = src->w, height = src->h;
@@ -732,6 +732,8 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, int chroma) {
   for (x = 0; x < width; ++x) {
     for (y = 0; y < height; ++y) {
       c = XYGET(src, from_x + x, from_y + y);
+      if (opacity > 0.f)
+        c = alpha(c, XYGET(dst, offset_x + x, offset_y + y), opacity);
       if (c != chroma)
         XYSET(dst, offset_x + x, offset_y + y, c);
     }
@@ -1348,6 +1350,16 @@ void iterate(surface_t* s, int (*fn)(int x, int y, int col)) {
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
       XYSET(s, x, y, fn(x, y, XYGET(s, x, y)));
+}
+
+int alpha(int c1, int c2, float i) {
+  if (i == 1 || i == 0)
+    return c1;
+  i *= 1.f;
+  int r1, g1, b1, r2, g2, b2;
+  rgb(c1, &r1, &g1, &b1);
+  rgb(c2, &r2, &g2, &b2);
+  return RGB((int)round(r2 * (1 - i) + r1 * i), (int)round(g2 * (1 - i) + g1 * i), (int)round(b2 * (1 - i) + b1 * i));
 }
 
 long ticks() {

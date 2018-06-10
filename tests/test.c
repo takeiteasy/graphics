@@ -1,4 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS
 #include "../graphics.h"
 #define TICK_INTERVAL 30
 static long next_time;
@@ -33,6 +32,8 @@ for (i = min_i; i < max_i; ++i, x += 8) { \
 x  = 5;\
 y += 8;
 
+#define XYSET(s, x, y, v) (s->buf[(y) * s->w + (x)] = (v))
+
 int main(int argc, const char* argv[]) {
   surface_t* win = screen("test", 640, 480);
   if (!win) {
@@ -61,6 +62,7 @@ int main(int argc, const char* argv[]) {
   point_t tmpp5 = { 10, 110 };
   point_t tmpp6 = { 425, 110 };
   point_t tmpp7 = { 482, 170 };
+  point_t tmpp8 = { 525, 370 };
 
   surface_t* d = string_f(RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", tmpr.x, tmpr.y, tmpr.w, tmpr.h);
   surface_t* h = string(RED, LIME, "NO\nGREEN\nHERE");
@@ -68,7 +70,7 @@ int main(int argc, const char* argv[]) {
   surface_t* l = surface(50, 50);
   fill(l, BLACK);
   point_t tmmp8 = { 13, 20 };
-  blit(l, &tmmp8, k, NULL, -1);
+  blit(l, &tmmp8, k, NULL, -1, -1);
   destroy(&k);
 
   surface_t* f = surface(100, 100);
@@ -89,18 +91,20 @@ int main(int argc, const char* argv[]) {
     for (int y = 32; y < win->h; y += 32)
       xline(win, y, 0, win->w, GRAY);
 
-    blit(win, &tmpp5, d, NULL, LIME);
-    blit(win, &tmpp, c, &tmpr, LIME);
+    blit(win, &tmpp5, d, NULL, -1, LIME);
+    blit(win, &tmpp, c, &tmpr, -1, LIME);
 
-    blit(win, &tmpp2, c, NULL, LIME);
-    blit(win, &tmpp4, e, NULL, LIME);
+    blit(win, &tmpp2, c, NULL, -1, LIME);
+    blit(win, &tmpp4, e, NULL, -1, LIME);
 
-    blit(win, &tmpp6, f, NULL, LIME);
-    blit(win, &tmpp7, h, NULL, LIME);
+    blit(win, &tmpp6, f, NULL, -1, LIME);
+    blit(win, &tmpp7, h, NULL, -1, LIME);
+
+    blit(win, &tmpp8, f, NULL, .5f, -1);
 
     iterate(a, rnd);
-    blit(a, NULL, l, NULL, LIME);
-    blit(win, &tmpp3, a, NULL, LIME);
+    blit(a, NULL, l, NULL, -1, LIME);
+    blit(win, &tmpp3, a, NULL, -1, LIME);
 
     circle(win, 352, 32, 30, RED,    true);
     circle(win, 382, 32, 30, ORANGE, true);
@@ -144,8 +148,10 @@ int main(int argc, const char* argv[]) {
     sine_i += 5;
     
     // fill(win, LIME);
+    // line(win, 20, 10, 120, 100, RED);
+    // line_aa(win, 10, 10, 100, 100);
     // point_t testsetest = { 10, 10 };
-    // blit(win, &testsetest, tga_test, NULL, -1);
+    // blit(win, &testsetest, tga_test, NULL, -1, -1);
 
     while (poll_events(&ue)) {
       switch (ue.type) {
