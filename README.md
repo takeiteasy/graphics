@@ -33,6 +33,7 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 - Independent screen & window size
 - Joystick/Gamepad input
 - DirectX/Metal backends
+- Add fill option to circle/ellipse functions
 
 ## License
 

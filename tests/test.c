@@ -132,7 +132,7 @@ int main(int argc, const char* argv[]) {
     line(win, 150, 150, 200, 200, col);
     line(win, 250, 150, 300, 200, col);
 
-    // line(win, 0, 0, mx, my, col);
+    line(win, 0, 0, mx, my, col);
     circle(win, mx, my, 30, col, false);
     
     int last_x = 0, last_y = 240;
@@ -144,9 +144,8 @@ int main(int argc, const char* argv[]) {
       last_y = y;
     }
     sine_i += 5;
-    
+
     fill(win, WHITE);
-    line_aa(win, 0, 0, mx, my, BLACK);
 
     // point_t testsetest = { 10, 10 };
     // blit(win, &testsetest, tga_test, NULL, -1, -1);

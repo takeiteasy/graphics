@@ -14,9 +14,12 @@
 #define XYSET(s, x, y, v) (s->buf[(y) * s->w + (x)] = (v))
 #define XYSETSAFE(s, x, y, v) \
 if ((x) >= 0 && (y) >= 0 && (x) <= s->w && (y) <= s->h) \
-  s->buf[(y) * s->w + (x)] = (v);
+  XYSET(s, x, y, v);
 #define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
-#define XYSETAA(s, x, y, v, i) (s->buf[(y) * s->w + (x)] = (alpha(c, XYGET(s, x, y), 1.f - ((float)i / 255.f))))
+#define XYSETAA(s, x, y, v, i) (s->buf[(y) * s->w + (x)] = (alpha(v, XYGET(s, x, y), 1.f - ((float)i / 255.f))))
+#define XYSETAASAFE(s, x, y, v, i) \
+if ((x) >= 0 && (y) >= 0 && (x) <= s->w && (y) <= s->h) \
+  XYSETAA(s, x, y, v, i)
 
 static char last_error[1024];
 
@@ -742,96 +745,96 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, float opacity, 
   return true;
 }
 
-bool yline(surface_t* s, int x, int y1, int y2, int col) {
+bool yline(surface_t* s, int x, int y0, int y1, int col) {
   if (x < 0 || x >= s->w)
     return false;
 
-  if (y2 < y1) {
-    y1 += y2;
-    y2  = y1 - y2;
-    y1 -= y2;
+  if (y1 < y0) {
+    y0 += y1;
+    y1  = y0 - y1;
+    y0 -= y1;
   }
 
-  if (y1 < 0)
-    y1 = 0;
-  if (y2 >= s->h)
-    y2 = s->h - 1;
+  if (y0 < 0)
+    y0 = 0;
+  if (y1 >= s->h)
+    y1 = s->h - 1;
 
-  for(int y = y1; y <= y2; y++)
+  for(int y = y0; y <= y1; y++)
     XYSET(s, x, y, col);
   return true;
 }
 
-bool xline(surface_t* s, int y, int x1, int x2, int col) {
+bool xline(surface_t* s, int y, int x0, int x1, int col) {
   if (y < 0 || y >= s->h)
     return false;
 
-  if (x2 < x1) {
-    x1 += x2;
-    x2  = x1 - x2;
-    x1 -= x2;
+  if (x1 < x0) {
+    x0 += x1;
+    x1  = x0 - x1;
+    x0 -= x1;
   }
 
-  if (x1 < 0)
-    x1 = 0;
-  if (x2 >= s->w)
-    x2 = s->w - 1;
+  if (x0 < 0)
+    x0 = 0;
+  if (x1 >= s->w)
+    x1 = s->w - 1;
 
-  for(int x = x1; x <= x2; x++)
+  for(int x = x0; x <= x1; x++)
     XYSET(s, x, y, col);
   return true;
 }
 
-bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
-  if (x1 == x2)
-    return yline(s, x1, y1, y2, col);
-  if (y1 == y2)
-    return xline(s, y1, x1, x2, col);
+bool line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
+  if (x0 == x1)
+    return yline(s, x0, y0, y1, col);
+  if (y0 == y1)
+    return xline(s, y0, x0, x1, col);
 
-  int xi1, xi2, yi1, yi2, d, n, na, np, p;
-  if (x2 > x1) {
-    if (x2 > s->w)
-      x2 = s->w;
-    if (x1 < 0)
-      x1 = 0;
-    xi1 = 1;
-    xi2 = 1;
-  } else {
+  int xi0, xi1, yi0, yi1, d, n, na, np, p;
+  if (x1 > x0) {
     if (x1 > s->w)
       x1 = s->w;
-    if (x2 < 0)
-      x2 = 0;
+    if (x0 < 0)
+      x0 = 0;
+    xi0 = 1;
+    xi1 = 1;
+  } else {
+    if (x0 > s->w)
+      x0 = s->w;
+    if (x1 < 0)
+      x1 = 0;
+    xi0 = -1;
     xi1 = -1;
-    xi2 = -1;
   }
 
-  if(y2 > y1) {
-    if (y2 > s->h)
-      y2 = s->h;
-    if (y1 < 0)
-      y1 = 0;
-    yi1 = 1;
-    yi2 = 1;
-  } else  {
+  if(y1 > y0) {
     if (y1 > s->h)
       y1 = s->h;
-    if (y2 < 0)
-      y2 = 0;
+    if (y0 < 0)
+      y0 = 0;
+    yi0 = 1;
+    yi1 = 1;
+  } else  {
+    if (y0 > s->h)
+      y0 = s->h;
+    if (y1 < 0)
+      y1 = 0;
+    yi0 = -1;
     yi1 = -1;
-    yi2 = -1;
   }
 
-  int x = x1, y = y1, dx = abs(x2 - x1), dy = abs(y2 - y1);
+  int x = x0, y = y0, dx = abs(x1 - x0), dy = abs(y1 - y0);
   if (dx > dy) {
-    xi1 = 0;
-    yi2 = 0;
+    xi0 = 0;
+    yi1 = 0;
     d = dx;
     n = dx / 2;
     na = dy;
     np = dx;
   } else {
-    xi2 = 0;
-    yi1 = 0;
+    xi1 = 0;
+    yi0 = 0;
     d = dy;
     n = dy / 2;
     na = dx;
@@ -843,11 +846,11 @@ bool line(surface_t* s, int x1, int y1, int x2, int y2, int col) {
     n += na;
     if (n >= d) {
       n -= d;
-      x += xi1;
-      y += yi1;
+      x += xi0;
+      y += yi0;
     }
-    x += xi2;
-    y += yi2;
+    x += xi1;
+    y += yi1;
   }
   return true;
 }
@@ -900,6 +903,66 @@ bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
   return true;
 }
 
+bool ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col) {
+  long x = -rx, y = 0;
+  long e2 = ry, dx = (1 + 2 * x)*e2*e2;
+  long dy = x * x, err = dx + dy;
+
+  do {
+    XYSETSAFE(s, xc - x, yc + y, col);
+    XYSETSAFE(s, xc + x, yc + y, col);
+    XYSETSAFE(s, xc + x, yc - y, col);
+    XYSETSAFE(s, xc - x, yc - y, col);
+
+    e2 = 2 * err;
+    if (e2 >= dx) { x++; err += dx += 2 * (long)ry * ry; }
+    if (e2 <= dy) { y++; err += dy += 2 * (long)rx * rx; }
+  } while (x <= 0);
+
+  while (y++ < ry) {
+    XYSETSAFE(s, xc, yc + y, col);
+    XYSETSAFE(s, xc, yc - y, col);
+  }
+  return true;
+}
+
+bool ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col) {
+  long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
+  double dx = 4 * (1.0 - a) * b * b, dy = 4 * (b1 + 1) * a * a;
+  double err = dx + dy + b1 * a * a, e2;
+
+  if (x0 > x1) {
+    x0 = x1;
+    x1 += a;
+  }
+  if (y0 > y1) y0 = y1;
+  y0 += (b + 1) / 2;
+  y1 = y0 - b1;
+  a = 8 * a * a;
+  b1 = 8 * b * b;
+
+  do {
+    XYSETSAFE(s, x1, y0, col);
+    XYSETSAFE(s, x0, y0, col);
+    XYSETSAFE(s, x0, y1, col);
+    XYSETSAFE(s, x1, y1, col);
+
+    e2 = 2 * err;
+    if (e2 <= dy) {
+      y0++;
+      y1--;
+      err += dy += a;
+    }
+
+    if (e2 >= dx || 2 * err > dy) {
+      x0++;
+      x1--;
+      err += dx += b1;
+    }
+  } while (x0 <= x1);
+  return true;
+}
+
 bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
   if (x < 0) {
     w += x;
@@ -932,33 +995,79 @@ bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
   return true;
 }
 
-void line_aa(surface_t* s, int x1, int y1, int x2, int y2, int c) {
-  int dx = abs(x2 - x1), sx = x1 < x2 ? 1 : -1;
-  int dy = abs(y2 - y1), sy = y1 < y2 ? 1 : -1;
-  int err = dx - dy, e2, x3;
+bool line_aa(surface_t* s, int x0, int y0, int x1, int y1, int col) {
+  if (x0 == x1)
+    return yline(s, x0, y0, y1, col);
+  if (y0 == y1)
+    return xline(s, y0, x0, x1, col);
+
+  int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+  int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+  int err = dx - dy, e2, x2;
   int ed = dx + dy == 0 ? 1 : sqrt((float)dx * dx + (float)dy * dy);
 
   for (;;) {
-    XYSETAA(s, x1, y1, c, 255 * abs(err - dx + dy) / ed);
+    XYSETAASAFE(s, x0, y0, col, 255 * abs(err - dx + dy) / ed);
     e2 = err;
-    x3 = x1;
+    x2 = x0;
     if (2 * e2 >= -dx) {
-      if (x1 == x2)
+      if (x0 == x1)
         break;
       if (e2 + dy < ed)
-        XYSETAA(s, x1, y1 + sy, c, 255 * (e2 + dy) / ed);
+        XYSETAASAFE(s, x0, y0 + sy, col, 255 * (e2 + dy) / ed);
       err -= dy;
-      x1 += sx;
+      x0 += sx;
     }
     if (2 * e2 <= dy) {
-      if (y1 == y2)
+      if (y0 == y1)
         break;
       if (dx - e2 < ed)
-        XYSETAA(s, x3 + sx, y1, c, 255 * (dx - e2) / ed);
+        XYSETAASAFE(s, x2 + sx, y0, col, 255 * (dx - e2) / ed);
       err += dx;
-      y1 += sy;
+      y0 += sy;
     }
   }
+}
+
+bool circle_aa(surface_t* s, int xc, int yc, int r, int col, bool fill) {
+  if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
+    return false;
+
+  int x = -r, y = 0;
+  int i, x2, e2, err = 2 - 2 * r;
+  r = 1 - err;
+  do {
+    i = 255 * abs(err - 2 * (x + y) - 2) / r;
+    XYSETAASAFE(s, xc - x, yc + y, col, i);
+    XYSETAASAFE(s, xc - y, yc - x, col, i);
+    XYSETAASAFE(s, xc + x, yc - y, col, i);
+    XYSETAASAFE(s, xc + y, yc + x, col, i);
+
+    e2 = err; x2 = x;
+    if (err + y > 0) {
+      i = 255 * (err - 2 * x - 1) / r;
+      if (i < 256) {
+        XYSETAASAFE(s, xc - x, yc + y + 1, col, i);
+        XYSETAASAFE(s, xc - y - 1, yc - x, col, i);
+        XYSETAASAFE(s, xc + x, yc - y - 1, col, i);
+        XYSETAASAFE(s, xc + y + 1, yc + x, col, i);
+      }
+      err += ++x * 2 + 1;
+    }
+
+    if (e2 + x2 <= 0) {
+      i = 255 * (2 * y + 3 - e2) / r;
+      if (i < 256) {
+        XYSETAASAFE(s, xc - x2 - 1, yc + y, col, i);
+        XYSETAASAFE(s, xc - y, yc - x2 - 1, col, i);
+        XYSETAASAFE(s, xc + x2 + 1, yc - y, col, i);
+        XYSETAASAFE(s, xc + y, yc + x2 + 1, col, i);
+      }
+      err += ++y * 2 + 1;
+    }
+  } while (x < 0);
+
+  return true;
 }
 
 #if defined(_MSC_VER)
