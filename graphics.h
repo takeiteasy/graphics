@@ -11,22 +11,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* TODO:
-*  - FIX BMP LOADING, TOTALLY FUCKED ATM
-*  - Colour escapes for print()
-*  - Wayland window code?
-*  - Window resize events
-*  - Fullscreening
-*  - Cursor lock/hide
-*  - Any other window events?
-*  - AA functions for line & circle
-*  - Documentation & comments
-*  - Extended surface functions, resize, rotate, filters, etc
-*  - Independent screen & window size
-*  - Joystick/Gamepad input
-*  - DirectX/Metal backends
-*/
   
 #include <stdio.h>
 #include <stdlib.h>
