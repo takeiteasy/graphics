@@ -788,15 +788,48 @@ void xline(surface_t* s, int y, int x0, int x1, int col) {
 }
 
 void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
+#if defined(GRAPHICS_ENABLE_AA)
   if (x0 == x1)
     yline(s, x0, y0, y1, col);
   if (y0 == y1)
     xline(s, y0, x0, x1, col);
 
-  int dx =  abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+  int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+  int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+  int err = dx - dy, e2, x2;
+  int ed = dx + dy == 0 ? 1 : sqrt((float)dx * dx + (float)dy * dy);
+
+  for (;;) {
+    XYSETAASAFE(s, x0, y0, col, 255 * abs(err - dx + dy) / ed);
+    e2 = err;
+    x2 = x0;
+    if (2 * e2 >= -dx) {
+      if (x0 == x1)
+        break;
+      if (e2 + dy < ed)
+        XYSETAASAFE(s, x0, y0 + sy, col, 255 * (e2 + dy) / ed);
+      err -= dy;
+      x0 += sx;
+    }
+    if (2 * e2 <= dy) {
+      if (y0 == y1)
+        break;
+      if (dx - e2 < ed)
+        XYSETAASAFE(s, x2 + sx, y0, col, 255 * (dx - e2) / ed);
+      err += dx;
+      y0 += sy;
+    }
+  }
+#else
+  if (x0 == x1)
+    yline(s, x0, y0, y1, col);
+  if (y0 == y1)
+    xline(s, y0, x0, x1, col);
+
+  int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
   int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-  int err = dx+dy, e2;
-  
+  int err = dx + dy, e2;
+
   for (;;) {
     XYSETSAFE(s, x0, y0, col);
     e2 = 2 * err;
@@ -812,6 +845,7 @@ void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
       err += dx; y0 += sy;
     }
   }
+#endif
 }
 
 #pragma pack(push, 1)
@@ -930,24 +964,65 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
   if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
     return;
   
-  int x = -r, y = 0, err = 2-2*r;
+#if defined(GRAPHICS_ENABLE_AA)
+  int x = -r, y = 0;
+  int i, x2, e2, err = 2 - 2 * r;
+  r = 1 - err;
+  do {
+    i = 255 * abs(err - 2 * (x + y) - 2) / r;
+    XYSETAASAFE(s, xc - x, yc + y, col, i);
+    XYSETAASAFE(s, xc - y, yc - x, col, i);
+    XYSETAASAFE(s, xc + x, yc - y, col, i);
+    XYSETAASAFE(s, xc + y, yc + x, col, i);
+
+    if (fill) {
+      xline(s, yc - y, xc - x - 1, xc + x + 1, col);
+      xline(s, yc + y, xc - x - 1, xc + x + 1, col);
+    }
+
+    e2 = err; x2 = x;
+    if (err + y > 0) {
+      i = 255 * (err - 2 * x - 1) / r;
+      if (i < 256) {
+        XYSETAASAFE(s, xc - x, yc + y + 1, col, i);
+        XYSETAASAFE(s, xc - y - 1, yc - x, col, i);
+        XYSETAASAFE(s, xc + x, yc - y - 1, col, i);
+        XYSETAASAFE(s, xc + y + 1, yc + x, col, i);
+      }
+      err += ++x * 2 + 1;
+    }
+
+    if (e2 + x2 <= 0) {
+      i = 255 * (2 * y + 3 - e2) / r;
+      if (i < 256) {
+        XYSETAASAFE(s, xc - x2 - 1, yc + y, col, i);
+        XYSETAASAFE(s, xc - y, yc - x2 - 1, col, i);
+        XYSETAASAFE(s, xc + x2 + 1, yc - y, col, i);
+        XYSETAASAFE(s, xc + y, yc + x2 + 1, col, i);
+      }
+      err += ++y * 2 + 1;
+    }
+  } while (x < 0);
+#else
+  int x = -r, y = 0, err = 2 - 2 * r;
   do {
     XYSETSAFE(s, xc - x, yc + y, col);
     XYSETSAFE(s, xc - y, yc - x, col);
     XYSETSAFE(s, xc + x, yc - y, col);
     XYSETSAFE(s, xc + y, yc + x, col);
-    
+
     if (fill) {
       xline(s, yc - y, xc - x, xc + x, col);
       xline(s, yc + y, xc - x, xc + x, col);
     }
-    
+
     r = err;
     if (r <= y)
-      err += ++y*2+1;
+      err += ++y * 2 + 1;
     if (r > x || err > y)
       err += ++x * 2 + 1;
   } while (x < 0);
+#endif
 }
 
 void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
@@ -1020,6 +1095,448 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
   } while (x0 <= x1);
 }
 
+void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
+  int sx = x2 - x1, sy = y2 - y1;
+  long xx = x0 - x1, yy = y0 - y1, xy;
+  double dx, dy, err, cur = xx * sy - yy * sx;
+
+  if (sx*(long)sx + sy * (long)sy > xx*xx + yy * yy) {
+    x2 = x0;
+    x0 = sx + x1;
+    y2 = y0;
+    y0 = sy + y1;
+    cur = -cur;
+  }
+
+  if (cur != 0) {
+    xx += sx;
+    xx *= sx = x0 < x2 ? 1 : -1;
+    yy += sy;
+    yy *= sy = y0 < y2 ? 1 : -1;
+    xy = 2 * xx * yy;
+    xx *= xx;
+    yy *= yy;
+    if (cur * sx * sy < 0) {
+      xx = -xx;
+      yy = -yy;
+      xy = -xy;
+      cur = -cur;
+    }
+
+    dx = 4.0 * sy * cur * (x1 - x0) + xx - xy;
+    dy = 4.0 * sx * cur * (y0 - y1) + yy - xy;
+    xx += xx;
+    yy += yy;
+    err = dx + dy + xy;
+    do {
+      XYSETSAFE(s, x0, y0, col);
+      if (x0 == x2 && y0 == y2)
+        return;
+
+      y1 = 2 * err < dx;
+      if (2 * err > dy) {
+        x0 += sx;
+        dx -= xy;
+        err += dy += yy;
+      }
+
+      if (y1) {
+        y0 += sy;
+        dy -= xy;
+        err += dx += xx;
+      }
+    } while (dy < 0 && dx > 0);
+  }
+
+  line(s, x0, y0, x2, y2, col);
+}
+
+void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
+  int x = x0 - x1, y = y0 - y1;
+  double t = x0 - 2 * x1 + x2, r;
+
+  if ((long)x * (x2 - x1) > 0) {
+    if ((long)y * (y2 - y1) > 0)
+      if (fabs((y0 - 2 * y1 + y2) / t * x) > abs(y)) {
+        x0 = x2;
+        x2 = x + x1;
+        y0 = y2;
+        y2 = y + y1;
+      }
+
+    t = (x0 - x1) / t;
+    r = (1 - t) * ((1 - t) * y0 + 2.0 * t * y1) + t * t*y2;
+    t = (x0 * x2 - x1 * x1) * t / (x0 - x1);
+    x = floor(t + 0.5);
+    y = floor(r + 0.5);
+    r = (y1 - y0) * (t - x0) / (x1 - x0) + y0;
+    bezier_seg(s, x0, y0, x, floor(r + 0.5), x, y, col);
+    r = (y1 - y2) * (t - x2) / (x1 - x2) + y2;
+    x0 = x1 = x;
+    y0 = y;
+    y1 = floor(r + 0.5);
+  }
+
+  if ((long)(y0 - y1) * (y2 - y1) > 0) {
+    t = y0 - 2 * y1 + y2; t = (y0 - y1) / t;
+    r = (1 - t) * ((1 - t) * x0 + 2.0 * t * x1) + t * t * x2;
+    t = (y0 * y2 - y1 * y1) * t / (y0 - y1);
+    x = floor(r + 0.5);
+    y = floor(t + 0.5);
+    r = (x1 - x0) * (t - y0) / (y1 - y0) + x0;
+    bezier_seg(s, x0, y0, floor(r + 0.5), y, x, y, col);
+    r = (x1 - x2) * (t - y2) / (y1 - y2) + x2;
+    x0 = x;
+    x1 = floor(r + 0.5);
+    y0 = y1 = y;
+  }
+
+  bezier_seg(s, x0, y0, x1, y1, x2, y2, col);
+}
+
+void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
+  int sx = x2 - x1, sy = y2 - y1;
+  double dx = x0 - x2, dy = y0 - y2, xx = x0 - x1, yy = y0 - y1;
+  double xy = xx * sy + yy * sx, cur = xx * sy - yy * sx, err;
+
+  if (cur != 0.0 && w > 0.0) {
+    if (sx * (long)sx + sy * (long)sy > xx * xx + yy * yy) {
+      x2 = x0;
+      x0 -= dx;
+      y2 = y0;
+      y0 -= dy;
+      cur = -cur;
+    }
+
+    xx = 2.0 * (4.0 * w * sx * xx + dx * dx);
+    yy = 2.0 * (4.0 * w * sy * yy + dy * dy);
+    sx = x0 < x2 ? 1 : -1;
+    sy = y0 < y2 ? 1 : -1;
+    xy = -2.0 * sx * sy * (2.0 * w * xy + dx * dy);
+
+    if (cur * sx * sy < 0.0) {
+      xx = -xx;
+      yy = -yy;
+      xy = -xy;
+      cur = -cur;
+    }
+
+    dx = 4.0 * w * (x1 - x0) * sy * cur + xx / 2.0 + xy;
+    dy = 4.0 *w * (y0 - y1) * sx * cur + yy / 2.0 + xy;
+
+    if (w < 0.5 && (dy > xy || dx < xy)) {
+      cur = (w + 1.0) / 2.0;
+      w = sqrt(w);
+      xy = 1.0 / (w + 1.0);
+      sx = floor((x0 + 2.0 * w * x1 + x2) * xy / 2.0 + 0.5);
+      sy = floor((y0 + 2.0 * w * y1 + y2) * xy / 2.0 + 0.5);
+      dx = floor((w * x1 + x0) * xy + 0.5);
+      dy = floor((y1 * w + y0) * xy + 0.5);
+      bezier_seg_rational(s, x0, y0, dx, dy, sx, sy, cur, col);
+      dx = floor((w * x1 + x2) * xy + 0.5);
+      dy = floor((y1 * w + y2)*xy + 0.5);
+      bezier_seg_rational(s, sx, sy, dx, dy, x2, y2, cur, col);
+      return;
+    }
+
+    err = dx + dy - xy;
+    do {
+      XYSETSAFE(s, x0, y0, col);
+      if (x0 == x2 && y0 == y2)
+        return;
+
+      x1 = 2 * err > dy; y1 = 2 * (err + yy) < -dy;
+      if (2 * err < dx || y1) {
+        y0 += sy;
+        dy += xy;
+        err += dx += xx;
+      }
+
+      if (2 * err > dx || x1) {
+        x0 += sx;
+        dx += xy;
+        err += dy += yy;
+      }
+    } while (dy <= xy && dx >= xy);
+  }
+
+  line(s, x0, y0, x2, y2, col);
+}
+
+void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
+  int x = x0 - 2 * x1 + x2, y = y0 - 2 * y1 + y2;
+  double xx = x0 - x1, yy = y0 - y1, ww, t, q;
+
+  if (xx*(x2 - x1) > 0) {
+    if (yy*(y2 - y1) > 0)
+      if (fabs(xx*y) > fabs(yy*x)) {
+        x0 = x2;
+        x2 = xx + x1;
+        y0 = y2;
+        y2 = yy + y1;
+      }
+
+    if (x0 == x2 || w == 1.0)
+      t = (x0 - x1) / (double)x;
+    else {
+      q = sqrt(4.0 * w * w * (x0 - x1) * (x2 - x1) + (x2 - x0) * (long)(x2 - x0));
+      if (x1 < x0)
+        q = -q;
+      t = (2.0 * w * (x0 - x1) - x0 + x2 + q) / (2.0 * (1.0 - w) * (x2 - x0));
+    }
+
+    q = 1.0 / (2.0 * t * (1.0 - t) * (w - 1.0) + 1.0);
+    xx = (t * t * (x0 - 2.0 * w * x1 + x2) + 2.0 * t * (w * x1 - x0) + x0) * q;
+    yy = (t * t * (y0 - 2.0 * w * y1 + y2) + 2.0 * t * (w * y1 - y0) + y0) * q;
+    ww = t * (w - 1.0) + 1.0;
+    ww *= ww * q;
+    w = ((1.0 - t) * (w - 1.0) + 1.0) * sqrt(q);
+    x = floor(xx + 0.5);
+    y = floor(yy + 0.5);
+    yy = (xx - x0) * (y1 - y0) / (x1 - x0) + y0;
+    bezier_seg_rational(s, x0, y0, x, floor(yy + 0.5), x, y, ww, col);
+    yy = (xx - x2) * (y1 - y2) / (x1 - x2) + y2;
+    y1 = floor(yy + 0.5);
+    x0 = x1 = x;
+    y0 = y;
+  }
+
+  if ((y0 - y1) * (long)(y2 - y1) > 0) {
+    if (y0 == y2 || w == 1.0)
+      t = (y0 - y1) / (y0 - 2.0 * y1 + y2);
+    else {
+      q = sqrt(4.0 * w * w * (y0 - y1) * (y2 - y1) + (y2 - y0) * (long)(y2 - y0));
+      if (y1 < y0)
+        q = -q;
+      t = (2.0 * w * (y0 - y1) - y0 + y2 + q) / (2.0 * (1.0 - w) * (y2 - y0));
+    }
+
+    q = 1.0 / (2.0 * t * (1.0 - t) * (w - 1.0) + 1.0);
+    xx = (t * t * (x0 - 2.0 * w * x1 + x2) + 2.0 * t * (w * x1 - x0) + x0) * q;
+    yy = (t * t * (y0 - 2.0 * w * y1 + y2) + 2.0 * t * (w * y1 - y0) + y0) * q;
+    ww = t * (w - 1.0) + 1.0;
+    ww *= ww * q;
+    w = ((1.0 - t) * (w - 1.0) + 1.0) * sqrt(q);
+    x = floor(xx + 0.5);
+    y = floor(yy + 0.5);
+    xx = (x1 - x0) * (yy - y0) / (y1 - y0) + x0;
+    bezier_seg_rational(s, x0, y0, floor(xx + 0.5), y, x, y, ww, col);
+    xx = (x1 - x2) * (yy - y2) / (y1 - y2) + x2;
+    x1 = floor(xx + 0.5);
+    x0 = x;
+    y0 = y1 = y;
+  }
+
+  bezier_seg_rational(s, x0, y0, x1, y1, x2, y2, w*w, col);
+}
+
+void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col) {
+  int xd = x1 - x0, yd = y1 - y0;
+  float w = xd * (long)yd;
+  if (zd == 0)
+    return ellipse_rect(s, x0, y0, x1, y1, col, 0);
+  if (w != 0.0)
+    w = (w - zd) / (w + w);
+
+  xd = floor(xd*w + 0.5);
+  yd = floor(yd*w + 0.5);
+  
+  bezier_seg_rational(s, x0, y0 + yd, x0, y0, x0 + xd, y0, 1.0 - w, col);
+  bezier_seg_rational(s, x0, y0 + yd, x0, y1, x1 - xd, y1, w, col);
+  bezier_seg_rational(s, x1, y1 - yd, x1, y1, x1 - xd, y1, 1.0 - w, col);
+  bezier_seg_rational(s, x1, y1 - yd, x1, y0, x0 + xd, y0, w, col);
+}
+
+void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col) {
+  float xd = (long)a * a, yd = (long)b * b;
+  float q = sin(angle), zd = (xd - yd) * q;
+  xd = sqrt(xd - zd * q), yd = sqrt(yd + zd * q);
+  a = xd + 0.5;
+  b = yd + 0.5;
+  zd = zd * a * b / (xd * yd);
+  ellipse_rect_rotated(s, x - a, y - b, x + a, y + b, (long)(4 * zd*cos(angle)), col);
+}
+
+void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, float x2, float y2, int x3, int y3, int col) {
+  int f, fx, fy, leg = 1;
+  int sx = x0 < x3 ? 1 : -1, sy = y0 < y3 ? 1 : -1;
+  float xc = -fabs(x0 + x1 - x2 - x3), xa = xc - 4 * sx*(x1 - x2), xb = sx * (x0 - x1 - x2 + x3);
+  float yc = -fabs(y0 + y1 - y2 - y3), ya = yc - 4 * sy*(y1 - y2), yb = sy * (y0 - y1 - y2 + y3);
+  double ab, ac, bc, cb, xx, xy, yy, dx, dy, ex, *pxy, EP = 0.01;
+
+  if (xa == 0 && ya == 0) {
+    sx = floor((3 * x1 - x0 + 1) / 2);
+    sy = floor((3 * y1 - y0 + 1) / 2);
+    bezier_seg(s, x0, y0, sx, sy, x3, y3, col);
+  }
+
+  x1 = (x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0) + 1;
+  x2 = (x2 - x3) * (x2 - x3) + (y2 - y3) * (y2 - y3) + 1;
+  do {
+    ab = xa * yb - xb * ya;
+    ac = xa * yc - xc * ya;
+    bc = xb * yc - xc * yb;
+    ex = ab * (ab + ac - 3 * bc) + ac * ac;
+    f = ex > 0 ? 1 : sqrt(1 + 1024 / x1);
+    ab *= f;
+    ac *= f;
+    bc *= f;
+    ex *= f * f;
+    xy = 9 * (ab + ac + bc) / 8;
+    cb = 8 * (xa - ya);
+    dx = 27 * (8 * ab * (yb * yb - ya * yc) + ex * (ya + 2 * yb + yc)) / 64 - ya * ya * (xy - ya);
+    dy = 27 * (8 * ab * (xb * xb - xa * xc) - ex * (xa + 2 * xb + xc)) / 64 - xa * xa * (xy + xa);
+
+    xx = 3 * (3 * ab * (3 * yb * yb - ya * ya - 2 * ya * yc) - ya * (3 * ac * (ya + yb) + ya * cb)) / 4;
+    yy = 3 * (3 * ab * (3 * xb * xb - xa * xa - 2 * xa * xc) - xa * (3 * ac * (xa + xb) + xa * cb)) / 4;
+    xy = xa * ya * (6 * ab + 6 * ac - 3 * bc + cb);
+    ac = ya * ya;
+    cb = xa * xa;
+    xy = 3 * (xy + 9 * f * (cb * yb * yc - xb * xc * ac) - 18 * xb * yb * ab) / 8;
+
+    if (ex < 0) {
+      dx = -dx;
+      dy = -dy;
+      xx = -xx;
+      yy = -yy;
+      xy = -xy;
+      ac = -ac;
+      cb = -cb;
+    }
+    ab = 6 * ya * ac;
+    ac = -6 * xa * ac;
+    bc = 6 * ya * cb;
+    cb = -6 * xa * cb;
+    dx += xy;
+    ex = dx + dy;
+    dy += xy;
+
+    for (pxy = &xy, fx = fy = f; x0 != x3 && y0 != y3;) {
+      XYSETSAFE(s, x0, y0, col);
+      do {
+        if (dx > *pxy || dy < *pxy)
+          goto exit;
+
+        y1 = 2 * ex - dy;
+        if (2 * ex >= dx) {
+          fx--;
+          ex += dx += xx;
+          dy += xy += ac;
+          yy += bc;
+          xx += ab;
+        }
+
+        if (y1 <= 0) {
+          fy--;
+          ex += dy += yy;
+          dx += xy += bc;
+          xx += ac;
+          yy += cb;
+        }
+      } while (fx > 0 && fy > 0);
+
+      if (2 * fx <= f) {
+        x0 += sx;
+        fx += f;
+      }
+      if (2 * fy <= f) {
+        y0 += sy;
+        fy += f;
+      }
+      if (pxy == &xy && dx < 0 && dy > 0)
+        pxy = &EP;
+    }
+
+ exit:
+    xx = x0;
+    x0 = x3;
+    x3 = xx;
+    sx = -sx;
+    xb = -xb;
+    yy = y0;
+    y0 = y3;
+    y3 = yy;
+    sy = -sy;
+    yb = -yb;
+    x1 = x2;
+  } while (leg--);
+
+  line(s, x0, y0, x3, y3, col);
+}
+
+void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col) {
+  int n = 0, i = 0;
+  long xc = x0 + x1 - x2 - x3, xa = xc - 4 * (x1 - x2);
+  long xb = x0 - x1 - x2 + x3, xd = xb + 4 * (x1 + x2);
+  long yc = y0 + y1 - y2 - y3, ya = yc - 4 * (y1 - y2);
+  long yb = y0 - y1 - y2 + y3, yd = yb + 4 * (y1 + y2);
+  float fx0 = x0, fx1, fx2, fx3, fy0 = y0, fy1, fy2, fy3;
+  double t1 = xb * xb - xa * xc, t2, t[5];
+
+  if (xa == 0) {
+    if (abs(xc) < 2 * abs(xb))
+      t[n++] = xc / (2.0*xb);
+  } else if (t1 > 0.0) {
+    t2 = sqrt(t1);
+    t1 = (xb - t2) / xa;
+    if (fabs(t1) < 1.0)
+      t[n++] = t1;
+    t1 = (xb + t2) / xa;
+    if (fabs(t1) < 1.0)
+      t[n++] = t1;
+  }
+
+  t1 = yb * yb - ya * yc;
+  if (ya == 0) {
+    if (abs(yc) < 2 * abs(yb))
+      t[n++] = yc / (2.0 * yb);
+  } else if (t1 > 0.0) {
+    t2 = sqrt(t1);
+    t1 = (yb - t2) / ya;
+    if (fabs(t1) < 1.0)
+      t[n++] = t1;
+    t1 = (yb + t2) / ya;
+    if (fabs(t1) < 1.0)
+      t[n++] = t1;
+  }
+
+  for (i = 1; i < n; i++)
+    if ((t1 = t[i - 1]) > t[i]) {
+      t[i - 1] = t[i];
+      t[i] = t1; i = 0;
+    }
+
+  t1 = -1.0; t[n] = 1.0;
+  for (i = 0; i <= n; i++) {
+    t2 = t[i];
+    fx1 = (t1 * (t1 * xb - 2 * xc) - t2 * (t1 * (t1 * xa - 2 * xb) + xc) + xd) / 8 - fx0;
+    fy1 = (t1 * (t1 * yb - 2 * yc) - t2 * (t1 * (t1 * ya - 2 * yb) + yc) + yd) / 8 - fy0;
+    fx2 = (t2 * (t2 * xb - 2 * xc) - t1 * (t2 * (t2 * xa - 2 * xb) + xc) + xd) / 8 - fx0;
+    fy2 = (t2 * (t2 * yb - 2 * yc) - t1 * (t2 * (t2 * ya - 2 * yb) + yc) + yd) / 8 - fy0;
+    fx0 -= fx3 = (t2 * (t2 * (3 * xb - t2 * xa) - 3 * xc) + xd) / 8;
+    fy0 -= fy3 = (t2 * (t2 * (3 * yb - t2 * ya) - 3 * yc) + yd) / 8;
+    x3 = floor(fx3 + 0.5);
+    y3 = floor(fy3 + 0.5);
+
+    if (fx0 != 0.0) {
+      fx1 *= fx0 = (x0 - x3) / fx0;
+      fx2 *= fx0;
+    }
+    if (fy0 != 0.0) {
+      fy1 *= fy0 = (y0 - y3) / fy0;
+      fy2 *= fy0;
+    }
+    if (x0 != x3 || y0 != y3)
+      bezier_seg_cubic(s, x0, y0, x0 + fx1, y0 + fy1, x0 + fx2, y0 + fy2, x3, y3, col);
+
+    x0 = x3;
+    y0 = y3;
+    fx0 = fx3;
+    fy0 = fy3;
+    t1 = t2;
+  }
+}
+
 void rect(surface_t* s, int x, int y, int w, int h, int col, int fill) {
   if (x < 0) {
     w += x;
@@ -1049,84 +1566,6 @@ void rect(surface_t* s, int x, int y, int w, int h, int col, int fill) {
     yline(s, x, y, h, col);
     yline(s, w, y, h, col);
   }
-}
-
-void line_aa(surface_t* s, int x0, int y0, int x1, int y1, int col) {
-  if (x0 == x1)
-    yline(s, x0, y0, y1, col);
-  if (y0 == y1)
-    xline(s, y0, x0, x1, col);
-
-  int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-  int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-  int err = dx - dy, e2, x2;
-  int ed = dx + dy == 0 ? 1 : sqrt((float)dx * dx + (float)dy * dy);
-
-  for (;;) {
-    XYSETAASAFE(s, x0, y0, col, 255 * abs(err - dx + dy) / ed);
-    e2 = err;
-    x2 = x0;
-    if (2 * e2 >= -dx) {
-      if (x0 == x1)
-        break;
-      if (e2 + dy < ed)
-        XYSETAASAFE(s, x0, y0 + sy, col, 255 * (e2 + dy) / ed);
-      err -= dy;
-      x0 += sx;
-    }
-    if (2 * e2 <= dy) {
-      if (y0 == y1)
-        break;
-      if (dx - e2 < ed)
-        XYSETAASAFE(s, x2 + sx, y0, col, 255 * (dx - e2) / ed);
-      err += dx;
-      y0 += sy;
-    }
-  }
-}
-
-void circle_aa(surface_t* s, int xc, int yc, int r, int col, int fill) {
-  if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
-    return;
-
-  int x = -r, y = 0;
-  int i, x2, e2, err = 2 - 2 * r;
-  r = 1 - err;
-  do {
-    i = 255 * abs(err - 2 * (x + y) - 2) / r;
-    XYSETAASAFE(s, xc - x, yc + y, col, i);
-    XYSETAASAFE(s, xc - y, yc - x, col, i);
-    XYSETAASAFE(s, xc + x, yc - y, col, i);
-    XYSETAASAFE(s, xc + y, yc + x, col, i);
-    
-    if (fill) {
-      xline(s, yc - y, xc - x - 1, xc + x + 1, col);
-      xline(s, yc + y, xc - x - 1, xc + x + 1, col);
-    }
-
-    e2 = err; x2 = x;
-    if (err + y > 0) {
-      i = 255 * (err - 2 * x - 1) / r;
-      if (i < 256) {
-        XYSETAASAFE(s, xc - x, yc + y + 1, col, i);
-        XYSETAASAFE(s, xc - y - 1, yc - x, col, i);
-        XYSETAASAFE(s, xc + x, yc - y - 1, col, i);
-        XYSETAASAFE(s, xc + y + 1, yc + x, col, i);
-      }
-      err += ++x * 2 + 1;
-    }
-
-    if (e2 + x2 <= 0) {
-      i = 255 * (2 * y + 3 - e2) / r;
-      if (i < 256) {
-        XYSETAASAFE(s, xc - x2 - 1, yc + y, col, i);
-        XYSETAASAFE(s, xc - y, yc - x2 - 1, col, i);
-        XYSETAASAFE(s, xc + x2 + 1, yc - y, col, i);
-        XYSETAASAFE(s, xc + y, yc + x2 + 1, col, i);
-      }
-      err += ++y * 2 + 1;
-    }
-  } while (x < 0);
 }
 
 #if defined(_MSC_VER)

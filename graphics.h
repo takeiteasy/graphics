@@ -209,9 +209,15 @@ extern "C" {
   void circle(surface_t* s, int xc, int yc, int r, int col, int fill);
   void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill);
   void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill);
+  void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col);
+  void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col);
+  void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col);
+  void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col);
+  void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col);
+  void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col);
+  void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, float x2, float y2, int x3, int y3, int col);
+  void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
   void rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
-  void line_aa(surface_t* s, int x0, int y0, int x1, int y1, int col);
-  void circle_aa(surface_t* s, int xc, int yc, int r, int col, int fill);
   surface_t* bmp(const char* path);
   int save_bmp(surface_t* s, const char* path);
   void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col);

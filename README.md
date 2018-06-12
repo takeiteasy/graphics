@@ -34,6 +34,9 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 - DirectX/Metal backends
 - OpenGL 1.X fallback for OSX
 - Remove XYSETSAFE(AA) for proper error checking
+- Add fill option for ellipse_rotated
+- Add rotated rect function
+- Add AA option macro (merge functions)
 
 ## License
 
