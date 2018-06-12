@@ -37,7 +37,7 @@ extern "C" {
   
 #define RGB(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
   
-#if defined(GRAPHICS_EXTRA_COLOURS)
+#if defined(GRAPHICS_EXTRA_COLOURS) && !defined(GRAPHICS_LEAN_AND_MEAN)
 #define ALICE_BLUE RGB(240, 248, 255)
 #define ANTIQUE_WHITE RGB(250, 235, 215)
 #define AQUA RGB(0, 255, 255)
@@ -198,17 +198,22 @@ extern "C" {
   bool pset(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
   bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, float opacity, int chroma);
-  bool yline(surface_t* s, int x, int y0, int y1, int col);
-  bool xline(surface_t* s, int y, int x0, int x1, int col);
-  bool line(surface_t* s, int x0, int y0, int x1, int y1, int col);
-  bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill);
-  bool ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col);
-  bool ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col);
-  bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill);
-  bool line_aa(surface_t* s, int x0, int y0, int x1, int y1, int col);
-  bool circle_aa(surface_t* s, int xc, int yc, int r, int col, bool fill);
-  surface_t* bmp(const char* path);
+  void yline(surface_t* s, int x, int y0, int y1, int col);
+  void xline(surface_t* s, int y, int x0, int x1, int col);
+  void line(surface_t* s, int x0, int y0, int x1, int y1, int col);
   surface_t* tga(const char* path);
+  int alpha(int c1, int c2, float i);
+  long ticks(void);
+  void delay(long ms);
+  
+#if !defined(GRAPHICS_LEAN_AND_MEAN)
+  void circle(surface_t* s, int xc, int yc, int r, int col, bool fill);
+  void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, bool fill);
+  void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, bool fill);
+  void rect(surface_t* s, int x, int y, int w, int h, int col, bool fill);
+  void line_aa(surface_t* s, int x0, int y0, int x1, int y1, int col);
+  void circle_aa(surface_t* s, int xc, int yc, int r, int col, bool fill);
+  surface_t* bmp(const char* path);
   int save_bmp(surface_t* s, const char* path);
   void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col);
 #if defined(GRAPHICS_EXTRA_FONTS)
@@ -225,9 +230,7 @@ extern "C" {
   void rgb(int c, int* r, int* g, int* b);
   surface_t* copy(surface_t* s);
   void iterate(surface_t* s, int(*fn)(int x, int y, int col));
-  int alpha(int c1, int c2, float i);
-  long ticks(void);
-  void delay(long ms);
+#endif
   
   typedef enum {
     MOUSE_BTN_0,

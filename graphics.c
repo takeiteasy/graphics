@@ -9,6 +9,21 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#if defined(GRAPHICS_LEAN_AND_MEAN)
+#if defined(GRAPHICS_EXTRA_COLOURS)
+#undef GRAPHICS_EXTRA_COLOURS
+#endif
+#if defined(GRAPHICS_EXTRA_COLOURS)
+#undef GRAPHICS_EXTRA_COLOURS
+#endif
+#if defined(GRAPHICS_EXTRA_FONTS)
+#undef GRAPHICS_EXTRA_FONTS
+#endif
+#if defined(GRAPHICS_OPENGL_BACKEND)
+#undef GRAPHICS_OPENGL_BACKEND
+#endif
+#endif
+
 #include "graphics.h"
 
 #define XYSET(s, x, y, v) (s->buf[(y) * s->w + (x)] = (v))
@@ -22,10 +37,6 @@ if ((x) >= 0 && (y) >= 0 && (x) <= s->w && (y) <= s->h) \
   XYSETAA(s, x, y, v, i)
 
 static char last_error[1024];
-
-const char* get_last_error() {
-  return last_error;
-}
 
 static short int keycodes[256];
 static short int scancodes[KB_KEY_LAST + 1];
@@ -635,13 +646,6 @@ char font8x8_extra[132][8] = {
 
 static int mx = 0, my = 0;
 
-void get_mouse_pos(int* x, int* y) {
-  if (!x || !y)
-    return;
-  *x = mx;
-  *y = my;
-}
-
 surface_t* surface(unsigned int w, unsigned int h) {
   surface_t* ret = malloc(sizeof(surface_t));
   if (!ret) {
@@ -745,15 +749,15 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, float opacity, 
   return true;
 }
 
-bool yline(surface_t* s, int x, int y0, int y1, int col) {
-  if (x < 0 || x >= s->w)
-    return false;
-
+void yline(surface_t* s, int x, int y0, int y1, int col) {
   if (y1 < y0) {
     y0 += y1;
     y1  = y0 - y1;
     y0 -= y1;
   }
+  
+  if (x < 0 || x > s->w || y0 > s->h)
+    return;
 
   if (y0 < 0)
     y0 = 0;
@@ -762,149 +766,192 @@ bool yline(surface_t* s, int x, int y0, int y1, int col) {
 
   for(int y = y0; y <= y1; y++)
     XYSET(s, x, y, col);
-  return true;
 }
 
-bool xline(surface_t* s, int y, int x0, int x1, int col) {
-  if (y < 0 || y >= s->h)
-    return false;
-
+void xline(surface_t* s, int y, int x0, int x1, int col) {
   if (x1 < x0) {
     x0 += x1;
     x1  = x0 - x1;
     x0 -= x1;
   }
-
+  
+  if (y < 0 || y > s->h || x0 > s->w)
+    return;
+  
   if (x0 < 0)
     x0 = 0;
   if (x1 >= s->w)
     x1 = s->w - 1;
-
+  
   for(int x = x0; x <= x1; x++)
     XYSET(s, x, y, col);
-  return true;
 }
 
-bool line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
+void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
   if (x0 == x1)
-    return yline(s, x0, y0, y1, col);
+    yline(s, x0, y0, y1, col);
   if (y0 == y1)
-    return xline(s, y0, x0, x1, col);
+    xline(s, y0, x0, x1, col);
 
-  int xi0, xi1, yi0, yi1, d, n, na, np, p;
-  if (x1 > x0) {
-    if (x1 > s->w)
-      x1 = s->w;
-    if (x0 < 0)
-      x0 = 0;
-    xi0 = 1;
-    xi1 = 1;
-  } else {
-    if (x0 > s->w)
-      x0 = s->w;
-    if (x1 < 0)
-      x1 = 0;
-    xi0 = -1;
-    xi1 = -1;
-  }
-
-  if(y1 > y0) {
-    if (y1 > s->h)
-      y1 = s->h;
-    if (y0 < 0)
-      y0 = 0;
-    yi0 = 1;
-    yi1 = 1;
-  } else  {
-    if (y0 > s->h)
-      y0 = s->h;
-    if (y1 < 0)
-      y1 = 0;
-    yi0 = -1;
-    yi1 = -1;
-  }
-
-  int x = x0, y = y0, dx = abs(x1 - x0), dy = abs(y1 - y0);
-  if (dx > dy) {
-    xi0 = 0;
-    yi1 = 0;
-    d = dx;
-    n = dx / 2;
-    na = dy;
-    np = dx;
-  } else {
-    xi1 = 0;
-    yi0 = 0;
-    d = dy;
-    n = dy / 2;
-    na = dx;
-    np = dy;
-  }
-
-  for (p = 0; p <= np; ++p) {
-    XYSET(s, x % s->w, y % s->h, col);
-    n += na;
-    if (n >= d) {
-      n -= d;
-      x += xi0;
-      y += yi0;
+  int dx =  abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+  int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+  int err = dx+dy, e2;
+  
+  for (;;) {
+    XYSETSAFE(s, x0, y0, col);
+    e2 = 2 * err;
+    if (e2 >= dy) {
+      if (x0 == x1)
+        break;
+      err += dy;
+      x0 += sx;
     }
-    x += xi1;
-    y += yi1;
+    if (e2 <= dx) {
+      if (y0 == y1)
+        break;
+      err += dx; y0 += sy;
+    }
   }
-  return true;
 }
 
-bool circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
+#pragma pack(push, 1)
+typedef struct {
+  char id;
+  char color_map;
+  char type;
+  unsigned short first_entry_index;
+  unsigned short color_map_len;
+  unsigned char bpp;
+  unsigned short x_offset;
+  unsigned short y_offset;
+  unsigned short width;
+  unsigned short height;
+  unsigned char depth;
+  unsigned char descriptor;
+  char drop[3];
+} tga_t;
+#pragma pack(pop)
+#define TGA_SIZE sizeof(tga_t)
+
+surface_t* tga(const char* path) {
+  FILE* fp = fopen(path, "rb");
+  if (!fp) {
+    SET_LAST_ERROR("fopen() failed: Couldn't open \"%s\"", path);
+    return NULL;
+  }
+  
+  char header_buf[TGA_SIZE];
+  if (!fread(header_buf, TGA_SIZE, 1, fp)) {
+    fclose(fp);
+    SET_LAST_ERROR("fread() failed: Couldn't read \"%s\"", path);
+    return NULL;
+  }
+  tga_t* header = (tga_t*)(size_t)header_buf;
+  
+  if ((header->type != 2) || (header->depth < 24)) {
+    fclose(fp);
+    SET_LAST_ERROR("tga() failed: Invalid TGA type/depth \"%d/%d\", only 2/24 supported", header->type, header->depth);
+    return NULL;
+  }
+  
+  size_t pixel_size = header->width * header->height * (header->depth >> 3) + 1;
+  unsigned char* pixel_buf = malloc(sizeof(char) * pixel_size);
+  if (!pixel_buf) {
+    fclose(fp);
+    SET_LAST_ERROR("malloc() failed");
+    return NULL;
+  }
+  if (!fread(pixel_buf, pixel_size, 1, fp)) {
+    fclose(fp);
+    free(pixel_buf);
+    return NULL;
+  }
+  
+  surface_t* ret = surface(header->width, header->height);
+  size_t len = (header->width * header->height) * 3;
+  size_t p = 0, i = (header->width * header->height) - 1;
+  while (p < len) {
+    ret->buf[(i - (i % header->width)) + (header->width - (i % header->width))] = RGB((unsigned int)pixel_buf[p + 2], (unsigned int)pixel_buf[p + 1], (unsigned int)pixel_buf[p]);
+    p += 3;
+    i -= 1;
+  }
+  fclose(fp);
+  free(pixel_buf);
+  
+  return ret;
+}
+
+int alpha(int c1, int c2, float i) {
+  if (i == 1 || i == 0)
+    return c1;
+  i *= 1.f;
+  int r1, g1, b1, r2, g2, b2;
+  rgb(c1, &r1, &g1, &b1);
+  rgb(c2, &r2, &g2, &b2);
+  return RGB((int)round(r2 * (1 - i) + r1 * i), (int)round(g2 * (1 - i) + g1 * i), (int)round(b2 * (1 - i) + b1 * i));
+}
+
+long ticks() {
+#if defined(_WIN32)
+  static LARGE_INTEGER ticks_start;
+  if (!ticks_started) {
+    QueryPerformanceCounter(&ticks_start);
+    ticks_started = true;
+  }
+  
+  LARGE_INTEGER ticks_now, freq;
+  QueryPerformanceCounter(&ticks_now);
+  QueryPerformanceFrequency(&freq);
+  
+  return ((ticks_now.QuadPart - ticks_start.QuadPart) * 1000) / freq.QuadPart;
+#else
+  static struct timespec ticks_start;
+  if (!ticks_started) {
+    clock_gettime(CLOCK_MONOTONIC, &ticks_start);
+    ticks_started = true;
+  }
+  
+  struct timespec ticks_now;
+  clock_gettime(CLOCK_MONOTONIC, &ticks_now);
+  return ((ticks_now.tv_sec * 1000) + (ticks_now.tv_nsec / 1000000)) - ((ticks_start.tv_sec * 1000) + (ticks_start.tv_nsec / 1000000));
+#endif
+}
+
+void delay(long ms) {
+#if defined(_WIN32)
+  Sleep((DWORD)ms);
+#else
+  usleep((unsigned int)(ms * 1000));
+#endif
+}
+
+#if !defined(GRAPHICS_LEAN_AND_MEAN)
+void circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
   if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
-    return false;
-
-  int x = 0, y = r, p = 3 - (r << 1);
-  int pb = yc + r + 1, pd = yc + r + 1;
-  int a, b, c, d, e, f, g, h;
-
-  while (x <= y) {
-    a = xc + x;
-    b = yc + y;
-    c = xc - x;
-    d = yc - y;
-    e = xc + y;
-    f = yc + x;
-    g = xc - y;
-    h = yc - x;
-
+    return;
+  
+  int x = -r, y = 0, err = 2-2*r;
+  do {
+    XYSETSAFE(s, xc - x, yc + y, col);
+    XYSETSAFE(s, xc - y, yc - x, col);
+    XYSETSAFE(s, xc + x, yc - y, col);
+    XYSETSAFE(s, xc + y, yc + x, col);
+    
     if (fill) {
-      if (b != pb)
-        xline(s, b, a, c, col);
-      if (d != pd)
-        xline(s, d, a, c, col);
-      if (f != b)
-        xline(s, f, e, g, col);
-      if (h != d && h != f)
-        xline(s, h, e, g, col);
-    } else {
-      XYSETSAFE(s, a, b, col);
-      XYSETSAFE(s, c, d, col);
-      XYSETSAFE(s, e, f, col);
-      XYSETSAFE(s, g, f, col);
-
-      if (x > 0) {
-        XYSETSAFE(s, a, d, col);
-        XYSETSAFE(s, c, b, col);
-        XYSETSAFE(s, e, h, col);
-        XYSETSAFE(s, g, h, col);
-      }
+      xline(s, yc - y, xc - x, xc + x, col);
+      xline(s, yc + y, xc - x, xc + x, col);
     }
-
-    pb = b;
-    pd = d;
-    p += (p < 0 ? (x++ << 2) + 6 : ((x++ - y--) << 2) + 10);
-  }
-  return true;
+    
+    r = err;
+    if (r <= y)
+      err += ++y*2+1;
+    if (r > x || err > y)
+      err += ++x * 2 + 1;
+  } while (x < 0);
 }
 
-bool ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col) {
-  long x = -rx, y = 0;
+void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, bool fill) {
+  int x = -rx, y = 0;
   long e2 = ry, dx = (1 + 2 * x)*e2*e2;
   long dy = x * x, err = dx + dy;
 
@@ -913,20 +960,25 @@ bool ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col) {
     XYSETSAFE(s, xc + x, yc + y, col);
     XYSETSAFE(s, xc + x, yc - y, col);
     XYSETSAFE(s, xc - x, yc - y, col);
+    
+    if (fill) {
+      xline(s, yc - y, xc - x, xc + x, col);
+      xline(s, yc + y, xc - x, xc + x, col);
+    }
 
     e2 = 2 * err;
-    if (e2 >= dx) { x++; err += dx += 2 * (long)ry * ry; }
-    if (e2 <= dy) { y++; err += dy += 2 * (long)rx * rx; }
+    if (e2 >= dx) {
+      x++;
+      err += dx += 2 * (long)ry * ry;
+    }
+    if (e2 <= dy) {
+      y++;
+      err += dy += 2 * (long)rx * rx;
+    }
   } while (x <= 0);
-
-  while (y++ < ry) {
-    XYSETSAFE(s, xc, yc + y, col);
-    XYSETSAFE(s, xc, yc - y, col);
-  }
-  return true;
 }
 
-bool ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col) {
+void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, bool fill) {
   long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
   double dx = 4 * (1.0 - a) * b * b, dy = 4 * (b1 + 1) * a * a;
   double err = dx + dy + b1 * a * a, e2;
@@ -935,9 +987,10 @@ bool ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col) {
     x0 = x1;
     x1 += a;
   }
-  if (y0 > y1) y0 = y1;
+  if (y0 > y1)
+    y0 = y1;
   y0 += (b + 1) / 2;
-  y1 = y0 - b1;
+  y1 = y0 - (int)b1;
   a = 8 * a * a;
   b1 = 8 * b * b;
 
@@ -946,6 +999,11 @@ bool ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col) {
     XYSETSAFE(s, x0, y0, col);
     XYSETSAFE(s, x0, y1, col);
     XYSETSAFE(s, x1, y1, col);
+    
+    if (fill) {
+      xline(s, y0, x0, x1, col);
+      xline(s, y1, x0, x1, col);
+    }
 
     e2 = 2 * err;
     if (e2 <= dy) {
@@ -960,10 +1018,9 @@ bool ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col) {
       err += dx += b1;
     }
   } while (x0 <= x1);
-  return true;
 }
 
-bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
+void rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
   if (x < 0) {
     w += x;
     x  = 0;
@@ -976,7 +1033,7 @@ bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
   w += x;
   h += y;
   if (w < 0 || h < 0 || x > s->w || y > s->h)
-    return false;
+    return;
 
   if (w > s->w)
     w = s->w;
@@ -992,14 +1049,13 @@ bool rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
     yline(s, x, y, h, col);
     yline(s, w, y, h, col);
   }
-  return true;
 }
 
-bool line_aa(surface_t* s, int x0, int y0, int x1, int y1, int col) {
+void line_aa(surface_t* s, int x0, int y0, int x1, int y1, int col) {
   if (x0 == x1)
-    return yline(s, x0, y0, y1, col);
+    yline(s, x0, y0, y1, col);
   if (y0 == y1)
-    return xline(s, y0, x0, x1, col);
+    xline(s, y0, x0, x1, col);
 
   int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
   int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
@@ -1029,9 +1085,9 @@ bool line_aa(surface_t* s, int x0, int y0, int x1, int y1, int col) {
   }
 }
 
-bool circle_aa(surface_t* s, int xc, int yc, int r, int col, bool fill) {
+void circle_aa(surface_t* s, int xc, int yc, int r, int col, bool fill) {
   if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
-    return false;
+    return;
 
   int x = -r, y = 0;
   int i, x2, e2, err = 2 - 2 * r;
@@ -1042,6 +1098,11 @@ bool circle_aa(surface_t* s, int xc, int yc, int r, int col, bool fill) {
     XYSETAASAFE(s, xc - y, yc - x, col, i);
     XYSETAASAFE(s, xc + x, yc - y, col, i);
     XYSETAASAFE(s, xc + y, yc + x, col, i);
+    
+    if (fill) {
+      xline(s, yc - y, xc - x - 1, xc + x + 1, col);
+      xline(s, yc + y, xc - x - 1, xc + x + 1, col);
+    }
 
     e2 = err; x2 = x;
     if (err + y > 0) {
@@ -1066,8 +1127,6 @@ bool circle_aa(surface_t* s, int xc, int yc, int r, int col, bool fill) {
       err += ++y * 2 + 1;
     }
   } while (x < 0);
-
-  return true;
 }
 
 #if defined(_MSC_VER)
@@ -1278,72 +1337,6 @@ int save_bmp(surface_t* s, const char* path) {
   return 1;
 }
 
-#pragma pack(push, 1)
-typedef struct {
-  char id;
-  char color_map;
-  char type;
-  unsigned short first_entry_index;
-  unsigned short color_map_len;
-  unsigned char bpp;
-  unsigned short x_offset;
-  unsigned short y_offset;
-  unsigned short width;
-  unsigned short height;
-  unsigned char depth;
-  unsigned char descriptor;
-  char drop[3];
-} tga_t;
-#pragma pack(pop)
-#define TGA_SIZE sizeof(tga_t)
-
-surface_t* tga(const char* path) {
-  FILE* fp = fopen(path, "rb");
-  if (!fp) {
-    SET_LAST_ERROR("fopen() failed: Couldn't open \"%s\"", path);
-    return NULL;
-  }
-
-  char header_buf[TGA_SIZE];
-  if (fread(header_buf, TGA_SIZE, 1, fp) < 0) {
-    fclose(fp);
-    SET_LAST_ERROR("fread() failed: Couldn't read \"%s\"", path);
-    return NULL;
-  }
-  tga_t* header = (tga_t*)(size_t)header_buf;
-
-  if ((header->type != 2) || (header->depth < 24)) {
-    fclose(fp);
-    SET_LAST_ERROR("tga() failed: Invalid TGA type/depth \"%d/%d\", only 2/24 supported", header->type, header->depth);
-    return NULL;
-  }
-
-  size_t pixel_size = header->width * header->height * (header->depth >> 3) + 1;
-  unsigned char* pixel_buf = malloc(sizeof(char) * pixel_size);
-  if (!pixel_buf) {
-    fclose(fp);
-    SET_LAST_ERROR("malloc() failed");
-    return NULL;
-  }
-  if (fread(pixel_buf, pixel_size, 1, fp) < 0) {
-    fclose(fp);
-    free(pixel_buf);
-    return NULL;
-  }
-
-  surface_t* ret = surface(header->width, header->height);
-  size_t len = (header->width * header->height) * 3;
-  size_t p = 0, i = (header->width * header->height) - 1;
-  while (p < len) {
-    ret->buf[(i - (i % header->width)) + (header->width - (i % header->width))] = RGB((unsigned int)pixel_buf[p + 2], (unsigned int)pixel_buf[p + 1], (unsigned int)pixel_buf[p]);
-    p += 3, i -= 1;
-  }
-  fclose(fp);
-  free(pixel_buf);
-
-  return ret;
-}
-
 #define PRINT_LETTER(map, max_r, ch) \
 int i, j; \
 if (ch >= max_r || ch < 0) \
@@ -1479,48 +1472,15 @@ void iterate(surface_t* s, int (*fn)(int x, int y, int col)) {
       XYSET(s, x, y, fn(x, y, XYGET(s, x, y)));
 }
 
-int alpha(int c1, int c2, float i) {
-  if (i == 1 || i == 0)
-    return c1;
-  i *= 1.f;
-  int r1, g1, b1, r2, g2, b2;
-  rgb(c1, &r1, &g1, &b1);
-  rgb(c2, &r2, &g2, &b2);
-  return RGB((int)round(r2 * (1 - i) + r1 * i), (int)round(g2 * (1 - i) + g1 * i), (int)round(b2 * (1 - i) + b1 * i));
+void get_mouse_pos(int* x, int* y) {
+  if (!x || !y)
+    return;
+  *x = mx;
+  *y = my;
 }
 
-long ticks() {
-#if defined(_WIN32)
-  static LARGE_INTEGER ticks_start;
-  if (!ticks_started) {
-    QueryPerformanceCounter(&ticks_start);
-    ticks_started = true;
-  }
-
-  LARGE_INTEGER ticks_now, freq;
-  QueryPerformanceCounter(&ticks_now);
-  QueryPerformanceFrequency(&freq);
-
-  return ((ticks_now.QuadPart - ticks_start.QuadPart) * 1000) / freq.QuadPart;
-#else
-  static struct timespec ticks_start;
-  if (!ticks_started) {
-    clock_gettime(CLOCK_MONOTONIC, &ticks_start);
-    ticks_started = true;
-  }
-
-  struct timespec ticks_now;
-  clock_gettime(CLOCK_MONOTONIC, &ticks_now);
-  return ((ticks_now.tv_sec * 1000) + (ticks_now.tv_nsec / 1000000)) - ((ticks_start.tv_sec * 1000) + (ticks_start.tv_nsec / 1000000));
-#endif
-}
-
-void delay(long ms) {
-#if defined(_WIN32)
-  Sleep((DWORD)ms);
-#else
-  usleep((unsigned int)(ms * 1000));
-#endif
+const char* get_last_error() {
+  return last_error;
 }
 
 #if defined(GRAPHICS_OPENGL_BACKEND)
@@ -1691,6 +1651,7 @@ bool init_gl(int w, int h) {
 
   glClearColor(0.f, 0.f, 0.f, 1.f);
 
+#if !defined(__APPLE__)
   if (gl3_available < 0) {
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -1703,6 +1664,7 @@ bool init_gl(int w, int h) {
     glDisable(GL_LIGHTING);
     glEnable(GL_TEXTURE_2D);
   } else {
+#endif
     glViewport(0, 0, w, h);
 
     GLfloat vertices_position[8] = {
@@ -1768,7 +1730,9 @@ bool init_gl(int w, int h) {
     GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
     glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
     glEnableVertexAttribArray(texture_coord_attribute);
+#if !defined(__APPLE__)
   }
+#endif
 
   glGenTextures(1, &texture);
 
@@ -1783,6 +1747,7 @@ void draw_gl() {
 
   glClear(GL_COLOR_BUFFER_BIT);
 
+#if !defined(__APPLE__)
   if (gl3_available < 0) {
     glBegin(GL_QUADS);
       glTexCoord2f(0, 1); glVertex3f(0, 0, 0);
@@ -1791,11 +1756,12 @@ void draw_gl() {
       glTexCoord2f(1, 1); glVertex3f(buffer->w, 0, 0);
     glEnd();
   } else {
+#endif
     glBindVertexArray(vao);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-  }
-
 #if !defined(__APPLE__)
+  }
+  
   glFlush();
 #endif
 }
@@ -1807,7 +1773,8 @@ void free_gl() {
     glDeleteVertexArrays(1, &vao);
   }
 }
-#endif
+#endif // GRAPHICS_OPENGL_BACKEND
+#endif // GRAPHICS_LEAN_AND_MEAN
 
 #if defined(__APPLE__)
 #import <Cocoa/Cocoa.h>
@@ -3094,7 +3061,6 @@ surface_t* screen(const char* title, int w, int h) {
     else if (strcmp(name, "BKSL") == 0) key = KB_KEY_BACKSLASH;
     else if (strcmp(name, "LSGT") == 0) key = KB_KEY_WORLD_1;
     else                                key = KB_KEY_UNKNOWN;
-
     if ((scancode >= 0) && (scancode < 256))
       keycodes[scancode] = key;
   }

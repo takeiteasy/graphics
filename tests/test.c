@@ -43,7 +43,7 @@ int main(int argc, const char* argv[]) {
 
   surface_t* a = surface(50, 50);
 #if defined(__APPLE__)
-  surface_t* c = bmp("/Users/roryb/Documents/git/graphics/Uncompressed-24.bmp");
+  surface_t* c = bmp("/Users/roryb/Documents/git/graphics.h/Uncompressed-24.bmp");
 #elif defined(_WIN32)
   surface_t* c = bmp("C:\\Users\\DESKTOP\\Documents\\graphics.h\\Uncompressed-24.bmp");
 #else
@@ -146,6 +146,12 @@ int main(int argc, const char* argv[]) {
     sine_i += 5;
 
     fill(win, WHITE);
+    
+    circle_aa(win, 200, 200, 30, BLUE, true);
+    
+    ellipse(win, 190, 100, 60, 30, RED, true);
+    
+    ellipse_rect(win, 300, 300, 400, 350, RED, true);
 
     // point_t testsetest = { 10, 10 };
     // blit(win, &testsetest, tga_test, NULL, -1, -1);
