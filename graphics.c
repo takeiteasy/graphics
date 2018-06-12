@@ -46,15 +46,29 @@ static surface_t* buffer;
 memset(last_error, 0, 1024); \
 sprintf(last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
 
-#define _STR(x) #x
-#define STR(x) _STR(x)
-#define TODO(x) __pragma(message("TODO: "_STR(x) " -> from " __FILE__ " in " __FUNCTION__ "() at " STR(__LINE__)))
+#define _QUOTE(x) # x
+#define QUOTE(x) _QUOTE(x)
+#define __FILE__LINE__ __FILE__ "(" QUOTE(__LINE__) ") : "
+
+#define NOTE(x)  message(x)
+#define FILE_LINE  message(__FILE__LINE__)
+
+#define TODO(x)  message(__FILE__LINE__"\n" \
+" ------------------------------------------------\n" \
+"|  TODO :   " #x "\n" \
+" ------------------------------------------------\n")
+#define FIXME( x )  message(__FILE__LINE__"\n" \
+" ------------------------------------------------\n" \
+"|  FIXME :  " #x "\n" \
+" ------------------------------------------------\n")
+#define todo(x)  message(__FILE__LINE__" TODO :   " #x "\n")
+#define fixme(x)  message(__FILE__LINE__" FIXME:   " #x "\n")
 
 static int ticks_started = 0;
 
 #define LINE_HEIGHT 10
 
-char font8x8_basic[128][8] = {
+static char font8x8_basic[128][8] = {
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},   // U+0000 (nul)
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},   // U+0001
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},   // U+0002
@@ -221,7 +235,7 @@ char font8x8_block[32][8] = {
   { 0xF0, 0xF0, 0xF0, 0xF0, 0xFF, 0xFF, 0xFF, 0xFF},   // U+259F (boxes right and bottom)
 };
 
-char font8x8_box[128][8] = {
+static char font8x8_box[128][8] = {
   { 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00},   // U+2500 (thin horizontal)
   { 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00},   // U+2501 (thick horizontal)
   { 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08},   // U+2502 (thin vertical)
@@ -352,7 +366,7 @@ char font8x8_box[128][8] = {
   { 0x18, 0x18, 0x18, 0x18, 0x08, 0x08, 0x08, 0x08}    // U+257F (up H, down L)
 };
 
-char font8x8_greek[58][8] = {
+static char font8x8_greek[58][8] = {
   { 0x2D, 0x00, 0x0C, 0x0C, 0x0C, 0x2C, 0x18, 0x00},   // U+0390 (iota with tonos and diaeresis)
   { 0x0C, 0x1E, 0x33, 0x33, 0x3F, 0x33, 0x33, 0x00},   // U+0391 (Alpha)
   { 0x3F, 0x66, 0x66, 0x3E, 0x66, 0x66, 0x3F, 0x00},   // U+0392 (Beta)
@@ -413,7 +427,7 @@ char font8x8_greek[58][8] = {
   { 0x00, 0x00, 0x36, 0x63, 0x6B, 0x7F, 0x36, 0x00}    // U+03C9 (omega)
 };
 
-char font8x8_hiragana[96][8] = {
+static char font8x8_hiragana[96][8] = {
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},   // U+3040
   { 0x04, 0x3F, 0x04, 0x3C, 0x56, 0x4D, 0x26, 0x00},   // U+3041 (Hiragana a)
   { 0x04, 0x3F, 0x04, 0x3C, 0x56, 0x4D, 0x26, 0x00},   // U+3042 (Hiragana A)
@@ -512,7 +526,7 @@ char font8x8_hiragana[96][8] = {
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}    // U+309F
 };
 
-char font8x8_extra[132][8] = {
+static char font8x8_extra[132][8] = {
   { 0x1F, 0x33, 0x33, 0x5F, 0x63, 0xF3, 0x63, 0xE3},   // U+20A7 (Spanish Pesetas/Pt)
   { 0x70, 0xD8, 0x18, 0x3C, 0x18, 0x18, 0x1B, 0x0E},   // U+0192 (dutch florijn)
   { 0x3C, 0x36, 0x36, 0x7C, 0x00, 0x7E, 0x00, 0x00},   // U+ (underlined superscript a)
@@ -920,7 +934,7 @@ surface_t* tga(const char* path) {
 }
 
 int alpha(int c1, int c2, float i) {
-  if (i == 1 || i == 0)
+  if (i == 1.f || i == 0.f)
     return c1;
   i *= 1.f;
   int r1, g1, b1, r2, g2, b2;
@@ -1031,7 +1045,7 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
 
 void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
 #if defined(GRAPHICS_ENABLE_AA)
-  TODO(Add AA option)
+#pragma TODO(Add AA option);
 #endif
 
   int x = -rx, y = 0;
@@ -1064,8 +1078,8 @@ void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
 void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill) {
 #if defined(GRAPHICS_ENABLE_AA)
   long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
-  float dx = 4 * (a - 1.0)*b*b, dy = 4 * (b1 + 1)*a*a;
-  float ed, i, err = b1 * a*a - dx + dy;
+  float dx = 4 * (a - 1.0) * b * b, dy = 4 * (b1 + 1) * a * a;
+  float ed, i, err = b1 * a * a - dx + dy;
   int f;
 
   if (a == 0 || b == 0)
@@ -1260,7 +1274,7 @@ void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, in
     cur = -cur;
   }
 
-  if (cur != 0) {
+  if (cur != 0.) {
     xx += sx;
     xx *= sx = x0 < x2 ? 1 : -1;
     yy += sy;
@@ -1487,11 +1501,11 @@ void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y
 }
 
 void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col) {
-  TODO(Add fill option)
+#pragma todo(Add fill option);
   int xd = x1 - x0, yd = y1 - y0;
   float w = xd * (long)yd;
   if (zd == 0)
-    return ellipse_rect(s, x0, y0, x1, y1, col, 0);
+    ellipse_rect(s, x0, y0, x1, y1, col, 0);
   if (w != 0.0)
     w = (w - zd) / (w + w);
 
@@ -1505,10 +1519,11 @@ void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd,
 }
 
 void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col) {
-  TODO(Add fill option)
+#pragma todo(Add fill option);
   float xd = (long)a * a, yd = (long)b * b;
   float q = sin(angle), zd = (xd - yd) * q;
-  xd = sqrt(xd - zd * q), yd = sqrt(yd + zd * q);
+  xd = sqrt(xd - zd * q);
+  yd = sqrt(yd + zd * q);
   a = xd + 0.5;
   b = yd + 0.5;
   zd = zd * a * b / (xd * yd);
@@ -1632,7 +1647,7 @@ void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, 
   double t1 = xb * xb - xa * xc, t2, t[5];
 
   if (xa == 0) {
-    if (abs(xc) < 2 * abs(xb))
+    if (labs(xc) < 2 * labs(xb))
       t[n++] = xc / (2.0*xb);
   } else if (t1 > 0.0) {
     t2 = sqrt(t1);
@@ -1646,7 +1661,7 @@ void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, 
 
   t1 = yb * yb - ya * yc;
   if (ya == 0) {
-    if (abs(yc) < 2 * abs(yb))
+    if (labs(yc) < 2 * labs(yb))
       t[n++] = yc / (2.0 * yb);
   } else if (t1 > 0.0) {
     t2 = sqrt(t1);
@@ -2082,8 +2097,8 @@ const char* get_last_error() {
 
 #if defined(GRAPHICS_OPENGL_BACKEND)
 #if defined(__APPLE__)
-#import <OpenGL/OpenGL.h>
-#import <OpenGL/gl3.h>
+@import OpenGL;
+@import OpenGL.GL3;
 #endif
 
 #if defined(__linux__)
@@ -2374,7 +2389,7 @@ void free_gl() {
 #endif // GRAPHICS_LEAN_AND_MEAN
 
 #if defined(__APPLE__)
-#import <Cocoa/Cocoa.h>
+@import Cocoa;
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED < 101200
 #define NSWindowStyleMaskBorderless NSBorderlessWindowMask
