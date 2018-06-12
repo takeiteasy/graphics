@@ -145,6 +145,17 @@ int main(int argc, const char* argv[]) {
     }
     sine_i += 5;
 
+    fill(win, WHITE);
+    
+    circle(win, 200, 200, 30, BLUE, 1);
+    
+    ellipse(win, 190, 100, 60, 30, RED, 1);
+    ellipse_rect(win, 300, 300, 400, 350, ORANGE, 1);
+    ellipse_rotated(win, 400, 100, 60, 30, 45, YELLOW);
+
+    bezier(win, 21, 14, 247, 186, 243, 32, LIME);
+    bezier_rational(win, 21, 14, 247, 186, 243, 32, 4, GREEN);
+
     // point_t testsetest = { 10, 10 };
     // blit(win, &testsetest, tga_test, NULL, -1, -1);
 

@@ -37,6 +37,7 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 - Add fill option for ellipse_rotated
 - Add rotated rect function
 - Add AA option macro (merge functions)
+- Fix as many warnings as possible
 
 ## License
 

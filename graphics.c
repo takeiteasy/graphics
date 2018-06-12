@@ -44,7 +44,11 @@ static surface_t* buffer;
 
 #define SET_LAST_ERROR(MSG, ...) \
 memset(last_error, 0, 1024); \
-sprintf(last_error, "[ERROR] from %s in %s at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
+sprintf(last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
+
+#define _STR(x) #x
+#define STR(x) _STR(x)
+#define TODO(x) __pragma(message("TODO: "_STR(x) " -> from " __FILE__ " in " __FUNCTION__ "() at " STR(__LINE__)))
 
 static int ticks_started = 0;
 
@@ -1026,8 +1030,12 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
 }
 
 void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
+#if defined(GRAPHICS_ENABLE_AA)
+  TODO(Add AA option)
+#endif
+
   int x = -rx, y = 0;
-  long e2 = ry, dx = (1 + 2 * x)*e2*e2;
+  long e2 = ry, dx = (1 + 2 * x) * e2 * e2;
   long dy = x * x, err = dx + dy;
 
   do {
@@ -1054,6 +1062,87 @@ void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
 }
 
 void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill) {
+#if defined(GRAPHICS_ENABLE_AA)
+  long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
+  float dx = 4 * (a - 1.0)*b*b, dy = 4 * (b1 + 1)*a*a;
+  float ed, i, err = b1 * a*a - dx + dy;
+  int f;
+
+  if (a == 0 || b == 0)
+    line(s, x0, y0, x1, y1, col);
+  if (x0 > x1) {
+    x0 = x1;
+    x1 += a;
+  }
+  if (y0 > y1)
+    y0 = y1;
+  y0 += (b + 1) / 2;
+  y1 = y0 - b1;
+  a = 8 * a * a;
+  b1 = 8 * b * b;
+
+  for (;;) {
+    i = min(dx, dy);
+    ed = max(dx, dy);
+    if (y0 == y1 + 1 && err > dy && a > b1)
+      ed = 255 * 4. / a;
+    else
+      ed = 255 / (ed + 2 * ed * i * i / (4 * ed * ed + i * i));
+    i = ed * fabs(err + dx - dy);
+
+    XYSETAASAFE(s, x0, y0, col, i);
+    XYSETAASAFE(s, x0, y1, col, i);
+    XYSETAASAFE(s, x1, y0, col, i);
+    XYSETAASAFE(s, x1, y1, col, i);
+
+    if (fill) {
+      xline(s, y0, x0 + 1, x1 - 1, col);
+      xline(s, y1, x0 + 1, x1 - 1, col);
+    }
+
+    if (f = 2 * err + dy >= 0) {
+      if (x0 >= x1)
+        break;
+
+      i = ed * (err + dx);
+      if (i < 255) {
+        XYSETAASAFE(s, x0, y0 + 1, col, i);
+        XYSETAASAFE(s, x0, y1 - 1, col, i);
+        XYSETAASAFE(s, x1, y0 + 1, col, i);
+        XYSETAASAFE(s, x1, y1 - 1, col, i);
+      }
+    }
+
+    if (2 * err <= dx) {
+      i = ed * (dy - err);
+      if (i < 255) {
+        XYSETAASAFE(s, x0 + 1, y0, col, i);
+        XYSETAASAFE(s, x1 - 1, y0, col, i);
+        XYSETAASAFE(s, x0 + 1, y1, col, i);
+        XYSETAASAFE(s, x1 - 1, y1, col, i);
+      }
+
+      y0++;
+      y1--;
+      err += dy += a;
+    }
+
+    if (f) {
+      x0++; x1--;
+      err -= dx -= b1;
+    }
+  }
+
+  if (--x0 == x1++)
+    while (y0 - y1 < b) {
+      i = 255 * 4 * fabs(err + dx) / b1;
+      XYSETAASAFE(s, x0, ++y0, col, i);
+      XYSETAASAFE(s, x1, y0, col, i);
+      XYSETAASAFE(s, x0, --y1, col, i);
+      XYSETAASAFE(s, x1, y1, col, i);
+      err += dy += a;
+    }
+#else
   long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
   double dx = 4 * (1.0 - a) * b * b, dy = 4 * (b1 + 1) * a * a;
   double err = dx + dy + b1 * a * a, e2;
@@ -1093,9 +1182,72 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
       err += dx += b1;
     }
   } while (x0 <= x1);
+#endif
 }
 
 void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
+#if defined(GRAPHICS_ENABLE_AA)
+  int sx = x2 - x1, sy = y2 - y1;
+  long xx = x0 - x1, yy = y0 - y1, xy;
+  double dx, dy, err, ed, cur = xx * sy - yy * sx;
+
+  if (sx * (long)sx + sy * (long)sy > xx * xx + yy * yy) {
+    x2 = x0;
+    x0 = sx + x1;
+    y2 = y0;
+    y0 = sy + y1;
+    cur = -cur;
+  }
+
+  if (cur != 0) {
+    xx += sx;
+    xx *= sx = x0 < x2 ? 1 : -1;
+    yy += sy;
+    yy *= sy = y0 < y2 ? 1 : -1;
+    xy = 2 * xx * yy;
+    xx *= xx;
+    yy *= yy;
+    if (cur * sx * sy < 0) {
+      xx = -xx;
+      yy = -yy;
+      xy = -xy;
+      cur = -cur;
+    }
+
+    dx = 4.0 * sy * (x1 - x0) * cur + xx - xy;
+    dy = 4.0 * sx * (y0 - y1) * cur + yy - xy;
+    xx += xx;
+    yy += yy;
+    err = dx + dy + xy;
+    do {
+      cur = fmin(dx + xy, -xy - dy);
+      ed = fmax(dx + xy, -xy - dy);
+      ed += 2 * ed * cur * cur / (4 * ed * ed + cur * cur);
+      XYSETAASAFE(s, x0, y0, col, 255 * fabs(err - dx - dy - xy) / ed);
+      if (x0 == x2 || y0 == y2)
+        break;
+
+      x1 = x0;
+      cur = dx - err;
+      y1 = 2 * err + dy < 0;
+      if (2 * err + dx > 0) {
+        if (err - dy < ed)
+          XYSETAASAFE(s, x0, y0 + sy, col, 255 * fabs(err - dy) / ed);
+        x0 += sx;
+        dx -= xy;
+        err += dy += yy;
+      }
+
+      if (y1) {
+        if (cur < ed)
+          XYSETAASAFE(s, x1 + sx, y0, col, 255 * fabs(cur) / ed);
+        y0 += sy;
+        dy -= xy;
+        err += dx += xx;
+      }
+    } while (dy < dx);
+  }
+#else
   int sx = x2 - x1, sy = y2 - y1;
   long xx = x0 - x1, yy = y0 - y1, xy;
   double dx, dy, err, cur = xx * sy - yy * sx;
@@ -1147,6 +1299,7 @@ void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, in
       }
     } while (dy < 0 && dx > 0);
   }
+#endif
 
   line(s, x0, y0, x2, y2, col);
 }
@@ -1195,6 +1348,8 @@ void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int co
 }
 
 void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
+#if defined(GRAPHICS_ENABLE_AA)
+#else
   int sx = x2 - x1, sy = y2 - y1;
   double dx = x0 - x2, dy = y0 - y2, xx = x0 - x1, yy = y0 - y1;
   double xy = xx * sy + yy * sx, cur = xx * sy - yy * sx, err;
@@ -1259,6 +1414,7 @@ void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, i
       }
     } while (dy <= xy && dx >= xy);
   }
+#endif
 
   line(s, x0, y0, x2, y2, col);
 }
@@ -1331,6 +1487,7 @@ void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y
 }
 
 void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col) {
+  TODO(Add fill option)
   int xd = x1 - x0, yd = y1 - y0;
   float w = xd * (long)yd;
   if (zd == 0)
@@ -1348,6 +1505,7 @@ void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd,
 }
 
 void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col) {
+  TODO(Add fill option)
   float xd = (long)a * a, yd = (long)b * b;
   float q = sin(angle), zd = (xd - yd) * q;
   xd = sqrt(xd - zd * q), yd = sqrt(yd + zd * q);
