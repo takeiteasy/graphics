@@ -72,10 +72,10 @@ int main(int argc, const char* argv[]) {
   destroy(&k);
 
   surface_t* f = surface(100, 100);
-  rect(f, 0,  0,  50, 50, RED, true);
-  rect(f, 50, 50, 50, 50, LIME, true);
-  rect(f, 50, 0,  50, 50, BLUE, true);
-  rect(f, 0,  50, 50, 50, YELLOW, true);
+  rect(f, 0,  0,  50, 50, RED, 1);
+  rect(f, 50, 50, 50, 50, LIME, 1);
+  rect(f, 50, 0,  50, 50, BLUE, 1);
+  rect(f, 0,  50, 50, 50, YELLOW, 1);
 
   int col, i, x, y;
   long sine_i = 0;
@@ -104,13 +104,13 @@ int main(int argc, const char* argv[]) {
     blit(a, NULL, l, NULL, -1, LIME);
     blit(win, &tmpp3, a, NULL, -1, LIME);
 
-    circle(win, 352, 32, 30, RED,    true);
-    circle(win, 382, 32, 30, ORANGE, true);
-    circle(win, 412, 32, 30, YELLOW, true);
-    circle(win, 442, 32, 30, LIME,   true);
-    circle(win, 472, 32, 30, BLUE,   true);
-    circle(win, 502, 32, 30, INDIGO, true);
-    circle(win, 532, 32, 30, VIOLET, true);
+    circle(win, 352, 32, 30, RED,    1);
+    circle(win, 382, 32, 30, ORANGE, 1);
+    circle(win, 412, 32, 30, YELLOW, 1);
+    circle(win, 442, 32, 30, LIME,   1);
+    circle(win, 472, 32, 30, BLUE,   1);
+    circle(win, 502, 32, 30, INDIGO, 1);
+    circle(win, 532, 32, 30, VIOLET, 1);
 
     print_f(win, 400, 88, BLACK, "mouse x,y: (%d, %d)", mx, my);
 
@@ -125,15 +125,15 @@ int main(int argc, const char* argv[]) {
 
     get_mouse_pos(&mx, &my);
     col = pget(win, mx, my);
-    rect(win, 150, 50,  100, 100, col, false);
-    rect(win, 200, 100, 100, 100, col, false);
+    rect(win, 150, 50,  100, 100, col, 0);
+    rect(win, 200, 100, 100, 100, col, 0);
     line(win, 150, 50,  200, 100, col);
     line(win, 250, 50,  300, 100, col);
     line(win, 150, 150, 200, 200, col);
     line(win, 250, 150, 300, 200, col);
 
     line(win, 0, 0, mx, my, col);
-    circle(win, mx, my, 30, col, false);
+    circle(win, mx, my, 30, col, 0);
     
     int last_x = 0, last_y = 240;
     for (long i = sine_i; i < (sine_i + 641); ++i) {
@@ -147,11 +147,11 @@ int main(int argc, const char* argv[]) {
 
     fill(win, WHITE);
     
-    circle_aa(win, 200, 200, 30, BLUE, true);
+    circle_aa(win, 200, 200, 30, BLUE, 1);
     
-    ellipse(win, 190, 100, 60, 30, RED, true);
+    ellipse(win, 190, 100, 60, 30, RED, 1);
     
-    ellipse_rect(win, 300, 300, 400, 350, RED, true);
+    ellipse_rect(win, 300, 300, 400, 350, RED, 1);
 
     // point_t testsetest = { 10, 10 };
     // blit(win, &testsetest, tga_test, NULL, -1, -1);

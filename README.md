@@ -33,7 +33,6 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 - Joystick/Gamepad input
 - DirectX/Metal backends
 - OpenGL 1.X fallback for OSX
-- Remove stdbool.h anything else unneeded
 - Remove XYSETSAFE(AA) for proper error checking
 
 ## License

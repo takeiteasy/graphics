@@ -14,7 +14,6 @@ extern "C" {
   
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
@@ -195,9 +194,9 @@ extern "C" {
   surface_t* surface(unsigned int, unsigned int);
   void destroy(surface_t**);
   void fill(surface_t* s, int col);
-  bool pset(surface_t* s, int x, int y, int col);
+  int pset(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
-  bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, float opacity, int chroma);
+  int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, float opacity, int chroma);
   void yline(surface_t* s, int x, int y0, int y1, int col);
   void xline(surface_t* s, int y, int x0, int x1, int col);
   void line(surface_t* s, int x0, int y0, int x1, int y1, int col);
@@ -207,12 +206,12 @@ extern "C" {
   void delay(long ms);
   
 #if !defined(GRAPHICS_LEAN_AND_MEAN)
-  void circle(surface_t* s, int xc, int yc, int r, int col, bool fill);
-  void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, bool fill);
-  void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, bool fill);
-  void rect(surface_t* s, int x, int y, int w, int h, int col, bool fill);
+  void circle(surface_t* s, int xc, int yc, int r, int col, int fill);
+  void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill);
+  void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill);
+  void rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
   void line_aa(surface_t* s, int x0, int y0, int x1, int y1, int col);
-  void circle_aa(surface_t* s, int xc, int yc, int r, int col, bool fill);
+  void circle_aa(surface_t* s, int xc, int yc, int r, int col, int fill);
   surface_t* bmp(const char* path);
   int save_bmp(surface_t* s, const char* path);
   void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col);
@@ -402,8 +401,8 @@ extern "C" {
   } user_event_t;
   
   surface_t* screen(const char* title, int w, int h);
-  bool should_close(void);
-  bool poll_events(user_event_t* e);
+  int should_close(void);
+  int poll_events(user_event_t* e);
   void render(void);
   void release(void);
   const char* get_last_error(void);

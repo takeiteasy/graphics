@@ -46,7 +46,7 @@ static surface_t* buffer;
 memset(last_error, 0, 1024); \
 sprintf(last_error, "[ERROR] from %s in %s at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
 
-static bool ticks_started = false;
+static int ticks_started = 0;
 
 #define LINE_HEIGHT 10
 
@@ -682,14 +682,14 @@ void fill(surface_t* s, int col) {
       XYSET(s, x, y, col);
 }
 
-bool pset(surface_t* s, int x, int y, int col) {
+int pset(surface_t* s, int x, int y, int col) {
   if (x > s->w || y > s->h || x < 0 || y < 0) {
     SET_LAST_ERROR("pset() failed! x/y outside of bounds");
-    return false;
+    return 0;
   }
 
   XYSET(s, x, y, col);
-  return true;
+  return 1;
 }
 
 int pget(surface_t* s, int x, int y) {
@@ -701,7 +701,7 @@ int pget(surface_t* s, int x, int y) {
   return XYGET(s, x, y);
 }
 
-bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, float opacity, int chroma) {
+int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, float opacity, int chroma) {
   int offset_x = 0, offset_y = 0,
   from_x = 0, from_y = 0,
   width = src->w, height = src->h;
@@ -734,7 +734,7 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, float opacity, 
     height += (dst->h - to_y);
 
   if (offset_x > dst->w || offset_y > dst->h || to_x < 0 || to_y < 0)
-    return false;
+    return 0;
 
   int x, y, c;
   for (x = 0; x < width; ++x) {
@@ -746,7 +746,7 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, float opacity, 
         XYSET(dst, offset_x + x, offset_y + y, c);
     }
   }
-  return true;
+  return 1;
 }
 
 void yline(surface_t* s, int x, int y0, int y1, int col) {
@@ -896,7 +896,7 @@ long ticks() {
   static LARGE_INTEGER ticks_start;
   if (!ticks_started) {
     QueryPerformanceCounter(&ticks_start);
-    ticks_started = true;
+    ticks_started = 1;
   }
   
   LARGE_INTEGER ticks_now, freq;
@@ -908,7 +908,7 @@ long ticks() {
   static struct timespec ticks_start;
   if (!ticks_started) {
     clock_gettime(CLOCK_MONOTONIC, &ticks_start);
-    ticks_started = true;
+    ticks_started = 1;
   }
   
   struct timespec ticks_now;
@@ -926,7 +926,7 @@ void delay(long ms) {
 }
 
 #if !defined(GRAPHICS_LEAN_AND_MEAN)
-void circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
+void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
   if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
     return;
   
@@ -950,7 +950,7 @@ void circle(surface_t* s, int xc, int yc, int r, int col, bool fill) {
   } while (x < 0);
 }
 
-void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, bool fill) {
+void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
   int x = -rx, y = 0;
   long e2 = ry, dx = (1 + 2 * x)*e2*e2;
   long dy = x * x, err = dx + dy;
@@ -978,7 +978,7 @@ void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, bool fill) {
   } while (x <= 0);
 }
 
-void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, bool fill) {
+void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill) {
   long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
   double dx = 4 * (1.0 - a) * b * b, dy = 4 * (b1 + 1) * a * a;
   double err = dx + dy + b1 * a * a, e2;
@@ -1020,7 +1020,7 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, bool fi
   } while (x0 <= x1);
 }
 
-void rect(surface_t* s, int x, int y, int w, int h, int col, bool fill) {
+void rect(surface_t* s, int x, int y, int w, int h, int col, int fill) {
   if (x < 0) {
     w += x;
     x  = 0;
@@ -1085,7 +1085,7 @@ void line_aa(surface_t* s, int x0, int y0, int x1, int y1, int col) {
   }
 }
 
-void circle_aa(surface_t* s, int xc, int yc, int r, int col, bool fill) {
+void circle_aa(surface_t* s, int xc, int yc, int r, int col, int fill) {
   if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
     return;
 
@@ -1611,14 +1611,14 @@ GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
 static GLuint vao, shader, texture;
 static int gl3_available = 0;
 
-bool init_gl(int w, int h) {
+int init_gl(int w, int h) {
 #if defined(_WIN32)
   HINSTANCE dll = LoadLibraryA("opengl32.dll");
   typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
   if (!dll) {
     release();
     SET_LAST_ERROR("LoadLibraryA() failed: opengl32.dll not found");
-    return false;
+    return 0;
   }
   wglGetProcAddressproc* wglGetProcAddress = (wglGetProcAddressproc*)GetProcAddress(dll, "wglGetProcAddress");
 
@@ -1636,7 +1636,7 @@ bool init_gl(int w, int h) {
   if (!libGL) {
     release(); \
       SET_LAST_ERROR("dlopen() failed: libGL.so couldn't be loaded"); \
-      return false;
+      return 0;
   }
 
 #define GLE(ret, name, ...) \
@@ -1736,7 +1736,7 @@ bool init_gl(int w, int h) {
 
   glGenTextures(1, &texture);
 
-  return true;
+  return 1;
 }
 
 void draw_gl() {
@@ -1818,7 +1818,7 @@ static int translate_key(unsigned int key) {
 
 @interface osx_app_t : NSWindow {
   NSView* view;
-  @public bool closed;
+  @public int closed;
 }
 @end
 
@@ -1946,7 +1946,7 @@ extern surface_t* buffer;
 
   CGColorSpaceRef s = CGColorSpaceCreateDeviceRGB();
   CGDataProviderRef p = CGDataProviderCreateWithData(NULL, buffer->buf, buffer->w * buffer->h * 4, NULL);
-  CGImageRef img = CGImageCreate(buffer->w, buffer->h, 8, 32, buffer->w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, false, kCGRenderingIntentDefault);
+  CGImageRef img = CGImageCreate(buffer->w, buffer->h, 8, 32, buffer->w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, 0, kCGRenderingIntentDefault);
 
   CGColorSpaceRelease(s);
   CGDataProviderRelease(p);
@@ -1989,7 +1989,7 @@ extern surface_t* buffer;
                                                  name:NSWindowWillCloseNotification
                                                object:self];
 
-    closed = false;
+    closed = 0;
   }
   return self;
 }
@@ -2040,7 +2040,7 @@ extern surface_t* buffer;
 }
 
 -(void)win_close {
-  closed = true;
+  closed = 1;
 }
 
 -(NSView*)contentView {
@@ -2230,12 +2230,12 @@ surface_t* screen(const char* t, int w, int h) {
   return buffer;
 }
 
-bool should_close() {
+int should_close() {
   return app->closed;
 }
 
-bool poll_events(user_event_t* ue) {
-  bool ret = true;
+int poll_events(user_event_t* ue) {
+  int ret = 1;
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   NSEvent* e = [NSApp nextEventMatchingMask:NSEventMaskAny
                                   untilDate:[NSDate distantPast]
@@ -2278,17 +2278,17 @@ bool poll_events(user_event_t* ue) {
         default:
           if (app->closed) {
             ue->type = WINDOW_CLOSED;
-            ret = true;
+            ret = 1;
           } else
-            ret = false;
+            ret = 0;
           break;
       }
       [NSApp sendEvent:e];
     } else
-      ret = false;
+      ret = 0;
   } else {
     [NSApp sendEvent:e];
-    ret = false;
+    ret = 0;
   }
 
   [pool release];
@@ -2309,7 +2309,7 @@ void release() {
 #elif defined(_WIN32)
 static WNDCLASS wnd;
 static HWND hwnd;
-static bool closed = false;
+static int closed = 0;
 static HDC hdc;
 #if defined(GRAPHICS_OPENGL_BACKEND)
 static PIXELFORMATDESCRIPTOR pfd;
@@ -2319,7 +2319,7 @@ static PAINTSTRUCT ps;
 static BITMAPINFO* bmpinfo;
 #endif
 static user_event_t* tmp_ue;
-static bool event_fired = false;
+static int event_fired = 0;
 
 static int translate_mod() {
   int mods = 0;
@@ -2385,14 +2385,14 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 #endif
       break;
     case WM_CLOSE:
-      closed = true;
+      closed = 1;
       if (tmp_ue)
         tmp_ue->type = WINDOW_CLOSED;
       break;
     case WM_CHAR:
     case WM_SYSCHAR:
     case WM_UNICHAR: {
-      const bool plain = (message != WM_SYSCHAR);
+      const int plain = (message != WM_SYSCHAR);
       if (message == WM_UNICHAR && wParam == UNICODE_NOCHAR)
         return FALSE;
       tmp_ue->type = KEYBOARD_KEY_UP;
@@ -2719,13 +2719,13 @@ surface_t* screen(const char* t, int w, int h) {
   return buffer;
 }
 
-bool should_close() {
+int should_close() {
   return closed;
 }
 
-bool poll_events(user_event_t* ue) {
+int poll_events(user_event_t* ue) {
   if (!ue)
-    return false;
+    return 0;
   memset(ue, 0, sizeof(user_event_t));
   tmp_ue = ue;
 
@@ -2735,7 +2735,7 @@ bool poll_events(user_event_t* ue) {
     DispatchMessage(&msg);
     return !!tmp_ue;
   }
-  return false;
+  return 0;
 }
 
 void render() {
@@ -2754,7 +2754,7 @@ void release() {
 }
 #else
 static Display* display;
-static bool closed = false;
+static int closed = 0;
 static surface_t* buffer;
 static Window win;
 static GC gc;
@@ -2775,10 +2775,10 @@ static KeySym sym;
 #define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
 typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
 
-static bool check_ext(const char* list, const char* exts) {
+static int check_ext(const char* list, const char* exts) {
   const char *start, *where = strchr(exts, ' '), *terminator;
   if (where || *exts == '\0')
-    return false;
+    return 0;
 
   for (start = list;;) {
     where = strstr(start, exts);
@@ -2789,12 +2789,12 @@ static bool check_ext(const char* list, const char* exts) {
     terminator = where + strlen(exts);
     if (where == start || *(where - 1) == ' ')
       if (*terminator == ' ' || *terminator == '\0')
-        return true;
+        return 1;
 
     start = terminator;
   }
 
-  return false;
+  return 0;
 }
 #endif
 
@@ -3234,13 +3234,13 @@ surface_t* screen(const char* title, int w, int h) {
   return buffer;
 }
 
-bool should_close() {
+int should_close() {
   return closed;
 }
 
-bool poll_events(user_event_t* ue) {
+int poll_events(user_event_t* ue) {
   if (!ue || !XPending(display))
-    return false;
+    return 0;
 
   XNextEvent(display, &event);
   switch (event.type) {
@@ -3314,11 +3314,11 @@ bool poll_events(user_event_t* ue) {
     break;
   case DestroyNotify:
     ue->type = WINDOW_CLOSED;
-    closed = true;
+    closed = 1;
   default:
     break;
   }
-  return true;
+  return 1;
 }
 
 void render() {
