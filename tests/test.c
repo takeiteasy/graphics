@@ -77,7 +77,7 @@ int main(int argc, const char* argv[]) {
   rect(f, 50, 0,  50, 50, BLUE, 1);
   rect(f, 0,  50, 50, 50, YELLOW, 1);
 
-  int col, i, x, y;
+  int col = 0, i, x, y;
   long sine_i = 0;
   user_event_t ue;
   next_time = ticks() + TICK_INTERVAL;
@@ -88,6 +88,16 @@ int main(int argc, const char* argv[]) {
       yline(win, x, 0, win->h, GRAY);
     for (int y = 32; y < win->h; y += 32)
       xline(win, y, 0, win->w, GRAY);
+    
+    int last_x = 0, last_y = 240;
+    for (long i = sine_i; i < (sine_i + 641); ++i) {
+      float x = (float)(i - sine_i);
+      float y = 240.f + (100.f * sinf(i * (3.141f / 180.f)));
+      line(win, last_x, last_y, x, y, col);
+      last_x = x;
+      last_y = y;
+    }
+    sine_i += 5;
 
     blit(win, &tmpp5, d, NULL, -1, LIME);
     blit(win, &tmpp, c, &tmpr, -1, LIME);
@@ -134,30 +144,6 @@ int main(int argc, const char* argv[]) {
 
     line(win, 0, 0, mx, my, col);
     circle(win, mx, my, 30, col, 0);
-    
-    int last_x = 0, last_y = 240;
-    for (long i = sine_i; i < (sine_i + 641); ++i) {
-      float x = (float)(i - sine_i);
-      float y = 240.f + (100.f * sinf(i * (3.141f / 180.f)));
-      line(win, last_x, last_y, x, y, col);
-      last_x = x;
-      last_y = y;
-    }
-    sine_i += 5;
-
-    fill(win, WHITE);
-    
-    circle(win, 200, 200, 30, BLUE, 1);
-    
-    ellipse(win, 190, 100, 60, 30, RED, 1);
-    ellipse_rect(win, 300, 300, 400, 350, ORANGE, 1);
-    ellipse_rotated(win, 400, 100, 60, 30, 45, YELLOW);
-
-    bezier(win, 21, 14, 247, 186, 243, 32, LIME);
-    bezier_rational(win, 21, 14, 247, 186, 243, 32, 4, GREEN);
-
-    // point_t testsetest = { 10, 10 };
-    // blit(win, &testsetest, tga_test, NULL, -1, -1);
 
     while (poll_events(&ue)) {
       switch (ue.type) {

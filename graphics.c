@@ -1075,6 +1075,7 @@ void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
 }
 
 void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill) {
+#pragma FIXME(This is borked without AA)
   long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
   float dx = 4 * (a - 1.0) * b * b, dy = 4 * (b1 + 1) * a * a;
   float ed, i, err = b1 * a * a - dx + dy;
@@ -1084,6 +1085,8 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
 
   if (a == 0 || b == 0)
     line(s, x0, y0, x1, y1, col);
+#else
+  long e2;
 #endif
 
   if (x0 > x1) {
@@ -1410,7 +1413,8 @@ static void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, in
       if (x0 == x2 && y0 == y2)
         return;
 
-      x1 = 2 * err > dy; y1 = 2 * (err + yy) < -dy;
+      x1 = 2 * err > dy;
+      y1 = 2 * (err + yy) < -dy;
       if (2 * err < dx || y1) {
         y0 += sy;
         dy += xy;
@@ -1432,9 +1436,9 @@ void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y
   int x = x0 - 2 * x1 + x2, y = y0 - 2 * y1 + y2;
   double xx = x0 - x1, yy = y0 - y1, ww, t, q;
 
-  if (xx*(x2 - x1) > 0) {
-    if (yy*(y2 - y1) > 0)
-      if (fabs(xx*y) > fabs(yy*x)) {
+  if (xx * (x2 - x1) > 0) {
+    if (yy * (y2 - y1) > 0)
+      if (fabs(xx * y) > fabs(yy * x)) {
         x0 = x2;
         x2 = xx + x1;
         y0 = y2;
@@ -1593,12 +1597,12 @@ static void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, f
     for (fx = fy = f; x0 != x3 && y0 != y3; ) {
       y1 = fmin(fabs(xy - dx), fabs(dy - xy));
       ed = fmax(fabs(xy - dx), fabs(dy - xy));
-      ed = f * (ed + 2 * ed*y1*y1 / (4 * ed*ed + y1 * y1));
-      y1 = 255 * fabs(ex - (f - fx + 1)*dx - (f - fy + 1)*dy + f * xy) / ed;
+      ed = f * (ed + 2 * ed * y1 * y1 / (4 * ed * ed + y1 * y1));
+      y1 = 255 * fabs(ex - (f - fx + 1) * dx - (f - fy + 1) * dy + f * xy) / ed;
       if (y1 < 256)
         XYSETAASAFE(s, x0, y0, col, y1);
-      px = fabs(ex - (f - fx + 1)*dx + (fy - 1)*dy);
-      py = fabs(ex + (fx - 1)*dx - (f - fy + 1)*dy);
+      px = fabs(ex - (f - fx + 1) * dx + (fy - 1) * dy);
+      py = fabs(ex + (fx - 1) * dx - (f - fy + 1) * dy);
       y2 = y0;
       do {
         if (ip >= -EP)
@@ -2620,11 +2624,6 @@ extern surface_t* buffer;
   [self mouseMoved:event];
 }
 
--(NSRect)resizeRect {
-  NSRect v = [[self window] contentRectForFrameRect:[[self window] frame]];
-  return NSMakeRect(NSMaxX(v) + 5.5, NSMinY(v) - 16.0 - 5.5, 16.0, 16.0);
-}
-
 -(void)drawRect:(NSRect)r {
   (void)r;
 
@@ -2632,7 +2631,7 @@ extern surface_t* buffer;
     return;
 
 #if defined(GRAPHICS_OPENGL_BACKEND)
-  [super drawRect : r];
+  [super drawRect: r];
   draw_gl();
   [[self openGLContext] flushBuffer];
 #else
@@ -2645,7 +2644,7 @@ extern surface_t* buffer;
   CGColorSpaceRelease(s);
   CGDataProviderRelease(p);
 
-  CGContextDrawImage(ctx, CGRectMake(0, 0, buffer->w, buffer->h), img);
+  CGContextDrawImage(ctx, CGRectMake(0, 0, r.size.width, r.size.height), img);
 
   CGImageRelease(img);
 #endif
@@ -2681,6 +2680,10 @@ extern surface_t* buffer;
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(win_close)
                                                  name:NSWindowWillCloseNotification
+                                               object:self];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(win_resize:)
+                                                 name:NSWindowDidResizeNotification
                                                object:self];
 
     closed = 0;
@@ -2735,6 +2738,13 @@ extern surface_t* buffer;
 
 -(void)win_close {
   closed = 1;
+}
+
+-(void)win_resize:(NSNotification *)n {
+  CGSize size = [app contentRectForFrameRect:[app frame]].size;
+#if defined(GRAPHICS_OPENGL_BACKEND)
+  glViewport(0, 0, size.width, size.height - 22);
+#endif
 }
 
 -(NSView*)contentView {
@@ -2894,7 +2904,7 @@ surface_t* screen(const char* t, int w, int h) {
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
   app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h + 22)
-                                     styleMask:NSWindowStyleMaskClosable | NSWindowStyleMaskTitled
+                                     styleMask:NSWindowStyleMaskClosable | NSWindowStyleMaskTitled | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable
                                        backing:NSBackingStoreBuffered
                                          defer:NO];
   if (!app) {
