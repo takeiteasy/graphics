@@ -28,12 +28,12 @@
 
 #define XYSET(s, x, y, v) (s->buf[(y) * (s)->w + (x)] = (v))
 #define XYSETSAFE(s, x, y, v) \
-if ((x) >= 0 && (y) >= 0 && (x) <= (s)->w && (y) <= (s)->h) \
+if ((x) >= 0 && (y) >= 0 && (x) < (s)->w && (y) < (s)->h) \
   XYSET((s), (x), (y), (v));
 #define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
 #define XYSETAA(s, x, y, v, i) ((s)->buf[(y) * (s)->w + (x)] = (alpha((v), XYGET((s), (x), (y)), 1.f - ((float)(i) / 255.f))))
 #define XYSETAASAFE(s, x, y, v, i) \
-if ((x) >= 0 && (y) >= 0 && (x) <= (s)->w && (y) <= (s)->h) \
+if ((x) >= 0 && (y) >= 0 && (x) < (s)->w && (y) < (s)->h) \
   XYSETAA((s), (x), (y), (v), (i))
 
 static char last_error[1024];
@@ -672,7 +672,7 @@ surface_t* surface(unsigned int w, unsigned int h) {
     SET_LAST_ERROR("malloc() failed");
     return NULL;
   }
-
+  
   ret->w = w;
   ret->h = h;
   size_t s = w * h * sizeof(unsigned int) + 1;
@@ -702,7 +702,7 @@ void fill(surface_t* s, int col) {
 }
 
 int pset(surface_t* s, int x, int y, int col) {
-  if (x > s->w || y > s->h || x < 0 || y < 0) {
+  if (x >= s->w || y >= s->h || x < 0 || y < 0) {
     SET_LAST_ERROR("pset() failed! x/y outside of bounds");
     return 0;
   }
@@ -712,7 +712,7 @@ int pset(surface_t* s, int x, int y, int col) {
 }
 
 int pget(surface_t* s, int x, int y) {
-  if (x > s->w || y > s->h || x < 0 || y < 0) {
+  if (x >= s->w || y >= s->h || x < 0 || y < 0) {
     SET_LAST_ERROR("pget() failed! x/y outside of bounds");
     return 0;
   }
@@ -2198,8 +2198,8 @@ const char* get_last_error() {
 
 #if defined(GRAPHICS_OPENGL_BACKEND)
 #if defined(__APPLE__)
-@import OpenGL;
-@import OpenGL.GL3;
+#import <OpenGL/OpenGL.h>;
+#import <OpenGL/gl3.h>;
 #endif
 
 #if defined(__linux__)
@@ -2489,8 +2489,21 @@ void free_gl() {
 #endif // GRAPHICS_OPENGL_BACKEND
 #endif // GRAPHICS_LEAN_AND_MEAN
 
+static void resize_window_buffer(void) {
+  buffer->w = win_w;
+  buffer->h = win_h;
+  size_t s = win_w * win_h * sizeof(unsigned int) + 1;
+  int* tmp = realloc(buffer->buf, s);
+  if (!tmp) {
+    SET_LAST_ERROR("malloc() failed");
+    return;
+  }
+  memset(tmp, 0, s);
+  buffer->buf = tmp;
+}
+
 #if defined(__APPLE__)
-@import Cocoa;
+#import <Cocoa/Cocoa.h>
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED < 101200
 #define NSWindowStyleMaskBorderless NSBorderlessWindowMask
@@ -2628,7 +2641,7 @@ extern surface_t* buffer;
 
 -(void)mouseMoved:(NSEvent*)event {
   mx = (int)floor([event locationInWindow].x - 1);
-  my = (int)floor(buffer->h - 1 - [event locationInWindow].y);
+  my = (int)floor(win_h - 1 - [event locationInWindow].y);
 }
 
 -(void)rightMouseDragged:(NSEvent*)event {
@@ -2642,7 +2655,7 @@ extern surface_t* buffer;
 -(void)drawRect:(NSRect)r {
   (void)r;
 
-  if (!buffer)
+  if (!buffer || !buffer->buf)
     return;
 
 #if defined(GRAPHICS_OPENGL_BACKEND)
@@ -2757,12 +2770,14 @@ extern surface_t* buffer;
 
 -(void)win_resize:(NSNotification *)n {
   CGSize size = [app contentRectForFrameRect:[app frame]].size;
-#if defined(GRAPHICS_OPENGL_BACKEND)
-  glViewport(0, 0, size.width, size.height - 22);
-#else
   win_w = size.width;
-  win_h = size.height;
+  win_h = size.height - 22;
+#if defined(GRAPHICS_OPENGL_BACKEND)
+  glViewport(0, 0, win_w, win_h);
 #endif
+  resize_window_buffer();
+  if (__resize_callback)
+    __resize_callback(win_w, win_h);
 }
 
 -(NSView*)contentView {
@@ -2793,6 +2808,8 @@ surface_t* screen(const char* t, int w, int h) {
     return NULL;
   buffer->w = w;
   buffer->h = h;
+  win_w = w;
+  win_h = h;
 
   memset(keycodes,  -1, sizeof(keycodes));
   memset(scancodes, -1, sizeof(scancodes));
