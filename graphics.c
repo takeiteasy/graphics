@@ -686,12 +686,9 @@ surface_t* surface(unsigned int w, unsigned int h) {
 
 void destroy(surface_t** s) {
   if (*s) {
-    if ((*s)->buf) {
+    if ((*s)->buf)
       free((*s)->buf);
-      (*s)->buf = NULL;
-    }
     free(*s);
-    *s = NULL;
   }
 }
 
