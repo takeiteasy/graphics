@@ -1,4 +1,5 @@
 #include "../graphics.h"
+#include <stdbool.h>
 
 #define MAP_W 24
 #define MAP_H 24

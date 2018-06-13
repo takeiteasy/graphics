@@ -20,15 +20,13 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 
 ## TODO
 
+- Improve window resizing
 - FIX BMP LOADING, TOTALLY FUCKED ATM
 - Colour escapes for print()
-- Window resize events
-- Fullscreening
-- Cursor lock/hide
-- Any other window events?
+- Window flags
+- Cursor lock & hide
 - Extended surface functions, resize, rotate, filters, etc
 - Joystick/Gamepad input
-- Remove XYSETSAFE(AA) for proper error checking
 - Add fill option for ellipse_rotated
 - Add rotated rect function
 - Add line width option
