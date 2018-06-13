@@ -204,6 +204,7 @@ extern "C" {
   int alpha(int c1, int c2, float i);
   long ticks(void);
   void delay(long ms);
+  void resize_callback(void(*cb)(int, int));
   
 #if !defined(GRAPHICS_LEAN_AND_MEAN)
   void circle(surface_t* s, int xc, int yc, int r, int col, int fill);

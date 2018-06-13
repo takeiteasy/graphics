@@ -32,12 +32,19 @@ for (i = min_i; i < max_i; ++i, x += 8) { \
 x  = 5;\
 y += 8;
 
+static surface_t* win = NULL;
+
+void on_resize(int w, int h) {
+
+}
+
 int main(int argc, const char* argv[]) {
-  surface_t* win = screen("test", 640, 480);
+  win = screen("test", 640, 480);
   if (!win) {
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
   }
+  resize_callback(on_resize);
 
   // surface_t* tga_test = tga("C:\\Users\\DESKTOP\\Downloads\\lena.tga");
 

@@ -66,6 +66,8 @@ sprintf(last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTIO
 
 static int ticks_started = 0;
 
+void(*__resize_callback)(int, int) = NULL;
+
 #define LINE_HEIGHT 10
 
 static char font8x8_basic[128][8] = {
@@ -973,6 +975,11 @@ void delay(long ms) {
 #else
   usleep((unsigned int)(ms * 1000));
 #endif
+}
+
+void resize_callback(void(*cb)(int, int)) {
+  if (cb)
+    __resize_callback = cb;
 }
 
 #if !defined(GRAPHICS_LEAN_AND_MEAN)
@@ -3078,6 +3085,17 @@ static int translate_key(WPARAM wParam, LPARAM lParam) {
   return keycodes[HIWORD(lParam) & 0x1FF];
 }
 
+static void adjust_win_wh(int w, int h) {
+  RECT rect = { 0 };
+  rect.right = w;
+  rect.bottom = h;
+
+  AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
+
+  win_w = rect.right + rect.left;
+  win_h = rect.bottom;
+}
+
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
   LRESULT res = 0;
   switch (message) {
@@ -3094,13 +3112,13 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       }
       break;
     case WM_SIZE:
+      adjust_win_wh(LOWORD(lParam), HIWORD(lParam));
 #if defined(GRAPHICS_OPENGL_BACKEND)
-      glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
+      glViewport(0, 0, win_w, win_h);
       PostMessage(hWnd, WM_PAINT, 0, 0);
-#else
-      win_w = LOWORD(lParam);
-      win_h = HIWORD(lParam);
 #endif
+      if (__resize_callback)
+        __resize_callback(win_w, win_h);
       break;
     case WM_CLOSE:
       closed = 1;
@@ -3336,17 +3354,7 @@ surface_t* screen(const char* t, int w, int h) {
       scancodes[keycodes[sc]] = sc;
   }
 
-  RECT rect = { 0 };
-  rect.right = w;
-  rect.bottom = h;
-
-  AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
-
-  rect.right -= rect.left;
-  rect.bottom -= rect.top;
-
-  win_w = rect.right;
-  win_h = rect.bottom;
+  adjust_win_wh(w, h);
 
 #if defined(GRAPHICS_OPENGL_BACKEND)
   static HINSTANCE hinst = 0;
@@ -3370,7 +3378,7 @@ surface_t* screen(const char* t, int w, int h) {
     }
   }
 
-  if (!(hwnd = CreateWindow(t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right, rect.bottom, NULL, NULL, hinst, NULL))) {
+  if (!(hwnd = CreateWindow(t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, win_w, win_h, NULL, NULL, hinst, NULL))) {
     release();
     SET_LAST_ERROR("CreateWindow() failed: %s", GetLastError());
     return NULL;
@@ -3416,7 +3424,7 @@ surface_t* screen(const char* t, int w, int h) {
     return NULL;
   }
 
-  if (!(hwnd = CreateWindowEx(0, t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right, rect.bottom, 0, 0, 0, 0))) {
+  if (!(hwnd = CreateWindowEx(0, t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, win_w, win_h, 0, 0, 0, 0))) {
     release();
     SET_LAST_ERROR("CreateWindowEx() failed: %s", GetLastError());
     return NULL;
