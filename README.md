@@ -27,17 +27,23 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 - Fullscreening
 - Cursor lock/hide
 - Any other window events?
-- Documentation & comments
 - Extended surface functions, resize, rotate, filters, etc
 - Independent screen & window size
 - Joystick/Gamepad input
-- DirectX/Metal backends
-- OpenGL 1.X fallback for OSX
 - Remove XYSETSAFE(AA) for proper error checking
 - Add fill option for ellipse_rotated
 - Add rotated rect function
-- Add AA option macro (merge functions)
+- Add line width option
 - Fix as many warnings as possible
+
+### MAYBE TODO
+
+- DirectX/Metal backends
+- Documentation & comments
+- OpenGL 1.X fallback for OSX
+- C++ OOP wrapper
+- libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
+- More examples
 
 ## License
 
