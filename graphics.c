@@ -2498,7 +2498,7 @@ static void resize_window_buffer(void) {
     SET_LAST_ERROR("malloc() failed");
     return;
   }
-  memset(tmp, 0, s);
+  // memset(tmp, 0, s);
   buffer->buf = tmp;
 }
 
@@ -3110,7 +3110,7 @@ static void adjust_win_wh(int w, int h) {
   AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
 
   win_w = rect.right + rect.left;
-  win_h = rect.bottom;
+  win_h = rect.bottom - rect.top;
 }
 
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -3134,6 +3134,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       glViewport(0, 0, win_w, win_h);
       PostMessage(hWnd, WM_PAINT, 0, 0);
 #endif
+      resize_window_buffer();
+      bmpinfo->bmiHeader.biWidth = win_w;
+      bmpinfo->bmiHeader.biHeight = -win_h;
       if (__resize_callback)
         __resize_callback(win_w, win_h);
       break;
@@ -3452,8 +3455,8 @@ surface_t* screen(const char* t, int w, int h) {
   bmpinfo->bmiHeader.biPlanes = 1;
   bmpinfo->bmiHeader.biBitCount = 32;
   bmpinfo->bmiHeader.biCompression = BI_BITFIELDS;
-  bmpinfo->bmiHeader.biWidth = w;
-  bmpinfo->bmiHeader.biHeight = -h;
+  bmpinfo->bmiHeader.biWidth = win_w;
+  bmpinfo->bmiHeader.biHeight = -win_h;
   bmpinfo->bmiColors[0].rgbRed = 0xff;
   bmpinfo->bmiColors[1].rgbGreen = 0xff;
   bmpinfo->bmiColors[2].rgbBlue = 0xff;

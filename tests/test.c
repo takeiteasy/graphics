@@ -32,17 +32,8 @@ for (i = min_i; i < max_i; ++i, x += 8) { \
 x  = 5;\
 y += 8;
 
-static surface_t* win;
-
-void on_resize(int w, int h) {
-  surface_t* new = surface(w, h);
-  blit(new, NULL, win, NULL, -1, -1);
-  destroy(&win);
-  win = new;
-}
-
 int main(int argc, const char* argv[]) {
-  win = screen("test", 640, 480);
+  surface_t* win = screen("test", 640, 480);
   if (!win) {
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
