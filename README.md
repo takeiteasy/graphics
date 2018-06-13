@@ -22,13 +22,11 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 
 - FIX BMP LOADING, TOTALLY FUCKED ATM
 - Colour escapes for print()
-- Wayland window code?
 - Window resize events
 - Fullscreening
 - Cursor lock/hide
 - Any other window events?
 - Extended surface functions, resize, rotate, filters, etc
-- Independent screen & window size
 - Joystick/Gamepad input
 - Remove XYSETSAFE(AA) for proper error checking
 - Add fill option for ellipse_rotated
@@ -41,6 +39,7 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 - DirectX/Metal backends
 - Documentation & comments
 - OpenGL 1.X fallback for OSX
+- Wayland window code
 - C++ OOP wrapper
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples

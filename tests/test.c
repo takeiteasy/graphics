@@ -133,7 +133,7 @@ int main(int argc, const char* argv[]) {
     PRINT_CHAR_MAP(letter_greek, 0, 58, CRIMSON);
     PRINT_CHAR_MAP(letter_hiragana, 0, 96, RED);
 
-    get_mouse_pos(&mx, &my);
+    get_mouse_pos_relative(&mx, &my);
     col = pget(win, mx, my);
     rect(win, 150, 50,  100, 100, col, 0);
     rect(win, 200, 100, 100, 100, col, 0);

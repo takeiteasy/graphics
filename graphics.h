@@ -410,6 +410,7 @@ extern "C" {
   void release(void);
   const char* get_last_error(void);
   void get_mouse_pos(int* x, int* y);
+  void get_mouse_pos_relative(int* x, int* y);
   
 #ifdef __cplusplus
 }

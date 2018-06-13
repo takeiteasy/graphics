@@ -662,7 +662,7 @@ static char font8x8_extra[132][8] = {
 };
 #endif
 
-static int mx = 0, my = 0;
+static int mx = 0, my = 0, win_w, win_h;
 
 surface_t* surface(unsigned int w, unsigned int h) {
   surface_t* ret = malloc(sizeof(surface_t));
@@ -686,8 +686,10 @@ surface_t* surface(unsigned int w, unsigned int h) {
 
 void destroy(surface_t** s) {
   if (*s) {
-    free((*s)->buf);
-    (*s)->buf = NULL;
+    if ((*s)->buf) {
+      free((*s)->buf);
+      (*s)->buf = NULL;
+    }
     free(*s);
     *s = NULL;
   }
@@ -2173,8 +2175,17 @@ void iterate(surface_t* s, int (*fn)(int x, int y, int col)) {
 void get_mouse_pos(int* x, int* y) {
   if (!x || !y)
     return;
+
   *x = mx;
   *y = my;
+}
+
+void get_mouse_pos_relative(int* x, int* y) {
+  if (!x || !y)
+    return;
+
+  *x = (int)(((float)mx / (float)win_w) * buffer->w);
+  *y = (int)(((float)my / (float)win_h) * buffer->h);
 }
 
 const char* get_last_error() {
@@ -2644,7 +2655,7 @@ extern surface_t* buffer;
   CGColorSpaceRelease(s);
   CGDataProviderRelease(p);
 
-  CGContextDrawImage(ctx, CGRectMake(0, 0, r.size.width, r.size.height), img);
+  CGContextDrawImage(ctx, CGRectMake(0, 0, win_w, win_h), img);
 
   CGImageRelease(img);
 #endif
@@ -2744,6 +2755,9 @@ extern surface_t* buffer;
   CGSize size = [app contentRectForFrameRect:[app frame]].size;
 #if defined(GRAPHICS_OPENGL_BACKEND)
   glViewport(0, 0, size.width, size.height - 22);
+#else
+  win_w = size.width;
+  win_h = size.height;
 #endif
 }
 
@@ -3077,7 +3091,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
         BeginPaint(hwnd, &ps);
         EndPaint(hwnd, &ps);
 #else
-        StretchDIBits(hdc, 0, 0, buffer->w, buffer->h, 0, 0, buffer->w, buffer->h, buffer->buf, bmpinfo, DIB_RGB_COLORS, SRCCOPY);
+        StretchDIBits(hdc, 0, 0, win_w, win_h, 0, 0, buffer->w, buffer->h, buffer->buf, bmpinfo, DIB_RGB_COLORS, SRCCOPY);
         ValidateRect(hWnd, NULL);
 #endif
       }
@@ -3086,6 +3100,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 #if defined(GRAPHICS_OPENGL_BACKEND)
       glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
       PostMessage(hWnd, WM_PAINT, 0, 0);
+#else
+      win_w = LOWORD(lParam);
+      win_h = HIWORD(lParam);
 #endif
       break;
     case WM_CLOSE:
@@ -3331,6 +3348,9 @@ surface_t* screen(const char* t, int w, int h) {
   rect.right -= rect.left;
   rect.bottom -= rect.top;
 
+  win_w = rect.right;
+  win_h = rect.bottom;
+
 #if defined(GRAPHICS_OPENGL_BACKEND)
   static HINSTANCE hinst = 0;
   if (!hinst) {
@@ -3353,7 +3373,7 @@ surface_t* screen(const char* t, int w, int h) {
     }
   }
 
-  if (!(hwnd = CreateWindow(t, t, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME, CW_USEDEFAULT, CW_USEDEFAULT, rect.right, rect.bottom, NULL, NULL, hinst, NULL))) {
+  if (!(hwnd = CreateWindow(t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right, rect.bottom, NULL, NULL, hinst, NULL))) {
     release();
     SET_LAST_ERROR("CreateWindow() failed: %s", GetLastError());
     return NULL;
@@ -3399,7 +3419,7 @@ surface_t* screen(const char* t, int w, int h) {
     return NULL;
   }
 
-  if (!(hwnd = CreateWindowEx(0, t, t, WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME, CW_USEDEFAULT, CW_USEDEFAULT, rect.right, rect.bottom, 0, 0, 0, 0))) {
+  if (!(hwnd = CreateWindowEx(0, t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, rect.right, rect.bottom, 0, 0, 0, 0))) {
     release();
     SET_LAST_ERROR("CreateWindowEx() failed: %s", GetLastError());
     return NULL;
