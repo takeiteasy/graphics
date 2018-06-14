@@ -30,11 +30,10 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 - Add rotated rect function
 - Add line width option
 - Fix as many warnings as possible
-- Improve drawing on OSX slow compared to win/nix
 
 ### MAYBE TODO
 
-- DirectX/Metal backends
+- Vulkan/DirectX/Metal backends
 - Documentation & comments
 - OpenGL 1.X fallback for OSX
 - Wayland window code

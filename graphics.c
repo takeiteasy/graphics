@@ -1,4 +1,4 @@
- //  graphics.c
+//  graphics.c
 //  graphics
 //
 //  Created by Rory B. Bellows on 26/11/2017.
@@ -66,7 +66,7 @@ sprintf(last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTIO
 
 static int ticks_started = 0;
 
-void(*__resize_callback)(int, int) = NULL;
+static void(*__resize_callback)(int, int) = NULL;
 
 #define LINE_HEIGHT 10
 
@@ -2667,7 +2667,7 @@ extern surface_t* buffer;
   CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
 
   CGColorSpaceRef s = CGColorSpaceCreateDeviceRGB();
-  CGDataProviderRef p = CGDataProviderCreateWithData(NULL, buffer->buf, buffer->w * buffer->h * 4, NULL);
+  CGDataProviderRef p = CGDataProviderCreateWithData(NULL, buffer->buf, buffer->w * buffer->h * 3, NULL);
   CGImageRef img = CGImageCreate(buffer->w, buffer->h, 8, 32, buffer->w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, 0, kCGRenderingIntentDefault);
 
   CGColorSpaceRelease(s);
