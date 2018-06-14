@@ -90,7 +90,7 @@ int main(int argc, const char* argv[]) {
       xline(win, y, 0, win->w, GRAY);
     
     int last_x = 0, last_y = 240;
-    for (long i = sine_i; i < (sine_i + 641); ++i) {
+    for (long i = sine_i; i < (sine_i + win->w); ++i) {
       float x = (float)(i - sine_i);
       float y = 240.f + (100.f * sinf(i * (3.141f / 180.f)));
       line(win, last_x, last_y, x, y, col);

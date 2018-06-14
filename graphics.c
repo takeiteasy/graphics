@@ -2490,16 +2490,17 @@ void free_gl() {
 #endif // GRAPHICS_LEAN_AND_MEAN
 
 static void resize_window_buffer(void) {
-  buffer->w = win_w;
-  buffer->h = win_h;
   size_t s = win_w * win_h * sizeof(unsigned int) + 1;
   int* tmp = realloc(buffer->buf, s);
   if (!tmp) {
     SET_LAST_ERROR("malloc() failed");
     return;
   }
-  // memset(tmp, 0, s);
   buffer->buf = tmp;
+  buffer->w = win_w;
+  buffer->h = win_h;
+  memset(buffer->buf, 0, s);
+  print_f(buffer, 4, 5, WHITE, "%dx%d", win_w, win_h);
 }
 
 #if defined(__APPLE__)

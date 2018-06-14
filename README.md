@@ -20,7 +20,6 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 
 ## TODO
 
-- Improve window resizing
 - FIX BMP LOADING, TOTALLY FUCKED ATM
 - Colour escapes for print()
 - Window flags
@@ -31,6 +30,7 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 - Add rotated rect function
 - Add line width option
 - Fix as many warnings as possible
+- Improve drawing on OSX slow compared to win/nix
 
 ### MAYBE TODO
 
