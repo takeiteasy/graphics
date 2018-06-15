@@ -46,12 +46,8 @@ int main(void) {
   double dirX = -1.0, dirY = 0.0; //initial direction vector
   double planeX = 0.0, planeY = 0.66; //the 2d raycaster version of camera plane
   
-  const int TICKS_PER_SECOND = 60;
-  const int SKIP_TICKS = 1000 / TICKS_PER_SECOND;
-  const int MAX_FRAMESKIP = 10;
-  long next_game_tick = ticks();
-  int loops;
-  float interpolation;
+  long prev_frame_tick;
+  long curr_frame_tick = ticks();
   
   surface_t* images[8];
   for (int i = 0; i < 8; ++i)
@@ -77,75 +73,71 @@ int main(void) {
   int running = 1;
   short input = 0;
   while (!should_close() && running) {
-    loops = 0;
-    while(ticks() > next_game_tick && loops < MAX_FRAMESKIP) {
-      while (poll_events(&ue)) {
-        switch (ue.type) {
-          case WINDOW_CLOSED:
-            running = 0;
-            break;
-          case KEYBOARD_KEY_DOWN:
-#if defined(__APPLE__)
-            if (ue.sym == KB_KEY_Q && ue.mod & KB_MOD_SUPER)
-              running = 0;
-#endif
-            switch (ue.sym) {
-              case KB_KEY_UP:
-              case KB_KEY_W:
-                input |= MOVE_UP;
-                break;
-              case KB_KEY_DOWN:
-              case KB_KEY_S:
-                input |= MOVE_DOWN;
-                break;
-              case KB_KEY_LEFT:
-              case KB_KEY_A:
-                input |= MOVE_LEFT;
-                break;
-              case KB_KEY_RIGHT:
-              case KB_KEY_D:
-                input |= MOVE_RIGHT;
-                break;
-              default:
-                break;
-            }
-            break;
-          case KEYBOARD_KEY_UP:
-            switch (ue.sym) {
-              case KB_KEY_UP:
-              case KB_KEY_W:
-                input = input & ~MOVE_UP;
-                break;
-              case KB_KEY_DOWN:
-              case KB_KEY_S:
-                input = input & ~MOVE_DOWN;
-                break;
-              case KB_KEY_LEFT:
-              case KB_KEY_A:
-                input = input & ~MOVE_LEFT;
-                break;
-              case KB_KEY_RIGHT:
-              case KB_KEY_D:
-                input = input & ~MOVE_RIGHT;
-                break;
-              default:
-                break;
-            }
-          default:
-            break;
-        }
-      }
-      
-      next_game_tick += SKIP_TICKS;
-      loops++;
-    }
+    prev_frame_tick = curr_frame_tick;
+    curr_frame_tick = ticks();
     
-    interpolation = (float)(ticks() + SKIP_TICKS - next_game_tick) / (float)SKIP_TICKS;
+    while (poll_events(&ue)) {
+      switch (ue.type) {
+        case WINDOW_CLOSED:
+          running = 0;
+          break;
+        case KEYBOARD_KEY_DOWN:
+#if defined(__APPLE__)
+          if (ue.sym == KB_KEY_Q && ue.mod & KB_MOD_SUPER)
+            running = 0;
+#endif
+          switch (ue.sym) {
+            case KB_KEY_UP:
+            case KB_KEY_W:
+              input |= MOVE_UP;
+              break;
+            case KB_KEY_DOWN:
+            case KB_KEY_S:
+              input |= MOVE_DOWN;
+              break;
+            case KB_KEY_LEFT:
+            case KB_KEY_A:
+              input |= MOVE_LEFT;
+              break;
+            case KB_KEY_RIGHT:
+            case KB_KEY_D:
+              input |= MOVE_RIGHT;
+              break;
+            default:
+              break;
+          }
+          break;
+        case KEYBOARD_KEY_UP:
+          switch (ue.sym) {
+            case KB_KEY_UP:
+            case KB_KEY_W:
+              input = input & ~MOVE_UP;
+              break;
+            case KB_KEY_DOWN:
+            case KB_KEY_S:
+              input = input & ~MOVE_DOWN;
+              break;
+            case KB_KEY_LEFT:
+            case KB_KEY_A:
+              input = input & ~MOVE_LEFT;
+              break;
+            case KB_KEY_RIGHT:
+            case KB_KEY_D:
+              input = input & ~MOVE_RIGHT;
+              break;
+            default:
+              break;
+          }
+        default:
+          break;
+      }
+    }
     
     fill(win, BLACK);
     
-    double moveSpeed = interpolation * .05;
-    double rotSpeed = interpolation * .025;
+    double speed = (curr_frame_tick - prev_frame_tick) / 10.;
+    double moveSpeed = speed * .05;
+    double rotSpeed = speed * .025;
     
     if (input & MOVE_UP) {
       if (map[(int)(posX + dirX * moveSpeed)][(int)posY] == 0)
