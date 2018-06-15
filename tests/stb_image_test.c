@@ -23,7 +23,7 @@ surface_t* load_image(const char* path) {
 }
 
 int main(int argc, const char* argv[]) {
-  surface_t* img = load_image("lena.png");
+  surface_t* img = load_image("/Users/roryb/Documents/git/graphics.h/tests/lena.png");
   if (!img) {
     fprintf(stderr, "%s", get_last_error());
     return 1;
@@ -35,7 +35,7 @@ int main(int argc, const char* argv[]) {
     return 1;
   }
   
-  blit(win, NULL, img, NULL, -1);
+  blit(win, NULL, img, NULL, -1, -1);
   
   user_event_t ue;
   while (!should_close()) {

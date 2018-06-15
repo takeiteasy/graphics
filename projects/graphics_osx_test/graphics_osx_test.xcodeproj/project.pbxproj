@@ -7,10 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		8847E0C7206027AA00C9816E /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 8847E0C6206027AA00C9816E /* test.c */; };
-		88B0B5EF204D09C900BE9A54 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0B5ED204D09C900BE9A54 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
 		88B0B5F1204D132D00BE9A54 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0B5F0204D132D00BE9A54 /* Cocoa.framework */; };
 		88B0B5F3204D133100BE9A54 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0B5F2204D133100BE9A54 /* OpenGL.framework */; };
+		88DC86D520D45250000A762E /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0B5ED204D09C900BE9A54 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
+		88DC86D920D4547B000A762E /* raycaster.c in Sources */ = {isa = PBXBuildFile; fileRef = 88DC86CD20D45205000A762E /* raycaster.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -33,6 +33,10 @@
 		88B0B5F2204D133100BE9A54 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		88D03B7D203A1CC400FB8EE4 /* graphics_osx_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics_osx_test; sourceTree = BUILT_PRODUCTS_DIR; };
 		88DC86A920D2EE37000A762E /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../../README.md; sourceTree = "<group>"; };
+		88DC86CC20D45205000A762E /* stb_image_test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = stb_image_test.c; path = ../../tests/stb_image_test.c; sourceTree = "<group>"; };
+		88DC86CD20D45205000A762E /* raycaster.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = raycaster.c; path = ../../tests/raycaster.c; sourceTree = "<group>"; };
+		88DC86CE20D45205000A762E /* save_bmp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = save_bmp.c; path = ../../tests/save_bmp.c; sourceTree = "<group>"; };
+		88DC86CF20D45206000A762E /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = stb_image.h; path = ../../tests/stb_image.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,6 +72,10 @@
 		88D03B87203A1CD900FB8EE4 /* test */ = {
 			isa = PBXGroup;
 			children = (
+				88DC86CD20D45205000A762E /* raycaster.c */,
+				88DC86CE20D45205000A762E /* save_bmp.c */,
+				88DC86CC20D45205000A762E /* stb_image_test.c */,
+				88DC86CF20D45206000A762E /* stb_image.h */,
 				88DC86A920D2EE37000A762E /* README.md */,
 				8847E0C6206027AA00C9816E /* test.c */,
 				88B0B5ED204D09C900BE9A54 /* graphics.c */,
@@ -142,8 +150,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88B0B5EF204D09C900BE9A54 /* graphics.c in Sources */,
-				8847E0C7206027AA00C9816E /* test.c in Sources */,
+				88DC86D920D4547B000A762E /* raycaster.c in Sources */,
+				88DC86D520D45250000A762E /* graphics.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -273,7 +281,7 @@
 					GRAPHICS_EXTRA_COLOURS,
 					GRAPHICS_EXTRA_FONTS,
 					GRAPHICS_ENABLE_AA,
-					GRAPHICS_OPENGL_BACKENDa,
+					GRAPHICS_OPENGL_BACKEND,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -289,7 +297,7 @@
 					GRAPHICS_EXTRA_COLOURS,
 					GRAPHICS_EXTRA_FONTS,
 					GRAPHICS_ENABLE_AA,
-					GRAPHICS_OPENGL_BACKENDa,
+					GRAPHICS_OPENGL_BACKEND,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
