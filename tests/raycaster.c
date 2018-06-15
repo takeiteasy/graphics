@@ -3,31 +3,31 @@
 #define MAP_W 24
 #define MAP_H 24
 
-static int map[MAP_W][MAP_H] = {
-  {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-  {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,0,0,0,0,0,2,2,2,2,2,0,0,0,0,3,0,3,0,3,0,0,0,1},
-  {1,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,0,0,0,0,0,2,0,0,0,2,0,0,0,0,3,0,0,0,3,0,0,0,1},
-  {1,0,0,0,0,0,2,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,0,0,0,0,0,2,2,0,2,2,0,0,0,0,3,0,3,0,3,0,0,0,1},
-  {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,4,0,0,0,0,5,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,4,0,4,0,0,0,0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,4,0,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,4,4,4,4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-  {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
+static int map[MAP_W][MAP_H]= {
+  {4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,7,7,7,7,7,7,7,7},
+  {4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,7},
+  {4,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
+  {4,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
+  {4,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,7},
+  {4,0,4,0,0,0,0,5,5,5,5,5,5,5,5,5,7,7,0,7,7,7,7,7},
+  {4,0,5,0,0,0,0,5,0,5,0,5,0,5,0,5,7,0,0,0,7,7,7,1},
+  {4,0,6,0,0,0,0,5,0,0,0,0,0,0,0,5,7,0,0,0,0,0,0,8},
+  {4,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,1},
+  {4,0,8,0,0,0,0,5,0,0,0,0,0,0,0,5,7,0,0,0,0,0,0,8},
+  {4,0,0,0,0,0,0,5,0,0,0,0,0,0,0,5,7,0,0,0,7,7,7,1},
+  {4,0,0,0,0,0,0,5,5,5,5,0,5,5,5,5,7,7,7,7,7,7,7,1},
+  {6,6,6,6,6,6,6,6,6,6,6,0,6,6,6,6,6,6,6,6,6,6,6,6},
+  {8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
+  {6,6,6,6,6,6,0,6,6,6,6,0,6,6,6,6,6,6,6,6,6,6,6,6},
+  {4,4,4,4,4,4,0,4,4,4,6,0,6,2,2,2,2,2,2,2,3,3,3,3},
+  {4,0,0,0,0,0,0,0,0,4,6,0,6,2,0,0,0,0,0,2,0,0,0,2},
+  {4,0,0,0,0,0,0,0,0,0,0,0,6,2,0,0,5,0,0,2,0,0,0,2},
+  {4,0,0,0,0,0,0,0,0,4,6,0,6,2,0,0,0,0,0,2,2,0,2,2},
+  {4,0,6,0,6,0,0,0,0,4,6,0,0,0,0,0,5,0,0,0,0,0,0,2},
+  {4,0,0,5,0,0,0,0,0,4,6,0,6,2,0,0,0,0,0,2,2,0,2,2},
+  {4,0,6,0,6,0,0,0,0,4,6,0,6,2,0,0,5,0,0,2,0,0,0,2},
+  {4,0,0,0,0,0,0,0,0,4,6,0,6,2,0,0,0,0,0,2,0,0,0,2},
+  {4,4,4,4,4,4,4,4,4,4,1,1,1,2,2,2,2,2,2,3,3,3,3,3}
 };
 
 #define MOVE_LEFT  0x0001
@@ -42,9 +42,9 @@ int main(void) {
     return 1;
   }
   
-  double posX = 22, posY = 12;  //x and y start position
-  double dirX = -1, dirY = 0; //initial direction vector
-  double planeX = 0, planeY = 0.66; //the 2d raycaster version of camera plane
+  double posX = 22.0, posY = 11.5;  //x and y start position
+  double dirX = -1.0, dirY = 0.0; //initial direction vector
+  double planeX = 0.0, planeY = 0.66; //the 2d raycaster version of camera plane
   
   const int TICKS_PER_SECOND = 60;
   const int SKIP_TICKS = 1000 / TICKS_PER_SECOND;
@@ -52,6 +52,26 @@ int main(void) {
   long next_game_tick = ticks();
   int loops;
   float interpolation;
+  
+  surface_t* images[8];
+  for (int i = 0; i < 8; ++i)
+    images[i] = surface(64, 64);
+  for(int x = 0; x < 64; x++)
+    for(int y = 0; y < 64; y++)
+    {
+      int xorcolor = (x * 256 / 64) ^ (y * 256 / 64);
+      //int xcolor = x * 256 / texWidth;
+      int ycolor = y * 256 / 64;
+      int xycolor = y * 128 / 64 + x * 128 / 64;
+      images[0]->buf[64 * y + x] = 65536 * 254 * (x != y && x != 64 - y); //flat red texture with black cross
+      images[1]->buf[64 * y + x] = xycolor + 256 * xycolor + 65536 * xycolor; //sloped greyscale
+      images[2]->buf[64 * y + x] = 256 * xycolor + 65536 * xycolor; //sloped yellow gradient
+      images[3]->buf[64 * y + x] = xorcolor + 256 * xorcolor + 65536 * xorcolor; //xor greyscale
+      images[4]->buf[64 * y + x] = 256 * xorcolor; //xor green
+      images[5]->buf[64 * y + x] = 65536 * 192 * (x % 16 && y % 16); //red bricks
+      images[6]->buf[64 * y + x] = 65536 * ycolor; //red gradient
+      images[7]->buf[64 * y + x] = 128 + 256 * 128 + 65536 * 128; //flat grey texture
+    }
   
   user_event_t ue;
   int running = 1;
@@ -125,7 +145,7 @@ int main(void) {
     fill(win, BLACK);
     
     double moveSpeed = interpolation * .05;
-    double rotSpeed = interpolation * .02;
+    double rotSpeed = interpolation * .025;
     
     if (input & MOVE_UP) {
       if (map[(int)(posX + dirX * moveSpeed)][(int)posY] == 0)
@@ -159,79 +179,112 @@ int main(void) {
       planeY = oldPlaneX * sin(-rotSpeed) + planeY * cos(-rotSpeed);
     }
     
-    for(int x = 0; x < win->w; x++) {
-      double cameraX = 2 * x / (double)win->w - 1; //x-coordinate in camera space
+    for(int x = 0; x < win->w; x++)
+    {
+      //calculate ray position and direction
+      double cameraX = 2*x/(double)win->w-1; //x-coordinate in camera space
       double rayPosX = posX;
       double rayPosY = posY;
-      double rayDirX = dirX + planeX * cameraX;
-      double rayDirY = dirY + planeY * cameraX;
+      double rayDirX = dirX + planeX*cameraX;
+      double rayDirY = dirY + planeY*cameraX;
+      
+      //which box of the map we're in
       int mapX = (int)rayPosX;
       int mapY = (int)rayPosY;
       
-      double sideDistX, sideDistY, perpWallDist;
+      //length of ray from current position to next x or y-side
+      double sideDistX;
+      double sideDistY;
+      
+      //length of ray from one x or y-side to next x or y-side
       double deltaDistX = sqrt(1 + (rayDirY * rayDirY) / (rayDirX * rayDirX));
       double deltaDistY = sqrt(1 + (rayDirX * rayDirX) / (rayDirY * rayDirY));
+      double perpWallDist;
       
-      int stepX, stepY, hit = 0, side;
-      if (rayDirX < 0) {
+      //what direction to step in x or y-direction (either +1 or -1)
+      int stepX;
+      int stepY;
+      
+      int hit = 0; //was there a wall hit?
+      int side; //was a NS or a EW wall hit?
+      
+      //calculate step and initial sideDist
+      if (rayDirX < 0)
+      {
         stepX = -1;
         sideDistX = (rayPosX - mapX) * deltaDistX;
       }
-      else {
+      else
+      {
         stepX = 1;
         sideDistX = (mapX + 1.0 - rayPosX) * deltaDistX;
       }
-      
-      if (rayDirY < 0) {
+      if (rayDirY < 0)
+      {
         stepY = -1;
         sideDistY = (rayPosY - mapY) * deltaDistY;
-      } else {
+      }
+      else
+      {
         stepY = 1;
         sideDistY = (mapY + 1.0 - rayPosY) * deltaDistY;
       }
-      
-      while (hit == 0) {
-        if (sideDistX < sideDistY) {
+      //perform DDA
+      while (hit == 0)
+      {
+        //jump to next map square, OR in x-direction, OR in y-direction
+        if (sideDistX < sideDistY)
+        {
           sideDistX += deltaDistX;
           mapX += stepX;
           side = 0;
-        } else {
+        }
+        else
+        {
           sideDistY += deltaDistY;
           mapY += stepY;
           side = 1;
         }
-        
-        if (map[mapX][mapY] > 0)
-          hit = 1;
+        //Check if ray has hit a wall
+        if (map[mapX][mapY] > 0) hit = 1;
       }
       
-      if (side == 0)
-        perpWallDist = (mapX - rayPosX + (1 - stepX) / 2) / rayDirX;
-      else
-        perpWallDist = (mapY - rayPosY + (1 - stepY) / 2) / rayDirY;
+      //Calculate distance of perpendicular ray (oblique distance will give fisheye effect!)
+      if (side == 0) perpWallDist = (mapX - rayPosX + (1 - stepX) / 2) / rayDirX;
+      else           perpWallDist = (mapY - rayPosY + (1 - stepY) / 2) / rayDirY;
       
+      //Calculate height of line to draw on screen
       int lineHeight = (int)(win->h / perpWallDist);
       
+      //calculate lowest and highest pixel to fill in current stripe
       int drawStart = -lineHeight / 2 + win->h / 2;
-      if (drawStart < 0)
-        drawStart = 0;
+      if(drawStart < 0) drawStart = 0;
       int drawEnd = lineHeight / 2 + win->h / 2;
-      if (drawEnd >= win->h)
-        drawEnd = win->h - 1;
+      if(drawEnd >= win->h) drawEnd = win->h - 1;
       
-      int color;
-      switch(map[mapX][mapY]) {
-        case 1:  color = RED;    break;
-        case 2:  color = LIME;   break;
-        case 3:  color = BLUE;   break;
-        case 4:  color = PINK;  break;
-        default: color = WHITE; break;
+      //texturing calculations
+      int texNum = map[mapX][mapY] - 1; //1 subtracted from it so that texture 0 can be used!
+      
+      //calculate value of wallX
+      double wallX; //where exactly the wall was hit
+      if (side == 0) wallX = rayPosY + perpWallDist * rayDirY;
+      else           wallX = rayPosX + perpWallDist * rayDirX;
+      wallX -= floor((wallX));
+      
+      //x coordinate on the texture
+      int texX = (int)(wallX * 64.);
+      if(side == 0 && rayDirX > 0) texX = 64 - texX - 1;
+      if(side == 1 && rayDirY < 0) texX = 64 - texX - 1;
+      
+      for(int y = drawStart; y < drawEnd; y++)
+      {
+        int d = y * 256 - win->h * 128 + lineHeight * 128;  //256 and 128 factors to avoid floats
+        int texY = ((d * 64) / lineHeight) / 256;
+        int color = images[texNum]->buf[64 * texY + texX];
+        //make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
+        if(side == 1) color = (color >> 1) & 8355711;
+        pset(win, x, y, color);
       }
-      
-      if (side == 1)
-        color = color / 2;
-      
-      yline(win, x, drawStart, drawEnd, color);
     }
     
     render();
