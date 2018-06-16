@@ -2176,6 +2176,25 @@ void iterate(surface_t* s, int (*fn)(int x, int y, int col)) {
       XYSET(s, x, y, fn(x, y, XYGET(s, x, y)));
 }
 
+surface_t* resize(surface_t* s, int nw, int nh) {
+  surface_t* ret = surface(nw, nh);
+  int x_ratio = (int)((s->w << 16) / nw) + 1;
+  int y_ratio = (int)((s->h << 16) / nh) + 1;
+  int x2, y2;
+  for (int i=0; i < nh; ++i) {
+    int* t = ret->buf + i * nw;
+    y2 = ((i * y_ratio) >> 16);
+    int* p = s->buf + y2 * s->w;
+    int rat = 0;
+    for (int j=0; j < nw; ++j) {
+      x2 = (rat >> 16);
+      *t++ = p[x2];
+      rat += x_ratio;
+    }
+  }
+  return ret;
+}
+
 void get_mouse_pos(int* x, int* y) {
   if (!x || !y)
     return;

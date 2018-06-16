@@ -233,6 +233,7 @@ extern "C" {
   void rgb(int c, int* r, int* g, int* b);
   surface_t* copy(surface_t* s);
   void iterate(surface_t* s, int(*fn)(int x, int y, int col));
+  surface_t* resize(surface_t* s, int nw, int nh);
 #endif
   
   typedef enum {

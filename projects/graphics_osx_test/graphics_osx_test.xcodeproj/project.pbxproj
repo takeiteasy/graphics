@@ -10,7 +10,7 @@
 		88B0B5F1204D132D00BE9A54 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0B5F0204D132D00BE9A54 /* Cocoa.framework */; };
 		88B0B5F3204D133100BE9A54 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0B5F2204D133100BE9A54 /* OpenGL.framework */; };
 		88DC86D520D45250000A762E /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0B5ED204D09C900BE9A54 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
-		88DC86D920D4547B000A762E /* raycaster.c in Sources */ = {isa = PBXBuildFile; fileRef = 88DC86CD20D45205000A762E /* raycaster.c */; };
+		88DC86DA20D5908F000A762E /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 8847E0C6206027AA00C9816E /* test.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -150,7 +150,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88DC86D920D4547B000A762E /* raycaster.c in Sources */,
+				88DC86DA20D5908F000A762E /* test.c in Sources */,
 				88DC86D520D45250000A762E /* graphics.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

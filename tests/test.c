@@ -1,13 +1,5 @@
 #include "../graphics.h"
-#define TICK_INTERVAL 30
 static long next_time;
-
-long time_left(void) {
-  long now = ticks();
-  long ret = (next_time <= now ? 0 : next_time - now);
-  next_time += TICK_INTERVAL;
-  return ret;
-}
 
 static int mx = 0, my = 0, running = 1;
 
@@ -80,15 +72,51 @@ int main(int argc, const char* argv[]) {
   int col = 0, i, x, y;
   long sine_i = 0;
   user_event_t ue;
-  next_time = ticks() + TICK_INTERVAL;
+  long prev_frame_tick;
+  long curr_frame_tick = ticks();
   while (running) {
-    fill(win, WHITE);
+    prev_frame_tick = curr_frame_tick;
+    curr_frame_tick = ticks();
+    
+    while (poll_events(&ue)) {
+      switch (ue.type) {
+        case WINDOW_CLOSED:
+          running = 0;
+          break;
+        case KEYBOARD_KEY_DOWN:
+          switch (ue.sym) {
+#if defined(__APPLE__)
+            case KB_KEY_Q:
+              if (ue.mod & KB_MOD_SUPER)
+                running = 0;
+              break;
+#else
+            case KB_KEY_F4:
+              if (ue.mod & KB_MOD_ALT)
+                running = 0;
+              break;
+#endif
+            case KB_KEY_SPACE:
+              save_bmp(win, "test.bmp");
+              break;
+            default:
+              break;
+          }
+          break;
+        default:
+          break;
+      }
+    }
+    
+    long speed = curr_frame_tick - prev_frame_tick;
 
+    fill(win, RED);
+    
     for (int x = 32; x < win->w; x += 32)
       yline(win, x, 0, win->h, GRAY);
     for (int y = 32; y < win->h; y += 32)
       xline(win, y, 0, win->w, GRAY);
-    
+
     int last_x = 0, last_y = 240;
     for (long i = sine_i; i < (sine_i + win->w); ++i) {
       float x = (float)(i - sine_i);
@@ -97,7 +125,7 @@ int main(int argc, const char* argv[]) {
       last_x = x;
       last_y = y;
     }
-    sine_i += 5;
+    sine_i += (int)(speed * .3);
 
     blit(win, &tmpp5, d, NULL, -1, LIME);
     blit(win, &tmpp, c, &tmpr, -1, LIME);
@@ -144,39 +172,8 @@ int main(int argc, const char* argv[]) {
 
     line(win, 0, 0, mx, my, col);
     circle(win, mx, my, 30, col, 0);
-
-    while (poll_events(&ue)) {
-      switch (ue.type) {
-        case WINDOW_CLOSED:
-          running = 0;
-          break;
-        case KEYBOARD_KEY_DOWN:
-          switch (ue.sym) {
-#if defined(__APPLE__)
-            case KB_KEY_Q:
-              if (ue.mod & KB_MOD_SUPER)
-                running = 0;
-              break;
-#else
-            case KB_KEY_F4:
-              if (ue.mod & KB_MOD_ALT)
-                running = 0;
-              break;
-#endif
-            case KB_KEY_SPACE:
-              save_bmp(win, "test.bmp");
-              break;
-            default:
-              break;
-          }
-          break;
-        default:
-          break;
-      }
-    }
     
     render();
-    delay(time_left());
   }
 
   destroy(&c);
