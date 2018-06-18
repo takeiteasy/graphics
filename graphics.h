@@ -191,8 +191,8 @@ extern "C" {
     int x, y;
   } point_t;
   
-  surface_t* surface(unsigned int, unsigned int);
-  void destroy(surface_t**);
+  int surface(surface_t* s, unsigned int w, unsigned int h);
+  void destroy(surface_t*);
   void fill(surface_t* s, int col);
   int pset(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
@@ -200,7 +200,12 @@ extern "C" {
   void yline(surface_t* s, int x, int y0, int y1, int col);
   void xline(surface_t* s, int y, int x0, int x1, int col);
   void line(surface_t* s, int x0, int y0, int x1, int y1, int col);
-  surface_t* tga(const char* path);
+  int tga(surface_t* s, const char* path);
+  void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col);
+  void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str);
+  void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...);
+  int string(surface_t* s, int col, int bg, const char* str);
+  int string_f(surface_t* s, int col, int bg, const char* fmt, ...);
   int alpha(int c1, int c2, float i);
   long ticks(void);
   void delay(long ms);
@@ -216,9 +221,8 @@ extern "C" {
   void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col);
   void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
   void rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
-  surface_t* bmp(const char* path);
+  int bmp(surface_t* s, const char* path);
   int save_bmp(surface_t* s, const char* path);
-  void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col);
 #if defined(GRAPHICS_EXTRA_FONTS)
   void letter_block(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
   void letter_box(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
@@ -226,14 +230,11 @@ extern "C" {
   void letter_greek(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
   void letter_hiragana(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
 #endif
-  void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str);
-  void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...);
-  surface_t* string(int col, int bg, const char* str);
-  surface_t* string_f(int col, int bg, const char* fmt, ...);
   void rgb(int c, int* r, int* g, int* b);
-  surface_t* copy(surface_t* s);
+  int copy(surface_t* in, surface_t* out);
   void iterate(surface_t* s, int(*fn)(int x, int y, int col));
-  surface_t* resize(surface_t* s, int nw, int nh);
+  int resize(surface_t* in, int nw, int nh, surface_t* out);
+  int reset(surface_t* s, int nw, int nh);
 #endif
   
   typedef enum {
@@ -405,14 +406,13 @@ extern "C" {
     int data1, data2;
   } user_event_t;
   
-  surface_t* screen(const char* title, int w, int h);
+  int screen(const char* title, int w, int h);
   int should_close(void);
   int poll_events(user_event_t* e);
-  void render(void);
+  void render(surface_t* s);
   void release(void);
   const char* get_last_error(void);
   void get_mouse_pos(int* x, int* y);
-  void get_mouse_pos_relative(int* x, int* y);
   
 #ifdef __cplusplus
 }

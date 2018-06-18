@@ -20,25 +20,26 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 
 ## TODO
 
+- Fix some key bindings on windows
+- Fix window size on windows
+- Window flags
+- Update nix version with new updates
 - FIX BMP LOADING, TOTALLY FUCKED ATM
 - Colour escapes for print()
-- Window flags
 - Cursor lock & hide
-- Extended surface functions, resize, rotate, filters, etc
+- Extended surface functions, ~~resize~~, rotate, filters, etc
 - Joystick/Gamepad input
 - Add fill option for ellipse_rotated
 - Add rotated rect function
 - Add line width option
 - Fix as many warnings as possible
-- Seperate internal rendering
-- Dynamic OpenGL loader for OSX?
 
 ### MAYBE TODO
 
 - Vulkan/DirectX/Metal backends
 - Documentation & comments
-- OpenGL 1.X fallback for OSX
-- Wayland window code
+- OpenGL 1.X fallback for OSX? (Dynamic OpenGL loader for OSX?)
+- Wayland/Mir window code
 - C++ OOP wrapper
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples

@@ -666,31 +666,28 @@ static char font8x8_extra[132][8] = {
 
 static int mx = 0, my = 0, win_w, win_h;
 
-surface_t* surface(unsigned int w, unsigned int h) {
-  surface_t* ret = malloc(sizeof(surface_t));
-  if (!ret) {
+int surface(surface_t* s, unsigned int w, unsigned int h) {
+  s->w = w;
+  s->h = h;
+  size_t sz = w * h * sizeof(unsigned int) + 1;
+  s->buf = malloc(sz);
+  if (!s->buf) {
     SET_LAST_ERROR("malloc() failed");
-    return NULL;
+    return 0;
   }
-  
-  ret->w = w;
-  ret->h = h;
-  size_t s = w * h * sizeof(unsigned int) + 1;
-  ret->buf = malloc(s);
-  if (!ret->buf) {
-    SET_LAST_ERROR("malloc() failed");
-    return NULL;
-  }
-  memset(ret->buf, 0, s);
+  memset(s->buf, 0, sz);
 
-  return ret;
+  return 1;
 }
 
-void destroy(surface_t** s) {
-  if (*s) {
-    if ((*s)->buf)
-      free((*s)->buf);
-    free(*s);
+void destroy(surface_t* s) {
+  if (s) {
+    if (s->buf) {
+      free(s->buf);
+      s->buf = NULL;
+    }
+    s->w = 0;
+    s->h = 0;
   }
 }
 
@@ -885,25 +882,25 @@ typedef struct {
 #pragma pack(pop)
 #define TGA_SIZE sizeof(tga_t)
 
-surface_t* tga(const char* path) {
+int tga(surface_t* s, const char* path) {
   FILE* fp = fopen(path, "rb");
   if (!fp) {
     SET_LAST_ERROR("fopen() failed: Couldn't open \"%s\"", path);
-    return NULL;
+    return 0;
   }
   
   char header_buf[TGA_SIZE];
   if (!fread(header_buf, TGA_SIZE, 1, fp)) {
     fclose(fp);
     SET_LAST_ERROR("fread() failed: Couldn't read \"%s\"", path);
-    return NULL;
+    return 0;
   }
   tga_t* header = (tga_t*)(size_t)header_buf;
   
   if ((header->type != 2) || (header->depth < 24)) {
     fclose(fp);
     SET_LAST_ERROR("tga() failed: Invalid TGA type/depth \"%d/%d\", only 2/24 supported", header->type, header->depth);
-    return NULL;
+    return 0;
   }
   
   size_t pixel_size = header->width * header->height * (header->depth >> 3) + 1;
@@ -911,26 +908,123 @@ surface_t* tga(const char* path) {
   if (!pixel_buf) {
     fclose(fp);
     SET_LAST_ERROR("malloc() failed");
-    return NULL;
+    return 0;
   }
-  if (!fread(pixel_buf, pixel_size, 1, fp)) {
+  if (fread(pixel_buf, pixel_size, 1, fp) > 0) {
     fclose(fp);
     free(pixel_buf);
-    return NULL;
+    SET_LAST_ERROR("fread() failed");
+    return 0;
   }
   
-  surface_t* ret = surface(header->width, header->height);
+  surface(s, header->width, header->height);
   size_t len = (header->width * header->height) * 3;
   size_t p = 0, i = (header->width * header->height) - 1;
   while (p < len) {
-    ret->buf[(i - (i % header->width)) + (header->width - (i % header->width))] = RGB((unsigned int)pixel_buf[p + 2], (unsigned int)pixel_buf[p + 1], (unsigned int)pixel_buf[p]);
+    s->buf[(i - (i % header->width)) + (header->width - (i % header->width))] = RGB((unsigned int)pixel_buf[p + 2], (unsigned int)pixel_buf[p + 1], (unsigned int)pixel_buf[p]);
     p += 3;
     i -= 1;
   }
   fclose(fp);
   free(pixel_buf);
   
-  return ret;
+  return 1;
+}
+
+#define PRINT_LETTER(map, max_r, ch) \
+int i, j; \
+if (ch >= max_r || ch < 0) \
+  ch = 0; \
+for (i = 0; i < 8; ++i) \
+  for (j = 0; j < 8; ++j) \
+    if (map[ch][i] & 1 << j) \
+      XYSETSAFE(s, x + j, y + i, col);
+
+void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col) {
+  int c = (int)ch;
+  PRINT_LETTER(font8x8_basic, 128, c);
+}
+
+void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str) {
+  int u = x, v = y;
+  char* c = (char*)str;
+  while (c != NULL && *c != '\0') {
+    if (*c == '\n') {
+      v += LINE_HEIGHT;
+      u  = x;
+    } else {
+      letter(s, *c, u, v, col);
+      u += 8;
+    }
+    ++c;
+  }
+}
+
+void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...) {
+  char *buffer = NULL;
+  size_t buffer_size = 0;
+  
+  va_list argptr;
+  va_start(argptr, fmt);
+  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
+  va_end(argptr);
+  
+  if (length + 1 > buffer_size) {
+    buffer_size = length + 1;
+    buffer = realloc(buffer, buffer_size);
+    va_start(argptr, fmt);
+    vsnprintf(buffer, buffer_size, fmt, argptr);
+    va_end(argptr);
+  }
+  
+  print(s, x, y, col, buffer);
+  free(buffer);
+}
+
+int string(surface_t* s, int col, int bg, const char* str) {
+  int w = 0, x = 0, h = 8;
+  char* c = (char*)str;
+  while (c != NULL && *c != '\0') {
+    if (*c == '\n') {
+      h += LINE_HEIGHT;
+      if (x > w)
+        w = x;
+      x = 0;
+    } else
+      x += 8;
+    ++c;
+  }
+  if (x > w)
+    w = x;
+  
+  if (!surface(s, w, h))
+    return 0;
+  fill(s, bg);
+  print(s, 0, 0, col, str);
+  return 1;
+}
+
+int string_f(surface_t* s, int col, int bg, const char* fmt, ...) {
+  char *buffer = NULL;
+  size_t buffer_size = 0;
+  
+  va_list argptr;
+  va_start(argptr, fmt);
+  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
+  va_end(argptr);
+  
+  if (length + 1 > buffer_size) {
+    buffer_size = length + 1;
+    buffer = realloc(buffer, buffer_size);
+    va_start(argptr, fmt);
+    vsnprintf(buffer, buffer_size, fmt, argptr);
+    va_end(argptr);
+  }
+  
+  if (!string(s, col, bg, buffer))
+    return 0;
+  free(buffer);
+  return 1;
 }
 
 int alpha(int c1, int c2, float i) {
@@ -1872,13 +1966,13 @@ typedef struct {
 memcpy(d, b + off, s); \
 off += s;
 
-#define BMP_SET(c) (ret->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
+#define BMP_SET(c) (s->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
 
-surface_t* bmp(const char* path) {
+int bmp(surface_t* s, const char* path) {
   FILE* fp = fopen(path, "rb");
   if (!fp) {
     SET_LAST_ERROR("fopen() failed: %s\n", path);
-    return NULL;
+    return 0;
   }
 
   fseek(fp, 0, SEEK_END);
@@ -1888,7 +1982,7 @@ surface_t* bmp(const char* path) {
   unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
   if (!data) {
     SET_LAST_ERROR("calloc() failed");
-    return NULL;
+    return 0;
   }
   fread(data, 1, length, fp);
   fclose(fp);
@@ -1901,7 +1995,7 @@ surface_t* bmp(const char* path) {
 
   if (header.type != 0x4D42) {
     SET_LAST_ERROR("bmp() failed: invalid BMP signiture '%d'", header.type);
-    return NULL;
+    return 0;
   }
 
   unsigned char* color_map = NULL;
@@ -1911,27 +2005,26 @@ surface_t* bmp(const char* path) {
     color_map = (unsigned char*)malloc(color_map_size * sizeof(unsigned char));
     if (!color_map) {
       SET_LAST_ERROR("malloc() failed");
-      return NULL;
+      return 0;
     }
     BMP_GET(color_map, data, color_map_size);
   }
 
-  surface_t* ret = surface(info.width, info.height);
-  if (!ret) {
+  if (!surface(s, info.width, info.height)) {
     if (color_map)
       free(color_map);
     SET_LAST_ERROR("malloc() failed");
-    return NULL;
+    return 0;
   }
 
   off = header.offset;
-  int i, j, c, s = info.width * info.height;
+  int i, j, c, sz = info.width * info.height;
   unsigned char color;
   switch (info.compression) {
   case 0: // RGB
     switch (info.bits) { // BPP
     case 1:
-      for (i = (s - 1); i != -1; ++off) {
+      for (i = (sz - 1); i != -1; ++off) {
         for (j = 7; j >= 0; --j, --i) {
           c = color_map[((data[off] & (1 << j)) > 0) * 4 + 1];
           BMP_SET(RGB(c, c, c));
@@ -1939,7 +2032,7 @@ surface_t* bmp(const char* path) {
       }
       break;
     case 4:
-      for (i = (s - 1); i != -1; --i, ++off) {
+      for (i = (sz - 1); i != -1; --i, ++off) {
         color = (data[off] >> 4) * 4;
         BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
         i--;
@@ -1948,19 +2041,19 @@ surface_t* bmp(const char* path) {
       }
       break;
     case 8:
-      for (i = (s - 1); i != -1; --i, ++off) {
+      for (i = (sz - 1); i != -1; --i, ++off) {
         color = (data[off] * 4);
         BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
       }
       break;
     case 24:
     case 32:
-      for (i = (s - 1); i != -1; --i, off += (info.bits == 32 ? 4 : 3))
+      for (i = (sz - 1); i != -1; --i, off += (info.bits == 32 ? 4 : 3))
         BMP_SET(RGB(data[off], data[off + 1], data[off + 2]));
       break;
     default:
       SET_LAST_ERROR("bmp() failed. Unsupported BPP: %d", info.bits);
-      destroy(&ret);
+      destroy(s);
       break;
     }
     break;
@@ -1968,14 +2061,14 @@ surface_t* bmp(const char* path) {
   case 2: // RLE4
   default:
     SET_LAST_ERROR("bmp() failed. Unsupported compression: %d", info.compression);
-    destroy(&ret);
+    destroy(s);
     break;
   }
 
   if (color_map)
     free(color_map);
 
-  return ret;
+  return 1;
 }
 
 int save_bmp(surface_t* s, const char* path) {
@@ -2041,20 +2134,6 @@ int save_bmp(surface_t* s, const char* path) {
   return 1;
 }
 
-#define PRINT_LETTER(map, max_r, ch) \
-int i, j; \
-if (ch >= max_r || ch < 0) \
-  ch = 0; \
-for (i = 0; i < 8; ++i) \
-  for (j = 0; j < 8; ++j) \
-    if (map[ch][i] & 1 << j) \
-      XYSETSAFE(s, x + j, y + i, col);
-
-void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col) {
-  int c = (int)ch;
-  PRINT_LETTER(font8x8_basic, 128, c);
-}
-
 #if defined(GRAPHICS_EXTRA_FONTS)
 void letter_block(surface_t* s, int ch, unsigned int x, unsigned int y, int col) {
   PRINT_LETTER(font8x8_block, 32, ch);
@@ -2077,114 +2156,40 @@ void letter_hiragana(surface_t* s, int ch, unsigned int x, unsigned int y, int c
 }
 #endif
 
-void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str) {
-  int u = x, v = y;
-  char* c = (char*)str;
-  while (c != NULL && *c != '\0') {
-    if (*c == '\n') {
-      v += LINE_HEIGHT;
-      u  = x;
-    } else {
-      letter(s, *c, u, v, col);
-      u += 8;
-    }
-    ++c;
-  }
-}
-
-void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...) {
-  char *buffer = NULL;
-  size_t buffer_size = 0;
-
-  va_list argptr;
-  va_start(argptr, fmt);
-  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
-  va_end(argptr);
-
-  if (length + 1 > buffer_size) {
-    buffer_size = length + 1;
-    buffer = realloc(buffer, buffer_size);
-    va_start(argptr, fmt);
-    vsnprintf(buffer, buffer_size, fmt, argptr);
-    va_end(argptr);
-  }
-
-  print(s, x, y, col, buffer);
-  free(buffer);
-}
-
-surface_t* string(int col, int bg, const char* str) {
-  int w = 0, x = 0, h = 8;
-  char* c = (char*)str;
-  while (c != NULL && *c != '\0') {
-    if (*c == '\n') {
-      h += LINE_HEIGHT;
-      if (x > w)
-        w = x;
-      x = 0;
-    } else
-      x += 8;
-    ++c;
-  }
-  if (x > w)
-    w = x;
-
-  surface_t* ret = surface(w, h);
-  fill(ret, bg);
-  print(ret, 0, 0, col, str);
-  return ret;
-}
-
-surface_t* string_f(int col, int bg, const char* fmt, ...) {
-  char *buffer = NULL;
-  size_t buffer_size = 0;
-
-  va_list argptr;
-  va_start(argptr, fmt);
-  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
-  va_end(argptr);
-
-  if (length + 1 > buffer_size) {
-    buffer_size = length + 1;
-    buffer = realloc(buffer, buffer_size);
-    va_start(argptr, fmt);
-    vsnprintf(buffer, buffer_size, fmt, argptr);
-    va_end(argptr);
-  }
-
-  surface_t* ret = string(col, bg, buffer);
-  free(buffer);
-  return ret;
-}
-
 void rgb(int c, int* r, int* g, int* b) {
   *r = (c >> 16) & 0xFF;
   *g = (c >> 8) & 0xFF;
   *b =  c & 0xFF;
 }
 
-surface_t* copy(surface_t* s) {
-  surface_t* ret = surface(s->w, s->h);
-  memcpy(ret->buf, s->buf, s->w * s->h * sizeof(unsigned int) + 1);
-  return ret;
+int copy(surface_t* in, surface_t* out) {
+  if (!surface(out, in->w, in->h))
+    return 0;
+  memcpy(out->buf, in->buf, in->w * in->h * sizeof(unsigned int) + 1);
+  return !!out->buf;
 }
 
 void iterate(surface_t* s, int (*fn)(int x, int y, int col)) {
+  if (!s)
+    return;
+  
   int x, y;
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
       XYSET(s, x, y, fn(x, y, XYGET(s, x, y)));
 }
 
-surface_t* resize(surface_t* s, int nw, int nh) {
-  surface_t* ret = surface(nw, nh);
-  int x_ratio = (int)((s->w << 16) / nw) + 1;
-  int y_ratio = (int)((s->h << 16) / nh) + 1;
+int resize(surface_t* in, int nw, int nh, surface_t* out) {
+  if (!surface(out, nw, nh))
+    return 0;
+  
+  int x_ratio = (int)((in->w << 16) / nw) + 1;
+  int y_ratio = (int)((in->h << 16) / nh) + 1;
   int x2, y2;
   for (int i=0; i < nh; ++i) {
-    int* t = ret->buf + i * nw;
+    int* t = out->buf + i * nw;
     y2 = ((i * y_ratio) >> 16);
-    int* p = s->buf + y2 * s->w;
+    int* p = in->buf + y2 * in->w;
     int rat = 0;
     for (int j=0; j < nw; ++j) {
       x2 = (rat >> 16);
@@ -2192,7 +2197,21 @@ surface_t* resize(surface_t* s, int nw, int nh) {
       rat += x_ratio;
     }
   }
-  return ret;
+  return 1;
+}
+
+int reset(surface_t* s, int nw, int nh) {
+  size_t sz = nw * nh * sizeof(unsigned int) + 1;
+  int* tmp = realloc(buffer->buf, sz);
+  if (!tmp) {
+    SET_LAST_ERROR("realloc() failed");
+    return 0;
+  }
+  s->buf = tmp;
+  s->w = win_w;
+  s->h = win_h;
+  memset(s->buf, 0, sz);
+  return 1;
 }
 
 void get_mouse_pos(int* x, int* y) {
@@ -2203,22 +2222,14 @@ void get_mouse_pos(int* x, int* y) {
   *y = my;
 }
 
-void get_mouse_pos_relative(int* x, int* y) {
-  if (!x || !y)
-    return;
-
-  *x = (int)(((float)mx / (float)win_w) * buffer->w);
-  *y = (int)(((float)my / (float)win_h) * buffer->h);
-}
-
 const char* get_last_error() {
   return last_error;
 }
 
 #if defined(GRAPHICS_OPENGL_BACKEND)
 #if defined(__APPLE__)
-#import <OpenGL/OpenGL.h>;
-#import <OpenGL/gl3.h>;
+#import <OpenGL/OpenGL.h>
+#import <OpenGL/gl3.h>
 #endif
 
 #if defined(__linux__)
@@ -2508,20 +2519,6 @@ void free_gl() {
 #endif // GRAPHICS_OPENGL_BACKEND
 #endif // GRAPHICS_LEAN_AND_MEAN
 
-static void resize_window_buffer(void) {
-  size_t s = win_w * win_h * sizeof(unsigned int) + 1;
-  int* tmp = realloc(buffer->buf, s);
-  if (!tmp) {
-    SET_LAST_ERROR("malloc() failed");
-    return;
-  }
-  buffer->buf = tmp;
-  buffer->w = win_w;
-  buffer->h = win_h;
-  memset(buffer->buf, 0, s);
-  print_f(buffer, 4, 5, WHITE, "%dx%d", win_w, win_h);
-}
-
 #if defined(__APPLE__)
 #import <Cocoa/Cocoa.h>
 
@@ -2795,7 +2792,6 @@ extern surface_t* buffer;
 #if defined(GRAPHICS_OPENGL_BACKEND)
   glViewport(0, 0, win_w, win_h);
 #endif
-  resize_window_buffer();
   if (__resize_callback)
     __resize_callback(win_w, win_h);
 }
@@ -2823,11 +2819,7 @@ extern surface_t* buffer;
 }
 @end
 
-surface_t* screen(const char* t, int w, int h) {
-  if (!(buffer = surface(w, h)))
-    return NULL;
-  buffer->w = w;
-  buffer->h = h;
+int screen(const char* t, int w, int h) {
   win_w = w;
   win_h = h;
 
@@ -2965,7 +2957,7 @@ surface_t* screen(const char* t, int w, int h) {
   if (!app) {
     release();
     SET_LAST_ERROR("[osx_app_t initWithContentRect] failed");
-    return NULL;
+    return 0;
   }
 
   id app_del = [AppDelegate alloc];
@@ -2986,7 +2978,7 @@ surface_t* screen(const char* t, int w, int h) {
   [NSApp activateIgnoringOtherApps:YES];
   [pool drain];
 
-  return buffer;
+  return 1;
 }
 
 int should_close() {
@@ -3054,7 +3046,9 @@ int poll_events(user_event_t* ue) {
   return ret;
 }
 
-void render() {
+void render(surface_t* s) {
+  if (s && s->buf)
+    buffer = s;
   [[app contentView] setNeedsDisplay:YES];
 }
 
@@ -3062,7 +3056,6 @@ void release() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   if (app)
     [app close];
-  destroy(&buffer);
   [pool drain];
 }
 #elif defined(_WIN32)
