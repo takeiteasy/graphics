@@ -1027,6 +1027,12 @@ int string_f(surface_t* s, int col, int bg, const char* fmt, ...) {
   return 1;
 }
 
+void rgb(int c, int* r, int* g, int* b) {
+  *r = (c >> 16) & 0xFF;
+  *g = (c >> 8) & 0xFF;
+  *b =  c & 0xFF;
+}
+
 int alpha(int c1, int c2, float i) {
   if (i == 1.f || i == 0.f)
     return c1;
@@ -1071,9 +1077,35 @@ void delay(long ms) {
 #endif
 }
 
+int reset(surface_t* s, int nw, int nh) {
+  size_t sz = nw * nh * sizeof(unsigned int) + 1;
+  int* tmp = realloc(buffer->buf, sz);
+  if (!tmp) {
+    SET_LAST_ERROR("realloc() failed");
+    return 0;
+  }
+  s->buf = tmp;
+  s->w = win_w;
+  s->h = win_h;
+  memset(s->buf, 0, sz);
+  return 1;
+}
+
 void resize_callback(void(*cb)(int, int)) {
   if (cb)
     __resize_callback = cb;
+}
+
+void get_mouse_pos(int* x, int* y) {
+  if (!x || !y)
+    return;
+  
+  *x = mx;
+  *y = my;
+}
+
+const char* get_last_error() {
+  return last_error;
 }
 
 #if !defined(GRAPHICS_LEAN_AND_MEAN)
@@ -2156,12 +2188,6 @@ void letter_hiragana(surface_t* s, int ch, unsigned int x, unsigned int y, int c
 }
 #endif
 
-void rgb(int c, int* r, int* g, int* b) {
-  *r = (c >> 16) & 0xFF;
-  *g = (c >> 8) & 0xFF;
-  *b =  c & 0xFF;
-}
-
 int copy(surface_t* in, surface_t* out) {
   if (!surface(out, in->w, in->h))
     return 0;
@@ -2198,32 +2224,6 @@ int resize(surface_t* in, int nw, int nh, surface_t* out) {
     }
   }
   return 1;
-}
-
-int reset(surface_t* s, int nw, int nh) {
-  size_t sz = nw * nh * sizeof(unsigned int) + 1;
-  int* tmp = realloc(buffer->buf, sz);
-  if (!tmp) {
-    SET_LAST_ERROR("realloc() failed");
-    return 0;
-  }
-  s->buf = tmp;
-  s->w = win_w;
-  s->h = win_h;
-  memset(s->buf, 0, sz);
-  return 1;
-}
-
-void get_mouse_pos(int* x, int* y) {
-  if (!x || !y)
-    return;
-
-  *x = mx;
-  *y = my;
-}
-
-const char* get_last_error() {
-  return last_error;
 }
 
 #if defined(GRAPHICS_OPENGL_BACKEND)

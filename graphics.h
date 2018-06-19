@@ -206,9 +206,11 @@ extern "C" {
   void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...);
   int string(surface_t* s, int col, int bg, const char* str);
   int string_f(surface_t* s, int col, int bg, const char* fmt, ...);
+  void rgb(int c, int* r, int* g, int* b);
   int alpha(int c1, int c2, float i);
   long ticks(void);
   void delay(long ms);
+  int reset(surface_t* s, int nw, int nh);
   void resize_callback(void(*cb)(int, int));
   
 #if !defined(GRAPHICS_LEAN_AND_MEAN)
@@ -230,11 +232,9 @@ extern "C" {
   void letter_greek(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
   void letter_hiragana(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
 #endif
-  void rgb(int c, int* r, int* g, int* b);
   int copy(surface_t* in, surface_t* out);
   void iterate(surface_t* s, int(*fn)(int x, int y, int col));
   int resize(surface_t* in, int nw, int nh, surface_t* out);
-  int reset(surface_t* s, int nw, int nh);
 #endif
   
   typedef enum {

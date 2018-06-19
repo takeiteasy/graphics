@@ -30,7 +30,7 @@ static int win_w = 0, win_h = 0, mx = 0, my = 0, running = 1;
 void on_resize(int w, int h) {
   win_w = w;
   win_h = h;
-#if DEBUG_NATIVE_RESIZE == 0
+#if !DEBUG_NATIVE_RESIZE
   reset(&win, w, h);
   print_f(&win, 4, 5, WHITE, "%dx%d\n", w, h);
 #endif
