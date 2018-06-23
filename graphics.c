@@ -2986,64 +2986,52 @@ int should_close() {
 }
 
 int poll_events(user_event_t* ue) {
-  int ret = 1;
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   NSEvent* e = [NSApp nextEventMatchingMask:NSEventMaskAny
                                   untilDate:[NSDate distantPast]
                                      inMode:NSDefaultRunLoopMode
                                     dequeue:YES];
-
-  if (ue) {
-    memset(ue, 0, sizeof(user_event_t));
-    if (e) {
-      switch ([e type]) {
-        case NSEventTypeKeyUp:
-          ue->type = KEYBOARD_KEY_UP;
-          ue->sym = translate_key([e keyCode]);
-          ue->mod = translate_mod([e modifierFlags]);
-          break;
-        case NSEventTypeKeyDown:
-          ue->type = KEYBOARD_KEY_DOWN;
-          ue->sym = translate_key([e keyCode]);
-          ue->mod = translate_mod([e modifierFlags]);
-          break;
-        case NSEventTypeLeftMouseUp:
-        case NSEventTypeRightMouseUp:
-        case NSEventTypeOtherMouseUp:
-          ue->type = MOUSE_BTN_UP;
-        case NSEventTypeLeftMouseDown:
-        case NSEventTypeRightMouseDown:
-        case NSEventTypeOtherMouseDown:
-          if (ue->type != MOUSE_BTN_UP)
-            ue->type = MOUSE_BTN_DOWN;
-          ue->btn = (mousebtn_t)[e buttonNumber];
-          ue->mod = translate_mod([e modifierFlags]);
-          ue->data1 = mx;
-          ue->data2 = my;
-          break;
-        case NSEventTypeScrollWheel:
-          ue->type = SCROLL_WHEEL;
-          ue->data1 = [e deltaX];
-          ue->data2 = [e deltaY];
-          break;
-        default:
-          if (app->closed) {
-            ue->type = WINDOW_CLOSED;
-            ret = 1;
-          } else
-            ret = 0;
-          break;
-      }
-      [NSApp sendEvent:e];
-    } else
-      ret = 0;
-  } else {
-    [NSApp sendEvent:e];
-    ret = 0;
+  if (!e || ! ue)
+    return 0;
+  
+  memset(ue, 0, sizeof(user_event_t));
+  switch ([e type]) {
+    case NSEventTypeKeyUp:
+      ue->type = KEYBOARD_KEY_UP;
+    case NSEventTypeKeyDown:
+      if (ue->type != KEYBOARD_KEY_UP)
+        ue->type = KEYBOARD_KEY_DOWN;
+      ue->sym = translate_key([e keyCode]);
+      ue->mod = translate_mod([e modifierFlags]);
+      break;
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeOtherMouseUp:
+      ue->type = MOUSE_BTN_UP;
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeOtherMouseDown:
+      if (ue->type != MOUSE_BTN_UP)
+        ue->type = MOUSE_BTN_DOWN;
+      ue->btn = (mousebtn_t)([e buttonNumber] + 1);
+      ue->mod = translate_mod([e modifierFlags]);
+      ue->data1 = mx;
+      ue->data2 = my;
+      break;
+    case NSEventTypeScrollWheel:
+      ue->type = SCROLL_WHEEL;
+      ue->data1 = [e deltaX];
+      ue->data2 = [e deltaY];
+      break;
+    default:
+      if (app->closed)
+        ue->type = WINDOW_CLOSED;
+      break;
   }
-
+  
+  [NSApp sendEvent:e];
   [pool release];
-  return ret;
+  return 1;
 }
 
 void render(surface_t* s) {
@@ -3212,18 +3200,18 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
         case WM_LBUTTONDOWN:
           action = MOUSE_BTN_DOWN;
         case WM_LBUTTONUP:
-          button = MOUSE_BTN_0;
+          button = MOUSE_BTN_1;
           break;
         case WM_RBUTTONDOWN:
           action = MOUSE_BTN_DOWN;
         case WM_RBUTTONUP:
-          button = MOUSE_BTN_1;
+          button = MOUSE_BTN_2;
         case WM_MBUTTONDOWN:
           action = MOUSE_BTN_DOWN;
         case WM_MBUTTONUP:
-          button = MOUSE_BTN_2;
+          button = MOUSE_BTN_3;
         default:
-          button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? MOUSE_BTN_4 : MOUSE_BTN_5);
+          button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? MOUSE_BTN_5 : MOUSE_BTN_6);
           if (message == WM_XBUTTONDOWN)
             action = MOUSE_BTN_DOWN;
       }
@@ -4021,13 +4009,13 @@ int poll_events(user_event_t* ue) {
     ue->mod  = translate_mod(event.xkey.state);
     switch (event.xbutton.button) {
     case Button1:
-      ue->btn = MOUSE_BTN_0;
-      break;
-    case Button2:
       ue->btn = MOUSE_BTN_1;
       break;
-    case Button3:
+    case Button2:
       ue->btn = MOUSE_BTN_2;
+      break;
+    case Button3:
+      ue->btn = MOUSE_BTN_3;
       break;
     case Button4:
       ue->type = SCROLL_WHEEL;

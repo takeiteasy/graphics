@@ -238,7 +238,7 @@ extern "C" {
 #endif
   
   typedef enum {
-    MOUSE_BTN_0,
+    MOUSE_BTN_0, // No mouse button
     MOUSE_BTN_1,
     MOUSE_BTN_2,
     MOUSE_BTN_3,
