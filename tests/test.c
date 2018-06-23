@@ -32,8 +32,10 @@ void on_resize(int w, int h) {
   win_h = h;
 #if !DEBUG_NATIVE_RESIZE
   reset(&win, w, h);
-  print_f(&win, 4, 5, WHITE, "%dx%d\n", w, h);
+#else
+  fill(&win, BLACK);
 #endif
+  print_f(&win, 4, 5, WHITE, "%dx%d\n", w, h);
 }
 
 #define INITIAL_WIN_W 640

@@ -3050,7 +3050,7 @@ void release() {
 static WNDCLASS wnd;
 static HWND hwnd;
 static int closed = 0;
-static HDC hdc;
+static HDC hdc = 0;
 #if defined(GRAPHICS_OPENGL_BACKEND)
 static PIXELFORMATDESCRIPTOR pfd;
 static HGLRC hrc;
@@ -3060,6 +3060,8 @@ static BITMAPINFO* bmpinfo;
 #endif
 static user_event_t* tmp_ue;
 static int event_fired = 0;
+static int adjusted_win_w, adjusted_win_h;
+static int ifuckinghatethewin32api = 0;
 
 static int translate_mod() {
   int mods = 0;
@@ -3103,15 +3105,13 @@ static int translate_key(WPARAM wParam, LPARAM lParam) {
   return keycodes[HIWORD(lParam) & 0x1FF];
 }
 
-static void adjust_win_wh(int w, int h) {
+void set_adjusted_win_wh(int w, int h) {
   RECT rect = { 0 };
   rect.right = w;
   rect.bottom = h;
-
   AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
-
-  win_w = rect.right + rect.left;
-  win_h = rect.bottom - rect.top;
+  adjusted_win_w = rect.right - rect.left;
+  adjusted_win_h = rect.bottom - rect.top;
 }
 
 static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -3124,22 +3124,31 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
         BeginPaint(hwnd, &ps);
         EndPaint(hwnd, &ps);
 #else
+        bmpinfo->bmiHeader.biWidth = buffer->w;
+        bmpinfo->bmiHeader.biHeight = -buffer->h;
         StretchDIBits(hdc, 0, 0, win_w, win_h, 0, 0, buffer->w, buffer->h, buffer->buf, bmpinfo, DIB_RGB_COLORS, SRCCOPY);
         ValidateRect(hWnd, NULL);
 #endif
-      }
+      } else
+        tmp_ue = NULL;
       break;
     case WM_SIZE:
-      adjust_win_wh(LOWORD(lParam), HIWORD(lParam));
-#if defined(GRAPHICS_OPENGL_BACKEND)
-      glViewport(0, 0, win_w, win_h);
-      PostMessage(hWnd, WM_PAINT, 0, 0);
-#endif
-      resize_window_buffer();
-      bmpinfo->bmiHeader.biWidth = win_w;
-      bmpinfo->bmiHeader.biHeight = -win_h;
+      if (!ifuckinghatethewin32api)
+        break;
+      RECT rect = { 0 };
+      rect.right = LOWORD(lParam);
+      rect.bottom = HIWORD(lParam);
+      AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
+      win_w = rect.right + rect.left;
+      win_h = rect.bottom - rect.top;
+
       if (__resize_callback)
         __resize_callback(win_w, win_h);
+
+#if defined(GRAPHICS_OPENGL_BACKEND)
+      glViewport(rect.left, rect.top, rect.right, win_h);
+      PostMessage(hWnd, WM_PAINT, 0, 0);
+#endif
       break;
     case WM_CLOSE:
       closed = 1;
@@ -3239,11 +3248,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
   return res;
 }
 
-surface_t* screen(const char* t, int w, int h) {
-  if (!(buffer = surface(w, h)))
-    return NULL;
-  buffer->w = w;
-  buffer->h = h;
+int screen(const char* t, int w, int h) {
+  win_w = w;
+  win_h = h;
 
   memset(keycodes, -1, sizeof(keycodes));
   memset(scancodes, -1, sizeof(scancodes));
@@ -3375,7 +3382,7 @@ surface_t* screen(const char* t, int w, int h) {
       scancodes[keycodes[sc]] = sc;
   }
 
-  adjust_win_wh(w, h);
+  set_adjusted_win_wh(w, h);
 
 #if defined(GRAPHICS_OPENGL_BACKEND)
   static HINSTANCE hinst = 0;
@@ -3395,14 +3402,14 @@ surface_t* screen(const char* t, int w, int h) {
     if (!RegisterClass(&wnd)) {
       release();
       SET_LAST_ERROR("RegisterClass() failed: %s", GetLastError());
-      return NULL;
+      return 0;
     }
   }
 
-  if (!(hwnd = CreateWindow(t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, win_w, win_h, NULL, NULL, hinst, NULL))) {
+  if (!(hwnd = CreateWindow(t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
     release();
     SET_LAST_ERROR("CreateWindow() failed: %s", GetLastError());
-    return NULL;
+    return 0;
   }
   hdc = GetDC(hwnd);
 
@@ -3417,13 +3424,13 @@ surface_t* screen(const char* t, int w, int h) {
   if (pf == 0) {
     release();
     SET_LAST_ERROR("ChoosePixelFormat() failed: %s", GetLastError());
-    return NULL;
+    return 0;
   }
 
   if (SetPixelFormat(hdc, pf, &pfd) == FALSE) {
     release();
     SET_LAST_ERROR("SetPixelFormat() failed: %s", GetLastError());
-    return NULL;
+    return 0;
   }
 
   DescribePixelFormat(hdc, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
@@ -3432,7 +3439,7 @@ surface_t* screen(const char* t, int w, int h) {
   wglMakeCurrent(hdc, hrc);
 
   if (!init_gl(w, h))
-    return NULL;
+    return 0;
 #else
   wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
   wnd.lpfnWndProc = WndProc;
@@ -3442,13 +3449,13 @@ surface_t* screen(const char* t, int w, int h) {
   if (!RegisterClass(&wnd)) {
     release();
     SET_LAST_ERROR("RegisterClass() failed: %s", GetLastError());
-    return NULL;
+    return 0;
   }
 
-  if (!(hwnd = CreateWindowEx(0, t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, win_w, win_h, 0, 0, 0, 0))) {
+  if (!(hwnd = CreateWindowEx(0, t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, adjusted_win_w, adjusted_win_h, 0, 0, 0, 0))) {
     release();
     SET_LAST_ERROR("CreateWindowEx() failed: %s", GetLastError());
-    return NULL;
+    return 0;
   }
 
   bmpinfo = (BITMAPINFO*)calloc(1, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
@@ -3456,8 +3463,8 @@ surface_t* screen(const char* t, int w, int h) {
   bmpinfo->bmiHeader.biPlanes = 1;
   bmpinfo->bmiHeader.biBitCount = 32;
   bmpinfo->bmiHeader.biCompression = BI_BITFIELDS;
-  bmpinfo->bmiHeader.biWidth = win_w;
-  bmpinfo->bmiHeader.biHeight = -win_h;
+  bmpinfo->bmiHeader.biWidth = w;
+  bmpinfo->bmiHeader.biHeight = -h;
   bmpinfo->bmiColors[0].rgbRed = 0xff;
   bmpinfo->bmiColors[1].rgbGreen = 0xff;
   bmpinfo->bmiColors[2].rgbBlue = 0xff;
@@ -3466,7 +3473,8 @@ surface_t* screen(const char* t, int w, int h) {
 #endif
 
   ShowWindow(hwnd, SW_NORMAL);
-  return buffer;
+  ifuckinghatethewin32api = 1;
+  return 1;
 }
 
 int should_close() {
@@ -3488,13 +3496,14 @@ int poll_events(user_event_t* ue) {
   return 0;
 }
 
-void render() {
+void render(surface_t* s) {
+  if (s && s->buf)
+    buffer = s;
   InvalidateRect(hwnd, NULL, TRUE);
   SendMessage(hwnd, WM_PAINT, 0, 0);
 }
 
 void release() {
-  destroy(&buffer);
 #if defined(GRAPHICS_OPENGL_BACKEND)
   free_gl();
   wglMakeCurrent(NULL, NULL);
