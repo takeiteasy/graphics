@@ -38,7 +38,7 @@ if ((x) >= 0 && (y) >= 0 && (x) < (s)->w && (y) < (s)->h) \
 
 static char last_error[1024];
 
-static short int keycodes[256];
+static short int keycodes[512];
 static short int scancodes[KB_KEY_LAST + 1];
 static surface_t* buffer;
 
@@ -771,7 +771,7 @@ void yline(surface_t* s, int x, int y0, int y1, int col) {
     y1  = y0 - y1;
     y0 -= y1;
   }
-  
+
   if (x < 0 || x > s->w || y0 > s->h)
     return;
 
@@ -790,15 +790,15 @@ void xline(surface_t* s, int y, int x0, int x1, int col) {
     x1  = x0 - x1;
     x0 -= x1;
   }
-  
+
   if (y < 0 || y > s->h || x0 > s->w)
     return;
-  
+
   if (x0 < 0)
     x0 = 0;
   if (x1 >= s->w)
     x1 = s->w - 1;
-  
+
   for(int x = x0; x <= x1; x++)
     XYSET(s, x, y, col);
 }
@@ -888,7 +888,7 @@ int tga(surface_t* s, const char* path) {
     SET_LAST_ERROR("fopen() failed: Couldn't open \"%s\"", path);
     return 0;
   }
-  
+
   char header_buf[TGA_SIZE];
   if (!fread(header_buf, TGA_SIZE, 1, fp)) {
     fclose(fp);
@@ -896,13 +896,13 @@ int tga(surface_t* s, const char* path) {
     return 0;
   }
   tga_t* header = (tga_t*)(size_t)header_buf;
-  
+
   if ((header->type != 2) || (header->depth < 24)) {
     fclose(fp);
     SET_LAST_ERROR("tga() failed: Invalid TGA type/depth \"%d/%d\", only 2/24 supported", header->type, header->depth);
     return 0;
   }
-  
+
   size_t pixel_size = header->width * header->height * (header->depth >> 3) + 1;
   unsigned char* pixel_buf = malloc(sizeof(char) * pixel_size);
   if (!pixel_buf) {
@@ -916,7 +916,7 @@ int tga(surface_t* s, const char* path) {
     SET_LAST_ERROR("fread() failed");
     return 0;
   }
-  
+
   surface(s, header->width, header->height);
   size_t len = (header->width * header->height) * 3;
   size_t p = 0, i = (header->width * header->height) - 1;
@@ -927,7 +927,7 @@ int tga(surface_t* s, const char* path) {
   }
   fclose(fp);
   free(pixel_buf);
-  
+
   return 1;
 }
 
@@ -963,12 +963,12 @@ void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* st
 void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...) {
   char *buffer = NULL;
   size_t buffer_size = 0;
-  
+
   va_list argptr;
   va_start(argptr, fmt);
   int length = vsnprintf(buffer, buffer_size, fmt, argptr);
   va_end(argptr);
-  
+
   if (length + 1 > buffer_size) {
     buffer_size = length + 1;
     buffer = realloc(buffer, buffer_size);
@@ -976,7 +976,7 @@ void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* 
     vsnprintf(buffer, buffer_size, fmt, argptr);
     va_end(argptr);
   }
-  
+
   print(s, x, y, col, buffer);
   free(buffer);
 }
@@ -996,7 +996,7 @@ int string(surface_t* s, int col, int bg, const char* str) {
   }
   if (x > w)
     w = x;
-  
+
   if (!surface(s, w, h))
     return 0;
   fill(s, bg);
@@ -1007,12 +1007,12 @@ int string(surface_t* s, int col, int bg, const char* str) {
 int string_f(surface_t* s, int col, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   size_t buffer_size = 0;
-  
+
   va_list argptr;
   va_start(argptr, fmt);
   int length = vsnprintf(buffer, buffer_size, fmt, argptr);
   va_end(argptr);
-  
+
   if (length + 1 > buffer_size) {
     buffer_size = length + 1;
     buffer = realloc(buffer, buffer_size);
@@ -1020,7 +1020,7 @@ int string_f(surface_t* s, int col, int bg, const char* fmt, ...) {
     vsnprintf(buffer, buffer_size, fmt, argptr);
     va_end(argptr);
   }
-  
+
   if (!string(s, col, bg, buffer))
     return 0;
   free(buffer);
@@ -1050,11 +1050,11 @@ long ticks() {
     QueryPerformanceCounter(&ticks_start);
     ticks_started = 1;
   }
-  
+
   LARGE_INTEGER ticks_now, freq;
   QueryPerformanceCounter(&ticks_now);
   QueryPerformanceFrequency(&freq);
-  
+
   return ((ticks_now.QuadPart - ticks_start.QuadPart) * 1000) / freq.QuadPart;
 #else
   static struct timespec ticks_start;
@@ -1062,7 +1062,7 @@ long ticks() {
     clock_gettime(CLOCK_MONOTONIC, &ticks_start);
     ticks_started = 1;
   }
-  
+
   struct timespec ticks_now;
   clock_gettime(CLOCK_MONOTONIC, &ticks_now);
   return ((ticks_now.tv_sec * 1000) + (ticks_now.tv_nsec / 1000000)) - ((ticks_start.tv_sec * 1000) + (ticks_start.tv_nsec / 1000000));
@@ -1099,7 +1099,7 @@ void resize_callback(void(*cb)(int, int)) {
 void get_mouse_pos(int* x, int* y) {
   if (!x || !y)
     return;
-  
+
   *x = mx;
   *y = my;
 }
@@ -1112,7 +1112,7 @@ const char* get_last_error() {
 void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
   if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
     return;
-  
+
   int x = -r, y = 0, err = 2 - 2 * r;
 #if defined(GRAPHICS_ENABLE_AA)
   int i, x2, e2;
@@ -1188,7 +1188,7 @@ void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
     XYSETSAFE(s, xc + x, yc + y, col);
     XYSETSAFE(s, xc + x, yc - y, col);
     XYSETSAFE(s, xc - x, yc - y, col);
-    
+
     if (fill) {
       xline(s, yc - y, xc - x, xc + x, col);
       xline(s, yc + y, xc - x, xc + x, col);
@@ -1300,7 +1300,7 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
     XYSETSAFE(s, x0, y0, col);
     XYSETSAFE(s, x0, y1, col);
     XYSETSAFE(s, x1, y1, col);
-    
+
     if (fill) {
       xline(s, y0, x0, x1, col);
       xline(s, y1, x0, x1, col);
@@ -1642,7 +1642,7 @@ void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd,
 
   xd = floor(xd*w + 0.5);
   yd = floor(yd*w + 0.5);
-  
+
   bezier_seg_rational(s, x0, y0 + yd, x0, y0, x0 + xd, y0, 1.0 - w, col);
   bezier_seg_rational(s, x0, y0 + yd, x0, y1, x1 - xd, y1, w, col);
   bezier_seg_rational(s, x1, y1 - yd, x1, y1, x1 - xd, y1, 1.0 - w, col);
@@ -2198,7 +2198,7 @@ int copy(surface_t* in, surface_t* out) {
 void iterate(surface_t* s, int (*fn)(int x, int y, int col)) {
   if (!s)
     return;
-  
+
   int x, y;
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
@@ -2208,7 +2208,7 @@ void iterate(surface_t* s, int (*fn)(int x, int y, int col)) {
 int resize(surface_t* in, int nw, int nh, surface_t* out) {
   if (!surface(out, nw, nh))
     return 0;
-  
+
   int x_ratio = (int)((in->w << 16) / nw) + 1;
   int y_ratio = (int)((in->h << 16) / nh) + 1;
   int x2, y2;
@@ -2504,7 +2504,7 @@ void draw_gl() {
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 #if !defined(__APPLE__)
   }
-  
+
   glFlush();
 #endif
 }
@@ -2993,7 +2993,7 @@ int poll_events(user_event_t* ue) {
                                     dequeue:YES];
   if (!e || ! ue)
     return 0;
-  
+
   memset(ue, 0, sizeof(user_event_t));
   switch ([e type]) {
     case NSEventTypeKeyUp:
@@ -3028,7 +3028,7 @@ int poll_events(user_event_t* ue) {
         ue->type = WINDOW_CLOSED;
       break;
   }
-  
+
   [NSApp sendEvent:e];
   [pool release];
   return 1;
@@ -3377,7 +3377,7 @@ int screen(const char* t, int w, int h) {
   keycodes[0x037] = KB_KEY_KP_MULTIPLY;
   keycodes[0x04A] = KB_KEY_KP_SUBTRACT;
 
-  for (int sc = 0; sc < 512; sc++) {
+  for (int sc = 0; sc < 256; sc++) {
     if (keycodes[sc] > 0)
       scancodes[keycodes[sc]] = sc;
   }
@@ -3746,17 +3746,15 @@ static int translate_mod(int state) {
   return mods;
 }
 
-surface_t* screen(const char* title, int w, int h) {
-  if (!(buffer = surface(w, h)))
-    return NULL;
-  buffer->w = w;
-  buffer->h = h;
+int screen(const char* title, int w, int h) {
+  win_w = w;
+  win_h = h;
 
   display = XOpenDisplay(0);
   if (!display) {
     release();
     SET_LAST_ERROR("XOpenDisplay(0) failed!");
-    return NULL;
+    return 0;
   }
 
   memset(keycodes, -1, sizeof(keycodes));
@@ -3856,7 +3854,7 @@ surface_t* screen(const char* title, int w, int h) {
   if (!fbc) {
     release();
     SET_LAST_ERROR("glXChooseFBConfig() failed: Failed to retreive framebuffer config");
-    return NULL;
+    return 0;
   }
 
   int best_fbc = -1, worst_fbc = -1, best_num_samp = -1, worst_num_samp = 999;
@@ -3886,7 +3884,7 @@ surface_t* screen(const char* title, int w, int h) {
   if (vi == 0) {
     release();
     SET_LAST_ERROR("glXGetVisualFromFBConfig() failed: Could not create correct visual window");
-    return NULL;
+    return 0;
   }
 
   XSetWindowAttributes swa;
@@ -3918,7 +3916,7 @@ surface_t* screen(const char* title, int w, int h) {
   if (c_depth != 32) {
     release();
     SET_LAST_ERROR("Invalid display depth: %d", c_depth);
-    return NULL;
+    return 0;
   }
 
   int s_width = DisplayWidth(display, screen);
@@ -3939,20 +3937,23 @@ surface_t* screen(const char* title, int w, int h) {
   if (!win) {
     release();
     SET_LAST_ERROR("XCreateWindow() failed!");
-    return NULL;
+    return 0;
   }
 
-  XSelectInput(display, win, KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask);
+  XSelectInput(display, win, StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask);
   XStoreName(display, win, title);
 
   XSizeHints hints;
-  hints.flags = PPosition | PMinSize | PMaxSize;
+  hints.flags = PPosition;
   hints.x = 0;
   hints.y = 0;
+#if !defined(GRAPHICS_OPENGL_BACKEND)
+  hints.flags |= PMinSize | PMaxSize;
   hints.min_width = w;
   hints.max_width = w;
   hints.min_height = h;
   hints.max_height = h;
+#endif
 
   XSetWMNormalHints(display, win, &hints);
   XClearWindow(display, win);
@@ -3981,7 +3982,7 @@ surface_t* screen(const char* title, int w, int h) {
   if (!ctx) {
     release();
     SET_LAST_ERROR("glXCreateContextAttribsARB() failed: Couldn't create OpenGL context");
-    return NULL;
+    return 0;
   }
 
   glXMakeCurrent(display, win, ctx);
@@ -3990,7 +3991,7 @@ surface_t* screen(const char* title, int w, int h) {
   img = XCreateImage(display, CopyFromParent, depth, ZPixmap, 0, NULL, w, h, 32, w * 4);
 #endif
 
-  return buffer;
+  return 1;
 }
 
 int should_close() {
@@ -4047,7 +4048,7 @@ int poll_events(user_event_t* ue) {
       ue->data2 =  0;
       break;
     default:
-      ue->btn = (event.xbutton.button - Button1 - 4);
+      ue->btn = (event.xbutton.button - 4);
     }
     break;
   case ButtonRelease:
@@ -4055,18 +4056,25 @@ int poll_events(user_event_t* ue) {
     ue->mod  = translate_mod(event.xkey.state);
     switch (event.xbutton.button) {
     case Button1:
-      ue->btn = MOUSE_BTN_0;
-      break;
-    case Button2:
       ue->btn = MOUSE_BTN_1;
       break;
-    case Button3:
+    case Button2:
       ue->btn = MOUSE_BTN_2;
       break;
+    case Button3:
+      ue->btn = MOUSE_BTN_3;
+      break;
     default:
-      ue->btn = (event.xbutton.button - Button1 - 4);
+      ue->btn = (event.xbutton.button - 4);
     }
     break;
+#if defined(GRAPHICS_OPENGL_BACKEND)
+  case ConfigureNotify:
+    win_w = event.xconfigure.width;
+    win_h = event.xconfigure.height;
+    glViewport(0, 0, win_w, win_h);
+    break;
+#endif
   case MotionNotify:
     mx = event.xmotion.x;
     my = event.xmotion.y;
@@ -4080,7 +4088,9 @@ int poll_events(user_event_t* ue) {
   return 1;
 }
 
-void render() {
+void render(surface_t* s) {
+  if (s && s->buf)
+    buffer = s;
 #if defined(GRAPHICS_OPENGL_BACKEND)
   draw_gl();
   glXSwapBuffers(display, win);
@@ -4092,7 +4102,6 @@ void render() {
 }
 
 void release() {
-  destroy(&buffer);
 #if defined(GRAPHICS_OPENGL_BACKEND)
   glXMakeCurrent(display, 0, 0);
   glXDestroyContext(display, ctx);
