@@ -35,9 +35,12 @@ static int map[MAP_W][MAP_H]= {
 #define MOVE_UP    0x0004
 #define MOVE_DOWN  0x0008
 
+#define SW 512
+#define SH 384
+
 int main(void) {
-  surface_t* win = screen("raycaster", 512, 384);
-  if (!win) {
+  surface_t win;
+  if (!screen("raycaster", SW, SH) || !surface(&win, SW, SH)) {
     fprintf(stderr, "%s", get_last_error());
     return 1;
   }
@@ -50,8 +53,10 @@ int main(void) {
   long curr_frame_tick = ticks();
   
   surface_t* images[8];
-  for (int i = 0; i < 8; ++i)
-    images[i] = surface(64, 64);
+  for (int i = 0; i < 8; ++i) {
+    images[i] = malloc(sizeof(surface_t));
+    surface(images[i], 64, 64);
+  }
   for(int x = 0; x < 64; x++)
     for(int y = 0; y < 64; y++)
     {
@@ -133,7 +138,7 @@ int main(void) {
       }
     }
     
-    fill(win, BLACK);
+    fill(&win, BLACK);
     
     double speed = (curr_frame_tick - prev_frame_tick) / 10.;
     double moveSpeed = speed * .05;
@@ -171,10 +176,10 @@ int main(void) {
       planeY = oldPlaneX * sin(-rotSpeed) + planeY * cos(-rotSpeed);
     }
     
-    for(int x = 0; x < win->w; x++)
+    for(int x = 0; x < win.w; x++)
     {
       //calculate ray position and direction
-      double cameraX = 2*x/(double)win->w-1; //x-coordinate in camera space
+      double cameraX = 2*x/(double)win.w-1; //x-coordinate in camera space
       double rayPosX = posX;
       double rayPosY = posY;
       double rayDirX = dirX + planeX*cameraX;
@@ -246,13 +251,13 @@ int main(void) {
       else           perpWallDist = (mapY - rayPosY + (1 - stepY) / 2) / rayDirY;
       
       //Calculate height of line to draw on screen
-      int lineHeight = (int)(win->h / perpWallDist);
+      int lineHeight = (int)(win.h / perpWallDist);
       
       //calculate lowest and highest pixel to fill in current stripe
-      int drawStart = -lineHeight / 2 + win->h / 2;
+      int drawStart = -lineHeight / 2 + win.h / 2;
       if(drawStart < 0) drawStart = 0;
-      int drawEnd = lineHeight / 2 + win->h / 2;
-      if(drawEnd >= win->h) drawEnd = win->h - 1;
+      int drawEnd = lineHeight / 2 + win.h / 2;
+      if(drawEnd >= win.h) drawEnd = win.h - 1;
       
       //texturing calculations
       int texNum = map[mapX][mapY] - 1; //1 subtracted from it so that texture 0 can be used!
@@ -270,18 +275,23 @@ int main(void) {
       
       for(int y = drawStart; y < drawEnd; y++)
       {
-        int d = y * 256 - win->h * 128 + lineHeight * 128;  //256 and 128 factors to avoid floats
+        int d = y * 256 - win.h * 128 + lineHeight * 128;  //256 and 128 factors to avoid floats
         int texY = ((d * 64) / lineHeight) / 256;
         int color = images[texNum]->buf[64 * texY + texX];
         //make color darker for y-sides: R, G and B byte each divided through two with a "shift" and an "and"
         if(side == 1) color = (color >> 1) & 8355711;
-        pset(win, x, y, color);
+        pset(&win, x, y, color);
       }
     }
     
-    render();
+    render(&win);
   }
   
+  destroy(&win);
+  for (int i = 0; i < 8; ++i) {
+    destroy(images[i]);
+    free(images[i]);
+  }
   release();
   return 0;
 }
