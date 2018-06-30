@@ -202,7 +202,7 @@ static char font8x8_basic[128][8] = {
 };
 
 #if defined(GRAPHICS_EXTRA_FONTS)
-char font8x8_block[32][8] = {
+static char font8x8_block[32][8] = {
   { 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00},   // U+2580 (top half)
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF},   // U+2581 (box 1/8)
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF},   // U+2582 (box 2/8)
@@ -813,7 +813,7 @@ void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
 #if defined(GRAPHICS_ENABLE_AA)
   int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
   int err = dx - dy, e2, x2;
-  int ed = dx + dy == 0 ? 1 : sqrt((float)dx * dx + (float)dy * dy);
+  int ed = dx + dy == 0 ? 1 : sqrtf((float)dx * dx + (float)dy * dy);
 #else
   int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
   int err = dx + dy, e2;
@@ -1006,7 +1006,7 @@ int string(surface_t* s, int col, int bg, const char* str) {
 
 int string_f(surface_t* s, int col, int bg, const char* fmt, ...) {
   char *buffer = NULL;
-  size_t buffer_size = 0;
+  int buffer_size = 0;
 
   va_list argptr;
   va_start(argptr, fmt);
@@ -2023,13 +2023,17 @@ int bmp(surface_t* s, const char* path) {
   int off = 0;
   BMPHEADER header;
   BMPINFOHEADER info;
+  //BMPCOREHEADER core;
   BMP_GET(&header, data, sizeof(BMPHEADER));
+  //int info_pos = off;
   BMP_GET(&info, data, sizeof(BMPINFOHEADER));
 
   if (header.type != 0x4D42) {
     SET_LAST_ERROR("bmp() failed: invalid BMP signiture '%d'", header.type);
     return 0;
   }
+  
+#pragma TODO(Add support for OS/2 bitmaps)
 
   unsigned char* color_map = NULL;
   int color_map_size = 0;
@@ -2051,51 +2055,42 @@ int bmp(surface_t* s, const char* path) {
   }
 
   off = header.offset;
-  int i, j, c, sz = info.width * info.height;
+  int i, sz = info.width * info.height;
   unsigned char color;
   switch (info.compression) {
-  case 0: // RGB
-    switch (info.bits) { // BPP
-    case 1:
-      for (i = (sz - 1); i != -1; ++off) {
-        for (j = 7; j >= 0; --j, --i) {
-          c = color_map[((data[off] & (1 << j)) > 0) * 4 + 1];
-          BMP_SET(RGB(c, c, c));
-        }
+    case 0: // RGB
+      switch (info.bits) { // BPP
+        case 1:
+        case 4:
+#pragma TODO(Add 1 & 4 bpp support);
+          SET_LAST_ERROR("bmp() failed. Unsupported BPP: %d", info.bits);
+          destroy(s);
+          break;
+        case 8:
+          for (i = (sz - 1); i != -1; --i, ++off) {
+            color = data[off];
+            BMP_SET(RGB(color_map[(color * 4) + 2], color_map[(color * 4) + 1], color_map[(color * 4)]));
+          }
+          break;
+        case 24:
+        case 32:
+          for (i = (sz - 1); i != -1; --i, off += (info.bits == 32 ? 4 : 3))
+            BMP_SET(RGB(data[off + 2], data[off + 1], data[off]));
+          break;
+        default:
+          SET_LAST_ERROR("bmp() failed. Unsupported BPP: %d", info.bits);
+          destroy(s);
+          break;
+          
       }
       break;
-    case 4:
-      for (i = (sz - 1); i != -1; --i, ++off) {
-        color = (data[off] >> 4) * 4;
-        BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
-        i--;
-        color = (data[off] & 0x0F);
-        BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
-      }
-      break;
-    case 8:
-      for (i = (sz - 1); i != -1; --i, ++off) {
-        color = (data[off] * 4);
-        BMP_SET(RGB(color_map[color + 2], color_map[color + 1], color_map[color]));
-      }
-      break;
-    case 24:
-    case 32:
-      for (i = (sz - 1); i != -1; --i, off += (info.bits == 32 ? 4 : 3))
-        BMP_SET(RGB(data[off], data[off + 1], data[off + 2]));
-      break;
+    case 1: // RLE8
+    case 2: // RLE4
     default:
-      SET_LAST_ERROR("bmp() failed. Unsupported BPP: %d", info.bits);
+#pragma TODO(Add RLE support);
+      SET_LAST_ERROR("bmp() failed. Unsupported compression: %d", info.compression);
       destroy(s);
       break;
-    }
-    break;
-  case 1: // RLE8
-  case 2: // RLE4
-  default:
-    SET_LAST_ERROR("bmp() failed. Unsupported compression: %d", info.compression);
-    destroy(s);
-    break;
   }
 
   if (color_map)
@@ -2414,8 +2409,8 @@ int init_gl(int w, int h) {
 
     GLfloat vertices_position[8] = {
       -1.0, -1.0,
-      1.0, -1.0,
-      1.0,  1.0,
+       1.0, -1.0,
+       1.0,  1.0,
       -1.0,  1.0,
     };
 

@@ -24,7 +24,7 @@ y += 8;
 static surface_t win;
 static int win_w = 0, win_h = 0, mx = 0, my = 0, running = 1;
 
-#define DEBUG_NATIVE_RESIZE 1
+#define DEBUG_NATIVE_RESIZE 0
 #define DEBUG_TGA 0
 
 void on_resize(int w, int h) {
@@ -73,7 +73,7 @@ int main(int argc, const char* argv[]) {
 #if DEBUG_TGA
   if (!tga(&c, PATH_JOIN(IMG_PATH, IMG_EXT))) {
 #else
-  if (!bmp(&c, PATH_JOIN(IMG_PATH, IMG_EXT))) {
+  if (!bmp(&c, "/Users/roryb/Desktop/parrot2.bmp")) {
 #endif
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
