@@ -772,7 +772,7 @@ void yline(surface_t* s, int x, int y0, int y1, int col) {
     y0 -= y1;
   }
 
-  if (x < 0 || x > s->w || y0 > s->h)
+  if (x < 0 || x >= s->w || y0 >= s->h)
     return;
 
   if (y0 < 0)
@@ -791,7 +791,7 @@ void xline(surface_t* s, int y, int x0, int x1, int col) {
     x0 -= x1;
   }
 
-  if (y < 0 || y > s->h || x0 > s->w)
+  if (y < 0 || y >= s->h || x0 >= s->w)
     return;
 
   if (x0 < 0)
@@ -904,7 +904,7 @@ int tga(surface_t* s, const char* path) {
   }
 
   size_t pixel_size = header->width * header->height * (header->depth >> 3) + 1;
-  unsigned char* pixel_buf = malloc(sizeof(char) * pixel_size);
+  unsigned char* pixel_buf = malloc(sizeof(unsigned char) * pixel_size);
   if (!pixel_buf) {
     fclose(fp);
     SET_LAST_ERROR("malloc() failed");
@@ -1021,10 +1021,11 @@ int string_f(surface_t* s, int col, int bg, const char* fmt, ...) {
     va_end(argptr);
   }
 
+  int ret = 1;
   if (!string(s, col, bg, buffer))
-    return 0;
+    ret = 0;
   free(buffer);
-  return 1;
+  return ret;
 }
 
 void rgb(int c, int* r, int* g, int* b) {
@@ -1210,10 +1211,10 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
 #pragma FIXME(This is borked without AA)
   long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
   float dx = 4 * (a - 1.0) * b * b, dy = 4 * (b1 + 1) * a * a;
-  float ed, i, err = b1 * a * a - dx + dy;
+  float err = b1 * a * a - dx + dy;
 
 #if defined(GRAPHICS_ENABLE_AA)
-  int f;
+  int f, ed, i;
 
   if (a == 0 || b == 0)
     line(s, x0, y0, x1, y1, col);
@@ -1228,7 +1229,7 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
   if (y0 > y1)
     y0 = y1;
   y0 += (b + 1) / 2;
-  y1 = y0 - b1;
+  y1 = y0 - (int)b1;
   a = 8 * a * a;
   b1 = 8 * b * b;
 
@@ -2151,6 +2152,7 @@ int save_bmp(surface_t* s, const char* path) {
   FILE* fp = fopen(path, "wb");
   if (!fp) {
     SET_LAST_ERROR("fopen() failed: %s\n", path);
+    free(img);
     return 0;
   }
 
