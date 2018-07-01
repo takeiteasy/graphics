@@ -25,7 +25,6 @@ static surface_t win;
 static int win_w = 0, win_h = 0, mx = 0, my = 0, running = 1;
 
 #define DEBUG_NATIVE_RESIZE 0
-#define DEBUG_TGA 0
 
 void on_resize(int w, int h) {
   win_w = w;
@@ -54,27 +53,15 @@ int main(int argc, const char* argv[]) {
   surface_t a, b, c, d, e, f, g, h, k, l;
   surface(&a, 50, 50);
   
-#if DEBUG_TGA
-#define IMG_EXT ".tga"
-#else
-#define IMG_EXT ".bmp"
-#endif
-  
 #if defined(__APPLE__)
-#define IMG_PATH "/Users/roryb/Documents/git/graphics.h/tests/lena"
+#define IMG_PATH "/Users/roryb/Documents/git/graphics.h/tests/lena.bmp"
 #elif defined(_WIN32)
-#define IMG_PATH "C:\\Users\\DESKTOP\\Documents\\graphics.h\\tests\\lena"
+#define IMG_PATH "C:\\Users\\DESKTOP\\Documents\\graphics.h\\tests\\lena.bmp"
 #else
-#define IMG_PATH "/home/reimu/Desktop/graphics.h/tests/lena"
+#define IMG_PATH "/home/reimu/Desktop/graphics.h/tests/lena.bmp"
 #endif
   
-#define PATH_JOIN(a, b) a b
-  
-#if DEBUG_TGA
-  if (!tga(&c, PATH_JOIN(IMG_PATH, IMG_EXT))) {
-#else
-  if (!bmp(&c, "/Users/roryb/Desktop/parrot2.bmp")) {
-#endif
+  if (!bmp(&c, IMG_PATH)) {
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
   }

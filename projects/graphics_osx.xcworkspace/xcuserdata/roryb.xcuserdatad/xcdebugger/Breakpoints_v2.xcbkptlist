@@ -52,12 +52,12 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "../graphics.c"
-            timestampString = "552088131.532113"
+            timestampString = "552154340.077224"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2078"
-            endingLineNumber = "2078"
-            landmarkName = "bmp"
+            startingLineNumber = "2032"
+            endingLineNumber = "2032"
+            landmarkName = "rect"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>

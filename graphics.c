@@ -863,71 +863,142 @@ void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
   }
 }
 
-#pragma pack(push, 1)
-typedef struct {
-  char id;
-  char color_map;
-  char type;
-  unsigned short first_entry_index;
-  unsigned short color_map_len;
-  unsigned char bpp;
-  unsigned short x_offset;
-  unsigned short y_offset;
-  unsigned short width;
-  unsigned short height;
-  unsigned char depth;
-  unsigned char descriptor;
-  char drop[3];
-} tga_t;
-#pragma pack(pop)
-#define TGA_SIZE sizeof(tga_t)
+#if defined(_MSC_VER)
+#define ALIGN_STRUCT(x) __declspec(align(x))
+#else
+#define ALIGN_STRUCT(x) __attribute__((aligned(x)))
+#endif
 
-int tga(surface_t* s, const char* path) {
+#pragma pack(1)
+typedef struct {
+  unsigned short type; /* Magic identifier */
+  unsigned int size; /* File size in bytes */
+  unsigned int reserved;
+  unsigned int offset; /* Offset to image data, bytes */
+} ALIGN_STRUCT(2) BMPHEADER;
+#pragma pack()
+
+typedef struct {
+  unsigned int size; /* Header size in bytes */
+  int width, height; /* Width and height of image */
+  unsigned short planes; /* Number of colour planes */
+  unsigned short bits; /* Bits per pixel */
+  unsigned int compression; /* Compression type */
+  unsigned int image_size; /* Image size in bytes */
+  int xresolution, yresolution; /* Pixels per meter */
+  unsigned int ncolours; /* Number of colours */
+  unsigned int important_colours; /* Important colours */
+} BMPINFOHEADER;
+
+typedef struct {
+  unsigned int size; /* size of bitmap core header */
+  unsigned short width; /* image with */
+  unsigned short height; /* image height */
+  unsigned short planes; /* must be equal to 1 */
+  unsigned short count; /* bits per pixel */
+} BMPCOREHEADER;
+
+#define BMP_GET(d, b, s) \
+memcpy(d, b + off, s); \
+off += s;
+
+#define BMP_SET(c) (s->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
+
+int bmp(surface_t* s, const char* path) {
   FILE* fp = fopen(path, "rb");
   if (!fp) {
-    SET_LAST_ERROR("fopen() failed: Couldn't open \"%s\"", path);
+    SET_LAST_ERROR("fopen() failed: %s\n", path);
     return 0;
   }
-
-  char header_buf[TGA_SIZE];
-  if (!fread(header_buf, TGA_SIZE, 1, fp)) {
-    fclose(fp);
-    SET_LAST_ERROR("fread() failed: Couldn't read \"%s\"", path);
+  
+  fseek(fp, 0, SEEK_END);
+  size_t length = ftell(fp);
+  rewind(fp);
+  
+  unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
+  if (!data) {
+    SET_LAST_ERROR("calloc() failed");
     return 0;
   }
-  tga_t* header = (tga_t*)(size_t)header_buf;
-
-  if ((header->type != 2) || (header->depth < 24)) {
-    fclose(fp);
-    SET_LAST_ERROR("tga() failed: Invalid TGA type/depth \"%d/%d\", only 2/24 supported", header->type, header->depth);
+  fread(data, 1, length, fp);
+  fclose(fp);
+  
+  int off = 0;
+  BMPHEADER header;
+  BMPINFOHEADER info;
+  //BMPCOREHEADER core;
+  BMP_GET(&header, data, sizeof(BMPHEADER));
+  //int info_pos = off;
+  BMP_GET(&info, data, sizeof(BMPINFOHEADER));
+  
+  if (header.type != 0x4D42) {
+    SET_LAST_ERROR("bmp() failed: invalid BMP signiture '%d'", header.type);
     return 0;
   }
-
-  size_t pixel_size = header->width * header->height * (header->depth >> 3) + 1;
-  unsigned char* pixel_buf = malloc(sizeof(unsigned char) * pixel_size);
-  if (!pixel_buf) {
-    fclose(fp);
+  
+#pragma TODO(Add support for OS/2 bitmaps)
+  
+  unsigned char* color_map = NULL;
+  int color_map_size = 0;
+  if (info.bits <= 8) {
+    color_map_size = (1 << info.bits) * 4;
+    color_map = (unsigned char*)malloc(color_map_size * sizeof(unsigned char));
+    if (!color_map) {
+      SET_LAST_ERROR("malloc() failed");
+      return 0;
+    }
+    BMP_GET(color_map, data, color_map_size);
+  }
+  
+  if (!surface(s, info.width, info.height)) {
+    if (color_map)
+      free(color_map);
     SET_LAST_ERROR("malloc() failed");
     return 0;
   }
-  if (fread(pixel_buf, pixel_size, 1, fp) > 0) {
-    fclose(fp);
-    free(pixel_buf);
-    SET_LAST_ERROR("fread() failed");
-    return 0;
+  
+  off = header.offset;
+  int i, sz = info.width * info.height;
+  unsigned char color;
+  switch (info.compression) {
+    case 0: // RGB
+      switch (info.bits) { // BPP
+        case 1:
+        case 4:
+#pragma TODO(Add 1 & 4 bpp support);
+          SET_LAST_ERROR("bmp() failed. Unsupported BPP: %d", info.bits);
+          destroy(s);
+          break;
+        case 8:
+          for (i = (sz - 1); i != -1; --i, ++off) {
+            color = data[off];
+            BMP_SET(RGB(color_map[(color * 4) + 2], color_map[(color * 4) + 1], color_map[(color * 4)]));
+          }
+          break;
+        case 24:
+        case 32:
+          for (i = (sz - 1); i != -1; --i, off += (info.bits == 32 ? 4 : 3))
+            BMP_SET(RGB(data[off + 2], data[off + 1], data[off]));
+          break;
+        default:
+          SET_LAST_ERROR("bmp() failed. Unsupported BPP: %d", info.bits);
+          destroy(s);
+          break;
+          
+      }
+      break;
+    case 1: // RLE8
+    case 2: // RLE4
+    default:
+#pragma TODO(Add RLE support);
+      SET_LAST_ERROR("bmp() failed. Unsupported compression: %d", info.compression);
+      destroy(s);
+      break;
   }
-
-  surface(s, header->width, header->height);
-  size_t len = (header->width * header->height) * 3;
-  size_t p = 0, i = (header->width * header->height) - 1;
-  while (p < len) {
-    s->buf[(i - (i % header->width)) + (header->width - (i % header->width))] = RGB((unsigned int)pixel_buf[p + 2], (unsigned int)pixel_buf[p + 1], (unsigned int)pixel_buf[p]);
-    p += 3;
-    i -= 1;
-  }
-  fclose(fp);
-  free(pixel_buf);
-
+  
+  if (color_map)
+    free(color_map);
+  
   return 1;
 }
 
@@ -1960,145 +2031,6 @@ void rect(surface_t* s, int x, int y, int w, int h, int col, int fill) {
   }
 }
 
-#if defined(_MSC_VER)
-#define ALIGN_STRUCT(x) __declspec(align(x))
-#else
-#define ALIGN_STRUCT(x) __attribute__((aligned(x)))
-#endif
-
-#pragma pack(1)
-typedef struct {
-  unsigned short type; /* Magic identifier */
-  unsigned int size; /* File size in bytes */
-  unsigned int reserved;
-  unsigned int offset; /* Offset to image data, bytes */
-} ALIGN_STRUCT(2) BMPHEADER;
-#pragma pack()
-
-typedef struct {
-  unsigned int size; /* Header size in bytes */
-  int width, height; /* Width and height of image */
-  unsigned short planes; /* Number of colour planes */
-  unsigned short bits; /* Bits per pixel */
-  unsigned int compression; /* Compression type */
-  unsigned int image_size; /* Image size in bytes */
-  int xresolution, yresolution; /* Pixels per meter */
-  unsigned int ncolours; /* Number of colours */
-  unsigned int important_colours; /* Important colours */
-} BMPINFOHEADER;
-
-typedef struct {
-  unsigned int size; /* size of bitmap core header */
-  unsigned short width; /* image with */
-  unsigned short height; /* image height */
-  unsigned short planes; /* must be equal to 1 */
-  unsigned short count; /* bits per pixel */
-} BMPCOREHEADER;
-
-#define BMP_GET(d, b, s) \
-memcpy(d, b + off, s); \
-off += s;
-
-#define BMP_SET(c) (s->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
-
-int bmp(surface_t* s, const char* path) {
-  FILE* fp = fopen(path, "rb");
-  if (!fp) {
-    SET_LAST_ERROR("fopen() failed: %s\n", path);
-    return 0;
-  }
-
-  fseek(fp, 0, SEEK_END);
-  size_t length = ftell(fp);
-  rewind(fp);
-
-  unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
-  if (!data) {
-    SET_LAST_ERROR("calloc() failed");
-    return 0;
-  }
-  fread(data, 1, length, fp);
-  fclose(fp);
-
-  int off = 0;
-  BMPHEADER header;
-  BMPINFOHEADER info;
-  //BMPCOREHEADER core;
-  BMP_GET(&header, data, sizeof(BMPHEADER));
-  //int info_pos = off;
-  BMP_GET(&info, data, sizeof(BMPINFOHEADER));
-
-  if (header.type != 0x4D42) {
-    SET_LAST_ERROR("bmp() failed: invalid BMP signiture '%d'", header.type);
-    return 0;
-  }
-  
-#pragma TODO(Add support for OS/2 bitmaps)
-
-  unsigned char* color_map = NULL;
-  int color_map_size = 0;
-  if (info.bits <= 8) {
-    color_map_size = (1 << info.bits) * 4;
-    color_map = (unsigned char*)malloc(color_map_size * sizeof(unsigned char));
-    if (!color_map) {
-      SET_LAST_ERROR("malloc() failed");
-      return 0;
-    }
-    BMP_GET(color_map, data, color_map_size);
-  }
-
-  if (!surface(s, info.width, info.height)) {
-    if (color_map)
-      free(color_map);
-    SET_LAST_ERROR("malloc() failed");
-    return 0;
-  }
-
-  off = header.offset;
-  int i, sz = info.width * info.height;
-  unsigned char color;
-  switch (info.compression) {
-    case 0: // RGB
-      switch (info.bits) { // BPP
-        case 1:
-        case 4:
-#pragma TODO(Add 1 & 4 bpp support);
-          SET_LAST_ERROR("bmp() failed. Unsupported BPP: %d", info.bits);
-          destroy(s);
-          break;
-        case 8:
-          for (i = (sz - 1); i != -1; --i, ++off) {
-            color = data[off];
-            BMP_SET(RGB(color_map[(color * 4) + 2], color_map[(color * 4) + 1], color_map[(color * 4)]));
-          }
-          break;
-        case 24:
-        case 32:
-          for (i = (sz - 1); i != -1; --i, off += (info.bits == 32 ? 4 : 3))
-            BMP_SET(RGB(data[off + 2], data[off + 1], data[off]));
-          break;
-        default:
-          SET_LAST_ERROR("bmp() failed. Unsupported BPP: %d", info.bits);
-          destroy(s);
-          break;
-          
-      }
-      break;
-    case 1: // RLE8
-    case 2: // RLE4
-    default:
-#pragma TODO(Add RLE support);
-      SET_LAST_ERROR("bmp() failed. Unsupported compression: %d", info.compression);
-      destroy(s);
-      break;
-  }
-
-  if (color_map)
-    free(color_map);
-
-  return 1;
-}
-
 int save_bmp(surface_t* s, const char* path) {
   const int filesize = 54 + 3 * s->w * s->h;
   unsigned char* img = (unsigned char *)malloc(3 * s->w * s->h);
@@ -2225,13 +2157,11 @@ int resize(surface_t* in, int nw, int nh, surface_t* out) {
 
 #if defined(GRAPHICS_OPENGL_BACKEND)
 #if defined(__APPLE__)
-#import <OpenGL/OpenGL.h>
 #import <OpenGL/gl3.h>
 #endif
 
 #if defined(__linux__)
 #define GLDECL // Empty define
-#define PAPAYA_GL_LIST_WIN32 // Empty define
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <GL/glx.h>
@@ -2257,18 +2187,12 @@ typedef char GLchar;
 typedef ptrdiff_t GLintptr;
 typedef ptrdiff_t GLsizeiptr;
 
-#define PAPAYA_GL_LIST_WIN32 \
-    /* ret, name, params */ \
-    GLE(void,      BlendEquation,           GLenum mode) \
-    GLE(void,      ActiveTexture,           GLenum texture) \
-/* end */
-
 #include <gl/GL.h>
 #include <gl/GLU.h>
 #endif
 
 #if defined(_WIN32) || defined(__linux__)
-#define PAPAYA_GL_LIST \
+#define GL_LIST \
     /* ret, name, params */ \
     GLE(void,      AttachShader,            GLuint program, GLuint shader) \
     GLE(void,      BindBuffer,              GLenum target, GLuint buffer) \
@@ -2297,13 +2221,11 @@ typedef ptrdiff_t GLsizeiptr;
     /* end */
 
 #define GLE(ret, name, ...) typedef ret GLDECL name##proc(__VA_ARGS__); extern name##proc * gl##name;
-PAPAYA_GL_LIST
-PAPAYA_GL_LIST_WIN32
+GL_LIST
 #undef GLE
 
 #define GLE(ret, name, ...) name##proc * gl##name;
-PAPAYA_GL_LIST
-PAPAYA_GL_LIST_WIN32
+GL_LIST
 #undef GLE
 #endif
 
@@ -2368,15 +2290,14 @@ int init_gl(int w, int h) {
     SET_LAST_ERROR("wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
     gl3_available -= 1; \
   }
-  PAPAYA_GL_LIST
-    PAPAYA_GL_LIST_WIN32
+  GL_LIST
 #undef GLE
 #elif defined(__linux__)
   void* libGL = dlopen("libGL.so", RTLD_LAZY);
   if (!libGL) {
-    release(); \
-      SET_LAST_ERROR("dlopen() failed: libGL.so couldn't be loaded"); \
-      return 0;
+    release();
+    SET_LAST_ERROR("dlopen() failed: libGL.so couldn't be loaded");
+    return 0;
   }
 
 #define GLE(ret, name, ...) \
@@ -2385,7 +2306,7 @@ int init_gl(int w, int h) {
     SET_LAST_ERROR("dlsym() failed: Function gl" #name " couldn't be loaded from libGL.so"); \
     gl3_available -= 1; \
   }
-  PAPAYA_GL_LIST
+  GL_LIST
 #undef GLE
 #endif
 

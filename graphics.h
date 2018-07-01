@@ -197,10 +197,11 @@ extern "C" {
   int pset(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
   int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, float opacity, int chroma);
+#define blit_norm(dst, p, src, rect) (blit((dst), (p), (src), (rect), -1, -1)
   void yline(surface_t* s, int x, int y0, int y1, int col);
   void xline(surface_t* s, int y, int x0, int x1, int col);
   void line(surface_t* s, int x0, int y0, int x1, int y1, int col);
-  int tga(surface_t* s, const char* path);
+  int bmp(surface_t* s, const char* path);
   void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col);
   void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str);
   void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...);
@@ -223,7 +224,6 @@ extern "C" {
   void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col);
   void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
   void rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
-  int bmp(surface_t* s, const char* path);
   int save_bmp(surface_t* s, const char* path);
 #if defined(GRAPHICS_EXTRA_FONTS)
   void letter_block(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
