@@ -8,7 +8,7 @@
 
 #ifndef graphics_h
 #define graphics_h
-#ifdef __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
   
@@ -34,7 +34,7 @@ extern "C" {
 #include <X11/keysym.h>
 #endif
   
-#define RGB(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
+#define RGB(r, g, b) (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b)
   
 #if defined(GRAPHICS_EXTRA_COLOURS) && !defined(GRAPHICS_LEAN_AND_MEAN)
 #define ALICE_BLUE 15792383
@@ -414,7 +414,7 @@ extern "C" {
   const char* get_last_error(void);
   void get_mouse_pos(int* x, int* y);
   
-#ifdef __cplusplus
+#if defined(__cplusplus)
 }
 #endif
 #endif /* graphics_h */

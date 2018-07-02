@@ -2597,7 +2597,7 @@ extern surface_t* buffer;
     NSScreen *screen = [NSScreen mainScreen];
     scale_f = [screen backingScaleFactor];
     mtk_viewport.x = r.size.width * scale_f;
-    mtk_viewport.y = (r.size.height * scale_f) + (4 * scale_f);
+    mtk_viewport.y = ((r.size.height - 22) * scale_f) + (4 * scale_f);
     _cmd_queue = [_device newCommandQueue];
     _vertices  = [_device newBufferWithBytes:quad_vertices
                                       length:sizeof(quad_vertices)
@@ -2652,7 +2652,7 @@ extern surface_t* buffer;
     id <MTLFunction> fs = [_library newFunctionWithName:@"samplingShader"];
     
     MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
-    pipelineStateDescriptor.label = @"Texturing Pipeline";
+    pipelineStateDescriptor.label = @"[Texturing Pipeline]";
     pipelineStateDescriptor.vertexFunction = vs;
     pipelineStateDescriptor.fragmentFunction = fs;
     pipelineStateDescriptor.colorAttachments[0].pixelFormat = [self colorPixelFormat];
@@ -2740,13 +2740,13 @@ extern surface_t* buffer;
               bytesPerRow:buffer->w * 4];
   
   id <MTLCommandBuffer> cmd_buf = [_cmd_queue commandBuffer];
-  cmd_buf.label = @"MyCommand";
+  cmd_buf.label = @"[Command Buffer]";
   MTLRenderPassDescriptor* rpd = [self currentRenderPassDescriptor];
   if (rpd) {
     id<MTLRenderCommandEncoder> re = [cmd_buf renderCommandEncoderWithDescriptor:rpd];
-    re.label = @"MyRenderEncoder";
+    re.label = @"[Render Encoder]";
     
-    [re setViewport:(MTLViewport){ 0.0, 0.0, mtk_viewport.x, mtk_viewport.y - (22 * scale_f), -1.0, 1.0 }];
+    [re setViewport:(MTLViewport){ 0.0, 0.0, mtk_viewport.x, mtk_viewport.y, -1.0, 1.0 }];
     [re setRenderPipelineState:_pipeline];
     [re setVertexBuffer:_vertices
                  offset:0
