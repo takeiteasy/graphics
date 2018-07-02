@@ -1044,7 +1044,7 @@ void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* st
 
 void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...) {
   char *buffer = NULL;
-  size_t buffer_size = 0;
+  int buffer_size = 0;
 
   va_list argptr;
   va_start(argptr, fmt);
@@ -1123,7 +1123,7 @@ int alpha(int c1, int c2, float i) {
   int r1, g1, b1, r2, g2, b2;
   rgb(c1, &r1, &g1, &b1);
   rgb(c2, &r2, &g2, &b2);
-  return RGB((int)round(r2 * (1 - i) + r1 * i), (int)round(g2 * (1 - i) + g1 * i), (int)round(b2 * (1 - i) + b1 * i));
+  return RGB((int)roundf(r2 * (1 - i) + r1 * i), (int)roundf(g2 * (1 - i) + g1 * i), (int)roundf(b2 * (1 - i) + b1 * i));
 }
 
 long ticks() {
@@ -1292,7 +1292,7 @@ void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
 void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill) {
 #pragma FIXME(This is borked without AA)
   long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
-  float dx = 4 * (a - 1.0) * b * b, dy = 4 * (b1 + 1) * a * a;
+  float dx = 4 * (a - 1.) * b * b, dy = 4 * (b1 + 1) * a * a;
   float err = b1 * a * a - dx + dy;
 
 #if defined(GRAPHICS_ENABLE_AA)
@@ -1317,13 +1317,13 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
 
 #if defined(GRAPHICS_ENABLE_AA)
   for (;;) {
-    i = fmin(dx, dy);
-    ed = fmax(dx, dy);
+    i = fminf(dx, dy);
+    ed = fmaxf(dx, dy);
     if (y0 == y1 + 1 && err > dy && a > b1)
       ed = 255 * 4. / a;
     else
       ed = 255 / (ed + 2 * ed * i * i / (4 * ed * ed + i * i));
-    i = ed * fabs(err + dx - dy);
+    i = ed * fabsf(err + dx - dy);
 
     XYSETAASAFE(s, x0, y0, col, i);
     XYSETAASAFE(s, x0, y1, col, i);
@@ -1370,7 +1370,7 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
 
   if (--x0 == x1++)
     while (y0 - y1 < b) {
-      i = 255 * 4 * fabs(err + dx) / b1;
+      i = 255 * 4 * fabsf(err + dx) / b1;
       XYSETAASAFE(s, x0, ++y0, col, i);
       XYSETAASAFE(s, x1, y0, col, i);
       XYSETAASAFE(s, x0, --y1, col, i);
@@ -1408,7 +1408,7 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
 static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
   int sx = x2 - x1, sy = y2 - y1;
   long xx = x0 - x1, yy = y0 - y1, xy;
-  double dx, dy, err, cur = xx * sy - yy * sx;
+  float dx, dy, err, cur = xx * sy - yy * sx;
 
   if (sx * (long)sx + sy * (long)sy > xx * xx + yy * yy) {
     x2 = x0;
@@ -1418,7 +1418,7 @@ static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int
     cur = -cur;
   }
 
-  if (cur != 0) {
+  if (cur != 0.f) {
     xx += sx;
     xx *= sx = x0 < x2 ? 1 : -1;
     yy += sy;
@@ -1433,22 +1433,22 @@ static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int
       cur = -cur;
     }
 
-    dx = 4.0 * sy * (x1 - x0) * cur + xx - xy;
-    dy = 4.0 * sx * (y0 - y1) * cur + yy - xy;
+    dx = 4.f * sy * (x1 - x0) * cur + xx - xy;
+    dy = 4.f * sx * (y0 - y1) * cur + yy - xy;
     xx += xx;
     yy += yy;
     err = dx + dy + xy;
 
 #if defined(GRAPHICS_ENABLE_AA)
-    double ed;
+    float ed;
 #endif
 
     do {
 #if defined(GRAPHICS_ENABLE_AA)
-      cur = fmin(dx + xy, -xy - dy);
-      ed = fmax(dx + xy, -xy - dy);
+      cur = fminf(dx + xy, -xy - dy);
+      ed = fmaxf(dx + xy, -xy - dy);
       ed += 2 * ed * cur * cur / (4 * ed * ed + cur * cur);
-      XYSETAASAFE(s, x0, y0, col, 255 * fabs(err - dx - dy - xy) / ed);
+      XYSETAASAFE(s, x0, y0, col, 255 * fabsf(err - dx - dy - xy) / ed);
       if (x0 == x2 || y0 == y2)
         break;
 
@@ -1457,7 +1457,7 @@ static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int
       y1 = 2 * err + dy < 0;
       if (2 * err + dx > 0) {
         if (err - dy < ed)
-          XYSETAASAFE(s, x0, y0 + sy, col, 255 * fabs(err - dy) / ed);
+          XYSETAASAFE(s, x0, y0 + sy, col, 255 * fabsf(err - dy) / ed);
         x0 += sx;
         dx -= xy;
         err += dy += yy;
@@ -1465,7 +1465,7 @@ static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int
 
       if (y1) {
         if (cur < ed)
-          XYSETAASAFE(s, x1 + sx, y0, col, 255 * fabs(cur) / ed);
+          XYSETAASAFE(s, x1 + sx, y0, col, 255 * fabsf(cur) / ed);
         y0 += sy;
         dy -= xy;
         err += dx += xx;
@@ -1497,11 +1497,11 @@ static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int
 
 void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
   int x = x0 - x1, y = y0 - y1;
-  double t = x0 - 2 * x1 + x2, r;
+  float t = x0 - 2 * x1 + x2, r;
 
   if ((long)x * (x2 - x1) > 0) {
     if ((long)y * (y2 - y1) > 0)
-      if (fabs((y0 - 2 * y1 + y2) / t * x) > abs(y)) {
+      if (fabsf((y0 - 2 * y1 + y2) / t * x) > abs(y)) {
         x0 = x2;
         x2 = x + x1;
         y0 = y2;
@@ -1509,29 +1509,29 @@ void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int co
       }
 
     t = (x0 - x1) / t;
-    r = (1 - t) * ((1 - t) * y0 + 2.0 * t * y1) + t * t*y2;
+    r = (1 - t) * ((1 - t) * y0 + 2.f * t * y1) + t * t*y2;
     t = (x0 * x2 - x1 * x1) * t / (x0 - x1);
-    x = floor(t + 0.5);
-    y = floor(r + 0.5);
+    x = floorf(t + .5f);
+    y = floorf(r + .5f);
     r = (y1 - y0) * (t - x0) / (x1 - x0) + y0;
-    bezier_seg(s, x0, y0, x, floor(r + 0.5), x, y, col);
+    bezier_seg(s, x0, y0, x, floorf(r + .5f), x, y, col);
     r = (y1 - y2) * (t - x2) / (x1 - x2) + y2;
     x0 = x1 = x;
     y0 = y;
-    y1 = floor(r + 0.5);
+    y1 = floorf(r + .5f);
   }
 
   if ((long)(y0 - y1) * (y2 - y1) > 0) {
     t = y0 - 2 * y1 + y2; t = (y0 - y1) / t;
-    r = (1 - t) * ((1 - t) * x0 + 2.0 * t * x1) + t * t * x2;
+    r = (1 - t) * ((1 - t) * x0 + 2.f * t * x1) + t * t * x2;
     t = (y0 * y2 - y1 * y1) * t / (y0 - y1);
-    x = floor(r + 0.5);
-    y = floor(t + 0.5);
+    x = floorf(r + .5f);
+    y = floorf(t + .5f);
     r = (x1 - x0) * (t - y0) / (y1 - y0) + x0;
-    bezier_seg(s, x0, y0, floor(r + 0.5), y, x, y, col);
+    bezier_seg(s, x0, y0, floorf(r + .5f), y, x, y, col);
     r = (x1 - x2) * (t - y2) / (y1 - y2) + x2;
     x0 = x;
-    x1 = floor(r + 0.5);
+    x1 = floorf(r + .5f);
     y0 = y1 = y;
   }
 
@@ -1540,15 +1540,15 @@ void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int co
 
 static void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
   int sx = x2 - x1, sy = y2 - y1;
-  double dx = x0 - x2, dy = y0 - y2, xx = x0 - x1, yy = y0 - y1;
-  double xy = xx * sy + yy * sx, cur = xx * sy - yy * sx, err;
+  float dx = x0 - x2, dy = y0 - y2, xx = x0 - x1, yy = y0 - y1;
+  float xy = xx * sy + yy * sx, cur = xx * sy - yy * sx, err;
 
 #if defined(GRAPHICS_ENABLE_AA)
-  double ed;
+  float ed;
   int f;
 #endif
 
-  if (cur != 0.0 && w > 0.0) {
+  if (cur != .0f && w > .0f) {
     if (sx * (long)sx + sy * (long)sy > xx * xx + yy * yy) {
       x2 = x0;
       x0 -= dx;
@@ -1556,36 +1556,36 @@ static void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, in
       y0 -= dy;
       cur = -cur;
     }
-    xx = 2.0 * (4.0 * w * sx * xx + dx * dx);
-    yy = 2.0 * (4.0 * w * sy * yy + dy * dy);
+    xx = 2.f * (4.f * w * sx * xx + dx * dx);
+    yy = 2.f * (4.f * w * sy * yy + dy * dy);
     sx = x0 < x2 ? 1 : -1;
     sy = y0 < y2 ? 1 : -1;
-    xy = -2.0 * sx * sy * (2.0 * w * xy + dx * dy);
+    xy = -2.f * sx * sy * (2.f * w * xy + dx * dy);
 
-    if (cur * sx * sy < 0.0) {
+    if (cur * sx * sy < .0f) {
       xx = -xx;
       yy = -yy;
       cur = -cur;
       xy = -xy;
     }
-    dx = 4.0 * w * (x1 - x0) * sy * cur + xx / 2.0 + xy;
-    dy = 4.0 * w * (y0 - y1) * sx * cur + yy / 2.0 + xy;
+    dx = 4.f * w * (x1 - x0) * sy * cur + xx / 2.f + xy;
+    dy = 4.f * w * (y0 - y1) * sx * cur + yy / 2.f + xy;
 
 #if defined(GRAPHICS_ENABLE_AA)
-    if (w < 0.5 && dy > dx) {
+    if (w < .5f && dy > dx) {
 #else
-    if (w < 0.5 && (dy > xy || dx < xy)) {
+    if (w < .5f && (dy > xy || dx < xy)) {
 #endif
-      cur = (w + 1.0) / 2.0;
-      w = sqrt(w);
-      xy = 1.0 / (w + 1.0);
-      sx = floor((x0 + 2.0 * w * x1 + x2) * xy / 2.0 + 0.5);
-      sy = floor((y0 + 2.0 * w * y1 + y2) * xy / 2.0 + 0.5);
-      dx = floor((w * x1 + x0) * xy + 0.5);
-      dy = floor((y1 * w + y0) * xy + 0.5);
+      cur = (w + 1.f) / 2.f;
+      w = sqrtf(w);
+      xy = 1.f / (w + 1.f);
+      sx = floorf((x0 + 2.f * w * x1 + x2) * xy / 2.f + .5f);
+      sy = floorf((y0 + 2.f * w * y1 + y2) * xy / 2.f + .5f);
+      dx = floorf((w * x1 + x0) * xy + .5f);
+      dy = floorf((y1 * w + y0) * xy + .5f);
       bezier_seg_rational(s, x0, y0, dx, dy, sx, sy, cur, col);
-      dx = floor((w * x1 + x2) * xy + 0.5);
-      dy = floor((y1 * w + y2) * xy + 0.5);
+      dx = floorf((w * x1 + x2) * xy + .5f);
+      dy = floorf((y1 * w + y2) * xy + .5f);
       bezier_seg_rational(s, sx, sy, dx, dy, x2, y2, cur, col);
       return;
     }
@@ -1593,10 +1593,10 @@ static void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, in
     err = dx + dy - xy;
     do {
 #if defined(GRAPHICS_ENABLE_AA)
-      cur = fmin(dx - xy, xy - dy);
-      ed = fmax(dx - xy, xy - dy);
-      ed += 2 * ed * cur * cur / (4. * ed * ed + cur * cur);
-      x1 = 255 * fabs(err - dx - dy + xy) / ed;
+      cur = fminf(dx - xy, xy - dy);
+      ed = fmaxf(dx - xy, xy - dy);
+      ed += 2 * ed * cur * cur / (4.f * ed * ed + cur * cur);
+      x1 = 255 * fabsf(err - dx - dy + xy) / ed;
       if (x1 < 256)
         XYSETAASAFE(s, x0, y0, col, x1);
 
@@ -1604,14 +1604,14 @@ static void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, in
         if (y0 == y2)
           return;
         if (dx - err < ed)
-          XYSETAASAFE(s, x0 + sx, y0, col, 255 * fabs(dx - err) / ed);
+          XYSETAASAFE(s, x0 + sx, y0, col, 255 * fabsf(dx - err) / ed);
       }
 
       if (2 * err + dx > 0) {
         if (x0 == x2)
           return;
         if (err - dy < ed)
-          XYSETAASAFE(s, x0, y0 + sy, col, 255 * fabs(err - dy) / ed);
+          XYSETAASAFE(s, x0, y0 + sy, col, 255 * fabsf(err - dy) / ed);
         x0 += sx;
         dx += xy;
         err += dy += yy;
@@ -1649,64 +1649,64 @@ static void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, in
 
 void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
   int x = x0 - 2 * x1 + x2, y = y0 - 2 * y1 + y2;
-  double xx = x0 - x1, yy = y0 - y1, ww, t, q;
+  float xx = x0 - x1, yy = y0 - y1, ww, t, q;
 
   if (xx * (x2 - x1) > 0) {
     if (yy * (y2 - y1) > 0)
-      if (fabs(xx * y) > fabs(yy * x)) {
+      if (fabsf(xx * y) > fabsf(yy * x)) {
         x0 = x2;
         x2 = xx + x1;
         y0 = y2;
         y2 = yy + y1;
       }
 
-    if (x0 == x2 || w == 1.0)
+    if (x0 == x2 || w == 1.f)
       t = (x0 - x1) / (double)x;
     else {
-      q = sqrt(4.0 * w * w * (x0 - x1) * (x2 - x1) + (x2 - x0) * (long)(x2 - x0));
+      q = sqrtf(4.f * w * w * (x0 - x1) * (x2 - x1) + (x2 - x0) * (long)(x2 - x0));
       if (x1 < x0)
         q = -q;
-      t = (2.0 * w * (x0 - x1) - x0 + x2 + q) / (2.0 * (1.0 - w) * (x2 - x0));
+      t = (2.f * w * (x0 - x1) - x0 + x2 + q) / (2.f * (1.f - w) * (x2 - x0));
     }
 
-    q = 1.0 / (2.0 * t * (1.0 - t) * (w - 1.0) + 1.0);
-    xx = (t * t * (x0 - 2.0 * w * x1 + x2) + 2.0 * t * (w * x1 - x0) + x0) * q;
-    yy = (t * t * (y0 - 2.0 * w * y1 + y2) + 2.0 * t * (w * y1 - y0) + y0) * q;
-    ww = t * (w - 1.0) + 1.0;
+    q = 1.f / (2.f * t * (1.f - t) * (w - 1.f) + 1.f);
+    xx = (t * t * (x0 - 2.f * w * x1 + x2) + 2.f * t * (w * x1 - x0) + x0) * q;
+    yy = (t * t * (y0 - 2.f * w * y1 + y2) + 2.f * t * (w * y1 - y0) + y0) * q;
+    ww = t * (w - 1.f) + 1.f;
     ww *= ww * q;
-    w = ((1.0 - t) * (w - 1.0) + 1.0) * sqrt(q);
-    x = floor(xx + 0.5);
-    y = floor(yy + 0.5);
+    w = ((1.f - t) * (w - 1.f) + 1.f) * sqrtf(q);
+    x = floorf(xx + .5f);
+    y = floorf(yy + .5f);
     yy = (xx - x0) * (y1 - y0) / (x1 - x0) + y0;
-    bezier_seg_rational(s, x0, y0, x, floor(yy + 0.5), x, y, ww, col);
+    bezier_seg_rational(s, x0, y0, x, floorf(yy + .5f), x, y, ww, col);
     yy = (xx - x2) * (y1 - y2) / (x1 - x2) + y2;
-    y1 = floor(yy + 0.5);
+    y1 = floorf(yy + .5f);
     x0 = x1 = x;
     y0 = y;
   }
 
   if ((y0 - y1) * (long)(y2 - y1) > 0) {
-    if (y0 == y2 || w == 1.0)
-      t = (y0 - y1) / (y0 - 2.0 * y1 + y2);
+    if (y0 == y2 || w == 1.f)
+      t = (y0 - y1) / (y0 - 2.f * y1 + y2);
     else {
-      q = sqrt(4.0 * w * w * (y0 - y1) * (y2 - y1) + (y2 - y0) * (long)(y2 - y0));
+      q = sqrtf(4.f * w * w * (y0 - y1) * (y2 - y1) + (y2 - y0) * (long)(y2 - y0));
       if (y1 < y0)
         q = -q;
-      t = (2.0 * w * (y0 - y1) - y0 + y2 + q) / (2.0 * (1.0 - w) * (y2 - y0));
+      t = (2.f * w * (y0 - y1) - y0 + y2 + q) / (2.f * (1.f - w) * (y2 - y0));
     }
 
-    q = 1.0 / (2.0 * t * (1.0 - t) * (w - 1.0) + 1.0);
-    xx = (t * t * (x0 - 2.0 * w * x1 + x2) + 2.0 * t * (w * x1 - x0) + x0) * q;
-    yy = (t * t * (y0 - 2.0 * w * y1 + y2) + 2.0 * t * (w * y1 - y0) + y0) * q;
-    ww = t * (w - 1.0) + 1.0;
+    q = 1.f / (2.f * t * (1.f - t) * (w - 1.f) + 1.f);
+    xx = (t * t * (x0 - 2.f * w * x1 + x2) + 2.f * t * (w * x1 - x0) + x0) * q;
+    yy = (t * t * (y0 - 2.f * w * y1 + y2) + 2.f * t * (w * y1 - y0) + y0) * q;
+    ww = t * (w - 1.f) + 1.f;
     ww *= ww * q;
-    w = ((1.0 - t) * (w - 1.0) + 1.0) * sqrt(q);
-    x = floor(xx + 0.5);
-    y = floor(yy + 0.5);
+    w = ((1.f - t) * (w - 1.f) + 1.f) * sqrtf(q);
+    x = floorf(xx + .5f);
+    y = floorf(yy + .5f);
     xx = (x1 - x0) * (yy - y0) / (y1 - y0) + x0;
-    bezier_seg_rational(s, x0, y0, floor(xx + 0.5), y, x, y, ww, col);
+    bezier_seg_rational(s, x0, y0, floorf(xx + .5f), y, x, y, ww, col);
     xx = (x1 - x2) * (yy - y2) / (y1 - y2) + x2;
-    x1 = floor(xx + 0.5);
+    x1 = floorf(xx + .5f);
     x0 = x;
     y0 = y1 = y;
   }
@@ -1720,45 +1720,45 @@ void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd,
   float w = xd * (long)yd;
   if (zd == 0)
     ellipse_rect(s, x0, y0, x1, y1, col, 0);
-  if (w != 0.0)
+  if (w != 0.f)
     w = (w - zd) / (w + w);
 
-  xd = floor(xd*w + 0.5);
-  yd = floor(yd*w + 0.5);
+  xd = floorf(xd * w + .5f);
+  yd = floorf(yd * w + .5f);
 
-  bezier_seg_rational(s, x0, y0 + yd, x0, y0, x0 + xd, y0, 1.0 - w, col);
+  bezier_seg_rational(s, x0, y0 + yd, x0, y0, x0 + xd, y0, 1.f - w, col);
   bezier_seg_rational(s, x0, y0 + yd, x0, y1, x1 - xd, y1, w, col);
-  bezier_seg_rational(s, x1, y1 - yd, x1, y1, x1 - xd, y1, 1.0 - w, col);
+  bezier_seg_rational(s, x1, y1 - yd, x1, y1, x1 - xd, y1, 1.f - w, col);
   bezier_seg_rational(s, x1, y1 - yd, x1, y0, x0 + xd, y0, w, col);
 }
 
 void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col) {
 #pragma TODO(Add fill option);
   float xd = (long)a * a, yd = (long)b * b;
-  float q = sin(angle), zd = (xd - yd) * q;
-  xd = sqrt(xd - zd * q);
-  yd = sqrt(yd + zd * q);
-  a = xd + 0.5;
-  b = yd + 0.5;
+  float q = sinf(angle), zd = (xd - yd) * q;
+  xd = sqrtf(xd - zd * q);
+  yd = sqrtf(yd + zd * q);
+  a = xd + .5f;
+  b = yd + .5f;
   zd = zd * a * b / (xd * yd);
-  ellipse_rect_rotated(s, x - a, y - b, x + a, y + b, (long)(4 * zd*cos(angle)), col);
+  ellipse_rect_rotated(s, x - a, y - b, x + a, y + b, (long)(4 * zd * cosf(angle)), col);
 }
 
 static void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, float x2, float y2, int x3, int y3, int col) {
   int f, fx, fy, leg = 1;
   int sx = x0 < x3 ? 1 : -1, sy = y0 < y3 ? 1 : -1;
-  float xc = -fabs(x0 + x1 - x2 - x3), xa = xc - 4 * sx * (x1 - x2), xb = sx * (x0 - x1 - x2 + x3);
-  float yc = -fabs(y0 + y1 - y2 - y3), ya = yc - 4 * sy * (y1 - y2), yb = sy * (y0 - y1 - y2 + y3);
-  double ab, ac, bc, ba, xx, xy, yy, dx, dy, ex, EP = 0.01;
+  float xc = -fabsf(x0 + x1 - x2 - x3), xa = xc - 4 * sx * (x1 - x2), xb = sx * (x0 - x1 - x2 + x3);
+  float yc = -fabsf(y0 + y1 - y2 - y3), ya = yc - 4 * sy * (y1 - y2), yb = sy * (y0 - y1 - y2 + y3);
+  float ab, ac, bc, ba, xx, xy, yy, dx, dy, ex, EP = .01f;
 
 #if defined(GRAPHICS_ENABLE_AA)
-  double px, py, ed, ip;
+  float px, py, ed, ip;
 #else
-  double* pxy;
+  float* pxy;
 #endif
 
-  if (xa == 0 && ya == 0) {
-    sx = floor((3 * x1 - x0 + 1) / 2); sy = floor((3 * y1 - y0 + 1) / 2);
+  if (xa == 0.f && ya == 0.f) {
+    sx = floorf((3 * x1 - x0 + 1) / 2); sy = floorf((3 * y1 - y0 + 1) / 2);
     bezier_seg(s, x0, y0, sx, sy, x3, y3, col);
     return;
   }
@@ -1771,14 +1771,14 @@ static void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, f
     ac = xa * yc - xc * ya;
     bc = xb * yc - xc * yb;
     ex = ab * (ab + ac - 3 * bc) + ac * ac;
-    f = ex > 0 ? 1 : sqrt(1 + 1024 / x1);
+    f = ex > 0 ? 1 : sqrtf(1 + 1024 / x1);
 
     ab *= f; ac *= f;
     bc *= f;
     ex *= f * f;
     xy = 9 * (ab + ac + bc) / 8;
 #if defined(GRAPHICS_ENABLE_AA)
-    ip = 4 * ab*bc - ac * ac;
+    ip = 4 * ab * bc - ac * ac;
 #endif
     ba = 8 * (xa - ya);
     dx = 27 * (8 * ab * (yb * yb - ya * yc) + ex * (ya + 2 * yb + yc)) / 64 - ya * ya * (xy - ya);
@@ -1810,14 +1810,14 @@ static void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, f
 
 #if defined(GRAPHICS_ENABLE_AA)
     for (fx = fy = f; x0 != x3 && y0 != y3; ) {
-      y1 = fmin(fabs(xy - dx), fabs(dy - xy));
-      ed = fmax(fabs(xy - dx), fabs(dy - xy));
+      y1 = fminf(fabsf(xy - dx), fabsf(dy - xy));
+      ed = fmaxf(fabsf(xy - dx), fabsf(dy - xy));
       ed = f * (ed + 2 * ed * y1 * y1 / (4 * ed * ed + y1 * y1));
-      y1 = 255 * fabs(ex - (f - fx + 1) * dx - (f - fy + 1) * dy + f * xy) / ed;
+      y1 = 255 * fabsf(ex - (f - fx + 1) * dx - (f - fy + 1) * dy + f * xy) / ed;
       if (y1 < 256)
         XYSETAASAFE(s, x0, y0, col, y1);
-      px = fabs(ex - (f - fx + 1) * dx + (fy - 1) * dy);
-      py = fabs(ex + (fx - 1) * dx - (f - fy + 1) * dy);
+      px = fabsf(ex - (f - fx + 1) * dx + (fy - 1) * dy);
+      py = fabsf(ex + (fx - 1) * dx - (f - fy + 1) * dy);
       y2 = y0;
       do {
         if (ip >= -EP)
@@ -1945,32 +1945,32 @@ void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, 
   long yc = y0 + y1 - y2 - y3, ya = yc - 4 * (y1 - y2);
   long yb = y0 - y1 - y2 + y3, yd = yb + 4 * (y1 + y2);
   float fx0 = x0, fx1, fx2, fx3, fy0 = y0, fy1, fy2, fy3;
-  double t1 = xb * xb - xa * xc, t2, t[5];
+  float t1 = xb * xb - xa * xc, t2, t[5];
 
   if (xa == 0) {
     if (labs(xc) < 2 * labs(xb))
-      t[n++] = xc / (2.0*xb);
-  } else if (t1 > 0.0) {
-    t2 = sqrt(t1);
+      t[n++] = xc / (2.f * xb);
+  } else if (t1 > .0f) {
+    t2 = sqrtf(t1);
     t1 = (xb - t2) / xa;
-    if (fabs(t1) < 1.0)
+    if (fabsf(t1) < 1.f)
       t[n++] = t1;
     t1 = (xb + t2) / xa;
-    if (fabs(t1) < 1.0)
+    if (fabsf(t1) < 1.f)
       t[n++] = t1;
   }
 
   t1 = yb * yb - ya * yc;
   if (ya == 0) {
     if (labs(yc) < 2 * labs(yb))
-      t[n++] = yc / (2.0 * yb);
-  } else if (t1 > 0.0) {
-    t2 = sqrt(t1);
+      t[n++] = yc / (2.f * yb);
+  } else if (t1 > .0f) {
+    t2 = sqrtf(t1);
     t1 = (yb - t2) / ya;
-    if (fabs(t1) < 1.0)
+    if (fabsf(t1) < 1.f)
       t[n++] = t1;
     t1 = (yb + t2) / ya;
-    if (fabs(t1) < 1.0)
+    if (fabsf(t1) < 1.f)
       t[n++] = t1;
   }
 
@@ -1980,7 +1980,7 @@ void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, 
       t[i] = t1; i = 0;
     }
 
-  t1 = -1.0; t[n] = 1.0;
+  t1 = -1.; t[n] = 1.;
   for (i = 0; i <= n; i++) {
     t2 = t[i];
     fx1 = (t1 * (t1 * xb - 2 * xc) - t2 * (t1 * (t1 * xa - 2 * xb) + xc) + xd) / 8 - fx0;
@@ -1989,14 +1989,14 @@ void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, 
     fy2 = (t2 * (t2 * yb - 2 * yc) - t1 * (t2 * (t2 * ya - 2 * yb) + yc) + yd) / 8 - fy0;
     fx0 -= fx3 = (t2 * (t2 * (3 * xb - t2 * xa) - 3 * xc) + xd) / 8;
     fy0 -= fy3 = (t2 * (t2 * (3 * yb - t2 * ya) - 3 * yc) + yd) / 8;
-    x3 = floor(fx3 + 0.5);
-    y3 = floor(fy3 + 0.5);
+    x3 = floorf(fx3 + .5f);
+    y3 = floorf(fy3 + .5f);
 
-    if (fx0 != 0.0) {
+    if (fx0 != .0f) {
       fx1 *= fx0 = (x0 - x3) / fx0;
       fx2 *= fx0;
     }
-    if (fy0 != 0.0) {
+    if (fy0 != .0f) {
       fy1 *= fy0 = (y0 - y3) / fy0;
       fy2 *= fy0;
     }
@@ -2340,17 +2340,17 @@ int init_gl(int w, int h) {
     glViewport(0, 0, w, h);
 
     GLfloat vertices_position[8] = {
-      -1.0, -1.0,
-       1.0, -1.0,
-       1.0,  1.0,
-      -1.0,  1.0,
+      -1., -1.,
+       1., -1.,
+       1.,  1.,
+      -1.,  1.,
     };
 
     GLfloat texture_coord[8] = {
-      0.0, 0.0,
-      1.0, 0.0,
-      1.0, 1.0,
-      0.0, 1.0,
+      .0,  .0,
+       1., .0,
+       1., 1.,
+      .0,  1.,
     };
 
     GLuint indices[6] = {
@@ -2365,7 +2365,7 @@ int init_gl(int w, int h) {
       "out vec2 texture_coord_from_vshader;"
       "void main() {"
       "  gl_Position = position;"
-      "  texture_coord_from_vshader = vec2(texture_coord.s, 1.0f - texture_coord.t);"
+      "  texture_coord_from_vshader = vec2(texture_coord.s, 1.f - texture_coord.t);"
       "}";
 
     const char* fs_src =
@@ -2627,8 +2627,8 @@ extern surface_t* buffer;
       " RasterizerData out;"
       " float2 pixelSpacePosition = float2(vertexArray[vertexID].position.x, -vertexArray[vertexID].position.y);"
       " out.clipSpacePosition.xy = pixelSpacePosition;"
-      " out.clipSpacePosition.z = 0.0;"
-      " out.clipSpacePosition.w = 1.0;"
+      " out.clipSpacePosition.z = .0;"
+      " out.clipSpacePosition.w = 1.;"
       " out.textureCoordinate = vertexArray[vertexID].textureCoordinate;"
       " return out;"
       "}"
@@ -2746,7 +2746,7 @@ extern surface_t* buffer;
     id<MTLRenderCommandEncoder> re = [cmd_buf renderCommandEncoderWithDescriptor:rpd];
     re.label = @"[Render Encoder]";
     
-    [re setViewport:(MTLViewport){ 0.0, 0.0, mtk_viewport.x, mtk_viewport.y, -1.0, 1.0 }];
+    [re setViewport:(MTLViewport){ .0, .0, mtk_viewport.x, mtk_viewport.y, -1., 1. }];
     [re setRenderPipelineState:_pipeline];
     [re setVertexBuffer:_vertices
                  offset:0

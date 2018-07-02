@@ -28,7 +28,7 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 - Add fill option for ellipse_rotated
 - Add rotated rect function
 - Add line width option
-- Fix as many warnings as possible
+- ~~Fix as many warnings as possible~~
 
 ### MAYBE TODO
 
