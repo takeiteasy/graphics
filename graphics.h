@@ -197,7 +197,7 @@ extern "C" {
   int pset(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
   int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, float opacity, int chroma);
-#define blit_norm(dst, p, src, rect) (blit((dst), (p), (src), (rect), -1, -1)
+#define blit_norm(dst, p, src, rect) (blit((dst), (p), (src), (rect), -1, -1))
   void yline(surface_t* s, int x, int y0, int y1, int col);
   void xline(surface_t* s, int y, int x0, int x1, int col);
   void line(surface_t* s, int x0, int y0, int x1, int y1, int col);

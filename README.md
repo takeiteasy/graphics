@@ -1,10 +1,19 @@
 # graphics.h
 
-Cross platform 2D software rendering graphics library, sort of a remake of the original [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html) and taking inspiration from [SDL1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/)
+Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html) and [minifb](https://github.com/emoon/minifb). Taking inspiration from [SDL1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/)
 
-Keyboard and mouse events, line, rect, circle primitives, BMP loading (1, 4, 8, 24 & 32 bpp) and internal font rendering adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8).
+### Supported
 
-See below for TODO list and the examples folder for some idea of how to use. Still a WIP, API subject to change a lot.
+- Windows, Cocoa and Linux (X11)
+- Keyboard and mouse events
+- Primitive shapes
+- BMP loading (8, 24 & 32 bpp)
+- Font rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
+- Optional OpenGL & Metal backends (Just for rendering to screen)
+
+See below screenshots for TODO list and the examples folder for some idea of how to use. Still a WIP, API subject to change a lot.
+
+### Screenshots
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot_osx.png">

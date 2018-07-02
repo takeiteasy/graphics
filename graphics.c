@@ -1112,8 +1112,8 @@ int string_f(surface_t* s, int col, int bg, const char* fmt, ...) {
 
 void rgb(int c, int* r, int* g, int* b) {
   *r = (c >> 16) & 0xFF;
-  *g = (c >> 8) & 0xFF;
-  *b =  c & 0xFF;
+  *g = (c >> 8)  & 0xFF;
+  *b =  c        & 0xFF;
 }
 
 int alpha(int c1, int c2, float i) {
@@ -2168,7 +2168,7 @@ int resize(surface_t* in, int nw, int nh, surface_t* out) {
 
 #if defined(GRAPHICS_OPENGL_BACKEND)
 #if defined(__APPLE__)
-#import <OpenGL/gl3.h>
+#include <OpenGL/gl3.h>
 #endif
 
 #if defined(__linux__)
@@ -2449,9 +2449,9 @@ void free_gl() {
 #endif // GRAPHICS_LEAN_AND_MEAN
 
 #if defined(__APPLE__)
-#import <Cocoa/Cocoa.h>
+#include <Cocoa/Cocoa.h>
 #if defined(GRAPHICS_METAL_BACKEND)
-#import <MetalKit/MetalKit.h>
+#include <MetalKit/MetalKit.h>
 #include <simd/simd.h>
 
 typedef enum AAPLVertexInputIndex {

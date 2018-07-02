@@ -85,7 +85,7 @@ int main(int argc, const char* argv[]) {
   surface(&l, 50, 50);
   fill(&l, BLACK);
   point_t tmmp8 = { 13, 20 };
-  blit(&l, &tmmp8, &k, NULL, -1, -1);
+  blit_norm(&l, &tmmp8, &k, NULL);
   destroy(&k);
 
   surface(&f, 100, 100);
