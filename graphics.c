@@ -24,6 +24,17 @@
 #endif
 #endif
 
+#if defined(GRAPHICS_METAL_BACKEND)
+#if defined(__APPLE__)
+#if defined(GRAPHICS_OPENGL_BACKEND)
+#undef GRAPHICS_OPENGL_BACKEND
+#endif
+#else
+#warning Metal is only supported on OSX
+#undef GRAPHICS_METAL_BACKEND
+#endif
+#endif
+
 #include "graphics.h"
 
 #define XYSET(s, x, y, v) (s->buf[(y) * (s)->w + (x)] = (v))
@@ -2439,6 +2450,37 @@ void free_gl() {
 
 #if defined(__APPLE__)
 #import <Cocoa/Cocoa.h>
+#if defined(GRAPHICS_METAL_BACKEND)
+#import <MetalKit/MetalKit.h>
+#include <simd/simd.h>
+
+typedef enum AAPLVertexInputIndex {
+  AAPLVertexInputIndexVertices     = 0,
+  AAPLVertexInputIndexViewportSize = 1,
+} AAPLVertexInputIndex;
+
+typedef enum AAPLTextureIndex {
+  AAPLTextureIndexBaseColor = 0,
+} AAPLTextureIndex;
+
+typedef struct {
+  vector_float2 position;
+  vector_float2 textureCoordinate;
+} AAPLVertex;
+
+static const AAPLVertex quad_vertices[] = {
+  { {  1.f,  -1.f }, { 1.f, 0.f } },
+  { { -1.f,  -1.f }, { 0.f, 0.f } },
+  { { -1.f,   1.f }, { 0.f, 1.f } },
+  
+  { {  1.f,  -1.f }, { 1.f, 0.f } },
+  { { -1.f,   1.f }, { 0.f, 1.f } },
+  { {  1.f,   1.f }, { 1.f, 1.f } },
+};
+
+static vector_uint2 mtk_viewport;
+static CGFloat scale_f = 1.;
+#endif
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED < 101200
 #define NSWindowStyleMaskBorderless NSBorderlessWindowMask
@@ -2485,13 +2527,20 @@ static int translate_key(unsigned int key) {
 
 #if defined(GRAPHICS_OPENGL_BACKEND)
 @interface osx_view_t : NSOpenGLView {
-  NSTrackingArea* track;
-}
+#elif defined(GRAPHICS_METAL_BACKEND)
+@interface osx_view_t : MTKView {
+  id<MTLDevice> _device;
+  id<MTLRenderPipelineState> _pipeline;
+  id<MTLCommandQueue> _cmd_queue;
+  id<MTLLibrary> _library;
+  id<MTLTexture> _texture;
+  id<MTLBuffer> _vertices;
+  NSUInteger _n_vertices;
 #else
-@interface osx_view_t : NSView {
+  @interface osx_view_t : NSView {
+#endif
   NSTrackingArea* track;
 }
-#endif
 @end
 
 @interface AppDelegate : NSApplication {}
@@ -2536,6 +2585,87 @@ extern surface_t* buffer;
     [[self openGLContext] makeCurrentContext];
 
     init_gl(r.size.width, r.size.height);
+  }
+#elif defined(GRAPHICS_METAL_BACKEND)
+  _device = MTLCreateSystemDefaultDevice();
+  self = [super initWithFrame:r device:_device];
+  if (self != nil) {
+    track = nil;
+    [self updateTrackingAreas];
+    
+    self.clearColor =  MTLClearColorMake(0., 0., 0., 0.);
+    NSScreen *screen = [NSScreen mainScreen];
+    scale_f = [screen backingScaleFactor];
+    mtk_viewport.x = r.size.width * scale_f;
+    mtk_viewport.y = (r.size.height * scale_f) + (4 * scale_f);
+    _cmd_queue = [_device newCommandQueue];
+    _vertices  = [_device newBufferWithBytes:quad_vertices
+                                      length:sizeof(quad_vertices)
+                                     options:MTLResourceStorageModeShared];
+    _n_vertices = sizeof(quad_vertices) / sizeof(AAPLVertex);
+    
+    NSString *library = @""
+      "#include <metal_stdlib>\n"
+      "#include <simd/simd.h>\n"
+      "using namespace metal;"
+      "typedef struct {"
+      " float4 clipSpacePosition [[position]];"
+      " float2 textureCoordinate;"
+      "} RasterizerData;"
+      "typedef enum AAPLVertexInputIndex {"
+      " AAPLVertexInputIndexVertices     = 0,"
+      " AAPLVertexInputIndexViewportSize = 1,"
+      "} AAPLVertexInputIndex;"
+      "typedef enum AAPLTextureIndex {"
+      "  AAPLTextureIndexBaseColor = 0,"
+      "} AAPLTextureIndex;"
+      "typedef struct {"
+      "  vector_float2 position;"
+      "  vector_float2 textureCoordinate;"
+      "} AAPLVertex;"
+      "vertex RasterizerData vertexShader(uint vertexID [[ vertex_id ]], constant AAPLVertex *vertexArray [[ buffer(AAPLVertexInputIndexVertices) ]], constant vector_uint2 *viewportSizePointer  [[ buffer(AAPLVertexInputIndexViewportSize) ]]) {"
+      " RasterizerData out;"
+      " float2 pixelSpacePosition = float2(vertexArray[vertexID].position.x, -vertexArray[vertexID].position.y);"
+      " out.clipSpacePosition.xy = pixelSpacePosition;"
+      " out.clipSpacePosition.z = 0.0;"
+      " out.clipSpacePosition.w = 1.0;"
+      " out.textureCoordinate = vertexArray[vertexID].textureCoordinate;"
+      " return out;"
+      "}"
+      "fragment float4 samplingShader(RasterizerData in [[stage_in]], texture2d<half> colorTexture [[ texture(AAPLTextureIndexBaseColor) ]]) {"
+      " constexpr sampler textureSampler(mag_filter::nearest, min_filter::nearest);"
+      " const half4 colorSample = colorTexture.sample(textureSampler, in.textureCoordinate);"
+      " return float4(colorSample);"
+      "}";
+    
+    NSError *err = nil;
+    _library = [_device newLibraryWithSource:library
+                                     options:nil
+                                       error:&err];
+    if (err || !_library) {
+      release();
+      SET_LAST_ERROR("[device newLibraryWithSource] failed: %s\n", [[err localizedDescription] UTF8String]);
+      return nil;
+    }
+    
+    id<MTLFunction> vs = [_library newFunctionWithName:@"vertexShader"];
+    id <MTLFunction> fs = [_library newFunctionWithName:@"samplingShader"];
+    
+    MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
+    pipelineStateDescriptor.label = @"Texturing Pipeline";
+    pipelineStateDescriptor.vertexFunction = vs;
+    pipelineStateDescriptor.fragmentFunction = fs;
+    pipelineStateDescriptor.colorAttachments[0].pixelFormat = [self colorPixelFormat];
+    
+    _pipeline = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor
+                                                        error:&err];
+    if (err || !_pipeline) {
+      release();
+      SET_LAST_ERROR("[device newRenderPipelineStateWithDescriptor] failed: %s\n", [[err localizedDescription] UTF8String]);
+      return nil;
+    }
+    
+    [self setEnableSetNeedsDisplay:YES];
   }
 #else
   self = [super initWithFrame:r];
@@ -2597,6 +2727,49 @@ extern surface_t* buffer;
   [super drawRect: r];
   draw_gl();
   [[self openGLContext] flushBuffer];
+#elif defined(GRAPHICS_METAL_BACKEND)
+  [super drawRect: r];
+  
+  MTLTextureDescriptor* td = [[MTLTextureDescriptor alloc] init];
+  td.pixelFormat = MTLPixelFormatBGRA8Unorm;
+  td.width = buffer->w;
+  td.height = buffer->h;
+  
+  _texture = [_device newTextureWithDescriptor:td];
+  [_texture replaceRegion:(MTLRegion){{ 0, 0, 0 }, {buffer->w, buffer->h, 1 }}
+              mipmapLevel:0
+                withBytes:buffer->buf
+              bytesPerRow:buffer->w * 4];
+  
+  id <MTLCommandBuffer> cmd_buf = [_cmd_queue commandBuffer];
+  cmd_buf.label = @"MyCommand";
+  MTLRenderPassDescriptor* rpd = [self currentRenderPassDescriptor];
+  if (rpd) {
+    id<MTLRenderCommandEncoder> re = [cmd_buf renderCommandEncoderWithDescriptor:rpd];
+    re.label = @"MyRenderEncoder";
+    
+    [re setViewport:(MTLViewport){ 0.0, 0.0, mtk_viewport.x, mtk_viewport.y - (22 * scale_f), -1.0, 1.0 }];
+    [re setRenderPipelineState:_pipeline];
+    [re setVertexBuffer:_vertices
+                 offset:0
+                atIndex:AAPLVertexInputIndexVertices];
+    [re setVertexBytes:&mtk_viewport
+                length:sizeof(mtk_viewport)
+               atIndex:AAPLVertexInputIndexViewportSize];
+    [re setFragmentTexture:_texture
+                   atIndex:AAPLTextureIndexBaseColor];
+    [re drawPrimitives:MTLPrimitiveTypeTriangle
+           vertexStart:0
+           vertexCount:_n_vertices];
+    [re endEncoding];
+    
+    [cmd_buf presentDrawable:[self currentDrawable]];
+    
+    [_texture release];
+    [td release];
+  }
+  
+  [cmd_buf commit];
 #else
   CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
 
@@ -2616,6 +2789,8 @@ extern surface_t* buffer;
 -(void)dealloc {
 #if defined(GRAPHICS_OPENGL_BACKEND)
   free_gl();
+#elif defined(GRAPHICS_METAL_BACKEND)
+  // Release metal stuff
 #endif
   [track release];
   [super dealloc];
@@ -2709,6 +2884,9 @@ extern surface_t* buffer;
   win_h = size.height - 22;
 #if defined(GRAPHICS_OPENGL_BACKEND)
   glViewport(0, 0, win_w, win_h);
+#elif defined(GRAPHICS_METAL_BACKEND)
+  mtk_viewport.x = win_w * scale_f;
+  mtk_viewport.y = (win_h * scale_f) + (4 * scale_f);
 #endif
   if (__resize_callback)
     __resize_callback(win_w, win_h);
