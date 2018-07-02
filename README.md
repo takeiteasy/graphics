@@ -1,6 +1,6 @@
 # graphics.h
 
-Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html) and [minifb](https://github.com/emoon/minifb). Taking inspiration from [SDL1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/)
+Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html) and [minifb](https://github.com/emoon/minifb). Also taking inspiration from [SDL 1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/)
 
 ### Supported
 
@@ -8,6 +8,7 @@ Cross platform 2D software rendering graphics library, inspired by [graphics.h](
 - Keyboard and mouse events
 - Primitive shapes
 - BMP loading (8, 24 & 32 bpp)
+- Save surfaces to BMP file
 - Font rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
 - Optional OpenGL & Metal backends (Just for rendering to screen)
 
