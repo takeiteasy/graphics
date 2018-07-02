@@ -32,7 +32,7 @@ See below for TODO list and the examples folder for some idea of how to use. Sti
 
 ### MAYBE TODO
 
-- Vulkan/DirectX/Metal backends
+- Vulkan/DirectX/~~Metal~~ backends
 - Documentation & comments
 - ~~OpenGL 1.X fallback for OSX? (Dynamic OpenGL loader for OSX?)~~ Unneeded
 - Wayland/Mir window code

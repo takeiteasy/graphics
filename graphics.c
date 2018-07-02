@@ -2664,8 +2664,6 @@ extern surface_t* buffer;
       SET_LAST_ERROR("[device newRenderPipelineStateWithDescriptor] failed: %s\n", [[err localizedDescription] UTF8String]);
       return nil;
     }
-    
-    [self setEnableSetNeedsDisplay:YES];
   }
 #else
   self = [super initWithFrame:r];
@@ -2790,7 +2788,11 @@ extern surface_t* buffer;
 #if defined(GRAPHICS_OPENGL_BACKEND)
   free_gl();
 #elif defined(GRAPHICS_METAL_BACKEND)
-  // Release metal stuff
+  [_device release];
+  [_pipeline release];
+  [_cmd_queue release];
+  [_library release];
+  [_vertices release];
 #endif
   [track release];
   [super dealloc];

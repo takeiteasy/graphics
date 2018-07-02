@@ -24,7 +24,7 @@ y += 8;
 static surface_t win;
 static int win_w = 0, win_h = 0, mx = 0, my = 0, running = 1;
 
-#define DEBUG_NATIVE_RESIZE 0
+#define DEBUG_NATIVE_RESIZE 1
 
 void on_resize(int w, int h) {
   win_w = w;
