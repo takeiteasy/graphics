@@ -10,17 +10,6 @@ int rnd(int x, int y, int c) {
   return RGB(RND_255, RND_255, RND_255);
 }
 
-#define PRINT_CHAR_MAP(fn, min_i, max_i, c) \
-for (i = min_i; i < max_i; ++i, x += 8) { \
-  if (x + 8 > win.w) { \
-    x  = 5; \
-    y += 8; \
-  } \
-  fn(&win, i, x, y, c); \
-} \
-x  = 5;\
-y += 8;
-
 static surface_t win;
 static int win_w = 0, win_h = 0, mx = 0, my = 0, running = 1;
 
@@ -34,7 +23,7 @@ void on_resize(int w, int h) {
 #else
   fill(&win, BLACK);
 #endif
-  print_f(&win, 4, 5, WHITE, "%dx%d\n", w, h);
+  writelnf(&win, 4, 5, WHITE, -1, "%dx%d\n", w, h);
 }
 
 #define INITIAL_WIN_W 640
@@ -79,13 +68,13 @@ int main(int argc, const char* argv[]) {
   point_t tmpp7 = { 482, 170 };
   point_t tmpp8 = { 525, 370 };
 
-  string_f(&d, RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", tmpr.x, tmpr.y, tmpr.w, tmpr.h);
+  stringf(&d, RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", tmpr.x, tmpr.y, tmpr.w, tmpr.h);
   string(&h, RED, LIME, "NO\nGREEN\nHERE");
   string(&k, LIME, BLACK, "WOW");
   surface(&l, 50, 50);
   fill(&l, BLACK);
   point_t tmmp8 = { 13, 20 };
-  blit_norm(&l, &tmmp8, &k, NULL);
+  BLIT(&l, &tmmp8, &k, NULL);
   destroy(&k);
 
   surface(&f, 100, 100);
@@ -94,7 +83,7 @@ int main(int argc, const char* argv[]) {
   rect(&f, 50, 0,  50, 50, BLUE, 1);
   rect(&f, 0,  50, 50, 50, YELLOW, 1);
 
-  int col = 0, i, x, y;
+  int col = 0;
   long sine_i = 0;
   user_event_t ue;
   long prev_frame_tick;
@@ -137,15 +126,18 @@ int main(int argc, const char* argv[]) {
 
     fill(&win, WHITE);
     
+    writeln(&win, 10, 10, RED, -1, "Hello World");
+    writeln(&win, 10, 22, MAROON, -1, "こんにちはせかい");
+    
     for (int x = 32; x < win.w; x += 32)
       yline(&win, x, 0, win.h, GRAY);
     for (int y = 32; y < win.h; y += 32)
       xline(&win, y, 0, win.w, GRAY);
 
-    int last_x = 0, last_y = 240;
+    int last_x = 0, last_y = 150;
     for (long i = sine_i; i < (sine_i + win.w); ++i) {
       float x = (float)(i - sine_i);
-      float y = 240.f + (100.f * sinf(i * (3.141f / 180.f)));
+      float y = 150.f + (100.f * sinf(i * (3.141f / 180.f)));
       line(&win, last_x, last_y, x, y, col);
       last_x = x;
       last_y = y;
@@ -175,17 +167,7 @@ int main(int argc, const char* argv[]) {
     circle(&win, 502, 32, 30, INDIGO, 1);
     circle(&win, 532, 32, 30, VIOLET, 1);
 
-    print_f(&win, 400, 88, BLACK, "mouse x,y: (%d, %d)", mx, my);
-
-    x = 5;
-    y = 5;
-    PRINT_CHAR_MAP(letter, 33, 128, MAROON);
-    PRINT_CHAR_MAP(letter_block, 0, 32, DARK_RED);
-    PRINT_CHAR_MAP(letter_box, 0, 128, BROWN);
-    PRINT_CHAR_MAP(letter_extra, 0, 132, FIREBRICK);
-    PRINT_CHAR_MAP(letter_greek, 0, 58, CRIMSON);
-    PRINT_CHAR_MAP(letter_hiragana, 0, 96, RED);
-
+    writelnf(&win, 400, 88, BLACK, -1, "mouse x,y: (%d, %d)", mx, my);
     get_mouse_pos(&mx, &my);
 #if DEBUG_NATIVE_RESIZE
     mx = (int)(((float)mx / (float)win_w) * win.w);

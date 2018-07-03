@@ -35,8 +35,24 @@ extern "C" {
 #endif
   
 #define RGB(r, g, b) (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b)
+
+#define BLACK 0
+#define BLUE 255
+#define CYAN 65535
+#define GRAY 8421504
+#define GREEN 32768
+#define LIME 65280
+#define MAGENTA 16711935
+#define MAROON 8388608
+#define NAVY 128
+#define OLIVE 8421376
+#define PURPLE 8388736
+#define RED 16711680
+#define SILVER 12632256
+#define TEAL 32896
+#define WHITE 16777215
+#define YELLOW 16776960
   
-#if defined(GRAPHICS_EXTRA_COLOURS) && !defined(GRAPHICS_LEAN_AND_MEAN)
 #define ALICE_BLUE 15792383
 #define ANTIQUE_WHITE 16444375
 #define AQUA 65535
@@ -160,24 +176,6 @@ extern "C" {
 #define WHEAT 16113331
 #define WHITE_SMOKE 16119285
 #define YELLOW_GREEN 10145074
-#endif
-
-#define BLACK 0
-#define BLUE 255
-#define CYAN 65535
-#define GRAY 8421504
-#define GREEN 32768
-#define LIME 65280
-#define MAGENTA 16711935
-#define MAROON 8388608
-#define NAVY 128
-#define OLIVE 8421376
-#define PURPLE 8388736
-#define RED 16711680
-#define SILVER 12632256
-#define TEAL 32896
-#define WHITE 16777215
-#define YELLOW 16776960
   
   typedef struct {
     int* buf, w, h;
@@ -194,27 +192,27 @@ extern "C" {
   int surface(surface_t* s, unsigned int w, unsigned int h);
   void destroy(surface_t*);
   void fill(surface_t* s, int col);
+  void cls(surface_t* s);
   int pset(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
   int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, float opacity, int chroma);
-#define blit_norm(dst, p, src, rect) (blit((dst), (p), (src), (rect), -1, -1))
+#define BLIT(dst, p, src, rect) (blit((dst), (p), (src), (rect), -1, -1))
   void yline(surface_t* s, int x, int y0, int y1, int col);
   void xline(surface_t* s, int y, int x0, int x1, int col);
   void line(surface_t* s, int x0, int y0, int x1, int y1, int col);
   int bmp(surface_t* s, const char* path);
-  void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col);
-  void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str);
-  void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...);
-  int string(surface_t* s, int col, int bg, const char* str);
-  int string_f(surface_t* s, int col, int bg, const char* fmt, ...);
+  void ascii(surface_t* s, char ch, int x, int y, int fg, int bg);
+  int character(surface_t* s, const char* ch, int x, int y, int fg, int bg);
+  void writeln(surface_t* s, int x, int y, int fg, int bg, const char* str);
+  void writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...);
+  void string(surface_t* out, int fg, int bg, const char* str);
+  void stringf(surface_t* out, int fg, int bg, const char* fmt, ...);
   void rgb(int c, int* r, int* g, int* b);
   int alpha(int c1, int c2, float i);
   long ticks(void);
   void delay(long ms);
   int reset(surface_t* s, int nw, int nh);
   void resize_callback(void(*cb)(int, int));
-  
-#if !defined(GRAPHICS_LEAN_AND_MEAN)
   void circle(surface_t* s, int xc, int yc, int r, int col, int fill);
   void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill);
   void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill);
@@ -225,17 +223,9 @@ extern "C" {
   void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
   void rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
   int save_bmp(surface_t* s, const char* path);
-#if defined(GRAPHICS_EXTRA_FONTS)
-  void letter_block(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
-  void letter_box(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
-  void letter_extra(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
-  void letter_greek(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
-  void letter_hiragana(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
-#endif
   int copy(surface_t* in, surface_t* out);
   void iterate(surface_t* s, int(*fn)(int x, int y, int col));
   int resize(surface_t* in, int nw, int nh, surface_t* out);
-#endif
   
   typedef enum {
     MOUSE_BTN_0, // No mouse button
