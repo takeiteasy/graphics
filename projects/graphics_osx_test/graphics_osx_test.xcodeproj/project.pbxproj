@@ -7,7 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		88C4964020E83292004A6FAF /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 8847E0C6206027AA00C9816E /* test.c */; };
+		883E26AF20EC3724000A3394 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 883E26A720EC3724000A3394 /* test.c */; };
+		883E26B220EC375F000A3394 /* graphics_bdf.c in Sources */ = {isa = PBXBuildFile; fileRef = 883E26B120EC375F000A3394 /* graphics_bdf.c */; };
 		88DC86D520D45250000A762E /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0B5ED204D09C900BE9A54 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
 /* End PBXBuildFile section */
 
@@ -24,15 +25,27 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		8847E0C6206027AA00C9816E /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = test.c; path = ../../tests/test.c; sourceTree = "<group>"; };
+		883E269C20EC3724000A3394 /* lena.tga */ = {isa = PBXFileReference; lastKnownFileType = file; path = lena.tga; sourceTree = "<group>"; };
+		883E269D20EC3724000A3394 /* lena.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = lena.png; sourceTree = "<group>"; };
+		883E269E20EC3724000A3394 /* 1bpp.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = 1bpp.bmp; sourceTree = "<group>"; };
+		883E269F20EC3724000A3394 /* stb_image_test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = stb_image_test.c; sourceTree = "<group>"; };
+		883E26A020EC3724000A3394 /* Uncompressed-24.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = "Uncompressed-24.bmp"; sourceTree = "<group>"; };
+		883E26A120EC3724000A3394 /* save_bmp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = save_bmp.c; sourceTree = "<group>"; };
+		883E26A220EC3724000A3394 /* raycaster.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = raycaster.c; sourceTree = "<group>"; };
+		883E26A320EC3724000A3394 /* build_nix.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_nix.sh; sourceTree = "<group>"; };
+		883E26A420EC3724000A3394 /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
+		883E26A520EC3724000A3394 /* build_osx.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_osx.sh; sourceTree = "<group>"; };
+		883E26A620EC3724000A3394 /* lena.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = lena.bmp; sourceTree = "<group>"; };
+		883E26A720EC3724000A3394 /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
+		883E26A820EC3724000A3394 /* 8bpp.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = 8bpp.bmp; sourceTree = "<group>"; };
+		883E26A920EC3724000A3394 /* 4bpp.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = 4bpp.bmp; sourceTree = "<group>"; };
+		883E26AA20EC3724000A3394 /* build_test.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_test.sh; sourceTree = "<group>"; };
+		883E26B020EC375F000A3394 /* graphics_bdf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphics_bdf.h; sourceTree = "<group>"; };
+		883E26B120EC375F000A3394 /* graphics_bdf.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = graphics_bdf.c; sourceTree = "<group>"; };
 		88B0B5ED204D09C900BE9A54 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../../graphics.c; sourceTree = "<group>"; };
 		88B0B5EE204D09C900BE9A54 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../../graphics.h; sourceTree = "<group>"; };
 		88D03B7D203A1CC400FB8EE4 /* graphics_osx_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics_osx_test; sourceTree = BUILT_PRODUCTS_DIR; };
 		88DC86A920D2EE37000A762E /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../../README.md; sourceTree = "<group>"; };
-		88DC86CC20D45205000A762E /* stb_image_test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = stb_image_test.c; path = ../../tests/stb_image_test.c; sourceTree = "<group>"; };
-		88DC86CD20D45205000A762E /* raycaster.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = raycaster.c; path = ../../tests/raycaster.c; sourceTree = "<group>"; };
-		88DC86CE20D45205000A762E /* save_bmp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = save_bmp.c; path = ../../tests/save_bmp.c; sourceTree = "<group>"; };
-		88DC86CF20D45206000A762E /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = stb_image.h; path = ../../tests/stb_image.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -46,10 +59,45 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		883E269B20EC3724000A3394 /* tests */ = {
+			isa = PBXGroup;
+			children = (
+				883E269C20EC3724000A3394 /* lena.tga */,
+				883E269D20EC3724000A3394 /* lena.png */,
+				883E269E20EC3724000A3394 /* 1bpp.bmp */,
+				883E269F20EC3724000A3394 /* stb_image_test.c */,
+				883E26A020EC3724000A3394 /* Uncompressed-24.bmp */,
+				883E26A120EC3724000A3394 /* save_bmp.c */,
+				883E26A220EC3724000A3394 /* raycaster.c */,
+				883E26A320EC3724000A3394 /* build_nix.sh */,
+				883E26A420EC3724000A3394 /* stb_image.h */,
+				883E26A520EC3724000A3394 /* build_osx.sh */,
+				883E26A620EC3724000A3394 /* lena.bmp */,
+				883E26A720EC3724000A3394 /* test.c */,
+				883E26A820EC3724000A3394 /* 8bpp.bmp */,
+				883E26A920EC3724000A3394 /* 4bpp.bmp */,
+				883E26AA20EC3724000A3394 /* build_test.sh */,
+			);
+			name = tests;
+			path = ../../tests;
+			sourceTree = "<group>";
+		};
+		883E26AB20EC3724000A3394 /* extra */ = {
+			isa = PBXGroup;
+			children = (
+				883E26B020EC375F000A3394 /* graphics_bdf.h */,
+				883E26B120EC375F000A3394 /* graphics_bdf.c */,
+			);
+			name = extra;
+			path = ../../extra;
+			sourceTree = "<group>";
+		};
 		88D03B74203A1CC400FB8EE4 = {
 			isa = PBXGroup;
 			children = (
-				88D03B87203A1CD900FB8EE4 /* test */,
+				883E26AB20EC3724000A3394 /* extra */,
+				883E269B20EC3724000A3394 /* tests */,
+				88D03B87203A1CD900FB8EE4 /* graphics */,
 				88D03B7E203A1CC400FB8EE4 /* Products */,
 				88D03B8A203A1CE900FB8EE4 /* Frameworks */,
 			);
@@ -63,19 +111,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		88D03B87203A1CD900FB8EE4 /* test */ = {
+		88D03B87203A1CD900FB8EE4 /* graphics */ = {
 			isa = PBXGroup;
 			children = (
-				88DC86CD20D45205000A762E /* raycaster.c */,
-				88DC86CE20D45205000A762E /* save_bmp.c */,
-				88DC86CC20D45205000A762E /* stb_image_test.c */,
-				88DC86CF20D45206000A762E /* stb_image.h */,
 				88DC86A920D2EE37000A762E /* README.md */,
-				8847E0C6206027AA00C9816E /* test.c */,
 				88B0B5ED204D09C900BE9A54 /* graphics.c */,
 				88B0B5EE204D09C900BE9A54 /* graphics.h */,
 			);
-			name = test;
+			name = graphics;
 			sourceTree = "<group>";
 		};
 		88D03B8A203A1CE900FB8EE4 /* Frameworks */ = {
@@ -142,8 +185,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88C4964020E83292004A6FAF /* test.c in Sources */,
 				88DC86D520D45250000A762E /* graphics.c in Sources */,
+				883E26B220EC375F000A3394 /* graphics_bdf.c in Sources */,
+				883E26AF20EC3724000A3394 /* test.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

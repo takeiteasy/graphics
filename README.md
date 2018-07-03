@@ -17,15 +17,15 @@ See below screenshots for TODO list and the examples folder for some idea of how
 ### Screenshots
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot_osx.png">
+  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshots/screenshot_osx.png">
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot_win.png">
+  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshots/screenshot_win.png">
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot_nix.png">
+  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshots/screenshot_nix.png">
 </p>
 
 ## TODO

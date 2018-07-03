@@ -1,3 +1,4 @@
+#include "../extra/graphics_bdf.h"
 #include "../graphics.h"
 
 int invert(int x, int y, int c) {
@@ -52,6 +53,20 @@ int main(int argc, const char* argv[]) {
   
   if (!bmp(&c, IMG_PATH)) {
     fprintf(stderr, "%s\n", get_last_error());
+    return 1;
+  }
+  
+#if defined(__APPLE__)
+#define BDF_PATH "/Users/roryb/Documents/git/graphics.h/tests/tewi.bdf"
+#elif defined(_WIN32)
+#define BDF_PATH "C:\\Users\\DESKTOP\\Documents\\graphics.h\\tests\\tewi.bdf"
+#else
+#define BDF_PATH "/home/reimu/Desktop/graphics.h/tests/tewi.bdf"
+#endif
+  
+  bdf_t tewi;
+  if (!bdf(&tewi, BDF_PATH)) {
+    fprintf(stderr, "%s\n", get_last_bdf_error());
     return 1;
   }
   
@@ -126,13 +141,14 @@ int main(int argc, const char* argv[]) {
 
     fill(&win, WHITE);
     
-    writeln(&win, 10, 10, RED, -1, "Hello World");
-    writeln(&win, 10, 22, MAROON, -1, "こんにちはせかい");
-    
     for (int x = 32; x < win.w; x += 32)
       yline(&win, x, 0, win.h, GRAY);
     for (int y = 32; y < win.h; y += 32)
       xline(&win, y, 0, win.w, GRAY);
+    
+    writeln(&win, 10, 10, RED, -1, "Hello World");
+    writeln(&win, 10, 22, MAROON, -1, "こんにちはせかい");
+    bdf_writeln(&win, &tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ wow!");
 
     int last_x = 0, last_y = 150;
     for (long i = sine_i; i < (sine_i + win.w); ++i) {
@@ -187,6 +203,7 @@ int main(int argc, const char* argv[]) {
     render(&win);
   }
 
+  bdf_destroy(&tewi);
   destroy(&win);
   destroy(&a);
   destroy(&c);

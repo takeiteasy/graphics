@@ -36,6 +36,12 @@ if ((x) >= 0 && (y) >= 0 && (x) < (s)->w && (y) < (s)->h) \
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
+#define FREE_SAFE(x) \
+if ((x)) { \
+  free((x)); \
+  (x) = NULL; \
+}
+
 static char last_error[1024];
 
 static short int keycodes[512];
@@ -509,10 +515,7 @@ int surface(surface_t* s, unsigned int w, unsigned int h) {
 
 void destroy(surface_t* s) {
   if (s) {
-    if (s->buf) {
-      free(s->buf);
-      s->buf = NULL;
-    }
+    FREE_SAFE(s->buf);
     s->w = 0;
     s->h = 0;
   }
@@ -780,8 +783,7 @@ int bmp(surface_t* s, const char* path) {
   }
   
   if (!surface(s, info.width, info.height)) {
-    if (color_map)
-      free(color_map);
+    FREE_SAFE(color_map);
     SET_LAST_ERROR("malloc() failed");
     return 0;
   }
@@ -825,9 +827,7 @@ int bmp(surface_t* s, const char* path) {
       break;
   }
   
-  if (color_map)
-    free(color_map);
-  
+  FREE_SAFE(color_map);
   return 1;
 }
 
