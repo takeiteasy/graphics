@@ -9,14 +9,14 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#if defined(GRAPHICS_METAL_BACKEND)
+#if defined(GRAPHICS_ENABLE_METAL)
 #if defined(__APPLE__)
-#if defined(GRAPHICS_OPENGL_BACKEND)
-#undef GRAPHICS_OPENGL_BACKEND
+#if defined(GRAPHICS_ENABLE_OPENGL)
+#undef GRAPHICS_ENABLE_OPENGL
 #endif
 #else
 #warning Metal is only supported on OSX
-#undef GRAPHICS_METAL_BACKEND
+#undef GRAPHICS_ENABLE_METAL
 #endif
 #endif
 
@@ -2013,7 +2013,7 @@ int resize(surface_t* in, int nw, int nh, surface_t* out) {
   return 1;
 }
 
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
 #if defined(__APPLE__)
 #include <OpenGL/gl3.h>
 #endif
@@ -2296,7 +2296,7 @@ void free_gl() {
 
 #if defined(__APPLE__)
 #include <Cocoa/Cocoa.h>
-#if defined(GRAPHICS_METAL_BACKEND)
+#if defined(GRAPHICS_ENABLE_METAL)
 #include <MetalKit/MetalKit.h>
 #include <simd/simd.h>
 
@@ -2371,9 +2371,9 @@ static int translate_key(unsigned int key) {
 }
 @end
 
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
 @interface osx_view_t : NSOpenGLView {
-#elif defined(GRAPHICS_METAL_BACKEND)
+#elif defined(GRAPHICS_ENABLE_METAL)
 @interface osx_view_t : MTKView {
   id<MTLDevice> _device;
   id<MTLRenderPipelineState> _pipeline;
@@ -2412,7 +2412,7 @@ static osx_app_t* app;
 extern surface_t* buffer;
 
 -(id)initWithFrame:(CGRect)r {
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
   NSOpenGLPixelFormatAttribute pixelFormatAttributes[] = {
     NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
     NSOpenGLPFAColorSize, 24,
@@ -2432,7 +2432,7 @@ extern surface_t* buffer;
 
     init_gl(r.size.width, r.size.height);
   }
-#elif defined(GRAPHICS_METAL_BACKEND)
+#elif defined(GRAPHICS_ENABLE_METAL)
   _device = MTLCreateSystemDefaultDevice();
   self = [super initWithFrame:r device:_device];
   if (self != nil) {
@@ -2567,11 +2567,11 @@ extern surface_t* buffer;
   if (!buffer || !buffer->buf)
     return;
 
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
   [super drawRect: r];
   draw_gl();
   [[self openGLContext] flushBuffer];
-#elif defined(GRAPHICS_METAL_BACKEND)
+#elif defined(GRAPHICS_ENABLE_METAL)
   [super drawRect: r];
   
   MTLTextureDescriptor* td = [[MTLTextureDescriptor alloc] init];
@@ -2631,9 +2631,9 @@ extern surface_t* buffer;
 }
 
 -(void)dealloc {
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
   free_gl();
-#elif defined(GRAPHICS_METAL_BACKEND)
+#elif defined(GRAPHICS_ENABLE_METAL)
   [_device release];
   [_pipeline release];
   [_cmd_queue release];
@@ -2730,9 +2730,9 @@ extern surface_t* buffer;
   CGSize size = [app contentRectForFrameRect:[app frame]].size;
   win_w = size.width;
   win_h = size.height - 22;
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
   glViewport(0, 0, win_w, win_h);
-#elif defined(GRAPHICS_METAL_BACKEND)
+#elif defined(GRAPHICS_ENABLE_METAL)
   mtk_viewport.x = win_w * scale_f;
   mtk_viewport.y = (win_h * scale_f) + (4 * scale_f);
 #endif
@@ -2995,7 +2995,7 @@ static WNDCLASS wnd;
 static HWND hwnd;
 static int closed = 0;
 static HDC hdc = 0;
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
 static PIXELFORMATDESCRIPTOR pfd;
 static HGLRC hrc;
 static PAINTSTRUCT ps;
@@ -3063,7 +3063,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
   switch (message) {
     case WM_PAINT:
       if (buffer) {
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
         draw_gl();
         BeginPaint(hwnd, &ps);
         EndPaint(hwnd, &ps);
@@ -3089,7 +3089,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       if (__resize_callback)
         __resize_callback(win_w, win_h);
 
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
       glViewport(rect.left, rect.top, rect.right, win_h);
       PostMessage(hWnd, WM_PAINT, 0, 0);
 #endif
@@ -3328,7 +3328,7 @@ int screen(const char* t, int w, int h) {
 
   set_adjusted_win_wh(w, h);
 
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
   static HINSTANCE hinst = 0;
   if (!hinst) {
     hinst = GetModuleHandle(NULL);
@@ -3448,7 +3448,7 @@ void render(surface_t* s) {
 }
 
 void release() {
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
   free_gl();
   wglMakeCurrent(NULL, NULL);
 #endif
@@ -3461,7 +3461,7 @@ static int closed = 0;
 static surface_t* buffer;
 static Window win;
 static GC gc;
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
 static GLXContext ctx;
 static Colormap cmap;
 #else
@@ -3473,7 +3473,7 @@ static KeySym sym;
 #define Button6 6
 #define Button7 7
 
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
 #define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
 #define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
 typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
@@ -3778,7 +3778,7 @@ int screen(const char* title, int w, int h) {
 
   int screen = DefaultScreen(display);
 
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
   static int visual_attribs[] = {
     GLX_X_RENDERABLE, True,
     GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
@@ -3891,7 +3891,7 @@ int screen(const char* title, int w, int h) {
   hints.flags = PPosition;
   hints.x = 0;
   hints.y = 0;
-#if !defined(GRAPHICS_OPENGL_BACKEND)
+#if !defined(GRAPHICS_ENABLE_OPENGL)
   hints.flags |= PMinSize | PMaxSize;
   hints.min_width = w;
   hints.max_width = w;
@@ -3906,7 +3906,7 @@ int screen(const char* title, int w, int h) {
 
   gc = DefaultGC(display, screen);
 
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
   XFree(vi);
 
   glXCreateContextAttribsARBProc glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc)glXGetProcAddressARB((const GLubyte*)"glXCreateContextAttribsARB");
@@ -4012,7 +4012,7 @@ int poll_events(user_event_t* ue) {
       ue->btn = (event.xbutton.button - 4);
     }
     break;
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
   case ConfigureNotify:
     win_w = event.xconfigure.width;
     win_h = event.xconfigure.height;
@@ -4035,7 +4035,7 @@ int poll_events(user_event_t* ue) {
 void render(surface_t* s) {
   if (s && s->buf)
     buffer = s;
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
   draw_gl();
   glXSwapBuffers(display, win);
 #else
@@ -4046,7 +4046,7 @@ void render(surface_t* s) {
 }
 
 void release() {
-#if defined(GRAPHICS_OPENGL_BACKEND)
+#if defined(GRAPHICS_ENABLE_OPENGL)
   glXMakeCurrent(display, 0, 0);
   glXDestroyContext(display, ctx);
   XFreeColormap(display, cmap);

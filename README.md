@@ -9,7 +9,7 @@ Cross platform 2D software rendering graphics library, inspired by [graphics.h](
 - Primitive shapes
 - BMP loading (8, 24 & 32 bpp)
 - Save surfaces to BMP file
-- Font rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
+- Text rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
 - Optional OpenGL & Metal backends (Just for rendering to screen)
 
 See below screenshots for TODO list and the examples folder for some idea of how to use. Still a WIP, API subject to change a lot.
