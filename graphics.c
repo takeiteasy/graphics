@@ -876,9 +876,9 @@ int character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
   int uc = letter_index(u), i, j;
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 8; ++j) {
-      if (font[uc][i] & 1 << j)
+      if (font[uc][i] & 1 << j) {
         XYSETSAFE(s, x + j, y + i, fg);
-      else {
+      } else {
         if (bg == -1)
           continue;
         XYSETSAFE(s, x + j, y + i, bg);
@@ -894,7 +894,7 @@ void writeln(surface_t* s, int x, int y, int fg, int bg, const char* str) {
   int u = x, v = y;
   while (c != NULL && *c != '\0') {
     if (*c == '\n') {
-      v += 10;
+      v += LINE_HEIGHT;
       u  = x;
       c += 1;
     } else {
@@ -956,7 +956,7 @@ static inline void string_size(const char* str, int* w, int* h) {
 void string(surface_t* out, int fg, int bg, const char* str) {
   int w, h;
   string_size(str, &w, &h);
-  surface(out, w * 8, h * 10);
+  surface(out, w * 8, h * LINE_HEIGHT);
   fill(out, (bg == -1 ? 0 : bg));
   writeln(out, 0, 0, fg, bg, str);
 }
