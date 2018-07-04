@@ -1,5 +1,7 @@
-#include "../extra/graphics_bdf.h"
-#include "../graphics.h"
+#include "graphics_bdf.h"
+#include "graphics_stb_image.h"
+#include "graphics_colours.h"
+#include "graphics.h"
 
 int invert(int x, int y, int c) {
   return RGB(255 - ((c >> 16) & 0xFF), 255 - ((c >> 8) & 0xFF), 255 - (c & 0xFF));
@@ -30,6 +32,18 @@ void on_resize(int w, int h) {
 #define INITIAL_WIN_W 640
 #define INITIAL_WIN_H 480
 
+#if !defined(RES_PATH)
+#if defined(__APPLE__)
+#define RES_PATH "/Users/roryb/Documents/git/graphics.h/tests/"
+#elif defined(_WIN32)
+#define RES_PATH "C:\\Users\\DESKTOP\\Documents\\graphics.h\\tests\\"
+#else
+#define RES_PATH "/home/reimu/Desktop/graphics.h/tests/"
+#endif
+#endif
+#define __RES(X,Y) (X Y)
+#define RES(X) (__RES(RES_PATH, X))
+
 int main(int argc, const char* argv[]) {
   if (!screen("test", INITIAL_WIN_W, INITIAL_WIN_H)) {
     fprintf(stderr, "%s\n", get_last_error());
@@ -43,29 +57,19 @@ int main(int argc, const char* argv[]) {
   surface_t a, b, c, d, e, f, g, h, k, l;
   surface(&a, 50, 50);
   
-#if defined(__APPLE__)
-#define IMG_PATH "/Users/roryb/Documents/git/graphics.h/tests/lena.bmp"
-#elif defined(_WIN32)
-#define IMG_PATH "C:\\Users\\DESKTOP\\Documents\\graphics.h\\tests\\lena.bmp"
-#else
-#define IMG_PATH "/home/reimu/Desktop/graphics.h/tests/lena.bmp"
-#endif
+  if (!image(&b, RES("test_alpha.png"), LIME)) {
+    fprintf(stderr, "%s\n", get_last_stb_error());
+    return 1;
+  }
   
-  if (!bmp(&c, IMG_PATH)) {
+  if (!bmp(&c, RES("lena.bmp"))) {
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
   }
   
-#if defined(__APPLE__)
-#define BDF_PATH "/Users/roryb/Documents/git/graphics.h/tests/tewi.bdf"
-#elif defined(_WIN32)
-#define BDF_PATH "C:\\Users\\DESKTOP\\Documents\\graphics.h\\tests\\tewi.bdf"
-#else
-#define BDF_PATH "/home/reimu/Desktop/graphics.h/tests/tewi.bdf"
-#endif
-  
+  // BDF example from tewi-font: https://github.com/lucy/tewi-font
   bdf_t tewi;
-  if (!bdf(&tewi, BDF_PATH)) {
+  if (!bdf(&tewi, RES("tewi.bdf"))) {
     fprintf(stderr, "%s\n", get_last_bdf_error());
     return 1;
   }
@@ -82,6 +86,7 @@ int main(int argc, const char* argv[]) {
   point_t tmpp6 = { 425, 110 };
   point_t tmpp7 = { 482, 170 };
   point_t tmpp8 = { 525, 370 };
+  point_t tmpp9 = { 20, 20 };
 
   stringf(&d, RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", tmpr.x, tmpr.y, tmpr.w, tmpr.h);
   string(&h, RED, LIME, "NO\nGREEN\nHERE");
@@ -139,6 +144,7 @@ int main(int argc, const char* argv[]) {
     
     long speed = curr_frame_tick - prev_frame_tick;
 
+//    cls(&win);
     fill(&win, WHITE);
     
     for (int x = 32; x < win.w; x += 32)
@@ -146,9 +152,11 @@ int main(int argc, const char* argv[]) {
     for (int y = 32; y < win.h; y += 32)
       xline(&win, y, 0, win.w, GRAY);
     
+    blit(&win, &tmpp9, &b, NULL, -1, LIME);
+    
     writeln(&win, 10, 10, RED, -1, "Hello World");
     writeln(&win, 10, 22, MAROON, -1, "こんにちはせかい");
-    bdf_writeln(&win, &tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ wow!");
+    bdf_writeln(&win, &tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ bdf!");
 
     int last_x = 0, last_y = 150;
     for (long i = sine_i; i < (sine_i + win.w); ++i) {
@@ -206,6 +214,7 @@ int main(int argc, const char* argv[]) {
   bdf_destroy(&tewi);
   destroy(&win);
   destroy(&a);
+  destroy(&b);
   destroy(&c);
   destroy(&d);
   destroy(&e);

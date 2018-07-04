@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		883E26AF20EC3724000A3394 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 883E26A720EC3724000A3394 /* test.c */; };
 		883E26B220EC375F000A3394 /* graphics_bdf.c in Sources */ = {isa = PBXBuildFile; fileRef = 883E26B120EC375F000A3394 /* graphics_bdf.c */; };
+		883E26B520EC3CEC000A3394 /* graphics_stb_image.c in Sources */ = {isa = PBXBuildFile; fileRef = 883E26B420EC3CEC000A3394 /* graphics_stb_image.c */; };
 		88DC86D520D45250000A762E /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0B5ED204D09C900BE9A54 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
 /* End PBXBuildFile section */
 
@@ -42,6 +43,10 @@
 		883E26AA20EC3724000A3394 /* build_test.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_test.sh; sourceTree = "<group>"; };
 		883E26B020EC375F000A3394 /* graphics_bdf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphics_bdf.h; sourceTree = "<group>"; };
 		883E26B120EC375F000A3394 /* graphics_bdf.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = graphics_bdf.c; sourceTree = "<group>"; };
+		883E26B320EC3CEC000A3394 /* graphics_stb_image.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphics_stb_image.h; sourceTree = "<group>"; };
+		883E26B420EC3CEC000A3394 /* graphics_stb_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = graphics_stb_image.c; sourceTree = "<group>"; };
+		88B0A5A420EC465900CE1317 /* test_alpha.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = test_alpha.png; sourceTree = "<group>"; };
+		88B0A5A520EC468E00CE1317 /* graphics_colours.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphics_colours.h; sourceTree = "<group>"; };
 		88B0B5ED204D09C900BE9A54 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../../graphics.c; sourceTree = "<group>"; };
 		88B0B5EE204D09C900BE9A54 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../../graphics.h; sourceTree = "<group>"; };
 		88D03B7D203A1CC400FB8EE4 /* graphics_osx_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics_osx_test; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -62,6 +67,7 @@
 		883E269B20EC3724000A3394 /* tests */ = {
 			isa = PBXGroup;
 			children = (
+				88B0A5A420EC465900CE1317 /* test_alpha.png */,
 				883E269C20EC3724000A3394 /* lena.tga */,
 				883E269D20EC3724000A3394 /* lena.png */,
 				883E269E20EC3724000A3394 /* 1bpp.bmp */,
@@ -87,6 +93,9 @@
 			children = (
 				883E26B020EC375F000A3394 /* graphics_bdf.h */,
 				883E26B120EC375F000A3394 /* graphics_bdf.c */,
+				883E26B320EC3CEC000A3394 /* graphics_stb_image.h */,
+				883E26B420EC3CEC000A3394 /* graphics_stb_image.c */,
+				88B0A5A520EC468E00CE1317 /* graphics_colours.h */,
 			);
 			name = extra;
 			path = ../../extra;
@@ -185,6 +194,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				883E26B520EC3CEC000A3394 /* graphics_stb_image.c in Sources */,
 				88DC86D520D45250000A762E /* graphics.c in Sources */,
 				883E26B220EC375F000A3394 /* graphics_bdf.c in Sources */,
 				883E26AF20EC3724000A3394 /* test.c in Sources */,

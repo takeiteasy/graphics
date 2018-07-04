@@ -15,7 +15,8 @@ memset(last_error, 0, 1024); \
 sprintf(last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
 
 #define BDF_READ_INT(x) \
-p = strtok(NULL, " \t\n\r"), (x) = atoi(p);
+p = strtok(NULL, " \t\n\r"); \
+(x) = atoi(p);
 
 //#define BDF_READ_STR(x) \
 //p = strtok(NULL, "\t\n\r"); \
@@ -196,7 +197,6 @@ int bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, 
         u = (u << 6) | (c[l++] & 0x3F);
     }
   }
-  
   
   for (i = 0; i < f->n_chars; ++i)
     if (f->encoding_table[i] == u) {
