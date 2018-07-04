@@ -2,9 +2,10 @@
 
 Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html) and [minifb](https://github.com/emoon/minifb). Also taking inspiration from [SDL 1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/)
 
+
 ### Supported
 
-- Windows, Cocoa and Linux (X11)
+- Windows, OSX and Linux (X11)
 - Keyboard and mouse events
 - Primitive shapes
 - BMP loading (8, 24 & 32 bpp)
@@ -14,6 +15,7 @@ Cross platform 2D software rendering graphics library, inspired by [graphics.h](
 - Optional extras (BDF rendering, stb_image to surface)
 
 See below screenshots for TODO list and the examples folder for some idea of how to use. Still a WIP, API subject to change a lot.
+
 
 ### Building
 
@@ -26,6 +28,7 @@ On Linux use the ```-lX11 -lm``` flags, and if you're using the OpenGL backend i
 I've never even bothered trying to build stuff on Windows outside of Visual Studio, so I can't help you there, but I don't think it matters.
 
 One note for using this on Linux is that when rendering to the framebuffer, X11 can't automatically strech stuff like ```StretchDIBits``` and ```CGContextDrawImage``` can - so resizing the window is disabled (until I can find a solution) unless you're using the OpenGL backend.
+
 
 ### Screenshots
 
@@ -41,6 +44,7 @@ One note for using this on Linux is that when rendering to the framebuffer, X11 
   <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshots/screenshot_nix.png">
 </p>
 
+
 ## TODO
 
 - Window flags
@@ -51,17 +55,17 @@ One note for using this on Linux is that when rendering to the framebuffer, X11 
 - Add fill option for ellipse_rotated
 - Add rotated rect function
 - Add line width option
-- ~~Fix as many warnings as possible~~
 
 ### MAYBE TODO
 
+- RGBA surfaces (instead of just RGB?)
 - Vulkan/DirectX/~~Metal~~ backends
 - Documentation & comments
-- ~~OpenGL 1.X fallback for OSX? (Dynamic OpenGL loader for OSX?)~~ Unneeded
 - Wayland/Mir window code
 - C++ OOP wrapper
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples
+
 
 ## License
 
