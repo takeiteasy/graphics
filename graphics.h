@@ -73,8 +73,8 @@ extern "C" {
   int pget(surface_t* s, int x, int y);
   int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, float opacity, int chroma);
 #define BLIT(dst, p, src, rect) (blit((dst), (p), (src), (rect), -1, -1))
-  void hline(surface_t* s, int x, int y0, int y1, int col);
-  void wline(surface_t* s, int y, int x0, int x1, int col);
+  void vline(surface_t* s, int x, int y0, int y1, int col);
+  void hline(surface_t* s, int y, int x0, int x1, int col);
   void line(surface_t* s, int x0, int y0, int x1, int y1, int col);
   int bmp(surface_t* s, const char* path);
   void ascii(surface_t* s, char ch, int x, int y, int fg, int bg);

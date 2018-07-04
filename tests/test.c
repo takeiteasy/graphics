@@ -167,9 +167,9 @@ int main(int argc, const char* argv[]) {
     fill(&win, WHITE);
     
     for (int x = 32; x < win.w; x += 32)
-      hline(&win, x, 0, win.h, GRAY);
+      vline(&win, x, 0, win.h, GRAY);
     for (int y = 32; y < win.h; y += 32)
-      wline(&win, y, 0, win.w, GRAY);
+      hline(&win, y, 0, win.w, GRAY);
     
     blit(&win, &tmpp9, &b, NULL, -1, LIME);
     
