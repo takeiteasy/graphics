@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		883E26AF20EC3724000A3394 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 883E26A720EC3724000A3394 /* test.c */; };
 		883E26B220EC375F000A3394 /* graphics_bdf.c in Sources */ = {isa = PBXBuildFile; fileRef = 883E26B120EC375F000A3394 /* graphics_bdf.c */; };
-		883E26B520EC3CEC000A3394 /* graphics_stb_image.c in Sources */ = {isa = PBXBuildFile; fileRef = 883E26B420EC3CEC000A3394 /* graphics_stb_image.c */; };
+		883E26B520EC3CEC000A3394 /* graphics_image.c in Sources */ = {isa = PBXBuildFile; fileRef = 883E26B420EC3CEC000A3394 /* graphics_image.c */; };
 		88DC86D520D45250000A762E /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0B5ED204D09C900BE9A54 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
 /* End PBXBuildFile section */
 
@@ -29,12 +29,10 @@
 		883E269C20EC3724000A3394 /* lena.tga */ = {isa = PBXFileReference; lastKnownFileType = file; path = lena.tga; sourceTree = "<group>"; };
 		883E269D20EC3724000A3394 /* lena.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = lena.png; sourceTree = "<group>"; };
 		883E269E20EC3724000A3394 /* 1bpp.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = 1bpp.bmp; sourceTree = "<group>"; };
-		883E269F20EC3724000A3394 /* stb_image_test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = stb_image_test.c; sourceTree = "<group>"; };
 		883E26A020EC3724000A3394 /* Uncompressed-24.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = "Uncompressed-24.bmp"; sourceTree = "<group>"; };
 		883E26A120EC3724000A3394 /* save_bmp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = save_bmp.c; sourceTree = "<group>"; };
 		883E26A220EC3724000A3394 /* raycaster.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = raycaster.c; sourceTree = "<group>"; };
 		883E26A320EC3724000A3394 /* build_nix.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_nix.sh; sourceTree = "<group>"; };
-		883E26A420EC3724000A3394 /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
 		883E26A520EC3724000A3394 /* build_osx.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_osx.sh; sourceTree = "<group>"; };
 		883E26A620EC3724000A3394 /* lena.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = lena.bmp; sourceTree = "<group>"; };
 		883E26A720EC3724000A3394 /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
@@ -43,10 +41,11 @@
 		883E26AA20EC3724000A3394 /* build_test.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_test.sh; sourceTree = "<group>"; };
 		883E26B020EC375F000A3394 /* graphics_bdf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphics_bdf.h; sourceTree = "<group>"; };
 		883E26B120EC375F000A3394 /* graphics_bdf.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = graphics_bdf.c; sourceTree = "<group>"; };
-		883E26B320EC3CEC000A3394 /* graphics_stb_image.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphics_stb_image.h; sourceTree = "<group>"; };
-		883E26B420EC3CEC000A3394 /* graphics_stb_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = graphics_stb_image.c; sourceTree = "<group>"; };
+		883E26B320EC3CEC000A3394 /* graphics_image.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphics_image.h; sourceTree = "<group>"; };
+		883E26B420EC3CEC000A3394 /* graphics_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = graphics_image.c; sourceTree = "<group>"; };
 		88B0A5A420EC465900CE1317 /* test_alpha.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = test_alpha.png; sourceTree = "<group>"; };
 		88B0A5A520EC468E00CE1317 /* graphics_colours.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = graphics_colours.h; sourceTree = "<group>"; };
+		88B0A5A720EC504D00CE1317 /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
 		88B0B5ED204D09C900BE9A54 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../../graphics.c; sourceTree = "<group>"; };
 		88B0B5EE204D09C900BE9A54 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../../graphics.h; sourceTree = "<group>"; };
 		88D03B7D203A1CC400FB8EE4 /* graphics_osx_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics_osx_test; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -71,12 +70,10 @@
 				883E269C20EC3724000A3394 /* lena.tga */,
 				883E269D20EC3724000A3394 /* lena.png */,
 				883E269E20EC3724000A3394 /* 1bpp.bmp */,
-				883E269F20EC3724000A3394 /* stb_image_test.c */,
 				883E26A020EC3724000A3394 /* Uncompressed-24.bmp */,
 				883E26A120EC3724000A3394 /* save_bmp.c */,
 				883E26A220EC3724000A3394 /* raycaster.c */,
 				883E26A320EC3724000A3394 /* build_nix.sh */,
-				883E26A420EC3724000A3394 /* stb_image.h */,
 				883E26A520EC3724000A3394 /* build_osx.sh */,
 				883E26A620EC3724000A3394 /* lena.bmp */,
 				883E26A720EC3724000A3394 /* test.c */,
@@ -91,14 +88,23 @@
 		883E26AB20EC3724000A3394 /* extra */ = {
 			isa = PBXGroup;
 			children = (
+				88B0A5A620EC504D00CE1317 /* 3rdparty */,
 				883E26B020EC375F000A3394 /* graphics_bdf.h */,
 				883E26B120EC375F000A3394 /* graphics_bdf.c */,
-				883E26B320EC3CEC000A3394 /* graphics_stb_image.h */,
-				883E26B420EC3CEC000A3394 /* graphics_stb_image.c */,
+				883E26B320EC3CEC000A3394 /* graphics_image.h */,
+				883E26B420EC3CEC000A3394 /* graphics_image.c */,
 				88B0A5A520EC468E00CE1317 /* graphics_colours.h */,
 			);
 			name = extra;
 			path = ../../extra;
+			sourceTree = "<group>";
+		};
+		88B0A5A620EC504D00CE1317 /* 3rdparty */ = {
+			isa = PBXGroup;
+			children = (
+				88B0A5A720EC504D00CE1317 /* stb_image.h */,
+			);
+			path = 3rdparty;
 			sourceTree = "<group>";
 		};
 		88D03B74203A1CC400FB8EE4 = {
@@ -194,7 +200,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				883E26B520EC3CEC000A3394 /* graphics_stb_image.c in Sources */,
+				883E26B520EC3CEC000A3394 /* graphics_image.c in Sources */,
 				88DC86D520D45250000A762E /* graphics.c in Sources */,
 				883E26B220EC375F000A3394 /* graphics_bdf.c in Sources */,
 				883E26AF20EC3724000A3394 /* test.c in Sources */,

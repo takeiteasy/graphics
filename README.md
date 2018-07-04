@@ -1,6 +1,6 @@
 # graphics.h
 
-Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html) and [minifb](https://github.com/emoon/minifb). Also taking inspiration from [SDL 1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/)
+Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html) and [minifb](https://github.com/emoon/minifb), [SDL 1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/)
 
 
 ## Supported
@@ -8,18 +8,18 @@ Cross platform 2D software rendering graphics library, inspired by [graphics.h](
 - Windows, OSX and Linux (X11)
 - Keyboard and mouse events
 - Primitive shapes
-- BMP loading (8, 24 & 32 bpp)
+- BMP loading (8, 24 & 32 bpp) (1 & 4 bpp, RLE compression and OS/2 not supported yet)
 - Save surfaces to BMP file
 - Text rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
 - Optional OpenGL & Metal backends (Just for rendering to screen)
-- Optional extras (BDF rendering, stb_image to surface)
+- Optional extras (bdf loader, image loader using [stb_image](https://github.com/nothings/stb), more soon)
 
 See below screenshots for TODO list and the examples folder for some idea of how to use. Still a WIP, API subject to change a lot.
 
 
 ## Building
 
-No external libraries are used unless you want to use the alternate backends (enable them by defining GRAPHICS_ENABLE_(OPENGL/METAL)).
+No external libraries are used unless you want to use the alternate backends (enable them by defining ```GRAPHICS_ENABLE_(OPENGL/METAL)```).
 
 On OSX you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for metal.
 
@@ -54,17 +54,22 @@ One note for using this on Linux is that when rendering to the framebuffer, X11 
 - Joystick/Gamepad input
 - Add fill option for ellipse_rotated
 - Add rotated rect function
+- Flood fill function
 - Add line width option
+- Better error reporting system
+- Disable window/text rendering macros
+- Wayland window code
+- 1 & 4 bpp, RLE compressed and OS/2 BMP support
+- Re-add extra characters to internal font renderer
 
 ### MAYBE TODO
 
 - RGBA surfaces (instead of just RGB?)
 - Vulkan/DirectX/~~Metal~~ backends
 - Documentation & comments
-- Wayland/Mir window code
-- C++ OOP wrapper
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
-- More examples
+- More examples/tests
+- More extras (FreeType fonts/C++ OOP wrapper)
 
 
 ## License

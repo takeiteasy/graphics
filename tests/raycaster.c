@@ -3,6 +3,8 @@
 #define MAP_W 24
 #define MAP_H 24
 
+// Adapted from: https://lodev.org/cgtutor/raycasting.html
+
 static int map[MAP_W][MAP_H]= {
   {4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,7,7,7,7,7,7,7,7},
   {4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,7},

@@ -1,5 +1,5 @@
 #include "graphics_bdf.h"
-#include "graphics_stb_image.h"
+#include "graphics_image.h"
 #include "graphics_colours.h"
 #include "graphics.h"
 
