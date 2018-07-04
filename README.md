@@ -3,7 +3,7 @@
 Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html) and [minifb](https://github.com/emoon/minifb). Also taking inspiration from [SDL 1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/)
 
 
-### Supported
+## Supported
 
 - Windows, OSX and Linux (X11)
 - Keyboard and mouse events
@@ -17,20 +17,20 @@ Cross platform 2D software rendering graphics library, inspired by [graphics.h](
 See below screenshots for TODO list and the examples folder for some idea of how to use. Still a WIP, API subject to change a lot.
 
 
-### Building
+## Building
 
 No external libraries are used unless you want to use the alternate backends (enable them by defining GRAPHICS_ENABLE_(OPENGL/METAL)).
 
-On OSX you'll have to link Cocoa framework and include the ```-x objective-c -fno-objc-arc``` flags.
+On OSX you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for metal.
 
-On Linux use the ```-lX11 -lm``` flags, and if you're using the OpenGL backend include ```-ld```.
+On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're using the OpenGL backend include ```-ld -lgl```.
 
-I've never even bothered trying to build stuff on Windows outside of Visual Studio, so I can't help you there, but I don't think it matters.
+I've never even bothered trying to build stuff on Windows outside of Visual Studio, so I can't help you there.
 
 One note for using this on Linux is that when rendering to the framebuffer, X11 can't automatically strech stuff like ```StretchDIBits``` and ```CGContextDrawImage``` can - so resizing the window is disabled (until I can find a solution) unless you're using the OpenGL backend.
 
 
-### Screenshots
+## Screenshots
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshots/screenshot_osx.png">
