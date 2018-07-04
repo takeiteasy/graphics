@@ -93,7 +93,7 @@ int bdf(bdf_t* out, const char* path) {
     return 0;
   }
   
-  int encoding = 0, width = -1, scanline = 0, i, j, n = 0;
+  int encoding = 0, width = -1, scanline = -1, i, j, n = 0;
   for (;;) {
     if (!fgets(buf, sizeof(buf), fp))
       break;
@@ -159,7 +159,7 @@ int bdf(bdf_t* out, const char* path) {
       width = -1;
       ++n;
     } else {
-      if (!out->chars[n].bitmap || scanline < 0)
+      if (n >= out->n_chars || !out->chars[n].bitmap || scanline < 0)
         continue;
       
       p = s;

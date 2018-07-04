@@ -73,8 +73,8 @@ extern "C" {
   int pget(surface_t* s, int x, int y);
   int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, float opacity, int chroma);
 #define BLIT(dst, p, src, rect) (blit((dst), (p), (src), (rect), -1, -1))
-  void yline(surface_t* s, int x, int y0, int y1, int col);
-  void xline(surface_t* s, int y, int x0, int x1, int col);
+  void hline(surface_t* s, int x, int y0, int y1, int col);
+  void wline(surface_t* s, int y, int x0, int x1, int col);
   void line(surface_t* s, int x0, int y0, int x1, int y1, int col);
   int bmp(surface_t* s, const char* path);
   void ascii(surface_t* s, char ch, int x, int y, int fg, int bg);
@@ -100,7 +100,7 @@ extern "C" {
   void rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
   int save_bmp(surface_t* s, const char* path);
   int copy(surface_t* in, surface_t* out);
-  void iterate(surface_t* s, int(*fn)(int x, int y, int col));
+  void filter(surface_t* s, int(*fn)(int x, int y, int col));
   int resize(surface_t* in, int nw, int nh, surface_t* out);
   
   typedef enum {

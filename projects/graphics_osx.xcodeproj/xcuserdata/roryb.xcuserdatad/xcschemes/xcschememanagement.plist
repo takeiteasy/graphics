@@ -4,7 +4,7 @@
 <dict>
 	<key>SchemeUserState</key>
 	<dict>
-		<key>graphics_osx_test.xcscheme</key>
+		<key>graphics_osx.xcscheme</key>
 		<dict>
 			<key>orderHint</key>
 			<integer>0</integer>
@@ -12,7 +12,7 @@
 	</dict>
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
-		<key>88D03B7C203A1CC400FB8EE4</key>
+		<key>88B0A61C20EC6B5100CE1317</key>
 		<dict>
 			<key>primary</key>
 			<true/>

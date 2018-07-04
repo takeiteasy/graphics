@@ -597,7 +597,7 @@ int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r, float opacity, i
   return 1;
 }
 
-void yline(surface_t* s, int x, int y0, int y1, int col) {
+void hline(surface_t* s, int x, int y0, int y1, int col) {
   if (y1 < y0) {
     y0 += y1;
     y1  = y0 - y1;
@@ -616,7 +616,7 @@ void yline(surface_t* s, int x, int y0, int y1, int col) {
     XYSET(s, x, y, col);
 }
 
-void xline(surface_t* s, int y, int x0, int x1, int col) {
+void wline(surface_t* s, int y, int x0, int x1, int col) {
   if (x1 < x0) {
     x0 += x1;
     x1  = x0 - x1;
@@ -637,9 +637,9 @@ void xline(surface_t* s, int y, int x0, int x1, int col) {
 
 void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
   if (x0 == x1)
-    yline(s, x0, y0, y1, col);
+    hline(s, x0, y0, y1, col);
   if (y0 == y1)
-    xline(s, y0, x0, x1, col);
+    wline(s, y0, x0, x1, col);
 
   int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
 #if defined(GRAPHICS_ENABLE_AA)
@@ -1113,8 +1113,8 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
     XYSETSAFE(s, xc + y, yc + x, col);
 
     if (fill) {
-      xline(s, yc - y, xc - x, xc + x, col);
-      xline(s, yc + y, xc - x, xc + x, col);
+      wline(s, yc - y, xc - x, xc + x, col);
+      wline(s, yc + y, xc - x, xc + x, col);
   }
 
     r = err;
@@ -1142,8 +1142,8 @@ void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
     XYSETSAFE(s, xc - x, yc - y, col);
 
     if (fill) {
-      xline(s, yc - y, xc - x, xc + x, col);
-      xline(s, yc + y, xc - x, xc + x, col);
+      wline(s, yc - y, xc - x, xc + x, col);
+      wline(s, yc + y, xc - x, xc + x, col);
     }
 
     e2 = 2 * err;
@@ -1254,8 +1254,8 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
     XYSETSAFE(s, x1, y1, col);
 
     if (fill) {
-      xline(s, y0, x0, x1, col);
-      xline(s, y1, x0, x1, col);
+      wline(s, y0, x0, x1, col);
+      wline(s, y1, x0, x1, col);
     }
 
     e2 = 2 * err;
@@ -1902,12 +1902,12 @@ void rect(surface_t* s, int x, int y, int w, int h, int col, int fill) {
 
   if (fill) {
     for (; y < h; ++y)
-      xline(s, y, x, w, col);
+      wline(s, y, x, w, col);
   } else {
-    xline(s, y, x, w, col);
-    xline(s, h, x, w, col);
-    yline(s, x, y, h, col);
-    yline(s, w, y, h, col);
+    wline(s, y, x, w, col);
+    wline(s, h, x, w, col);
+    hline(s, x, y, h, col);
+    hline(s, w, y, h, col);
   }
 }
 
@@ -1982,7 +1982,7 @@ int copy(surface_t* in, surface_t* out) {
   return !!out->buf;
 }
 
-void iterate(surface_t* s, int (*fn)(int x, int y, int col)) {
+void filter(surface_t* s, int (*fn)(int x, int y, int col)) {
   if (!s)
     return;
 

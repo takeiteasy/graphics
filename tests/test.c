@@ -7,6 +7,13 @@ int invert(int x, int y, int c) {
   return RGB(255 - ((c >> 16) & 0xFF), 255 - ((c >> 8) & 0xFF), 255 - (c & 0xFF));
 }
 
+int greyscale(int x, int y, int c) {
+  int r, g, b;
+  rgb(c, &r, &g, &b);
+  int gc = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return RGB(gc, gc, gc);
+}
+
 #define RND_255 (rand() % 256)
 
 int rnd(int x, int y, int c) {
@@ -16,6 +23,16 @@ int rnd(int x, int y, int c) {
 static surface_t win;
 static int win_w = 0, win_h = 0, mx = 0, my = 0, running = 1;
 
+typedef struct {
+  surface_t* s;
+  point_t* p;
+  rect_t* r;
+} sprite_t;
+
+void blit_sprite(surface_t* dst, sprite_t* src, float opacity, int chroma) {
+  blit(dst, src->p, src->s, src->r, opacity, chroma);
+}
+
 #define DEBUG_NATIVE_RESIZE 1
 
 void on_resize(int w, int h) {
@@ -24,13 +41,13 @@ void on_resize(int w, int h) {
 #if !DEBUG_NATIVE_RESIZE
   reset(&win, w, h);
 #else
-  fill(&win, BLACK);
+  cls(&win);
 #endif
   writelnf(&win, 4, 5, WHITE, -1, "%dx%d\n", w, h);
 }
 
-#define INITIAL_WIN_W 640
-#define INITIAL_WIN_H 480
+#define SW 640
+#define SH 480
 
 #if !defined(RES_PATH)
 #if defined(__APPLE__)
@@ -41,18 +58,18 @@ void on_resize(int w, int h) {
 #define RES_PATH "/home/reimu/Desktop/graphics.h/tests/"
 #endif
 #endif
-#define __RES(X,Y) (X Y)
-#define RES(X) (__RES(RES_PATH, X))
+#define RES_JOIN(X,Y) (X Y)
+#define RES(X) (RES_JOIN(RES_PATH, X))
 
 int main(int argc, const char* argv[]) {
-  if (!screen("test", INITIAL_WIN_W, INITIAL_WIN_H)) {
+  if (!screen("test", SW, SH)) {
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
   }
-  win_w = INITIAL_WIN_W;
-  win_h = INITIAL_WIN_H;
+  win_w = SW;
+  win_h = SH;
   resize_callback(on_resize);
-  surface(&win, INITIAL_WIN_W, INITIAL_WIN_H);
+  surface(&win, SW, SH);
 
   surface_t a, b, c, d, e, f, g, h, k, l;
   surface(&a, 50, 50);
@@ -62,10 +79,12 @@ int main(int argc, const char* argv[]) {
     return 1;
   }
   
-  if (!bmp(&c, RES("lena.bmp"))) {
+  if (!bmp(&g, RES("lena.bmp"))) {
     fprintf(stderr, "%s\n", get_last_error());
     return 1;
   }
+  resize(&g, g.w / 2, g.h / 2, &c);
+  destroy(&g);
   
   // BDF example from tewi-font: https://github.com/lucy/tewi-font
   bdf_t tewi;
@@ -75,9 +94,9 @@ int main(int argc, const char* argv[]) {
   }
   
   copy(&c, &e);
-  iterate(&e, invert);
+  filter(&e, greyscale);
 
-  rect_t  tmpr  = { 280, 320, 50, 50 };
+  rect_t  tmpr  = { 125, 120, 50, 50 };
   point_t tmpp  = { 10, 150 };
   point_t tmpp2 = { 5, 227 };
   point_t tmpp3 = { 350, 125 };
@@ -85,8 +104,8 @@ int main(int argc, const char* argv[]) {
   point_t tmpp5 = { 10, 110 };
   point_t tmpp6 = { 425, 110 };
   point_t tmpp7 = { 482, 170 };
-  point_t tmpp8 = { 525, 370 };
-  point_t tmpp9 = { 20, 20 };
+  point_t tmpp8 = { 530, 370 };
+  point_t tmpp9 = { 100, 20 };
 
   stringf(&d, RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", tmpr.x, tmpr.y, tmpr.w, tmpr.h);
   string(&h, RED, LIME, "NO\nGREEN\nHERE");
@@ -148,9 +167,9 @@ int main(int argc, const char* argv[]) {
     fill(&win, WHITE);
     
     for (int x = 32; x < win.w; x += 32)
-      yline(&win, x, 0, win.h, GRAY);
+      hline(&win, x, 0, win.h, GRAY);
     for (int y = 32; y < win.h; y += 32)
-      xline(&win, y, 0, win.w, GRAY);
+      wline(&win, y, 0, win.w, GRAY);
     
     blit(&win, &tmpp9, &b, NULL, -1, LIME);
     
@@ -179,7 +198,7 @@ int main(int argc, const char* argv[]) {
 
     blit(&win, &tmpp8, &f, NULL, .5f, -1);
 
-    iterate(&a, rnd);
+    filter(&a, rnd);
     blit(&a, NULL, &l, NULL, -1, LIME);
     blit(&win, &tmpp3, &a, NULL, -1, LIME);
 
@@ -198,12 +217,12 @@ int main(int argc, const char* argv[]) {
     my = (int)(((float)my / (float)win_h) * win.h);
 #endif
     col = pget(&win, mx, my);
-    rect(&win, 150, 50,  100, 100, col, 0);
-    rect(&win, 200, 100, 100, 100, col, 0);
-    line(&win, 150, 50,  200, 100, col);
-    line(&win, 250, 50,  300, 100, col);
-    line(&win, 150, 150, 200, 200, col);
-    line(&win, 250, 150, 300, 200, col);
+//    rect(&win, 150, 50,  100, 100, col, 0);
+//    rect(&win, 200, 100, 100, 100, col, 0);
+//    line(&win, 150, 50,  200, 100, col);
+//    line(&win, 250, 50,  300, 100, col);
+//    line(&win, 150, 150, 200, 200, col);
+//    line(&win, 250, 150, 300, 200, col);
 
     line(&win, 0, 0, mx, my, col);
     circle(&win, mx, my, 30, col, 0);

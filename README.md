@@ -1,6 +1,8 @@
 # graphics.h
 
-Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb), [SDL 1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/)
+Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb), [SDL 1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/). Designed to be a drop-in and use sort of deal with little hassle.
+
+I don't know if anyone will really find a use for this besides me. But it's very fun to work on. It's not explicitly a game development library, just a rendering library. It's most likely less efficient, slower, more buggy and has less features, support, compatibility and portability than SDL - Just so you know, if you didn't already guess.
 
 
 ## Supported
@@ -8,26 +10,27 @@ Cross platform 2D software rendering graphics library, inspired by [graphics.h](
 - Windows, OSX and Linux (X11)
 - Keyboard and mouse events
 - Primitive shapes
+- Optional AA for primitives (Enable with ```GRAPHICS_ENABLE_AA``` macro)
 - BMP loading (Uncompressed 8, 24 & 32 bpp) (1 & 4 bpp, RLE compression and OS/2 not supported yet)
 - Save surfaces to BMP file
 - Text rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
-- Optional OpenGL & Metal backends (Just for rendering to screen)
+- Optional OpenGL & Metal backends (Just for rendering to screen, enable with ```GRAPHICS_ENABLE_$X``` macros)
 - Optional extras (bdf loader, image loader using [stb_image](https://github.com/nothings/stb) and more soon)
 
-See below screenshots for TODO list and the examples folder for some idea of how to use. Still a WIP, API subject to change a lot.
+See below screenshots for TODO list and the examples folder for some idea of how to use. ___Still a WIP, API subject to change a lot___.
 
 
 ## Building
 
 No external libraries are used unless you want to use the alternate backends (enable them by defining ```GRAPHICS_ENABLE_(OPENGL/METAL)```).
 
-On OSX you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for metal.
+On OSX you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for Metal.
 
-On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're using the OpenGL backend include ```-ld -lgl```.
+On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're using the OpenGL backend include ```-ld -lGL```.
 
 I've never even bothered trying to build stuff on Windows outside of Visual Studio, so I can't help you there.
 
-One note for using this on Linux is that when rendering to the framebuffer, X11 can't automatically strech stuff like ```StretchDIBits``` and ```CGContextDrawImage``` can - so resizing the window is disabled (until I can find a solution) unless you're using the OpenGL backend.
+**NOTE**: X11 can't automatically strech stuff being rendered like ```StretchDIBits``` and ```CGContextDrawImage``` can - so resizing the window is disabled (_until I can find a solution_) unless you're using the OpenGL backend.
 
 
 ## Screenshots
@@ -47,23 +50,30 @@ One note for using this on Linux is that when rendering to the framebuffer, X11 
 
 ## TODO
 
+### Important
+
 - Window flags
-- Colour escapes for print()
+- Colour escapes for ```writeln()``` & ```string()```
 - Cursor lock & hide
-- Extended surface functions, ~~resize~~, rotate, filters, etc
 - Joystick/Gamepad input
-- Add fill option for ellipse_rotated
-- Add rotated rect function
-- Flood fill function
-- Add line width option
-- Better error reporting system
-- Disable window/text rendering macros
-- Wayland window code
 - 1 & 4 bpp, RLE compressed and OS/2 BMP support
 - Re-add extra characters to internal font renderer
+- Improve event polling system
 
-### MAYBE TODO
+### Less important
 
+- Add fill option for ```ellipse_rotated()``` and other functions
+- Add rotated rect function
+- Flood fill function
+- Extended surface functions, ~~resize~~, rotate, filters, etc
+- Add line width option
+- Better error reporting system
+- Macros for disabling window and text rendering
+- Wayland window code
+
+### Maybe
+
+- Make thread safe (surface locks)
 - RGBA surfaces (instead of just RGB?)
 - Vulkan/DirectX/~~Metal~~ backends
 - Documentation & comments

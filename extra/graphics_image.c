@@ -25,6 +25,7 @@ int image(surface_t* out, const char* path, int alpha) {
   }
   
   if (!surface(out, w, h)) {
+    stbi_image_free(data);
     SET_LAST_ERROR("image() failed: %s\n", get_last_error());
     return 0;
   }
@@ -35,6 +36,8 @@ int image(surface_t* out, const char* path, int alpha) {
       out->buf[y * w + x] = (c == 4 && !p[3] ? alpha : RGB(p[0], p[1], p[2]));
     }
   }
+  
+  stbi_image_free(data);
   return 1;
 }
 
