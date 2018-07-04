@@ -1,6 +1,6 @@
 # graphics.h
 
-Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html) and [minifb](https://github.com/emoon/minifb), [SDL 1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/)
+Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb), [SDL 1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/)
 
 
 ## Supported
@@ -8,11 +8,11 @@ Cross platform 2D software rendering graphics library, inspired by [graphics.h](
 - Windows, OSX and Linux (X11)
 - Keyboard and mouse events
 - Primitive shapes
-- BMP loading (8, 24 & 32 bpp) (1 & 4 bpp, RLE compression and OS/2 not supported yet)
+- BMP loading (Uncompressed 8, 24 & 32 bpp) (1 & 4 bpp, RLE compression and OS/2 not supported yet)
 - Save surfaces to BMP file
 - Text rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
 - Optional OpenGL & Metal backends (Just for rendering to screen)
-- Optional extras (bdf loader, image loader using [stb_image](https://github.com/nothings/stb), more soon)
+- Optional extras (bdf loader, image loader using [stb_image](https://github.com/nothings/stb) and more soon)
 
 See below screenshots for TODO list and the examples folder for some idea of how to use. Still a WIP, API subject to change a lot.
 
@@ -69,7 +69,7 @@ One note for using this on Linux is that when rendering to the framebuffer, X11 
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples/tests
-- More extras (FreeType fonts/C++ OOP wrapper)
+- More extras (gif load/save, FreeType fonts, C++ OOP wrapper)
 
 
 ## License
