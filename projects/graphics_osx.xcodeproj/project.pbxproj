@@ -30,6 +30,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		88B0254D20EFFF150007849F /* stb_image_write.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image_write.h; sourceTree = "<group>"; };
 		88B0A61D20EC6B5100CE1317 /* graphics_osx */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics_osx; sourceTree = BUILT_PRODUCTS_DIR; };
 		88B0A62820EC6B8000CE1317 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../graphics.c; sourceTree = "<group>"; };
 		88B0A62920EC6B8000CE1317 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../graphics.h; sourceTree = "<group>"; };
@@ -38,8 +39,6 @@
 		88B0A62F20EC6B9400CE1317 /* lena.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = lena.png; sourceTree = "<group>"; };
 		88B0A63020EC6B9400CE1317 /* 1bpp.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = 1bpp.bmp; sourceTree = "<group>"; };
 		88B0A63120EC6B9400CE1317 /* Uncompressed-24.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = "Uncompressed-24.bmp"; sourceTree = "<group>"; };
-		88B0A63220EC6B9400CE1317 /* save_bmp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = save_bmp.c; sourceTree = "<group>"; };
-		88B0A63320EC6B9400CE1317 /* raycaster.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = raycaster.c; sourceTree = "<group>"; };
 		88B0A63420EC6B9400CE1317 /* build_nix.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_nix.sh; sourceTree = "<group>"; };
 		88B0A63520EC6B9400CE1317 /* build_osx.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_osx.sh; sourceTree = "<group>"; };
 		88B0A63620EC6B9400CE1317 /* lena.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = lena.bmp; sourceTree = "<group>"; };
@@ -112,8 +111,6 @@
 				88B0A62F20EC6B9400CE1317 /* lena.png */,
 				88B0A63020EC6B9400CE1317 /* 1bpp.bmp */,
 				88B0A63120EC6B9400CE1317 /* Uncompressed-24.bmp */,
-				88B0A63220EC6B9400CE1317 /* save_bmp.c */,
-				88B0A63320EC6B9400CE1317 /* raycaster.c */,
 				88B0A63420EC6B9400CE1317 /* build_nix.sh */,
 				88B0A63520EC6B9400CE1317 /* build_osx.sh */,
 				88B0A63620EC6B9400CE1317 /* lena.bmp */,
@@ -134,8 +131,8 @@
 				88B0A64320EC6B9400CE1317 /* 3rdparty */,
 				88B0A63E20EC6B9400CE1317 /* graphics_colours.h */,
 				88B0A63F20EC6B9400CE1317 /* graphics_bdf.h */,
-				88B0A64020EC6B9400CE1317 /* graphics_image.h */,
 				88B0A64120EC6B9400CE1317 /* graphics_bdf.c */,
+				88B0A64020EC6B9400CE1317 /* graphics_image.h */,
 				88B0A64220EC6B9400CE1317 /* graphics_image.c */,
 			);
 			name = extra;
@@ -145,6 +142,7 @@
 		88B0A64320EC6B9400CE1317 /* 3rdparty */ = {
 			isa = PBXGroup;
 			children = (
+				88B0254D20EFFF150007849F /* stb_image_write.h */,
 				88B0A64920EC6B9400CE1317 /* stb_image.h */,
 			);
 			path = 3rdparty;

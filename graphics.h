@@ -33,8 +33,13 @@ extern "C" {
 #include <X11/XKBlib.h>
 #include <X11/keysym.h>
 #endif
-  
-#define RGB(r, g, b) (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b)
+
+#define RGBA(r, g, b, a) (((unsigned int)(a)) << 24) |(((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b)
+#define RGB(r, g, b) RGBA((r), (g), (b), 255)
+#define R(v) ((v >> 16) & 0xFF)
+#define G(v) ((v >>  8) & 0xFF)
+#define B(v) ( v        & 0xFF)
+#define A(v) ((v >> 24) & 0xFF)
 
 #define BLACK 0
 #define BLUE 255

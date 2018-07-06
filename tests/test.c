@@ -21,15 +21,15 @@ int rnd(int x, int y, int c) {
 }
 
 static surface_t win;
-static int win_w = 640, win_h = 480, mx = 0, my = 0, running = 1;
+static int win_w = 800, win_h = 600, mx = 0, my = 0, running = 1;
 
 #define DEBUG_NATIVE_RESIZE 0
 
 void update_mxy() {
   mouse_xy(&mx, &my);
 #if DEBUG_NATIVE_RESIZE
-  mx = (int)(((float)mx / (float)win_w) * win.w);
-  my = (int)(((float)my / (float)win_h) * win.h);
+  mx = (int)((mx / win_w) * win.w);
+  my = (int)((my / win_h) * win.h);
 #endif
 }
 
@@ -56,8 +56,20 @@ void on_resize(int w, int h) {
 #define RES_JOIN(X,Y) (X Y)
 #define RES(X) (RES_JOIN(RES_PATH, X))
 
+void test_set(surface_t* s, int x, int y, int c) {
+  int __ = A(c);
+  if (__ == 0.f || x < 0 || y < 0 || x >= s->w || y >= s->h)
+    return;
+  
+  int* _ = &s->buf[y * s->w + x];
+  float ___ = 1.f - ((float)__ / 255.f);
+  *_ = RGB((int)(R(*_) * (1 - ___) + R(c) * ___),
+           (int)(G(*_) * (1 - ___) + G(c) * ___),
+           (int)(B(*_) * (1 - ___) + B(c) * ___));
+}
+
 int main(int argc, const char* argv[]) {
-  if (!surface(&win, 640, 480)) {
+  if (!surface(&win, win_w, win_h)) {
     fprintf(stderr, "%s\n", last_error());
     return 1;
   }
@@ -125,7 +137,11 @@ int main(int argc, const char* argv[]) {
   rect(&s[5], 50, 50, 50, 50, LIME, 1);
   rect(&s[5], 50, 0,  50, 50, BLUE, 1);
   rect(&s[5], 0,  50, 50, 50, YELLOW, 1);
+  
+  surface_t test;
+  surface(&test, 50, 50);
 
+  int testa = 0;
   int col = 0, grey = 0;
   long sine_i = 0;
   event_t e;
@@ -167,6 +183,8 @@ int main(int argc, const char* argv[]) {
               break;
             case KB_KEY_F1:
               save_bmp(&win, "test.bmp");
+            case KB_KEY_F2:
+              save_image(&win, "test.png");
               break;
             default:
               break;
@@ -240,6 +258,20 @@ int main(int argc, const char* argv[]) {
     
     if (grey)
       filter(&win, greyscale);
+    
+    cls(&win);
+    
+    fill(&test, RED);
+    
+    testa += 1;
+    if (testa > 255)
+      testa = 0;
+    
+    for (int i = 0; i < 25; ++i)
+      for (int j = 0; j < 25; ++j)
+        test_set(&test, i, j, RGBA(0, 0, 255, testa));
+    
+    BLIT(&win, NULL, &test, NULL);
     
     flush(&win);
   }
