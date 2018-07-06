@@ -21,19 +21,17 @@ int rnd(int x, int y, int c) {
 }
 
 static surface_t win;
-static int win_w = 0, win_h = 0, mx = 0, my = 0, running = 1;
+static int win_w = 640, win_h = 480, mx = 0, my = 0, running = 1;
 
-typedef struct {
-  surface_t* s;
-  point_t* p;
-  rect_t* r;
-} sprite_t;
+#define DEBUG_NATIVE_RESIZE 0
 
-void blit_sprite(surface_t* dst, sprite_t* src, float opacity, int chroma) {
-  blit(dst, src->p, src->s, src->r, opacity, chroma);
+void update_mxy() {
+  mouse_xy(&mx, &my);
+#if DEBUG_NATIVE_RESIZE
+  mx = (int)(((float)mx / (float)win_w) * win.w);
+  my = (int)(((float)my / (float)win_h) * win.h);
+#endif
 }
-
-#define DEBUG_NATIVE_RESIZE 1
 
 void on_resize(int w, int h) {
   win_w = w;
@@ -45,9 +43,6 @@ void on_resize(int w, int h) {
 #endif
   writelnf(&win, 4, 5, WHITE, -1, "%dx%d\n", w, h);
 }
-
-#define SW 640
-#define SH 480
 
 #if !defined(RES_PATH)
 #if defined(__APPLE__)
@@ -62,29 +57,34 @@ void on_resize(int w, int h) {
 #define RES(X) (RES_JOIN(RES_PATH, X))
 
 int main(int argc, const char* argv[]) {
-  if (!screen("test", SW, SH)) {
-    fprintf(stderr, "%s\n", get_last_error());
+  if (!surface(&win, 640, 480)) {
+    fprintf(stderr, "%s\n", last_error());
     return 1;
   }
-  win_w = SW;
-  win_h = SH;
+  if (!screen("test", &win_w, &win_h, RESIZABLE)) {
+    fprintf(stderr, "%s\n", last_error());
+    return 1;
+  }
+#if !DEBUG_NATIVE_RESIZE
+  if (win.w != win_w || win.h != win_h)
+    reset(&win, win_w, win_h);
+#endif
   resize_callback(on_resize);
-  surface(&win, SW, SH);
 
-  surface_t a, b, c, d, e, f, g, h, k, l;
-  surface(&a, 50, 50);
+  surface_t s[10];
+  surface(&s[0], 50, 50);
   
-  if (!image(&b, RES("test_alpha.png"), LIME)) {
+  if (!image(&s[1], RES("test_alpha.png"), LIME)) {
     fprintf(stderr, "%s\n", get_last_stb_error());
     return 1;
   }
   
-  if (!bmp(&g, RES("lena.bmp"))) {
-    fprintf(stderr, "%s\n", get_last_error());
+  if (!bmp(&s[6], RES("lena.bmp"))) {
+    fprintf(stderr, "%s\n", last_error());
     return 1;
   }
-  resize(&g, g.w / 2, g.h / 2, &c);
-  destroy(&g);
+  resize(&s[6], s[6].w / 2, s[6].h / 2, &s[2]);
+  destroy(&s[6]);
   
   // BDF example from tewi-font: https://github.com/lucy/tewi-font
   bdf_t tewi;
@@ -93,54 +93,58 @@ int main(int argc, const char* argv[]) {
     return 1;
   }
   
-  copy(&c, &e);
-  filter(&e, greyscale);
+  copy(&s[2], &s[4]);
+  filter(&s[4], invert);
+  
+  point_t points[9] = {
+    { 10,  150 },
+    { 5,   227 },
+    { 350, 125 },
+    { 0,   0   },
+    { 10,  110 },
+    { 425, 110 },
+    { 482, 170 },
+    { 530, 370 },
+    { 100, 20  }
+  };
+  points[3].x = points[1].x + s[2].w + 5;
+  points[3].y = points[1].y;
 
-  rect_t  tmpr  = { 125, 120, 50, 50 };
-  point_t tmpp  = { 10, 150 };
-  point_t tmpp2 = { 5, 227 };
-  point_t tmpp3 = { 350, 125 };
-  point_t tmpp4 = { tmpp2.x + c.w + 5, tmpp2.y };
-  point_t tmpp5 = { 10, 110 };
-  point_t tmpp6 = { 425, 110 };
-  point_t tmpp7 = { 482, 170 };
-  point_t tmpp8 = { 530, 370 };
-  point_t tmpp9 = { 100, 20 };
-
-  stringf(&d, RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", tmpr.x, tmpr.y, tmpr.w, tmpr.h);
-  string(&h, RED, LIME, "NO\nGREEN\nHERE");
-  string(&k, LIME, BLACK, "WOW");
-  surface(&l, 50, 50);
-  fill(&l, BLACK);
+  rect_t cutr  = { 125, 120, 50, 50 };
+  stringf(&s[3], RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", cutr.x, cutr.y, cutr.w, cutr.h);
+  string(&s[7], RED, LIME, "NO\nGREEN\nHERE");
+  string(&s[8], LIME, BLACK, "WOW");
+  surface(&s[9], 50, 50);
+  fill(&s[9], BLACK);
   point_t tmmp8 = { 13, 20 };
-  BLIT(&l, &tmmp8, &k, NULL);
-  destroy(&k);
+  BLIT(&s[9], &tmmp8, &s[8], NULL);
+  destroy(&s[8]);
 
-  surface(&f, 100, 100);
-  rect(&f, 0,  0,  50, 50, RED, 1);
-  rect(&f, 50, 50, 50, 50, LIME, 1);
-  rect(&f, 50, 0,  50, 50, BLUE, 1);
-  rect(&f, 0,  50, 50, 50, YELLOW, 1);
+  surface(&s[5], 100, 100);
+  rect(&s[5], 0,  0,  50, 50, RED, 1);
+  rect(&s[5], 50, 50, 50, 50, LIME, 1);
+  rect(&s[5], 50, 0,  50, 50, BLUE, 1);
+  rect(&s[5], 0,  50, 50, 50, YELLOW, 1);
 
-  int col = 0;
+  int col = 0, grey = 0;
   long sine_i = 0;
-  user_event_t ue;
+  event_t e;
   long prev_frame_tick;
   long curr_frame_tick = ticks();
-  while (running) {
+  while (!closed() && running) {
     prev_frame_tick = curr_frame_tick;
     curr_frame_tick = ticks();
-    
-    while (poll_events(&ue)) {
-      switch (ue.type) {
+
+    while (poll(&e)) {
+      switch (e.type) {
         case WINDOW_CLOSED:
           running = 0;
           break;
         case KEYBOARD_KEY_DOWN:
-          switch (ue.sym) {
+          switch (e.sym) {
 #if defined(__APPLE__)
             case KB_KEY_Q:
-              if (ue.mod & KB_MOD_SUPER)
+              if (e.mod & KB_MOD_SUPER)
                 running = 0;
               break;
 #else
@@ -150,12 +154,23 @@ int main(int argc, const char* argv[]) {
               break;
 #endif
             case KB_KEY_SPACE:
-              save_bmp(&win, "test.bmp");
+              grey = 1;
               break;
             default:
               break;
           }
           break;
+        case KEYBOARD_KEY_UP:
+          switch (e.sym) {
+            case KB_KEY_SPACE:
+              grey = 0;
+              break;
+            case KB_KEY_F1:
+              save_bmp(&win, "test.bmp");
+              break;
+            default:
+              break;
+          }
         default:
           break;
       }
@@ -171,7 +186,7 @@ int main(int argc, const char* argv[]) {
     for (int y = 32; y < win.h; y += 32)
       hline(&win, y, 0, win.w, GRAY);
     
-    blit(&win, &tmpp9, &b, NULL, -1, LIME);
+    blit(&win, &points[8], &s[1], NULL, -1, LIME);
     
     writeln(&win, 10, 10, RED, -1, "Hello World");
     writeln(&win, 10, 22, MAROON, -1, "こんにちはせかい");
@@ -187,20 +202,20 @@ int main(int argc, const char* argv[]) {
     }
     sine_i += (int)(speed * .3);
 
-    blit(&win, &tmpp5, &d, NULL, -1, LIME);
-    blit(&win, &tmpp, &c, &tmpr, -1, LIME);
+    blit(&win, &points[4], &s[3], NULL, -1, LIME);
+    blit(&win, &points[0], &s[2], &cutr, -1, LIME);
 
-    blit(&win, &tmpp2, &c, NULL, -1, LIME);
-    blit(&win, &tmpp4, &e, NULL, -1, LIME);
+    blit(&win, &points[1], &s[2], NULL, -1, LIME);
+    blit(&win, &points[3], &s[4], NULL, -1, LIME);
 
-    blit(&win, &tmpp6, &f, NULL, -1, LIME);
-    blit(&win, &tmpp7, &h, NULL, -1, LIME);
+    blit(&win, &points[5], &s[5], NULL, -1, LIME);
+    blit(&win, &points[6], &s[7], NULL, -1, LIME);
 
-    blit(&win, &tmpp8, &f, NULL, .5f, -1);
+    blit(&win, &points[7], &s[5], NULL, .5f, -1);
 
-    filter(&a, rnd);
-    blit(&a, NULL, &l, NULL, -1, LIME);
-    blit(&win, &tmpp3, &a, NULL, -1, LIME);
+    filter(&s[0], rnd);
+    blit(&s[0], NULL, &s[9], NULL, -1, LIME);
+    blit(&win, &points[2], &s[0], NULL, -1, LIME);
 
     circle(&win, 352, 32, 30, RED,    1);
     circle(&win, 382, 32, 30, ORANGE, 1);
@@ -210,12 +225,8 @@ int main(int argc, const char* argv[]) {
     circle(&win, 502, 32, 30, INDIGO, 1);
     circle(&win, 532, 32, 30, VIOLET, 1);
 
+    update_mxy();
     writelnf(&win, 400, 88, BLACK, -1, "mouse x,y: (%d, %d)", mx, my);
-    get_mouse_pos(&mx, &my);
-#if DEBUG_NATIVE_RESIZE
-    mx = (int)(((float)mx / (float)win_w) * win.w);
-    my = (int)(((float)my / (float)win_h) * win.h);
-#endif
     col = pget(&win, mx, my);
 //    rect(&win, 150, 50,  100, 100, col, 0);
 //    rect(&win, 200, 100, 100, 100, col, 0);
@@ -227,20 +238,16 @@ int main(int argc, const char* argv[]) {
     line(&win, 0, 0, mx, my, col);
     circle(&win, mx, my, 30, col, 0);
     
-    render(&win);
+    if (grey)
+      filter(&win, greyscale);
+    
+    flush(&win);
   }
 
   bdf_destroy(&tewi);
   destroy(&win);
-  destroy(&a);
-  destroy(&b);
-  destroy(&c);
-  destroy(&d);
-  destroy(&e);
-  destroy(&h);
-  destroy(&l);
-  destroy(&k);
-  destroy(&l);
+  for (int i = 0; i < (int)(sizeof(s) / sizeof(s[0])); ++i)
+    destroy(&s[i]);
   release();
   return 0;
 }

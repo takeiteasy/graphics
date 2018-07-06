@@ -113,7 +113,7 @@ extern "C" {
     MOUSE_BTN_6,
     MOUSE_BTN_7,
     MOUSE_BTN_8
-  } mousebtn_t;
+  } MOUSEBTN;
   
 #define MOUSE_LAST   MOUSE_BTN_8
 #define MOUSE_LEFT   MOUSE_BTN_0
@@ -241,7 +241,7 @@ extern "C" {
     KB_KEY_RIGHT_ALT = 346,
     KB_KEY_RIGHT_SUPER = 347,
     KB_KEY_MENU = 348
-  } keysym_t;
+  } KEYSYM;
   
 #define KB_KEY_UNKNOWN -1
 #define KB_KEY_LAST KB_KEY_MENU
@@ -253,7 +253,7 @@ extern "C" {
     KB_MOD_SUPER = 0x0008,
     KB_MOD_CAPS_LOCK = 0x0010,
     KB_MOD_NUM_LOCK = 0x0020
-  } keymod_t;
+  } KEYMOD;
   
   typedef enum {
     MOUSE_BTN_DOWN,
@@ -262,23 +262,33 @@ extern "C" {
     KEYBOARD_KEY_UP,
     SCROLL_WHEEL,
     WINDOW_CLOSED
-  } user_event_type_t;
+  } EVENTYPE;
   
   typedef struct {
-    user_event_type_t type;
-    keysym_t sym;
-    keymod_t mod;
-    mousebtn_t btn;
+    EVENTYPE type;
+    KEYSYM sym;
+    KEYMOD mod;
+    MOUSEBTN btn;
     int data1, data2;
-  } user_event_t;
+  } event_t;
   
-  int screen(const char* title, int w, int h);
-  int should_close(void);
-  int poll_events(user_event_t* e);
-  void render(surface_t* s);
+  typedef enum {
+    DEFAULT = 0x0000,
+    RESIZABLE = 0x0001,
+    FULLSCREEN = 0x0002,
+    FULLSCREEN_DESKTOP = 0x0004,
+    BORDERLESS = 0x0008,
+    ALWAYS_ON_TOP = 0x0010,
+  } WINDOWFLAGS;
+  
+  int screen(const char* title, int* w, int* h, short flags);
+  int closed(void);
+  int poll(event_t* e);
+  void flush(surface_t* s);
   void release(void);
-  const char* get_last_error(void);
-  void get_mouse_pos(int* x, int* y);
+  const char* last_error(void);
+  void mouse_xy(int* x, int* y);
+  void window_wh(int* w, int* h);
   
 #if defined(__cplusplus)
 }

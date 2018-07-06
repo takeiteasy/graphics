@@ -145,49 +145,9 @@
 		88B0A64320EC6B9400CE1317 /* 3rdparty */ = {
 			isa = PBXGroup;
 			children = (
-				88B0A64420EC6B9400CE1317 /* freetype */,
 				88B0A64920EC6B9400CE1317 /* stb_image.h */,
 			);
 			path = 3rdparty;
-			sourceTree = "<group>";
-		};
-		88B0A64420EC6B9400CE1317 /* freetype */ = {
-			isa = PBXGroup;
-			children = (
-				88B0A64520EC6B9400CE1317 /* freetype */,
-			);
-			path = freetype;
-			sourceTree = "<group>";
-		};
-		88B0A64520EC6B9400CE1317 /* freetype */ = {
-			isa = PBXGroup;
-			children = (
-				88B0A64620EC6B9400CE1317 /* config */,
-				88B0A64720EC6B9400CE1317 /* internal */,
-			);
-			path = freetype;
-			sourceTree = "<group>";
-		};
-		88B0A64620EC6B9400CE1317 /* config */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = config;
-			sourceTree = "<group>";
-		};
-		88B0A64720EC6B9400CE1317 /* internal */ = {
-			isa = PBXGroup;
-			children = (
-				88B0A64820EC6B9400CE1317 /* services */,
-			);
-			path = internal;
-			sourceTree = "<group>";
-		};
-		88B0A64820EC6B9400CE1317 /* services */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = services;
 			sourceTree = "<group>";
 		};
 		88B0A64F20EC6E6D00CE1317 /* Frameworks */ = {
@@ -387,13 +347,16 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
-					GRAPHICS_ENABLE_METAL,
-					GRAPHICS_ENABLE_OPENGLno,
+					GRAPHICS_ENABLE_METALno,
+					GRAPHICS_ENABLE_OPENGL,
 					GRAPHICS_ENABLE_AAno,
 				);
 				GCC_WARN_PEDANTIC = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				WARNING_CFLAGS = "-Weverything";
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wextra",
+				);
 				WARNING_LDFLAGS = "";
 			};
 			name = Debug;
@@ -408,7 +371,10 @@
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_WARN_PEDANTIC = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				WARNING_CFLAGS = "-Weverything";
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wextra",
+				);
 				WARNING_LDFLAGS = "";
 			};
 			name = Release;

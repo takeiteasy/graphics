@@ -42,15 +42,15 @@ if ((x)) { \
   (x) = NULL; \
 }
 
-static char last_error[1024];
+static char __last_error[1024];
 
 static short int keycodes[512];
 static short int scancodes[KB_KEY_LAST + 1];
 static surface_t* buffer;
 
 #define SET_LAST_ERROR(MSG, ...) \
-memset(last_error, 0, 1024); \
-sprintf(last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
+memset(__last_error, 0, 1024); \
+sprintf(__last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
 
 #define _QUOTE(x) # x
 #define QUOTE(x) _QUOTE(x)
@@ -1032,7 +1032,7 @@ void delay(long ms) {
 
 int reset(surface_t* s, int nw, int nh) {
   size_t sz = nw * nh * sizeof(unsigned int) + 1;
-  int* tmp = realloc(buffer->buf, sz);
+  int* tmp = realloc(s->buf, sz);
   if (!tmp) {
     SET_LAST_ERROR("realloc() failed");
     return 0;
@@ -1049,7 +1049,7 @@ void resize_callback(void(*cb)(int, int)) {
     __resize_callback = cb;
 }
 
-void get_mouse_pos(int* x, int* y) {
+void mouse_xy(int* x, int* y) {
   if (!x || !y)
     return;
 
@@ -1057,8 +1057,16 @@ void get_mouse_pos(int* x, int* y) {
   *y = my;
 }
 
-const char* get_last_error() {
-  return last_error;
+void window_wh(int* w, int* h) {
+  if (!w || !h)
+    return;
+  
+  *w = win_w;
+  *h = win_h;
+}
+
+const char* last_error() {
+  return __last_error;
 }
 
 void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
@@ -2260,9 +2268,9 @@ int init_gl(int w, int h) {
 
 void draw_gl() {
   glBindTexture(GL_TEXTURE_2D, texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_BYTE, (GLvoid*)buffer->buf);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, (GLvoid*)buffer->buf);
 
   glClear(GL_COLOR_BUFFER_BIT);
 
@@ -2407,6 +2415,7 @@ static int translate_key(unsigned int key) {
 @end
 
 static osx_app_t* app;
+static int border_off = 22;
 
 @implementation osx_view_t
 extern surface_t* buffer;
@@ -2443,7 +2452,7 @@ extern surface_t* buffer;
     NSScreen *screen = [NSScreen mainScreen];
     scale_f = [screen backingScaleFactor];
     mtk_viewport.x = r.size.width * scale_f;
-    mtk_viewport.y = ((r.size.height - 22) * scale_f) + (4 * scale_f);
+    mtk_viewport.y = ((r.size.height - border_off) * scale_f) + (4 * scale_f);
     _cmd_queue = [_device newCommandQueue];
     _vertices  = [_device newBufferWithBytes:quad_vertices
                                       length:sizeof(quad_vertices)
@@ -2479,7 +2488,7 @@ extern surface_t* buffer;
       " return out;"
       "}"
       "fragment float4 samplingShader(RasterizerData in [[stage_in]], texture2d<half> colorTexture [[ texture(AAPLTextureIndexBaseColor) ]]) {"
-      " constexpr sampler textureSampler(mag_filter::nearest, min_filter::nearest);"
+      " constexpr sampler textureSampler(mag_filter::nearest, min_filter::linear);"
       " const half4 colorSample = colorTexture.sample(textureSampler, in.textureCoordinate);"
       " return float4(colorSample);"
       "}";
@@ -2729,7 +2738,7 @@ extern surface_t* buffer;
 -(void)win_resize:(NSNotification *)n {
   CGSize size = [app contentRectForFrameRect:[app frame]].size;
   win_w = size.width;
-  win_h = size.height - 22;
+  win_h = size.height - border_off;
 #if defined(GRAPHICS_ENABLE_OPENGL)
   glViewport(0, 0, win_w, win_h);
 #elif defined(GRAPHICS_ENABLE_METAL)
@@ -2763,9 +2772,11 @@ extern surface_t* buffer;
 }
 @end
 
-int screen(const char* t, int w, int h) {
-  win_w = w;
-  win_h = h;
+int screen(const char* t, int* w, int* h, short flags) {
+  if (!w || !h) {
+    SET_LAST_ERROR("screen() failed: W/H params NULL");
+    return 0;
+  }
 
   memset(keycodes,  -1, sizeof(keycodes));
   memset(scancodes, -1, sizeof(scancodes));
@@ -2893,9 +2904,25 @@ int screen(const char* t, int w, int h) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+  
+  NSWindowStyleMask _flags = NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
+  _flags |= (flags & RESIZABLE ? NSWindowStyleMaskResizable : 0);
+  if (flags & BORDERLESS || flags & FULLSCREEN) {
+    border_off = 0;
+    _flags |= NSWindowStyleMaskBorderless;
+  } else
+    _flags |= NSWindowStyleMaskTitled;
+  if (flags & FULLSCREEN_DESKTOP || flags & FULLSCREEN) {
+    NSRect f = [[NSScreen mainScreen] frame];
+    *w = win_w = f.size.width;
+    *h = win_h = f.size.height - border_off;
+  } else {
+    win_w = *w;
+    win_h = *h;
+  }
 
-  app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h + 22)
-                                     styleMask:NSWindowStyleMaskClosable | NSWindowStyleMaskTitled | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable
+  app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, *w, *h + border_off)
+                                     styleMask:_flags
                                        backing:NSBackingStoreBuffered
                                          defer:NO];
   if (!app) {
@@ -2903,6 +2930,9 @@ int screen(const char* t, int w, int h) {
     SET_LAST_ERROR("[osx_app_t initWithContentRect] failed");
     return 0;
   }
+  
+  if (flags & ALWAYS_ON_TOP)
+    [app setLevel:NSFloatingWindowLevel];
 
   id app_del = [AppDelegate alloc];
   if (!app_del) {
@@ -2925,20 +2955,24 @@ int screen(const char* t, int w, int h) {
   return 1;
 }
 
-int should_close() {
+int closed() {
   return app->closed;
 }
 
-int poll_events(user_event_t* ue) {
+int poll(event_t* ue) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   NSEvent* e = [NSApp nextEventMatchingMask:NSEventMaskAny
                                   untilDate:[NSDate distantPast]
                                      inMode:NSDefaultRunLoopMode
                                     dequeue:YES];
-  if (!e || ! ue)
-    return 0;
+  
+  int ret = 1;
+  if (!e || !ue) {
+    ret = 0;
+    goto SEND_ANYWAY;
+  }
 
-  memset(ue, 0, sizeof(user_event_t));
+  memset(ue, 0, sizeof(event_t));
   switch ([e type]) {
     case NSEventTypeKeyUp:
       ue->type = KEYBOARD_KEY_UP;
@@ -2957,7 +2991,7 @@ int poll_events(user_event_t* ue) {
     case NSEventTypeOtherMouseDown:
       if (ue->type != MOUSE_BTN_UP)
         ue->type = MOUSE_BTN_DOWN;
-      ue->btn = (mousebtn_t)([e buttonNumber] + 1);
+      ue->btn = (MOUSEBTN)([e buttonNumber] + 1);
       ue->mod = translate_mod([e modifierFlags]);
       ue->data1 = mx;
       ue->data2 = my;
@@ -2973,12 +3007,13 @@ int poll_events(user_event_t* ue) {
       break;
   }
 
+SEND_ANYWAY:
   [NSApp sendEvent:e];
   [pool release];
-  return 1;
+  return ret;
 }
 
-void render(surface_t* s) {
+void flush(surface_t* s) {
   if (s && s->buf)
     buffer = s;
   [[app contentView] setNeedsDisplay:YES];

@@ -10,11 +10,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "3rdparty/stb_image.h"
 
-static char last_error[1024];
+static char stb_last_error[1024];
 
 #define SET_LAST_ERROR(MSG, ...) \
-memset(last_error, 0, 1024); \
-sprintf(last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
+memset(stb_last_error, 0, 1024); \
+sprintf(stb_last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
 
 int image(surface_t* out, const char* path, int alpha) {
   int w, h, c, x, y;
@@ -26,13 +26,14 @@ int image(surface_t* out, const char* path, int alpha) {
   
   if (!surface(out, w, h)) {
     stbi_image_free(data);
-    SET_LAST_ERROR("image() failed: %s\n", get_last_error());
+    SET_LAST_ERROR("image() failed: %s\n", last_error());
     return 0;
   }
   
+  unsigned char* p = NULL;
   for (x = 0; x < w; ++x) {
     for (y = 0; y < h; ++y) {
-      unsigned char* p = data + (x + w * y) * c;
+      p = data + (x + w * y) * c;
       out->buf[y * w + x] = (c == 4 && !p[3] ? alpha : RGB(p[0], p[1], p[2]));
     }
   }
@@ -42,5 +43,5 @@ int image(surface_t* out, const char* path, int alpha) {
 }
 
 const char* get_last_stb_error() {
-  return last_error;
+  return stb_last_error;
 }

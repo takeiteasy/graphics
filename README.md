@@ -22,9 +22,9 @@ See below screenshots for TODO list and the examples folder for some idea of how
 
 ## Building
 
-No external libraries are used unless you want to use the alternate backends (enable them by defining ```GRAPHICS_ENABLE_(OPENGL/METAL)```).
+No external libraries are used unless you want to use the alternate backends (enable them by defining ```GRAPHICS_ENABLE_(OPENGL/METAL)```). I don't know how to make CMake files yet so backends will have to be defined manually.
 
-On OSX you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for Metal.
+On OSX you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for Metal. Also, if you're using XCode you'll also have to disable modules in the build settings, becuase modules imports curses with stdio for some reason.
 
 On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're using the OpenGL backend include ```-ld -lGL```.
 
@@ -52,27 +52,29 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 
 ### Important
 
-- Window flags
-- Colour escapes for ```writeln()``` & ```string()```
+- Window set/get pos
+- Port new stuff to Windows/Linux
+- Colour escapes for ```writeln()``` & ```string()``` (also for bdf ext)
 - Cursor lock & hide
 - Joystick/Gamepad input
-- 1 & 4 bpp, RLE compressed and OS/2 BMP support
 - Re-add extra characters to internal font renderer
-- Improve event polling system
 
 ### Less important
 
 - Add fill option for ```ellipse_rotated()``` and other functions
 - Add rotated rect function
 - Flood fill function
-- Extended surface functions, ~~resize~~, rotate, filters, etc
+- Surface flip and rotate functions
 - Add line width option
 - Better error reporting system
 - Macros for disabling window and text rendering
 - Wayland window code
+- CMake file for build options
+- 1 & 4 bpp, RLE compressed and OS/2 BMP support (Just because)
 
 ### Maybe
 
+- Improve event polling system (?)
 - Make thread safe (surface locks)
 - RGBA surfaces (instead of just RGB?)
 - Vulkan/DirectX/~~Metal~~ backends
@@ -80,6 +82,8 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples/tests
 - More extras (gif load/save, FreeType fonts, C++ OOP wrapper)
+- Optional OpenCL for processing stuff
+- Pixel shader support
 
 
 ## License

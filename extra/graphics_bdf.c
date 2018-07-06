@@ -8,11 +8,11 @@
 
 #include "graphics_bdf.h"
 
-static char last_error[1024];
+static char bdf_last_error[1024];
 
 #define SET_LAST_ERROR(MSG, ...) \
-memset(last_error, 0, 1024); \
-sprintf(last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
+memset(bdf_last_error, 0, 1024); \
+sprintf(bdf_last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
 
 #define BDF_READ_INT(x) \
 p = strtok(NULL, " \t\n\r"); \
@@ -233,5 +233,5 @@ void bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const cha
 }
 
 const char* get_last_bdf_error() {
-  return last_error;
+  return bdf_last_error;
 }
