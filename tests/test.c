@@ -1,6 +1,5 @@
 #include "graphics_bdf.h"
 #include "graphics_image.h"
-#include "graphics_colours.h"
 #include "graphics.h"
 
 int invert(int x, int y, int c) {
@@ -57,18 +56,27 @@ void on_resize(int w, int h) {
 #define RES(X) (RES_JOIN(RES_PATH, X))
 
 void test_set(surface_t* s, int x, int y, int c) {
-  int __ = A(c);
-  if (__ == 0.f || x < 0 || y < 0 || x >= s->w || y >= s->h)
+  int ac = A(c);
+  if (ac == 0 || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
   
-  int* _ = &s->buf[y * s->w + x];
-  float ___ = 1.f - ((float)__ / 255.f);
-  *_ = RGB((int)(R(*_) * (1 - ___) + R(c) * ___),
-           (int)(G(*_) * (1 - ___) + G(c) * ___),
-           (int)(B(*_) * (1 - ___) + B(c) * ___));
+  int* p = &s->buf[y * s->w + x];
+  if (ac == 255)
+    *p = c;
+  else {
+    float a = 1.f - ((float)ac / 255.f);
+    *p = RGB((int)(R(*p) * (1 - a) + R(c) * a),
+             (int)(G(*p) * (1 - a) + G(c) * a),
+             (int)(B(*p) * (1 - a) + B(c) * a));
+  }
 }
 
 int main(int argc, const char* argv[]) {
+  int x = RGBA(10, 20, 30, 40);
+  printf("%d %d %d %d\n", R(x), G(x), B(x), A(x));
+  x = (x & ~0xFF000000) | (50 << 24);
+  printf("%d %d %d %d\n", R(x), G(x), B(x), A(x));
+  
   if (!surface(&win, win_w, win_h)) {
     fprintf(stderr, "%s\n", last_error());
     return 1;
@@ -140,8 +148,8 @@ int main(int argc, const char* argv[]) {
   
   surface_t test;
   surface(&test, 50, 50);
-
-  int testa = 0;
+  
+  int testa = 1;
   int col = 0, grey = 0;
   long sine_i = 0;
   event_t e;
@@ -199,68 +207,60 @@ int main(int argc, const char* argv[]) {
 //    cls(&win);
     fill(&win, WHITE);
     
-    for (int x = 32; x < win.w; x += 32)
-      vline(&win, x, 0, win.h, GRAY);
-    for (int y = 32; y < win.h; y += 32)
-      hline(&win, y, 0, win.w, GRAY);
-    
-    blit(&win, &points[8], &s[1], NULL, -1, LIME);
-    
-    writeln(&win, 10, 10, RED, -1, "Hello World");
-    writeln(&win, 10, 22, MAROON, -1, "こんにちはせかい");
-    bdf_writeln(&win, &tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ bdf!");
+//    for (int x = 32; x < win.w; x += 32)
+//      vline(&win, x, 0, win.h, GRAY);
+//    for (int y = 32; y < win.h; y += 32)
+//      hline(&win, y, 0, win.w, GRAY);
+//    
+//    blit(&win, &points[8], &s[1], NULL, -1, LIME);
+//    
+//    writeln(&win, 10, 10, RED, -1, "Hello World");
+//    writeln(&win, 10, 22, MAROON, -1, "こんにちは");
+//    bdf_writeln(&win, &tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ bdf!");
 
     int last_x = 0, last_y = 150;
     for (long i = sine_i; i < (sine_i + win.w); ++i) {
       float x = (float)(i - sine_i);
       float y = 150.f + (100.f * sinf(i * (3.141f / 180.f)));
-      line(&win, last_x, last_y, x, y, col);
+//      line(&win, last_x, last_y, x, y, RED);
       last_x = x;
       last_y = y;
     }
     sine_i += (int)(speed * .3);
 
-    blit(&win, &points[4], &s[3], NULL, -1, LIME);
-    blit(&win, &points[0], &s[2], &cutr, -1, LIME);
-
-    blit(&win, &points[1], &s[2], NULL, -1, LIME);
-    blit(&win, &points[3], &s[4], NULL, -1, LIME);
-
-    blit(&win, &points[5], &s[5], NULL, -1, LIME);
-    blit(&win, &points[6], &s[7], NULL, -1, LIME);
-
-    blit(&win, &points[7], &s[5], NULL, .5f, -1);
-
-    filter(&s[0], rnd);
-    blit(&s[0], NULL, &s[9], NULL, -1, LIME);
-    blit(&win, &points[2], &s[0], NULL, -1, LIME);
-
-    circle(&win, 352, 32, 30, RED,    1);
-    circle(&win, 382, 32, 30, ORANGE, 1);
-    circle(&win, 412, 32, 30, YELLOW, 1);
-    circle(&win, 442, 32, 30, LIME,   1);
-    circle(&win, 472, 32, 30, BLUE,   1);
-    circle(&win, 502, 32, 30, INDIGO, 1);
-    circle(&win, 532, 32, 30, VIOLET, 1);
-
+//    blit(&win, &points[4], &s[3], NULL, -1, LIME);
+//    blit(&win, &points[0], &s[2], &cutr, -1, LIME);
+//
+//    blit(&win, &points[1], &s[2], NULL, -1, LIME);
+//    blit(&win, &points[3], &s[4], NULL, -1, LIME);
+//
+//    blit(&win, &points[5], &s[5], NULL, -1, LIME);
+//    blit(&win, &points[6], &s[7], NULL, -1, LIME);
+//
+//    blit(&win, &points[7], &s[5], NULL, .5f, -1);
+//
+//    filter(&s[0], rnd);
+//    blit(&s[0], NULL, &s[9], NULL, -1, LIME);
+//    blit(&win, &points[2], &s[0], NULL, -1, LIME);
+//
+//    circle(&win, 352, 32, 30, RED, 1);
+//    circle(&win, 382, 32, 30, RGB(255, 165, 0), 1);
+//    circle(&win, 412, 32, 30, YELLOW, 1);
+//    circle(&win, 442, 32, 30, LIME, 1);
+//    circle(&win, 472, 32, 30, BLUE, 1);
+//    circle(&win, 502, 32, 30, RGB(75, 0, 130), 1);
+//    circle(&win, 532, 32, 30, RGB(238, 130, 238), 1);
+//
     update_mxy();
-    writelnf(&win, 400, 88, BLACK, -1, "mouse x,y: (%d, %d)", mx, my);
-    col = pget(&win, mx, my);
-//    rect(&win, 150, 50,  100, 100, col, 0);
-//    rect(&win, 200, 100, 100, 100, col, 0);
-//    line(&win, 150, 50,  200, 100, col);
-//    line(&win, 250, 50,  300, 100, col);
-//    line(&win, 150, 150, 200, 200, col);
-//    line(&win, 250, 150, 300, 200, col);
+//    writelnf(&win, 400, 88, BLACK, -1, "mouse x,y: (%d, %d)", mx, my);
+//    col = pget(&win, mx, my);
+//
+    line(&win, 0, 0, mx, my, RED);
+//    circle(&win, mx, my, 30, col, 0);
+//
+//    if (grey)
+//      filter(&win, greyscale);
 
-    line(&win, 0, 0, mx, my, col);
-    circle(&win, mx, my, 30, col, 0);
-    
-    if (grey)
-      filter(&win, greyscale);
-    
-    cls(&win);
-    
     fill(&test, RED);
     
     testa += 1;
@@ -269,7 +269,7 @@ int main(int argc, const char* argv[]) {
     
     for (int i = 0; i < 25; ++i)
       for (int j = 0; j < 25; ++j)
-        test_set(&test, i, j, RGBA(0, 0, 255, testa));
+        pset(&test, i, j, RGBA(0, 0, 255, testa));
     
     BLIT(&win, NULL, &test, NULL);
     

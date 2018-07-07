@@ -34,29 +34,27 @@ extern "C" {
 #include <X11/keysym.h>
 #endif
 
-#define RGBA(r, g, b, a) (((unsigned int)(a)) << 24) |(((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b)
+#define RGBA(r, g, b, a) (((unsigned int)(a)) << 24) | (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b)
 #define RGB(r, g, b) RGBA((r), (g), (b), 255)
 #define R(v) ((v >> 16) & 0xFF)
 #define G(v) ((v >>  8) & 0xFF)
 #define B(v) ( v        & 0xFF)
 #define A(v) ((v >> 24) & 0xFF)
 
-#define BLACK 0
-#define BLUE 255
-#define CYAN 65535
-#define GRAY 8421504
-#define GREEN 32768
-#define LIME 65280
-#define MAGENTA 16711935
-#define MAROON 8388608
-#define NAVY 128
-#define OLIVE 8421376
-#define PURPLE 8388736
-#define RED 16711680
-#define SILVER 12632256
-#define TEAL 32896
-#define WHITE 16777215
-#define YELLOW 16776960
+#define BLACK RGB(0, 0, 0)
+#define BLUE RGB(0, 0, 255)
+#define CYAN (0, 255, 255)
+#define GRAY RGB(128, 128, 128)
+#define GREEN RGB(0, 128, 0)
+#define LIME RGB(0, 255, 0)
+#define MAGENTA RGB(255, 0, 255)
+#define MAROON RGB(128, 0, 0)
+#define NAVY RGB(0, 0, 128)
+#define PURPLE RGB(128, 0, 128)
+#define RED RGB(255, 0, 0)
+#define TEAL RGB(0, 128, 128)
+#define WHITE RGB(255, 255, 255)
+#define YELLOW RGB(255, 255, 0)
   
   typedef struct {
     int* buf, w, h;
@@ -74,7 +72,7 @@ extern "C" {
   void destroy(surface_t*);
   void fill(surface_t* s, int col);
   void cls(surface_t* s);
-  int pset(surface_t* s, int x, int y, int col);
+  void pset(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
   int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, float opacity, int chroma);
 #define BLIT(dst, p, src, rect) (blit((dst), (p), (src), (rect), -1, -1))

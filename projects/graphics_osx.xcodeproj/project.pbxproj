@@ -48,7 +48,6 @@
 		88B0A63A20EC6B9400CE1317 /* 4bpp.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = 4bpp.bmp; sourceTree = "<group>"; };
 		88B0A63B20EC6B9400CE1317 /* build_test.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_test.sh; sourceTree = "<group>"; };
 		88B0A63C20EC6B9400CE1317 /* tewi.bdf */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = tewi.bdf; sourceTree = "<group>"; };
-		88B0A63E20EC6B9400CE1317 /* graphics_colours.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = graphics_colours.h; sourceTree = "<group>"; };
 		88B0A63F20EC6B9400CE1317 /* graphics_bdf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = graphics_bdf.h; sourceTree = "<group>"; };
 		88B0A64020EC6B9400CE1317 /* graphics_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = graphics_image.h; sourceTree = "<group>"; };
 		88B0A64120EC6B9400CE1317 /* graphics_bdf.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = graphics_bdf.c; sourceTree = "<group>"; };
@@ -129,7 +128,6 @@
 			isa = PBXGroup;
 			children = (
 				88B0A64320EC6B9400CE1317 /* 3rdparty */,
-				88B0A63E20EC6B9400CE1317 /* graphics_colours.h */,
 				88B0A63F20EC6B9400CE1317 /* graphics_bdf.h */,
 				88B0A64120EC6B9400CE1317 /* graphics_bdf.c */,
 				88B0A64020EC6B9400CE1317 /* graphics_image.h */,
@@ -347,7 +345,7 @@
 					"$(inherited)",
 					GRAPHICS_ENABLE_METALno,
 					GRAPHICS_ENABLE_OPENGL,
-					GRAPHICS_ENABLE_AAno,
+					GRAPHICS_ENABLE_AA,
 				);
 				GCC_WARN_PEDANTIC = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
