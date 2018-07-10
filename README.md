@@ -71,6 +71,8 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 - Wayland window code
 - CMake file for build options
 - 1 & 4 bpp, RLE compressed and OS/2 BMP support (Just because)
+- Message box support
+- Window icon support
 
 ### Maybe
 

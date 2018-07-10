@@ -58,18 +58,22 @@ int save_image(surface_t* in, const char* path) {
     return 1;
   }
   
-  unsigned char* data = malloc(in->w * in->h * 3 * sizeof(unsigned char));
+  unsigned char* data = malloc(in->w * in->h * 4 * sizeof(unsigned char));
   if (!data) {
     SET_LAST_ERROR("save_image() failed: Out of memory");
     return 1;
   }
   
   unsigned char* p = NULL;
-  int i, j;
+  int i, j, c;
   for (i = 0; i < in->w; ++i) {
     for (j = 0; j < in->h; ++j) {
-      p = data + (i + in->w * j) * 3;
-      rgb(in->buf[j * in->w + i], &p[0], &p[1], &p[2]);
+      p = data + (i + in->w * j) * 4;
+      c = in->buf[j * in->w + i];
+      p[0] = R(c);
+      p[1] = G(c);
+      p[2] = B(c);
+      p[3] = A(c);
     }
   }
   
@@ -78,13 +82,13 @@ int save_image(surface_t* in, const char* path) {
   const char* ext = extension(path);
 TRY_AGAIN_BRO:
   if (!ext || !strcmp(ext, "png"))
-    res = stbi_write_png(path, in->w, in->h, 3, data, 0);
+    res = stbi_write_png(path, in->w, in->h, 4, data, 0);
   else if (!strcmp(ext, "tga"))
-    res = stbi_write_tga(path, in->w, in->h, 3, data);
+    res = stbi_write_tga(path, in->w, in->h, 4, data);
   else if (!strcmp(ext, "bmp"))
-    res = stbi_write_bmp(path, in->w, in->h, 3, data);
+    res = stbi_write_bmp(path, in->w, in->h, 4, data);
   else if (!strcmp(ext, "jpg") || !strcmp(ext, "jpeg"))
-    stbi_write_jpg(path, in->w, in->h, 3, data, 85);
+    stbi_write_jpg(path, in->w, in->h, 4, data, 85);
   else {
     ext = "png";
     goto TRY_AGAIN_BRO;

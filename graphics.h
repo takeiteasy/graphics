@@ -35,11 +35,15 @@ extern "C" {
 #endif
 
 #define RGBA(r, g, b, a) (((unsigned int)(a)) << 24) | (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b)
-#define RGB(r, g, b) RGBA((r), (g), (b), 255)
+#define RGB(r, g, b) (RGBA((r), (g), (b), 255))
 #define R(v) ((v >> 16) & 0xFF)
 #define G(v) ((v >>  8) & 0xFF)
 #define B(v) ( v        & 0xFF)
 #define A(v) ((v >> 24) & 0xFF)
+#define RCHAN(a, b) (((a) & ~0x00FF0000) | ((b) << 16))
+#define GCHAN(a, b) (((a) & ~0x0000FF00) | ((b) << 8))
+#define BCHAN(a, b) (((a) & ~0x000000FF) |  (b))
+#define ACHAN(a, b) (((a) & ~0xFF000000) | ((b) << 24))
 
 #define BLACK RGB(0, 0, 0)
 #define BLUE RGB(0, 0, 255)
@@ -74,8 +78,7 @@ extern "C" {
   void cls(surface_t* s);
   void pset(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
-  int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, float opacity, int chroma);
-#define BLIT(dst, p, src, rect) (blit((dst), (p), (src), (rect), -1, -1))
+  int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
   void vline(surface_t* s, int x, int y0, int y1, int col);
   void hline(surface_t* s, int y, int x0, int x1, int col);
   void line(surface_t* s, int x0, int y0, int x1, int y1, int col);
@@ -86,8 +89,6 @@ extern "C" {
   void writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...);
   void string(surface_t* out, int fg, int bg, const char* str);
   void stringf(surface_t* out, int fg, int bg, const char* fmt, ...);
-  void rgb(int c, int* r, int* g, int* b);
-  int alpha(int c1, int c2, float i);
   long ticks(void);
   void delay(long ms);
   int reset(surface_t* s, int nw, int nh);
