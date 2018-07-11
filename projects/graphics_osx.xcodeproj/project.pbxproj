@@ -9,8 +9,6 @@
 /* Begin PBXBuildFile section */
 		88B0A62B20EC6B8000CE1317 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0A62820EC6B8000CE1317 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
 		88B0A64C20EC6B9400CE1317 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0A63720EC6B9400CE1317 /* test.c */; };
-		88B0A64D20EC6B9400CE1317 /* graphics_bdf.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0A64120EC6B9400CE1317 /* graphics_bdf.c */; };
-		88B0A64E20EC6B9400CE1317 /* graphics_image.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0A64220EC6B9400CE1317 /* graphics_image.c */; };
 		88B0A65120EC6E6D00CE1317 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0A65020EC6E6D00CE1317 /* Cocoa.framework */; };
 		88B0A65320EC6E7200CE1317 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0A65220EC6E7200CE1317 /* OpenGL.framework */; };
 		88B0A65620EC6E7700CE1317 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0A65420EC6E7600CE1317 /* MetalKit.framework */; };
@@ -30,7 +28,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		88B0254D20EFFF150007849F /* stb_image_write.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image_write.h; sourceTree = "<group>"; };
+		88B0255020F5D1500007849F /* stb_image_write.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image_write.h; sourceTree = "<group>"; };
+		88B0255120F5D1500007849F /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
 		88B0A61D20EC6B5100CE1317 /* graphics_osx */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics_osx; sourceTree = BUILT_PRODUCTS_DIR; };
 		88B0A62820EC6B8000CE1317 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../graphics.c; sourceTree = "<group>"; };
 		88B0A62920EC6B8000CE1317 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../graphics.h; sourceTree = "<group>"; };
@@ -48,11 +47,6 @@
 		88B0A63A20EC6B9400CE1317 /* 4bpp.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = 4bpp.bmp; sourceTree = "<group>"; };
 		88B0A63B20EC6B9400CE1317 /* build_test.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_test.sh; sourceTree = "<group>"; };
 		88B0A63C20EC6B9400CE1317 /* tewi.bdf */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = tewi.bdf; sourceTree = "<group>"; };
-		88B0A63F20EC6B9400CE1317 /* graphics_bdf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = graphics_bdf.h; sourceTree = "<group>"; };
-		88B0A64020EC6B9400CE1317 /* graphics_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = graphics_image.h; sourceTree = "<group>"; };
-		88B0A64120EC6B9400CE1317 /* graphics_bdf.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = graphics_bdf.c; sourceTree = "<group>"; };
-		88B0A64220EC6B9400CE1317 /* graphics_image.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = graphics_image.c; sourceTree = "<group>"; };
-		88B0A64920EC6B9400CE1317 /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
 		88B0A65020EC6E6D00CE1317 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		88B0A65220EC6E7200CE1317 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		88B0A65420EC6E7600CE1317 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
@@ -74,10 +68,20 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		88B0254F20F5D1500007849F /* 3rdparty */ = {
+			isa = PBXGroup;
+			children = (
+				88B0255020F5D1500007849F /* stb_image_write.h */,
+				88B0255120F5D1500007849F /* stb_image.h */,
+			);
+			name = 3rdparty;
+			path = ../3rdparty;
+			sourceTree = "<group>";
+		};
 		88B0A61420EC6B5100CE1317 = {
 			isa = PBXGroup;
 			children = (
-				88B0A63D20EC6B9400CE1317 /* extra */,
+				88B0254F20F5D1500007849F /* 3rdparty */,
 				88B0A62D20EC6B9400CE1317 /* tests */,
 				88B0A62720EC6B6E00CE1317 /* graphics */,
 				88B0A61E20EC6B5100CE1317 /* Products */,
@@ -122,28 +126,6 @@
 			);
 			name = tests;
 			path = ../tests;
-			sourceTree = "<group>";
-		};
-		88B0A63D20EC6B9400CE1317 /* extra */ = {
-			isa = PBXGroup;
-			children = (
-				88B0A64320EC6B9400CE1317 /* 3rdparty */,
-				88B0A63F20EC6B9400CE1317 /* graphics_bdf.h */,
-				88B0A64120EC6B9400CE1317 /* graphics_bdf.c */,
-				88B0A64020EC6B9400CE1317 /* graphics_image.h */,
-				88B0A64220EC6B9400CE1317 /* graphics_image.c */,
-			);
-			name = extra;
-			path = ../extra;
-			sourceTree = "<group>";
-		};
-		88B0A64320EC6B9400CE1317 /* 3rdparty */ = {
-			isa = PBXGroup;
-			children = (
-				88B0254D20EFFF150007849F /* stb_image_write.h */,
-				88B0A64920EC6B9400CE1317 /* stb_image.h */,
-			);
-			path = 3rdparty;
 			sourceTree = "<group>";
 		};
 		88B0A64F20EC6E6D00CE1317 /* Frameworks */ = {
@@ -213,9 +195,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				88B0A64D20EC6B9400CE1317 /* graphics_bdf.c in Sources */,
 				88B0A62B20EC6B8000CE1317 /* graphics.c in Sources */,
-				88B0A64E20EC6B9400CE1317 /* graphics_image.c in Sources */,
 				88B0A64C20EC6B9400CE1317 /* test.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -345,7 +325,9 @@
 					"$(inherited)",
 					GRAPHICS_ENABLE_METALno,
 					GRAPHICS_ENABLE_OPENGL,
-					GRAPHICS_ENABLE_AA,
+					GRAPHICS_ENABLE_AAno,
+					GRAPHICS_ENABLE_BDF,
+					GRAPHICS_ENABLE_STB_IMAGE,
 				);
 				GCC_WARN_PEDANTIC = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -31,15 +31,44 @@ if ((x)) {  \
   (x) = NULL; \
 }
 
-static char __last_error[1024];
-
 static short int keycodes[512];
 static short int scancodes[KB_KEY_LAST + 1];
 static surface_t* buffer;
 
-#define SET_LAST_ERROR(MSG, ...) \
-memset(__last_error, 0, 1024); \
-sprintf(__last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
+static void(*__error_callback)(ERRPRIO, const char*, const char*, const char*, int) = NULL;
+
+void error_callback(void(*cb)(ERRPRIO, const char*, const char*, const char*, int)) {
+  if (cb)
+    __error_callback = cb;
+}
+
+static inline const char* errprio_str(ERRPRIO pri) {
+  switch (pri) {
+    case PRIO_HIGH:
+      return "SERIOUS";
+    case PRIO_NORM:
+      return "ERROR";
+    case PRIO_LOW:
+      return "WARNING";
+    default:
+      return "LOG";
+  }
+}
+
+void error_handle(ERRPRIO pri, const char* msg, ...) {
+  va_list args;
+  va_start(args, msg);
+  
+  static char error[1024];
+  vsprintf(error, msg, args);
+  
+  if (__error_callback)
+    __error_callback(pri, error, __FILE__, __FUNCTION__, __LINE__);
+  else
+    fprintf(stderr, "[%s] from %s in %s() at %d -- %s\n", errprio_str(pri), __FILE__, __FUNCTION__, __LINE__, error);
+  
+  va_end(args);
+}
 
 #define _QUOTE(x) # x
 #define QUOTE(x) _QUOTE(x)
@@ -65,7 +94,8 @@ static void(*__resize_callback)(int, int) = NULL;
 
 #define LINE_HEIGHT 10
 
-static char font[409][8] = {
+#if !defined(GRAPHICS_DISABLE_TEXT)
+static char font[541][8] = {
   // Latin 0 - 94
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+0020 (space)
   { 0x18, 0x3C, 0x3C, 0x18, 0x18, 0x00, 0x18, 0x00 },   // U+0021 (!)
@@ -483,8 +513,147 @@ static char font[409][8] = {
   { 0x40, 0xA0, 0x40, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+309C (Hiragana semivoiced mark)
   { 0x00, 0x00, 0x08, 0x08, 0x10, 0x30, 0x0C, 0x00 },   // U+309D (Hiragana iteration mark)
   { 0x20, 0x40, 0x14, 0x24, 0x08, 0x18, 0x06, 0x00 },   // U+309E (Hiragana voiced iteration mark)
-  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }    // U+309F
+  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+309F
+  
+  // SGA 409 - 434
+  { 0x00, 0x00, 0x38, 0x66, 0x06, 0x06, 0x07, 0x00 },   // U+E541 (SGA A)
+  { 0x00, 0x00, 0x0C, 0x0C, 0x18, 0x30, 0x7F, 0x00 },   // U+E542 (SGA B)
+  { 0x00, 0x00, 0x0C, 0x00, 0x0C, 0x30, 0x30, 0x00 },   // U+E543 (SGA C)
+  { 0x00, 0x00, 0x7F, 0x00, 0x03, 0x1C, 0x60, 0x00 },   // U+E544 (SGA D)
+  { 0x00, 0x00, 0x63, 0x03, 0x03, 0x03, 0x7F, 0x00 },   // U+E545 (SGA E)
+  { 0x00, 0x00, 0x00, 0xFF, 0x00, 0xDB, 0x00, 0x00 },   // U+E546 (SGA F)
+  { 0x00, 0x00, 0x30, 0x30, 0x3E, 0x30, 0x30, 0x00 },   // U+E547 (SGA G)
+  { 0x00, 0x00, 0x7E, 0x00, 0x7E, 0x18, 0x18, 0x00 },   // U+E548 (SGA H)
+  { 0x00, 0x00, 0x18, 0x18, 0x00, 0x18, 0x18, 0x00 },   // U+E549 (SGA I)
+  { 0x00, 0x00, 0x18, 0x00, 0x18, 0x00, 0x18, 0x00 },   // U+E54A (SGA J)
+  { 0x00, 0x00, 0x18, 0x18, 0x5A, 0x18, 0x18, 0x00 },   // U+E54B (SGA K)
+  { 0x00, 0x00, 0x03, 0x33, 0x03, 0x33, 0x03, 0x00 },   // U+E54C (SGA L)
+  { 0x00, 0x00, 0x63, 0x60, 0x60, 0x60, 0x7F, 0x00 },   // U+E54D (SGA M)
+  { 0x00, 0x00, 0x66, 0x60, 0x30, 0x18, 0x0C, 0x00 },   // U+E54E (SGA N)
+  { 0x00, 0x00, 0x3C, 0x60, 0x30, 0x18, 0x0C, 0x00 },   // U+E54F (SGA O)
+  { 0x00, 0x00, 0x66, 0x60, 0x66, 0x06, 0x66, 0x00 },   // U+E550 (SGA P)
+  { 0x00, 0x00, 0x18, 0x00, 0x7E, 0x60, 0x7E, 0x00 },   // U+E551 (SGA Q)
+  { 0x00, 0x00, 0x00, 0x66, 0x00, 0x66, 0x00, 0x00 },   // U+E552 (SGA R)
+  { 0x00, 0x00, 0x0C, 0x0C, 0x3C, 0x30, 0x30, 0x00 },   // U+E553 (SGA S)
+  { 0x00, 0x00, 0x3C, 0x30, 0x30, 0x00, 0x30, 0x00 },   // U+E554 (SGA T)
+  { 0x00, 0x00, 0x00, 0x36, 0x00, 0x7F, 0x00, 0x00 },   // U+E555 (SGA U)
+  { 0x00, 0x00, 0x18, 0x18, 0x7E, 0x00, 0x7E, 0x00 },   // U+E556 (SGA V)
+  { 0x00, 0x00, 0x00, 0x18, 0x00, 0x66, 0x00, 0x00 },   // U+E557 (SGA W)
+  { 0x00, 0x00, 0x66, 0x30, 0x18, 0x0C, 0x06, 0x00 },   // U+E558 (SGA X)
+  { 0x00, 0x00, 0x36, 0x36, 0x36, 0x36, 0x36, 0x00 },   // U+E559 (SGA Y)
+  { 0x00, 0x00, 0x18, 0x3C, 0x66, 0x66, 0x66, 0x00 },   // U+E55A (SGA Z)
+  
+  // Misc 435 - 444
+  { 0x1F, 0x33, 0x33, 0x5F, 0x63, 0xF3, 0x63, 0xE3 },   // U+20A7 (Spanish Pesetas/Pt)
+  { 0x70, 0xD8, 0x18, 0x3C, 0x18, 0x18, 0x1B, 0x0E },   // U+0192 (dutch florijn)
+  { 0x3C, 0x36, 0x36, 0x7C, 0x00, 0x7E, 0x00, 0x00 },   // U+ (underlined superscript a)
+  { 0x1C, 0x36, 0x36, 0x1C, 0x00, 0x3E, 0x00, 0x00 },   // U+ (underlined superscript 0)
+  { 0x00, 0x00, 0x00, 0x3F, 0x03, 0x03, 0x00, 0x00 },   // U+2310 (gun pointing right)
+  { 0x30, 0x18, 0x0C, 0x18, 0x30, 0x00, 0x7E, 0x00 },   // U+ (less than or equal)
+  { 0x0C, 0x18, 0x30, 0x18, 0x0C, 0x00, 0x7E, 0x00 },   // U+ (greater than or equal)
+  { 0x0C, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+ (grave)
+  { 0x0E, 0x00, 0x66, 0x66, 0x3C, 0x18, 0x18, 0x00 },   // U+ (Y grave)
+  { 0x00, 0x07, 0x00, 0x33, 0x33, 0x3E, 0x30, 0x1F },   // U+ (y grave)
+  
+  // Latin extended 445 - 540
+  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+00A0 (no break space)
+  { 0x18, 0x18, 0x00, 0x18, 0x18, 0x18, 0x18, 0x00 },   // U+00A1 (inverted !)
+  { 0x18, 0x18, 0x7E, 0x03, 0x03, 0x7E, 0x18, 0x18 },   // U+00A2 (dollarcents)
+  { 0x1C, 0x36, 0x26, 0x0F, 0x06, 0x67, 0x3F, 0x00 },   // U+00A3 (pound sterling)
+  { 0x00, 0x00, 0x63, 0x3E, 0x36, 0x3E, 0x63, 0x00 },   // U+00A4 (currency mark)
+  { 0x33, 0x33, 0x1E, 0x3F, 0x0C, 0x3F, 0x0C, 0x0C },   // U+00A5 (yen)
+  { 0x18, 0x18, 0x18, 0x00, 0x18, 0x18, 0x18, 0x00 },   // U+00A6 (broken pipe)
+  { 0x7C, 0xC6, 0x1C, 0x36, 0x36, 0x1C, 0x33, 0x1E },   // U+00A7 (paragraph)
+  { 0x33, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+00A8 (diaeresis)
+  { 0x3C, 0x42, 0x99, 0x85, 0x85, 0x99, 0x42, 0x3C },   // U+00A9 (copyright symbol)
+  { 0x3C, 0x36, 0x36, 0x7C, 0x00, 0x00, 0x00, 0x00 },   // U+00AA (superscript a)
+  { 0x00, 0xCC, 0x66, 0x33, 0x66, 0xCC, 0x00, 0x00 },   // U+00AB (<<)
+  { 0x00, 0x00, 0x00, 0x3F, 0x30, 0x30, 0x00, 0x00 },   // U+00AC (gun pointing left)
+  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+00AD (soft hyphen)
+  { 0x3C, 0x42, 0x9D, 0xA5, 0x9D, 0xA5, 0x42, 0x3C },   // U+00AE (registered symbol)
+  { 0x7E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+00AF (macron)
+  { 0x1C, 0x36, 0x36, 0x1C, 0x00, 0x00, 0x00, 0x00 },   // U+00B0 (degree)
+  { 0x18, 0x18, 0x7E, 0x18, 0x18, 0x00, 0x7E, 0x00 },   // U+00B1 (plusminus)
+  { 0x1C, 0x30, 0x18, 0x0C, 0x3C, 0x00, 0x00, 0x00 },   // U+00B2 (superscript 2)
+  { 0x1C, 0x30, 0x18, 0x30, 0x1C, 0x00, 0x00, 0x00 },   // U+00B2 (superscript 3)
+  { 0x18, 0x0C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+00B2 (aigu)
+  { 0x00, 0x00, 0x66, 0x66, 0x66, 0x3E, 0x06, 0x03 },   // U+00B5 (mu)
+  { 0xFE, 0xDB, 0xDB, 0xDE, 0xD8, 0xD8, 0xD8, 0x00 },   // U+00B6 (pilcrow)
+  { 0x00, 0x00, 0x00, 0x18, 0x18, 0x00, 0x00, 0x00 },   // U+00B7 (central dot)
+  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x18, 0x30, 0x1E },   // U+00B8 (cedille)
+  { 0x08, 0x0C, 0x08, 0x1C, 0x00, 0x00, 0x00, 0x00 },   // U+00B9 (superscript 1)
+  { 0x1C, 0x36, 0x36, 0x1C, 0x00, 0x00, 0x00, 0x00 },   // U+00BA (superscript 0)
+  { 0x00, 0x33, 0x66, 0xCC, 0x66, 0x33, 0x00, 0x00 },   // U+00BB (>>)
+  { 0xC3, 0x63, 0x33, 0xBD, 0xEC, 0xF6, 0xF3, 0x03 },   // U+00BC (1/4)
+  { 0xC3, 0x63, 0x33, 0x7B, 0xCC, 0x66, 0x33, 0xF0 },   // U+00BD (1/2)
+  { 0x03, 0xC4, 0x63, 0xB4, 0xDB, 0xAC, 0xE6, 0x80 },   // U+00BE (3/4)
+  { 0x0C, 0x00, 0x0C, 0x06, 0x03, 0x33, 0x1E, 0x00 },   // U+00BF (inverted ?)
+  { 0x07, 0x00, 0x1C, 0x36, 0x63, 0x7F, 0x63, 0x00 },   // U+00C0 (A grave)
+  { 0x70, 0x00, 0x1C, 0x36, 0x63, 0x7F, 0x63, 0x00 },   // U+00C1 (A aigu)
+  { 0x1C, 0x36, 0x00, 0x3E, 0x63, 0x7F, 0x63, 0x00 },   // U+00C2 (A circumflex)
+  { 0x6E, 0x3B, 0x00, 0x3E, 0x63, 0x7F, 0x63, 0x00 },   // U+00C3 (A ~)
+  { 0x63, 0x1C, 0x36, 0x63, 0x7F, 0x63, 0x63, 0x00 },   // U+00C4 (A umlaut)
+  { 0x0C, 0x0C, 0x00, 0x1E, 0x33, 0x3F, 0x33, 0x00 },   // U+00C5 (A ring)
+  { 0x7C, 0x36, 0x33, 0x7F, 0x33, 0x33, 0x73, 0x00 },   // U+00C6 (AE)
+  { 0x1E, 0x33, 0x03, 0x33, 0x1E, 0x18, 0x30, 0x1E },   // U+00C7 (C cedille)
+  { 0x07, 0x00, 0x3F, 0x06, 0x1E, 0x06, 0x3F, 0x00 },   // U+00C8 (E grave)
+  { 0x38, 0x00, 0x3F, 0x06, 0x1E, 0x06, 0x3F, 0x00 },   // U+00C9 (E aigu)
+  { 0x0C, 0x12, 0x3F, 0x06, 0x1E, 0x06, 0x3F, 0x00 },   // U+00CA (E circumflex)
+  { 0x36, 0x00, 0x3F, 0x06, 0x1E, 0x06, 0x3F, 0x00 },   // U+00CB (E umlaut)
+  { 0x07, 0x00, 0x1E, 0x0C, 0x0C, 0x0C, 0x1E, 0x00 },   // U+00CC (I grave)
+  { 0x38, 0x00, 0x1E, 0x0C, 0x0C, 0x0C, 0x1E, 0x00 },   // U+00CD (I aigu)
+  { 0x0C, 0x12, 0x00, 0x1E, 0x0C, 0x0C, 0x1E, 0x00 },   // U+00CE (I circumflex)
+  { 0x33, 0x00, 0x1E, 0x0C, 0x0C, 0x0C, 0x1E, 0x00 },   // U+00CF (I umlaut)
+  { 0x3F, 0x66, 0x6F, 0x6F, 0x66, 0x66, 0x3F, 0x00 },   // U+00D0 (Eth)
+  { 0x3F, 0x00, 0x33, 0x37, 0x3F, 0x3B, 0x33, 0x00 },   // U+00D1 (N ~)
+  { 0x0E, 0x00, 0x18, 0x3C, 0x66, 0x3C, 0x18, 0x00 },   // U+00D2 (O grave)
+  { 0x70, 0x00, 0x18, 0x3C, 0x66, 0x3C, 0x18, 0x00 },   // U+00D3 (O aigu)
+  { 0x3C, 0x66, 0x18, 0x3C, 0x66, 0x3C, 0x18, 0x00 },   // U+00D4 (O circumflex)
+  { 0x6E, 0x3B, 0x00, 0x3E, 0x63, 0x63, 0x3E, 0x00 },   // U+00D5 (O ~)
+  { 0xC3, 0x18, 0x3C, 0x66, 0x66, 0x3C, 0x18, 0x00 },   // U+00D6 (O umlaut)
+  { 0x00, 0x36, 0x1C, 0x08, 0x1C, 0x36, 0x00, 0x00 },   // U+00D7 (multiplicative x)
+  { 0x5C, 0x36, 0x73, 0x7B, 0x6F, 0x36, 0x1D, 0x00 },   // U+00D8 (O stroke)
+  { 0x0E, 0x00, 0x66, 0x66, 0x66, 0x66, 0x3C, 0x00 },   // U+00D9 (U grave)
+  { 0x70, 0x00, 0x66, 0x66, 0x66, 0x66, 0x3C, 0x00 },   // U+00DA (U aigu)
+  { 0x3C, 0x66, 0x00, 0x66, 0x66, 0x66, 0x3C, 0x00 },   // U+00DB (U circumflex)
+  { 0x33, 0x00, 0x33, 0x33, 0x33, 0x33, 0x1E, 0x00 },   // U+00DC (U umlaut)
+  { 0x70, 0x00, 0x66, 0x66, 0x3C, 0x18, 0x18, 0x00 },   // U+00DD (Y aigu)
+  { 0x0F, 0x06, 0x3E, 0x66, 0x66, 0x3E, 0x06, 0x0F },   // U+00DE (Thorn)
+  { 0x00, 0x1E, 0x33, 0x1F, 0x33, 0x1F, 0x03, 0x03 },   // U+00DF (beta)
+  { 0x07, 0x00, 0x1E, 0x30, 0x3E, 0x33, 0x7E, 0x00 },   // U+00E0 (a grave)
+  { 0x38, 0x00, 0x1E, 0x30, 0x3E, 0x33, 0x7E, 0x00 },   // U+00E1 (a aigu)
+  { 0x7E, 0xC3, 0x3C, 0x60, 0x7C, 0x66, 0xFC, 0x00 },   // U+00E2 (a circumflex)
+  { 0x6E, 0x3B, 0x1E, 0x30, 0x3E, 0x33, 0x7E, 0x00 },   // U+00E3 (a ~)
+  { 0x33, 0x00, 0x1E, 0x30, 0x3E, 0x33, 0x7E, 0x00 },   // U+00E4 (a umlaut)
+  { 0x0C, 0x0C, 0x1E, 0x30, 0x3E, 0x33, 0x7E, 0x00 },   // U+00E5 (a ring)
+  { 0x00, 0x00, 0xFE, 0x30, 0xFE, 0x33, 0xFE, 0x00 },   // U+00E6 (ae)
+  { 0x00, 0x00, 0x1E, 0x03, 0x03, 0x1E, 0x30, 0x1C },   // U+00E7 (c cedille)
+  { 0x07, 0x00, 0x1E, 0x33, 0x3F, 0x03, 0x1E, 0x00 },   // U+00E8 (e grave)
+  { 0x38, 0x00, 0x1E, 0x33, 0x3F, 0x03, 0x1E, 0x00 },   // U+00E9 (e aigu)
+  { 0x7E, 0xC3, 0x3C, 0x66, 0x7E, 0x06, 0x3C, 0x00 },   // U+00EA (e circumflex)
+  { 0x33, 0x00, 0x1E, 0x33, 0x3F, 0x03, 0x1E, 0x00 },   // U+00EB (e umlaut)
+  { 0x07, 0x00, 0x0E, 0x0C, 0x0C, 0x0C, 0x1E, 0x00 },   // U+00EC (i grave)
+  { 0x1C, 0x00, 0x0E, 0x0C, 0x0C, 0x0C, 0x1E, 0x00 },   // U+00ED (i augu)
+  { 0x3E, 0x63, 0x1C, 0x18, 0x18, 0x18, 0x3C, 0x00 },   // U+00EE (i circumflex)
+  { 0x33, 0x00, 0x0E, 0x0C, 0x0C, 0x0C, 0x1E, 0x00 },   // U+00EF (i umlaut)
+  { 0x1B, 0x0E, 0x1B, 0x30, 0x3E, 0x33, 0x1E, 0x00 },   // U+00F0 (eth)
+  { 0x00, 0x1F, 0x00, 0x1F, 0x33, 0x33, 0x33, 0x00 },   // U+00F1 (n ~)
+  { 0x00, 0x07, 0x00, 0x1E, 0x33, 0x33, 0x1E, 0x00 },   // U+00F2 (o grave)
+  { 0x00, 0x38, 0x00, 0x1E, 0x33, 0x33, 0x1E, 0x00 },   // U+00F3 (o aigu)
+  { 0x1E, 0x33, 0x00, 0x1E, 0x33, 0x33, 0x1E, 0x00 },   // U+00F4 (o circumflex)
+  { 0x6E, 0x3B, 0x00, 0x1E, 0x33, 0x33, 0x1E, 0x00 },   // U+00F5 (o ~)
+  { 0x00, 0x33, 0x00, 0x1E, 0x33, 0x33, 0x1E, 0x00 },   // U+00F6 (o umlaut)
+  { 0x18, 0x18, 0x00, 0x7E, 0x00, 0x18, 0x18, 0x00 },   // U+00F7 (division)
+  { 0x00, 0x60, 0x3C, 0x76, 0x7E, 0x6E, 0x3C, 0x06 },   // U+00F8 (o stroke)
+  { 0x00, 0x07, 0x00, 0x33, 0x33, 0x33, 0x7E, 0x00 },   // U+00F9 (u grave)
+  { 0x00, 0x38, 0x00, 0x33, 0x33, 0x33, 0x7E, 0x00 },   // U+00FA (u aigu)
+  { 0x1E, 0x33, 0x00, 0x33, 0x33, 0x33, 0x7E, 0x00 },   // U+00FB (u circumflex)
+  { 0x00, 0x33, 0x00, 0x33, 0x33, 0x33, 0x7E, 0x00 },   // U+00FC (u umlaut)
+  { 0x00, 0x38, 0x00, 0x33, 0x33, 0x3E, 0x30, 0x1F },   // U+00FD (y aigu)
+  { 0x00, 0x00, 0x06, 0x3E, 0x66, 0x3E, 0x06, 0x00 },   // U+00FE (thorn)
+  { 0x00, 0x33, 0x00, 0x33, 0x33, 0x3E, 0x30, 0x1F }    // U+00FF (y umlaut)
 };
+#endif
 
 static int mx = 0, my = 0, win_w, win_h;
 
@@ -494,7 +663,7 @@ int surface(surface_t* s, unsigned int w, unsigned int h) {
   size_t sz = w * h * sizeof(unsigned int) + 1;
   s->buf = malloc(sz);
   if (!s->buf) {
-    SET_LAST_ERROR("malloc() failed");
+    error_handle(PRIO_HIGH, "malloc() failed");
     return 0;
   }
   memset(s->buf, 0, sz);
@@ -535,7 +704,7 @@ void psetb(surface_t* s, int x, int y, int c) {
 }
 
 void pset(surface_t* s, int x, int y, int c)  {
-  if (x >= 0 || y >= 0 || x < s->w || y < s->h)
+  if (x >= 0 && y >= 0 && x < s->w && y < s->h)
     s->buf[y * s->w + x] = c;
 }
 
@@ -733,7 +902,7 @@ off += s;
 int bmp(surface_t* s, const char* path) {
   FILE* fp = fopen(path, "rb");
   if (!fp) {
-    SET_LAST_ERROR("fopen() failed: %s\n", path);
+    error_handle(PRIO_NORM, "fopen() failed: %s", path);
     return 0;
   }
   
@@ -743,7 +912,7 @@ int bmp(surface_t* s, const char* path) {
   
   unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
   if (!data) {
-    SET_LAST_ERROR("calloc() failed");
+    error_handle(PRIO_HIGH, "calloc() failed");
     return 0;
   }
   fread(data, 1, length, fp);
@@ -758,7 +927,7 @@ int bmp(surface_t* s, const char* path) {
   BMP_GET(&info, data, sizeof(BMPINFOHEADER));
   
   if (header.type != 0x4D42) {
-    SET_LAST_ERROR("bmp() failed: invalid BMP signiture '%d'", header.type);
+    error_handle(PRIO_NORM, "bmp() failed: invalid BMP signiture '%d'", header.type);
     return 0;
   }
   
@@ -770,7 +939,7 @@ int bmp(surface_t* s, const char* path) {
     color_map_size = (1 << info.bits) * 4;
     color_map = (unsigned char*)malloc(color_map_size * sizeof(unsigned char));
     if (!color_map) {
-      SET_LAST_ERROR("malloc() failed");
+      error_handle(PRIO_HIGH, "malloc() failed");
       return 0;
     }
     BMP_GET(color_map, data, color_map_size);
@@ -778,7 +947,7 @@ int bmp(surface_t* s, const char* path) {
   
   if (!surface(s, info.width, info.height)) {
     FREE_SAFE(color_map);
-    SET_LAST_ERROR("malloc() failed");
+    error_handle(PRIO_HIGH, "malloc() failed");
     return 0;
   }
   
@@ -791,7 +960,7 @@ int bmp(surface_t* s, const char* path) {
         case 1:
         case 4:
 #pragma TODO(Add 1 & 4 bpp support);
-          SET_LAST_ERROR("bmp() failed. Unsupported BPP: %d", info.bits);
+          error_handle(PRIO_NORM, "bmp() failed. Unsupported BPP: %d", info.bits);
           destroy(s);
           break;
         case 8:
@@ -806,7 +975,7 @@ int bmp(surface_t* s, const char* path) {
             BMP_SET(RGB(data[off + 2], data[off + 1], data[off]));
           break;
         default:
-          SET_LAST_ERROR("bmp() failed. Unsupported BPP: %d", info.bits);
+          error_handle(PRIO_NORM, "bmp() failed. Unsupported BPP: %d", info.bits);
           destroy(s);
           break;
           
@@ -816,7 +985,7 @@ int bmp(surface_t* s, const char* path) {
     case 2: // RLE4
     default:
 #pragma TODO(Add RLE support);
-      SET_LAST_ERROR("bmp() failed. Unsupported compression: %d", info.compression);
+      error_handle(PRIO_NORM, "bmp() failed. Unsupported compression: %d", info.compression);
       destroy(s);
       break;
   }
@@ -825,7 +994,8 @@ int bmp(surface_t* s, const char* path) {
   return 1;
 }
 
-#pragma TODO(Add the misc characters)
+#if !defined(GRAPHICS_DISABLE_TEXT)
+#pragma TODO(Add the other character ranges)
 static inline int letter_index(int c) {
   if (c >= 32 && c <= 126) // Latin
     return c - 32;
@@ -973,6 +1143,7 @@ void stringf(surface_t* out, int fg, int bg, const char* fmt, ...) {
   }
   string(out, fg, bg, buffer);
 }
+#endif
 
 long ticks() {
 #if defined(_WIN32)
@@ -1012,7 +1183,7 @@ int reset(surface_t* s, int nw, int nh) {
   size_t sz = nw * nh * sizeof(unsigned int) + 1;
   int* tmp = realloc(s->buf, sz);
   if (!tmp) {
-    SET_LAST_ERROR("realloc() failed");
+    error_handle(PRIO_HIGH, "realloc() failed");
     return 0;
   }
   s->buf = tmp;
@@ -1041,10 +1212,6 @@ void window_wh(int* w, int* h) {
   
   *w = win_w;
   *h = win_h;
-}
-
-const char* last_error() {
-  return __last_error;
 }
 
 void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
@@ -1911,7 +2078,7 @@ int save_bmp(surface_t* s, const char* path) {
   const int filesize = 54 + 3 * s->w * s->h;
   unsigned char* img = (unsigned char *)malloc(3 * s->w * s->h);
   if (!img) {
-    SET_LAST_ERROR("save_bmp() failed: out of memory\n");
+    error_handle(PRIO_HIGH, "malloc() failed");
     return 0;
   }
   memset(img, 0, 3 * s->w * s->h);
@@ -1955,7 +2122,7 @@ int save_bmp(surface_t* s, const char* path) {
 
   FILE* fp = fopen(path, "wb");
   if (!fp) {
-    SET_LAST_ERROR("fopen() failed: %s\n", path);
+    error_handle(PRIO_NORM, "fopen() failed: %s", path);
     free(img);
     return 0;
   }
@@ -2010,6 +2177,317 @@ int resize(surface_t* in, int nw, int nh, surface_t* out) {
   return 1;
 }
 
+#if defined(GRAPHICS_ENABLE_BDF)
+#define BDF_READ_INT(x) \
+p = strtok(NULL, " \t\n\r"); \
+(x) = atoi(p);
+
+//#define BDF_READ_STR(x) \
+//p = strtok(NULL, "\t\n\r"); \
+//strcpy((x), p);
+
+void bdf_destroy(bdf_t* f) {
+  if (f) {
+    for (int i = 0; i < f->n_chars; ++i)
+      if (f->chars[i].bitmap) {
+        free(f->chars[i].bitmap);
+        f->chars[i].bitmap = NULL;
+      }
+    if (f->chars) {
+      free(f->chars);
+      f->chars = NULL;
+    }
+    if (f->encoding_table) {
+      free(f->encoding_table);
+      f->encoding_table = NULL;
+    }
+    f->n_chars = 0;
+    memset(&f->fontbb, 0, sizeof(rect_t));
+  }
+}
+
+static inline int htoi(const char* p) {
+  return (*p <= '9' ? *p - '0' : (*p <= 'F' ? *p - 'A' + 10 : *p - 'a' + 10));
+}
+
+int bdf(bdf_t* out, const char* path) {
+  FILE* fp = fopen(path, "r");
+  if (!fp) {
+    error_handle(PRIO_NORM, "fopen() failed: %s", path);
+    return 0;
+  }
+  
+  char *s, *p, buf[BUFSIZ];
+  for (;;) {
+    if (!fgets(buf, sizeof(buf), fp))
+      break;
+    if (!(s = strtok(buf, " \t\n\r")))
+      break;
+    
+    if (!strcasecmp(s, "FONTBOUNDINGBOX")) {
+      BDF_READ_INT(out->fontbb.w);
+      BDF_READ_INT(out->fontbb.h);
+      BDF_READ_INT(out->fontbb.x);
+      BDF_READ_INT(out->fontbb.y);
+    } else if (!strcasecmp(s, "CHARS")) {
+      BDF_READ_INT(out->n_chars);
+      break;
+    }
+  }
+  
+  if (out->fontbb.w <= 0 || out->fontbb.h <= 0) {
+    error_handle(PRIO_NORM, "bdf() failed: No character size given for %s", path);
+    return 0;
+  }
+  
+  if (out->n_chars <= 0) {
+    error_handle(PRIO_NORM, "bdf() failed: Unknown number of characters for %s", path);
+    return 0;
+  }
+  
+  out->encoding_table = malloc(out->n_chars * sizeof(unsigned int));
+  if (!out->encoding_table) {
+    error_handle(PRIO_HIGH, "malloc() failed");
+    return 0;
+  }
+  out->chars = malloc(out->n_chars * sizeof(bdf_char_t));
+  if (!out->chars) {
+    free(out->encoding_table);
+    error_handle(PRIO_HIGH, "malloc() failed");
+    return 0;
+  }
+  
+  int encoding = 0, width = -1, scanline = -1, i, j, n = 0;
+  for (;;) {
+    if (!fgets(buf, sizeof(buf), fp))
+      break;
+    if (!(s = strtok(buf, " \t\n\r")))
+      break;
+    
+    if (!strcasecmp(s, "ENCODING")) {
+      BDF_READ_INT(encoding);
+    } else if (!strcasecmp(s, "DWIDTH")) {
+      BDF_READ_INT(width);
+    } else if (!strcasecmp(s, "BBX")) {
+      BDF_READ_INT(out->chars[n].bb.w);
+      BDF_READ_INT(out->chars[n].bb.h);
+      BDF_READ_INT(out->chars[n].bb.x);
+      BDF_READ_INT(out->chars[n].bb.y);
+    } else if (!strcasecmp(s, "BITMAP")) {
+      if (n == out->n_chars) {
+        bdf_destroy(out);
+        error_handle(PRIO_NORM, "bdf() failed: More bitmaps than characters for %s", path);
+        return 0;
+      }
+      if (width == -1) {
+        bdf_destroy(out);
+        error_handle(PRIO_NORM, "bdf() failed: Unknown character with for %s", path);
+        return 0;
+      }
+      
+      if (out->chars[n].bb.x < 0) {
+        width -= out->chars[n].bb.x;
+        out->chars[n].bb.x = 0;
+      }
+      if (out->chars[n].bb.x + out->chars[n].bb.w > width)
+        width = out->chars[n].bb.x + out->chars[n].bb.w;
+      
+      out->chars[n].bitmap = malloc(((out->fontbb.w + 7) / 8) * out->fontbb.h * sizeof(unsigned char));
+      if (!out->chars[n].bitmap) {
+        bdf_destroy(out);
+        error_handle(PRIO_HIGH, "malloc() failed");
+        return 0;
+      }
+      out->chars[n].width = width;
+      out->encoding_table[n] = encoding;
+      
+      scanline = 0;
+      memset(out->chars[n].bitmap, 0, ((out->fontbb.w + 7) / 8) * out->fontbb.h);
+    } else if (!strcasecmp(s, "ENDCHAR")) {
+      if (out->chars[n].bb.x) {
+        if (out->chars[n].bb.x < 0 || out->chars[n].bb.x > 7)
+          continue;
+        
+        int x, y, c, o;
+        for (y = 0; y < out->fontbb.h; ++y) {
+          o = 0;
+          for (x = 0; x < out->fontbb.w; x += 8) {
+            c = out->chars[n].bitmap[y * ((out->fontbb.w + 7) / 8) + x / 8];
+            out->chars[n].bitmap[y * ((out->fontbb.w + 7) / 8) + x / 8] = c >> out->chars[n].bb.x | o;
+            o = c << (8 - out->chars[n].bb.x);
+          }
+        }
+      }
+      
+      scanline = -1;
+      width = -1;
+      ++n;
+    } else {
+      if (n >= out->n_chars || !out->chars[n].bitmap || scanline < 0)
+        continue;
+      
+      p = s;
+      j = 0;
+      while (*p) {
+        i = htoi(p);
+        ++p;
+        if (*p)
+          i = htoi(p) | i * 16;
+        else {
+          out->chars[n].bitmap[j + scanline * ((out->fontbb.w + 7) / 8)] = i;
+          break;
+        }
+        
+        out->chars[n].bitmap[j + scanline * ((out->fontbb.w + 7) / 8)] = i;
+        ++j;
+        ++p;
+      }
+      ++scanline;
+    }
+  }
+  
+  fclose(fp);
+  return 1;
+}
+
+int bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, int bg) {
+  const char* c = (const char*)ch;
+  int u = *c, l = 1, i, j, n = 0;
+  if ((u & 0xC0) == 0xC0) {
+    int a = (u & 0x20) ? ((u & 0x10) ? ((u & 0x08) ? ((u & 0x04) ? 6 : 5) : 4) : 3) : 2;
+    if (a < 6 || !(u & 0x02)) {
+      u = ((u << (a + 1)) & 0xFF) >> (a + 1);
+      for (int b = 1; b < a; ++b)
+        u = (u << 6) | (c[l++] & 0x3F);
+    }
+  }
+  
+  for (i = 0; i < f->n_chars; ++i)
+    if (f->encoding_table[i] == u) {
+      n = i;
+      break;
+    }
+  
+  int yoffset = f->fontbb.h - f->chars[n].bb.h + (f->fontbb.y - f->chars[n].bb.y), xx, yy, cc;
+  for (yy = 0; yy < f->fontbb.h; ++yy) {
+    for (xx = 0; xx < f->fontbb.w; xx += 8) {
+      cc = (yy < yoffset || yy > yoffset + f->chars[n].bb.h ? 0 : f->chars[n].bitmap[(yy - yoffset) * ((f->fontbb.w + 7) / 8) + xx / 8]);
+      
+      for (i = 128, j = 0; i; i /= 2, ++j)
+        psetb(s, x + j, y + yy, (cc & i ? fg : bg));
+    }
+  }
+  
+  return l;
+}
+
+void bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* str) {
+  const char* c = (const char*)str;
+  int u = x, v = y;
+  while (c != NULL && *c != '\0') {
+    if (*c == '\n') {
+      v += f->fontbb.h + 2;
+      u  = x;
+      c += 1;
+    } else {
+      c += bdf_character(s, f, c, u, v, fg, bg);
+      u += 8;
+    }
+  }
+}
+#endif
+
+#if defined(GRAPHICS_ENABLE_STB_IMAGE)
+#define STB_IMAGE_IMPLEMENTATION
+#include "3rdparty/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#if defined(_MSC_VER)
+#define STBI_MSC_SECURE_CRT
+#endif
+#include "3rdparty/stb_image_write.h"
+
+int image(surface_t* out, const char* path) {
+  int w, h, c, x, y;
+  unsigned char* data = stbi_load(path, &w, &h, &c, 0);
+  if (!data) {
+    error_handle(PRIO_NORM, "stbi_load() failed: %s", stbi_failure_reason());
+    return 0;
+  }
+  
+  if (!surface(out, w, h)) {
+    stbi_image_free(data);
+    return 0;
+  }
+  
+  unsigned char* p = NULL;
+  for (x = 0; x < w; ++x) {
+    for (y = 0; y < h; ++y) {
+      p = data + (x + w * y) * c;
+      out->buf[y * w + x] = RGBA(p[0], p[1], p[2], (c == 4 ? p[3] : 255));
+    }
+  }
+  
+  stbi_image_free(data);
+  return 1;
+}
+
+static inline const char* extension(const char* path) {
+  const char* dot = strrchr(path, '.');
+  return (!dot || dot == path ? NULL : dot + 1);
+}
+
+int save_image(surface_t* in, const char* path) {
+  if (!in || !path) {
+    error_handle(PRIO_NORM, "save_image() failed: Invalid parameters");
+    return 1;
+  }
+  
+  unsigned char* data = malloc(in->w * in->h * 4 * sizeof(unsigned char));
+  if (!data) {
+    error_handle(PRIO_NORM, "save_image() failed: Out of memory");
+    return 1;
+  }
+  
+  unsigned char* p = NULL;
+  int i, j, c;
+  for (i = 0; i < in->w; ++i) {
+    for (j = 0; j < in->h; ++j) {
+      p = data + (i + in->w * j) * 4;
+      c = in->buf[j * in->w + i];
+      p[0] = R(c);
+      p[1] = G(c);
+      p[2] = B(c);
+      p[3] = A(c);
+    }
+  }
+  
+  // Avert your eyes if you don't want to go blind
+  int res = 0;
+  const char* ext = extension(path);
+TRY_AGAIN_BRO:
+  if (!ext || !strcmp(ext, "png"))
+    res = stbi_write_png(path, in->w, in->h, 4, data, 0);
+  else if (!strcmp(ext, "tga"))
+    res = stbi_write_tga(path, in->w, in->h, 4, data);
+  else if (!strcmp(ext, "bmp"))
+    res = stbi_write_bmp(path, in->w, in->h, 4, data);
+  else if (!strcmp(ext, "jpg") || !strcmp(ext, "jpeg"))
+    stbi_write_jpg(path, in->w, in->h, 4, data, 85);
+  else {
+    ext = "png";
+    goto TRY_AGAIN_BRO;
+  }
+  free(data);
+  
+  if (!res) {
+    error_handle(PRIO_NORM, "save_image() failed: stbi_write() failed");
+    return 0;
+  }
+  return 1;
+}
+#endif
+
+#if !defined(GRAPHICS_DISABLE_WINDOW)
 #if defined(GRAPHICS_ENABLE_OPENGL)
 #if defined(__APPLE__)
 #include <OpenGL/gl3.h>
@@ -2092,7 +2570,7 @@ void print_shader_log(GLuint s) {
 
     glGetShaderInfoLog(s, max_len, &log_len, log);
     if (log_len > 0)
-      SET_LAST_ERROR("load_shader() failed: %s", log);
+      error_handle(PRIO_HIGH, "load_shader() failed: %s", log);
 
     free(log);
   }
@@ -2134,7 +2612,7 @@ int init_gl(int w, int h) {
   typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
   if (!dll) {
     release();
-    SET_LAST_ERROR("LoadLibraryA() failed: opengl32.dll not found");
+    error_handle("LoadLibraryA() failed: opengl32.dll not found");
     return 0;
   }
   wglGetProcAddressproc* wglGetProcAddress = (wglGetProcAddressproc*)GetProcAddress(dll, "wglGetProcAddress");
@@ -2142,7 +2620,7 @@ int init_gl(int w, int h) {
 #define GLE(ret, name, ...) \
   gl##name = (name##proc*)wglGetProcAddress("gl" #name); \
   if (!gl##name) { \
-    SET_LAST_ERROR("wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
+    error_handle("wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
     gl3_available -= 1; \
   }
   GL_LIST
@@ -2151,14 +2629,14 @@ int init_gl(int w, int h) {
   void* libGL = dlopen("libGL.so", RTLD_LAZY);
   if (!libGL) {
     release();
-    SET_LAST_ERROR("dlopen() failed: libGL.so couldn't be loaded");
+    error_handle("dlopen() failed: libGL.so couldn't be loaded");
     return 0;
   }
 
 #define GLE(ret, name, ...) \
   gl##name = (name##proc *) dlsym(libGL, "gl" #name); \
   if (!gl##name) { \
-    SET_LAST_ERROR("dlsym() failed: Function gl" #name " couldn't be loaded from libGL.so"); \
+    error_handle("dlsym() failed: Function gl" #name " couldn't be loaded from libGL.so"); \
     gl3_available -= 1; \
   }
   GL_LIST
@@ -2488,7 +2966,7 @@ extern surface_t* buffer;
                                        error:&err];
     if (err || !_library) {
       release();
-      SET_LAST_ERROR("[device newLibraryWithSource] failed: %s\n", [[err localizedDescription] UTF8String]);
+      error_handle("[device newLibraryWithSource] failed: %s", [[err localizedDescription] UTF8String]);
       return nil;
     }
     
@@ -2505,7 +2983,7 @@ extern surface_t* buffer;
                                                         error:&err];
     if (err || !_pipeline) {
       release();
-      SET_LAST_ERROR("[device newRenderPipelineStateWithDescriptor] failed: %s\n", [[err localizedDescription] UTF8String]);
+      error_handle("[device newRenderPipelineStateWithDescriptor] failed: %s", [[err localizedDescription] UTF8String]);
       return nil;
     }
   }
@@ -2763,7 +3241,7 @@ extern surface_t* buffer;
 
 int screen(const char* t, int* w, int* h, short flags) {
   if (!w || !h) {
-    SET_LAST_ERROR("screen() failed: W/H params NULL");
+    error_handle(PRIO_NORM, "screen() failed: W/H params NULL");
     return 0;
   }
 
@@ -2916,7 +3394,7 @@ int screen(const char* t, int* w, int* h, short flags) {
                                          defer:NO];
   if (!app) {
     release();
-    SET_LAST_ERROR("[osx_app_t initWithContentRect] failed");
+    error_handle(PRIO_HIGH, "[osx_app_t initWithContentRect] failed");
     return 0;
   }
   
@@ -2926,7 +3404,7 @@ int screen(const char* t, int* w, int* h, short flags) {
   id app_del = [AppDelegate alloc];
   if (!app_del) {
     release();
-    SET_LAST_ERROR("[AppDelegate alloc] failed");
+    error_handle(PRIO_HIGH, "[AppDelegate alloc] failed");
     [NSApp terminate:nil];
   }
 
@@ -3369,14 +3847,14 @@ int screen(const char* t, int w, int h) {
 
     if (!RegisterClass(&wnd)) {
       release();
-      SET_LAST_ERROR("RegisterClass() failed: %s", GetLastError());
+      error_handle("RegisterClass() failed: %s", GetLastError());
       return 0;
     }
   }
 
   if (!(hwnd = CreateWindow(t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
     release();
-    SET_LAST_ERROR("CreateWindow() failed: %s", GetLastError());
+    error_handle("CreateWindow() failed: %s", GetLastError());
     return 0;
   }
   hdc = GetDC(hwnd);
@@ -3391,13 +3869,13 @@ int screen(const char* t, int w, int h) {
   int pf = ChoosePixelFormat(hdc, &pfd);
   if (pf == 0) {
     release();
-    SET_LAST_ERROR("ChoosePixelFormat() failed: %s", GetLastError());
+    error_handle("ChoosePixelFormat() failed: %s", GetLastError());
     return 0;
   }
 
   if (SetPixelFormat(hdc, pf, &pfd) == FALSE) {
     release();
-    SET_LAST_ERROR("SetPixelFormat() failed: %s", GetLastError());
+    error_handle("SetPixelFormat() failed: %s", GetLastError());
     return 0;
   }
 
@@ -3416,13 +3894,13 @@ int screen(const char* t, int w, int h) {
 
   if (!RegisterClass(&wnd)) {
     release();
-    SET_LAST_ERROR("RegisterClass() failed: %s", GetLastError());
+    error_handle("RegisterClass() failed: %s", GetLastError());
     return 0;
   }
 
   if (!(hwnd = CreateWindowEx(0, t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, adjusted_win_w, adjusted_win_h, 0, 0, 0, 0))) {
     release();
-    SET_LAST_ERROR("CreateWindowEx() failed: %s", GetLastError());
+    error_handle("CreateWindowEx() failed: %s", GetLastError());
     return 0;
   }
 
@@ -3721,7 +4199,7 @@ int screen(const char* title, int w, int h) {
   display = XOpenDisplay(0);
   if (!display) {
     release();
-    SET_LAST_ERROR("XOpenDisplay(0) failed!");
+    error_handle("XOpenDisplay(0) failed!");
     return 0;
   }
 
@@ -3821,7 +4299,7 @@ int screen(const char* title, int w, int h) {
   GLXFBConfig* fbc = glXChooseFBConfig(display, DefaultScreen(display), visual_attribs, &fb_count);
   if (!fbc) {
     release();
-    SET_LAST_ERROR("glXChooseFBConfig() failed: Failed to retreive framebuffer config");
+    error_handle("glXChooseFBConfig() failed: Failed to retreive framebuffer config");
     return 0;
   }
 
@@ -3851,7 +4329,7 @@ int screen(const char* title, int w, int h) {
   XVisualInfo* vi = glXGetVisualFromFBConfig(display, fbc_best);
   if (vi == 0) {
     release();
-    SET_LAST_ERROR("glXGetVisualFromFBConfig() failed: Could not create correct visual window");
+    error_handle("glXGetVisualFromFBConfig() failed: Could not create correct visual window");
     return 0;
   }
 
@@ -3883,7 +4361,7 @@ int screen(const char* title, int w, int h) {
 
   if (c_depth != 32) {
     release();
-    SET_LAST_ERROR("Invalid display depth: %d", c_depth);
+    error_handle("Invalid display depth: %d", c_depth);
     return 0;
   }
 
@@ -3904,7 +4382,7 @@ int screen(const char* title, int w, int h) {
 
   if (!win) {
     release();
-    SET_LAST_ERROR("XCreateWindow() failed!");
+    error_handle("XCreateWindow() failed!");
     return 0;
   }
 
@@ -3949,7 +4427,7 @@ int screen(const char* title, int w, int h) {
 
   if (!ctx) {
     release();
-    SET_LAST_ERROR("glXCreateContextAttribsARB() failed: Couldn't create OpenGL context");
+    error_handle("glXCreateContextAttribsARB() failed: Couldn't create OpenGL context");
     return 0;
   }
 
@@ -4081,4 +4559,5 @@ void release() {
   XDestroyWindow(display, win);
   XCloseDisplay(display);
 }
+#endif
 #endif

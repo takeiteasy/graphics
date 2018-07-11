@@ -1,5 +1,3 @@
-#include "graphics_bdf.h"
-#include "graphics_image.h"
 #include "graphics.h"
 
 int invert(int x, int y, int c) {
@@ -62,42 +60,35 @@ void on_resize(int w, int h) {
 #define printf(fmt, ...) (0)
 #endif
 
+void on_error(ERRPRIO pri, const char* msg, const char* file, const char* func, int line) {
+  fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
+  if (pri == PRIO_HIGH || pri == PRIO_NORM)
+    abort();
+}
+
 int main(int argc, const char* argv[]) {
-  if (!surface(&win, win_w, win_h)) {
-    fprintf(stderr, "%s\n", last_error());
-    return 1;
-  }
-  if (!screen("test", &win_w, &win_h, RESIZABLE)) {
-    fprintf(stderr, "%s\n", last_error());
-    return 1;
-  }
+  surface(&win, win_w, win_h);
+  screen("test", &win_w, &win_h, RESIZABLE);
 #if !DEBUG_NATIVE_RESIZE
   if (win.w != win_w || win.h != win_h)
     reset(&win, win_w, win_h);
 #endif
+  
   resize_callback(on_resize);
+  error_callback(on_error);
 
   surface_t s[10];
   surface(&s[0], 50, 50);
   
-  if (!image(&s[1], RES("test_alpha.png"))) {
-    fprintf(stderr, "%s\n", get_last_stb_error());
-    return 1;
-  }
+  image(&s[1], RES("test_alpha.png"));
   
-  if (!bmp(&s[6], RES("lena.bmp"))) {
-    fprintf(stderr, "%s\n", last_error());
-    return 1;
-  }
+  bmp(&s[6], RES("lena.bmp"));
   resize(&s[6], s[6].w / 2, s[6].h / 2, &s[2]);
   destroy(&s[6]);
   
   // BDF font from tewi-font: https://github.com/lucy/tewi-font
   bdf_t tewi;
-  if (!bdf(&tewi, RES("tewi.bdf"))) {
-    fprintf(stderr, "%s\n", get_last_bdf_error());
-    return 1;
-  }
+  bdf(&tewi, RES("tewi.bdf"));
   
   copy(&s[2], &s[4]);
   filter(&s[4], invert);
@@ -225,12 +216,12 @@ int main(int argc, const char* argv[]) {
     blit(&win, &points[2], &s[0], NULL);
 
     circle(&win, 352, 32, 30, RED, 1);
-    circle(&win, 382, 32, 30, RGB(255, 165, 0), 1);
+    circle(&win, 382, 32, 30, ORANGE, 1);
     circle(&win, 412, 32, 30, YELLOW, 1);
     circle(&win, 442, 32, 30, LIME, 1);
     circle(&win, 472, 32, 30, BLUE, 1);
-    circle(&win, 502, 32, 30, RGB(75, 0, 130), 1);
-    circle(&win, 532, 32, 30, RGB(238, 130, 238), 1);
+    circle(&win, 502, 32, 30, INDIGO, 1);
+    circle(&win, 532, 32, 30, VIOLET, 1);
 
     update_mxy();
     writelnf(&win, 400, 88, BLACK, -1, "mouse x,y: (%d, %d)", mx, my);

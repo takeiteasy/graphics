@@ -10,19 +10,19 @@ Designed to be a drop-in and use sort of deal with little hassle. I don't know i
 - Windows, OSX and Linux (X11)
 - Keyboard and mouse events
 - Primitive shapes
-- Optional AA for primitives (Enable with ```GRAPHICS_ENABLE_AA``` macro)
+- Optional AA for primitives
 - BMP loading (Uncompressed 8, 24 & 32 bpp) (1 & 4 bpp, RLE compression and OS/2 not supported yet)
 - Save surfaces to BMP file
 - Text rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
-- Optional OpenGL & Metal backends (Just for rendering to screen, enable with ```GRAPHICS_ENABLE_$X``` macros)
-- Optional extras (bdf loader, image loader using [stb_image](https://github.com/nothings/stb) and more soon)
+- Optional OpenGL & Metal backends (Just for rendering to screen)
+- Optional extras (bdf loader, image loader using [stb_image](https://github.com/nothings/stb))
 
 See below screenshots for TODO list and the examples folder for some idea of how to use. ___Still a WIP, API subject to change a lot___.
 
 
 ## Building
 
-No external libraries are used unless you want to use the alternate backends (enable them by defining ```GRAPHICS_ENABLE_(OPENGL/METAL)```). I don't know how to make CMake files yet so backends will have to be defined manually.
+No external libraries are used unless you want to use the alternate backends (enable them by defining ```GRAPHICS_ENABLE_(OPENGL/METAL)```). I don't know how to make CMake files yet so backends will have to be defined manually. To enable AA primitives define ```GRAPHICS_ENABLE_AA```, for BDF rendering ```GRAPHICS_ENABLE_BDF``` and for image loading using stb_image ```GRAPHICS_ENABLE_STB_IMAGE```.
 
 On OSX you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for Metal. Also, if you're using XCode you'll also have to disable modules in the build settings, becuase modules imports curses with stdio for some reason.
 
@@ -65,8 +65,7 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 - Flood fill function
 - Surface flip and rotate functions
 - Add line width option
-- Better error reporting/log system
-- More macro options (No window, no RGBA, no text rendering)
+- Macro to disable RGBA
 - Wayland window code
 - CMake file for build options
 - 1 & 4 bpp, RLE compressed and OS/2 BMP support (Just because)
