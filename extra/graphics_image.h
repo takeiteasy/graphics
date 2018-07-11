@@ -11,7 +11,7 @@
 
 #include "graphics.h"
 
-int image(surface_t* out, const char* path, int alpha);
+int image(surface_t* out, const char* path);
 int save_image(surface_t* in, const char* path);
 const char* get_last_stb_error(void);
 

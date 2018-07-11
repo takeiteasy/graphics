@@ -210,7 +210,7 @@ int bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, 
       cc = (yy < yoffset || yy > yoffset + f->chars[n].bb.h ? 0 : f->chars[n].bitmap[(yy - yoffset) * ((f->fontbb.w + 7) / 8) + xx / 8]);
       
       for (i = 128, j = 0; i; i /= 2, ++j)
-        pset(s, x + j, y + yy, (cc & i ? fg : bg));
+        psetb(s, x + j, y + yy, (cc & i ? fg : bg));
     }
   }
   

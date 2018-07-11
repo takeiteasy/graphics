@@ -77,6 +77,7 @@ extern "C" {
   void fill(surface_t* s, int col);
   void cls(surface_t* s);
   void pset(surface_t* s, int x, int y, int col);
+  void psetb(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
   int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
   void vline(surface_t* s, int x, int y0, int y1, int col);

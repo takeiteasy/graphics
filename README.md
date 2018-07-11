@@ -52,7 +52,6 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 
 ### Important
 
-- Window set/get pos
 - Port new stuff to Windows/Linux
 - Colour escapes for ```writeln()``` & ```string()``` (also for bdf ext)
 - Cursor lock & hide
@@ -66,8 +65,8 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 - Flood fill function
 - Surface flip and rotate functions
 - Add line width option
-- Better error reporting system
-- Macros for disabling window and text rendering
+- Better error reporting/log system
+- More macro options (No window, no RGBA, no text rendering)
 - Wayland window code
 - CMake file for build options
 - 1 & 4 bpp, RLE compressed and OS/2 BMP support (Just because)
@@ -76,9 +75,7 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 
 ### Maybe
 
-- Improve event polling system (?)
 - Make thread safe (surface locks)
-- RGBA surfaces (instead of just RGB?)
 - Vulkan/DirectX/~~Metal~~ backends
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))

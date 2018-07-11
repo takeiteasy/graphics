@@ -21,7 +21,7 @@ static char stb_last_error[1024];
 memset(stb_last_error, 0, 1024); \
 sprintf(stb_last_error, "[ERROR] from %s in %s() at %d -- " MSG, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);
 
-int image(surface_t* out, const char* path, int alpha) {
+int image(surface_t* out, const char* path) {
   int w, h, c, x, y;
   unsigned char* data = stbi_load(path, &w, &h, &c, 0);
   if (!data) {
@@ -39,7 +39,7 @@ int image(surface_t* out, const char* path, int alpha) {
   for (x = 0; x < w; ++x) {
     for (y = 0; y < h; ++y) {
       p = data + (x + w * y) * c;
-      out->buf[y * w + x] = (c == 4 && !p[3] ? alpha : RGB(p[0], p[1], p[2]));
+      out->buf[y * w + x] = RGBA(p[0], p[1], p[2], (c == 4 ? p[3] : 255));
     }
   }
   

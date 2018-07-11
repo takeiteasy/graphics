@@ -17,8 +17,12 @@ int rnd(int x, int y, int c) {
   return RGB(RND_255, RND_255, RND_255);
 }
 
+int remove_lime(int x, int y, int c) {
+  return (c == LIME ? 0 : c);
+}
+
 static surface_t win;
-static int win_w = 800, win_h = 600, mx = 0, my = 0, running = 1;
+static int win_w = 575, win_h = 500, mx = 0, my = 0, running = 1;
 
 #define DEBUG_NATIVE_RESIZE 0
 #define SKIP_PRINTF 0
@@ -76,7 +80,7 @@ int main(int argc, const char* argv[]) {
   surface_t s[10];
   surface(&s[0], 50, 50);
   
-  if (!image(&s[1], RES("test_alpha.png"), LIME)) {
+  if (!image(&s[1], RES("test_alpha.png"))) {
     fprintf(stderr, "%s\n", get_last_stb_error());
     return 1;
   }
@@ -88,7 +92,7 @@ int main(int argc, const char* argv[]) {
   resize(&s[6], s[6].w / 2, s[6].h / 2, &s[2]);
   destroy(&s[6]);
   
-  // BDF example from tewi-font: https://github.com/lucy/tewi-font
+  // BDF font from tewi-font: https://github.com/lucy/tewi-font
   bdf_t tewi;
   if (!bdf(&tewi, RES("tewi.bdf"))) {
     fprintf(stderr, "%s\n", get_last_bdf_error());
@@ -113,13 +117,14 @@ int main(int argc, const char* argv[]) {
   points[3].y = points[1].y;
 
   rect_t cutr  = { 125, 120, 50, 50 };
-  stringf(&s[3], RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", cutr.x, cutr.y, cutr.w, cutr.h);
-  string(&s[7], RED, LIME, "NO\nGREEN\nHERE");
+  stringf(&s[3], RED, 0, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", cutr.x, cutr.y, cutr.w, cutr.h);
+  
   string(&s[8], LIME, BLACK, "WOW");
   surface(&s[9], 50, 50);
   fill(&s[9], BLACK);
   point_t tmmp8 = { 13, 20 };
   blit(&s[9], &tmmp8, &s[8], NULL);
+  filter(&s[9], remove_lime);
   destroy(&s[8]);
 
   surface(&s[5], 100, 100);
@@ -201,7 +206,7 @@ int main(int argc, const char* argv[]) {
     for (long i = sine_i; i < (sine_i + win.w); ++i) {
       float x = (float)(i - sine_i);
       float y = 200.f + (75.f * sinf(i * (3.141f / 180.f)));
-      line(&win, last_x, last_y, x, y, RED);
+      line(&win, last_x, last_y, x, y, col);
       last_x = x;
       last_y = y;
     }
@@ -214,9 +219,6 @@ int main(int argc, const char* argv[]) {
     blit(&win, &points[3], &s[4], NULL);
 
     blit(&win, &points[5], &s[5], NULL);
-    blit(&win, &points[6], &s[7], NULL);
-
-    blit(&win, &points[7], &s[5], NULL);
 
     filter(&s[0], rnd);
     blit(&s[0], NULL, &s[9], NULL);

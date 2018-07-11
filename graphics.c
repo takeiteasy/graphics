@@ -519,21 +519,24 @@ void cls(surface_t* s) {
   memset(s->buf, 0, s->w * s->h * sizeof(int));
 }
 
-static inline int blend(int c0, int c1, int a0, int a1) {
-  return (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025);
-}
+#define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
 
-void pset(surface_t* s, int x, int y, int c) {
+void psetb(surface_t* s, int x, int y, int c) {
   int a = A(c);
   if (a == 0 || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
   
   int* p = &s->buf[y * s->w + x];
   int b = A(*p);
-  *p = (a == 255 || b == 0) ? c : RGBA(blend(R(c), R(*p), a, b),
-                                       blend(G(c), G(*p), a, b),
-                                       blend(B(c), B(*p), a, b),
+  *p = (a == 255 || b == 0) ? c : RGBA(BLEND(R(c), R(*p), a, b),
+                                       BLEND(G(c), G(*p), a, b),
+                                       BLEND(B(c), B(*p), a, b),
                                        a + (b * (255 - a) / 255));
+}
+
+void pset(surface_t* s, int x, int y, int c)  {
+  if (x >= 0 || y >= 0 || x < s->w || y < s->h)
+    s->buf[y * s->w + x] = c;
 }
 
 #define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
@@ -580,7 +583,7 @@ int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   int x, y;
   for (x = 0; x < width; ++x)
     for (y = 0; y < height; ++y)
-      pset(dst, offset_x + x, offset_y + y, XYGET(src, from_x + x, from_y + y));
+      psetb(dst, offset_x + x, offset_y + y, XYGET(src, from_x + x, from_y + y));
   return 1;
 }
 
@@ -600,7 +603,7 @@ void vline(surface_t* s, int x, int y0, int y1, int col) {
     y1 = s->h - 1;
 
   for(int y = y0; y <= y1; y++)
-    pset(s, x, y, col);
+    psetb(s, x, y, col);
 }
 
 void hline(surface_t* s, int y, int x0, int x1, int col) {
@@ -619,7 +622,7 @@ void hline(surface_t* s, int y, int x0, int x1, int col) {
     x1 = s->w - 1;
 
   for(int x = x0; x <= x1; x++)
-    pset(s, x, y, col);
+    psetb(s, x, y, col);
 }
 
 void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
@@ -644,7 +647,7 @@ void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
 
   for (;;) {
 #if defined(GRAPHICS_ENABLE_AA)
-    pset(s, x0, y0, ACHAN(col, a - (a * abs(err - dx + dy) / ed)));
+    psetb(s, x0, y0, ACHAN(col, a - (a * abs(err - dx + dy) / ed)));
     e2 = err;
     x2 = x0;
 
@@ -652,7 +655,7 @@ void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
       if (x0 == x1)
         break;
       if (e2 + dy < ed)
-        pset(s, x0, y0 + sy, ACHAN(col, a - (a * (e2 + dy) / ed)));
+        psetb(s, x0, y0 + sy, ACHAN(col, a - (a * (e2 + dy) / ed)));
       err -= dy;
       x0 += sx;
     }
@@ -661,7 +664,7 @@ void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
       if (y0 == y1)
         break;
       if (dx - e2 < ed)
-        pset(s, x2 + sx, y0, ACHAN(col, a - (a * (dx - e2) / ed)));
+        psetb(s, x2 + sx, y0, ACHAN(col, a - (a * (dx - e2) / ed)));
       err += dx;
       y0 += sy;
     }
@@ -842,11 +845,11 @@ void ascii(surface_t* s, char ch, int x, int y, int fg, int bg) {
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 8; ++j) {
       if (font[c][i] & 1 << j) {
-        pset(s, x + j, y + i, fg);
+        psetb(s, x + j, y + i, fg);
       } else {
         if (bg == -1)
           continue;
-        pset(s, x + j, y + i, bg);
+        psetb(s, x + j, y + i, bg);
       }
     }
   }
@@ -868,11 +871,11 @@ int character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 8; ++j) {
       if (font[uc][i] & 1 << j) {
-        pset(s, x + j, y + i, fg);
+        psetb(s, x + j, y + i, fg);
       } else {
         if (bg == -1)
           continue;
-        pset(s, x + j, y + i, bg);
+        psetb(s, x + j, y + i, bg);
       }
     }
   }
@@ -1046,9 +1049,7 @@ const char* last_error() {
 
 void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
   int a = A(col);
-  if (!a)
-    return;
-  if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
+  if (!a || xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
     return;
 
   int x = -r, y = 0, err = 2 - 2 * r;
@@ -1060,10 +1061,10 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
   do {
 #if defined(GRAPHICS_ENABLE_AA)
     i = ACHAN(col, 255 - (255 * abs(err - 2 * (x + y) - 2) / r));
-    pset(s, xc - x, yc + y, i);
-    pset(s, xc - y, yc - x, i);
-    pset(s, xc + x, yc - y, i);
-    pset(s, xc + y, yc + x, i);
+    psetb(s, xc - x, yc + y, i);
+    psetb(s, xc - y, yc - x, i);
+    psetb(s, xc + x, yc - y, i);
+    psetb(s, xc + y, yc + x, i);
 
     if (fill) {
       hline(s, yc - y, xc - x - 1, xc + x + 1, col);
@@ -1076,10 +1077,10 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
       i = 255 * (err - 2 * x - 1) / r;
       if (i < 256) {
         i = ACHAN(col, 255 - i);
-        pset(s, xc - x, yc + y + 1, i);
-        pset(s, xc - y - 1, yc - x, i);
-        pset(s, xc + x, yc - y - 1, i);
-        pset(s, xc + y + 1, yc + x, i);
+        psetb(s, xc - x, yc + y + 1, i);
+        psetb(s, xc - y - 1, yc - x, i);
+        psetb(s, xc + x, yc - y - 1, i);
+        psetb(s, xc + y + 1, yc + x, i);
       }
       err += ++x * 2 + 1;
     }
@@ -1088,10 +1089,10 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
       i = 255 * (2 * y + 3 - e2) / r;
       if (i < 256) {
         i = ACHAN(col, 255 - i);
-        pset(s, xc - x2 - 1, yc + y, i);
-        pset(s, xc - y, yc - x2 - 1, i);
-        pset(s, xc + x2 + 1, yc - y, i);
-        pset(s, xc + y, yc + x2 + 1, i);
+        psetb(s, xc - x2 - 1, yc + y, i);
+        psetb(s, xc - y, yc - x2 - 1, i);
+        psetb(s, xc + x2 + 1, yc - y, i);
+        psetb(s, xc + y, yc + x2 + 1, i);
       }
       err += ++y * 2 + 1;
     }
@@ -1125,10 +1126,10 @@ void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
   long dy = x * x, err = dx + dy;
 
   do {
-    pset(s, xc - x, yc + y, col);
-    pset(s, xc + x, yc + y, col);
-    pset(s, xc + x, yc - y, col);
-    pset(s, xc - x, yc - y, col);
+    psetb(s, xc - x, yc + y, col);
+    psetb(s, xc + x, yc + y, col);
+    psetb(s, xc + x, yc - y, col);
+    psetb(s, xc - x, yc - y, col);
 
     if (fill) {
       hline(s, yc - y, xc - x, xc + x, col);
@@ -1187,10 +1188,10 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
       ed = 255 / (ed + 2 * ed * i * i / (4 * ed * ed + i * i)); // Fix overflow
     
     i = ACHAN(col, 255 - (ed * (int)fabsf(err + dx - dy)));
-    pset(s, x0, y0, i);
-    pset(s, x0, y1, i);
-    pset(s, x1, y0, i);
-    pset(s, x1, y1, i);
+    psetb(s, x0, y0, i);
+    psetb(s, x0, y1, i);
+    psetb(s, x1, y0, i);
+    psetb(s, x1, y1, i);
 
     if (fill) {
       hline(s, y0, x0 + 1, x1 - 1, col);
@@ -1204,10 +1205,10 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
       i = ed * (err + dx);
       if (i < 255) {
         i = ACHAN(col, 255 - i);
-        pset(s, x0, y0 + 1, i);
-        pset(s, x0, y1 - 1, i);
-        pset(s, x1, y0 + 1, i);
-        pset(s, x1, y1 - 1, i);
+        psetb(s, x0, y0 + 1, i);
+        psetb(s, x0, y1 - 1, i);
+        psetb(s, x1, y0 + 1, i);
+        psetb(s, x1, y1 - 1, i);
       }
     }
 
@@ -1215,10 +1216,10 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
       i = ed * (dy - err);
       if (i < 255) {
         i = ACHAN(col, 255 - i);
-        pset(s, x0 + 1, y0, i);
-        pset(s, x1 - 1, y0, i);
-        pset(s, x0 + 1, y1, i);
-        pset(s, x1 - 1, y1, i);
+        psetb(s, x0 + 1, y0, i);
+        psetb(s, x1 - 1, y0, i);
+        psetb(s, x0 + 1, y1, i);
+        psetb(s, x1 - 1, y1, i);
       }
 
       y0++;
@@ -1235,10 +1236,10 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
   if (--x0 == x1++)
     while (y0 - y1 < b) {
       i = ACHAN(col, 255 - (255 * 4 * (int)fabsf(err + dx) / (int)b1));
-      pset(s, x0, ++y0, i);
-      pset(s, x1, y0, i);
-      pset(s, x0, --y1, i);
-      pset(s, x1, y1, i);
+      psetb(s, x0, ++y0, i);
+      psetb(s, x1, y0, i);
+      psetb(s, x0, --y1, i);
+      psetb(s, x1, y1, i);
       err += dy += a;
     }
 #else
@@ -1312,7 +1313,7 @@ static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int
       cur = fminf(dx + xy, -xy - dy);
       ed = fmaxf(dx + xy, -xy - dy);
       ed += 2 * ed * cur * cur / (4 * ed * ed + cur * cur);
-      pset(s, x0, y0, ACHAN(col, 255 - (int)(255 * fabsf(err - dx - dy - xy) / ed)));
+      psetb(s, x0, y0, ACHAN(col, 255 - (int)(255 * fabsf(err - dx - dy - xy) / ed)));
       if (x0 == x2 || y0 == y2)
         break;
 
@@ -1321,7 +1322,7 @@ static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int
       y1 = 2 * err + dy < 0;
       if (2 * err + dx > 0) {
         if (err - dy < ed)
-          pset(s, x0, y0 + sy, ACHAN(col, 255 - (int)(255 * fabsf(err - dy) / ed)));
+          psetb(s, x0, y0 + sy, ACHAN(col, 255 - (int)(255 * fabsf(err - dy) / ed)));
         x0 += sx;
         dx -= xy;
         err += dy += yy;
@@ -1329,7 +1330,7 @@ static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int
 
       if (y1) {
         if (cur < ed)
-          pset(s, x1 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(cur) / ed)));
+          psetb(s, x1 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(cur) / ed)));
         y0 += sy;
         dy -= xy;
         err += dx += xx;
@@ -1462,20 +1463,20 @@ static void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, in
       ed += 2 * ed * cur * cur / (4.f * ed * ed + cur * cur);
       x1 = 255 * fabsf(err - dx - dy + xy) / ed;
       if (x1 < 256)
-        pset(s, x0, y0, ACHAN(col, 255 - x1));
+        psetb(s, x0, y0, ACHAN(col, 255 - x1));
 
       if ((f = 2 * err + dy < 0)) {
         if (y0 == y2)
           return;
         if (dx - err < ed)
-          pset(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(dx - err) / ed)));
+          psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(dx - err) / ed)));
       }
 
       if (2 * err + dx > 0) {
         if (x0 == x2)
           return;
         if (err - dy < ed)
-          pset(s, x0, y0 + sy, ACHAN(col, 255 - (int)(255 * fabsf(err - dy) / ed)));
+          psetb(s, x0, y0 + sy, ACHAN(col, 255 - (int)(255 * fabsf(err - dy) / ed)));
         x0 += sx;
         dx += xy;
         err += dy += yy;
@@ -1679,7 +1680,7 @@ static void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, f
       ed = f * (ed + 2 * ed * y1 * y1 / (4 * ed * ed + y1 * y1));
       y1 = 255 * fabsf(ex - (f - fx + 1) * dx - (f - fy + 1) * dy + f * xy) / ed;
       if (y1 < 256)
-        pset(s, x0, y0, ACHAN(col, 255 - (int)y1));
+        psetb(s, x0, y0, ACHAN(col, 255 - (int)y1));
       px = fabsf(ex - (f - fx + 1) * dx + (fy - 1) * dy);
       py = fabsf(ex + (fx - 1) * dx - (f - fy + 1) * dy);
       y2 = y0;
@@ -1709,14 +1710,14 @@ static void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, f
 
       if (2 * fy <= f) {
         if (py < ed)
-          pset(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
+          psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
         y0 += sy;
         fy += f;
       }
 
       if (2 * fx <= f) {
         if (px < ed)
-          pset(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
+          psetb(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
         x0 += sx;
         fx += f;
       }
@@ -1726,13 +1727,13 @@ static void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, f
   exit:
     if (2 * ex < dy && 2 * fy <= f + 2) {
       if (py < ed)
-        pset(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
+        psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
       y0 += sy;
     }
 
     if (2 * ex > dx && 2 * fx <= f + 2) {
       if (px < ed)
-        pset(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
+        psetb(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
       x0 += sx;
     }
 
