@@ -6,7 +6,7 @@
 //
 
 #if defined(_WIN32)
-#define _CRT_SECURE_NO_WARNINGS
+# define _CRT_SECURE_NO_WARNINGS
 #endif
 
 #if defined(GRAPHICS_ENABLE_METAL)
@@ -688,6 +688,18 @@ void cls(surface_t* s) {
   memset(s->buf, 0, s->w * s->h * sizeof(int));
 }
 
+void pset(surface_t* s, int x, int y, int c)  {
+  if (x >= 0 && y >= 0 && x < s->w && y < s->h)
+    s->buf[y * s->w + x] = c;
+}
+
+int alpha(int c0, int c1, float i) {
+  return (i == 1.f || i == 0.f ? c0 : RGB((int)roundf(R(c1) * (1 - i) + R(c0) * i),
+                                          (int)roundf(G(c1) * (1 - i) + G(c0) * i),
+                                          (int)roundf(B(c1) * (1 - i) + B(c0) * i)));
+}
+
+#if !defined(GRAPHICS_DISABLE_RGBA)
 #define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
 
 void psetb(surface_t* s, int x, int y, int c) {
@@ -703,10 +715,21 @@ void psetb(surface_t* s, int x, int y, int c) {
                                        a + (b * (255 - a) / 255));
 }
 
-void pset(surface_t* s, int x, int y, int c)  {
-  if (x >= 0 && y >= 0 && x < s->w && y < s->h)
-    s->buf[y * s->w + x] = c;
+#define psetb
+
+static void(*__pset)(surface_t*, int, int, int) = psetb;
+#else
+void psetb(surface_t* s, int x, int y, int c) {
+  int a = A(c);
+  if (a == 0 || x < 0 || y < 0 || x >= s->w || y >= s->h)
+    return;
+  
+  int* p = &s->buf[y * s->w + x];
+  *p = (a == 255 ? c : alpha(c, *p, ((float)a / 255.f)));
 }
+
+static void(*__pset)(surface_t*, int, int, int) = pset;
+#endif
 
 #define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
 
@@ -752,7 +775,7 @@ int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   int x, y;
   for (x = 0; x < width; ++x)
     for (y = 0; y < height; ++y)
-      psetb(dst, offset_x + x, offset_y + y, XYGET(src, from_x + x, from_y + y));
+      __pset(dst, offset_x + x, offset_y + y, XYGET(src, from_x + x, from_y + y));
   return 1;
 }
 
@@ -772,7 +795,7 @@ void vline(surface_t* s, int x, int y0, int y1, int col) {
     y1 = s->h - 1;
 
   for(int y = y0; y <= y1; y++)
-    psetb(s, x, y, col);
+    __pset(s, x, y, col);
 }
 
 void hline(surface_t* s, int y, int x0, int x1, int col) {
@@ -791,13 +814,17 @@ void hline(surface_t* s, int y, int x0, int x1, int col) {
     x1 = s->w - 1;
 
   for(int x = x0; x <= x1; x++)
-    psetb(s, x, y, col);
+    __pset(s, x, y, col);
 }
 
 void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
+#if !defined(GRAPHICS_DISABLE_RGBA)
   int a = A(col);
   if (!a)
     return;
+#else
+  int a = 255;
+#endif
   
   if (x0 == x1)
     vline(s, x0, y0, y1, col);
@@ -1015,11 +1042,11 @@ void ascii(surface_t* s, char ch, int x, int y, int fg, int bg) {
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 8; ++j) {
       if (font[c][i] & 1 << j) {
-        psetb(s, x + j, y + i, fg);
+        __pset(s, x + j, y + i, fg);
       } else {
         if (bg == -1)
           continue;
-        psetb(s, x + j, y + i, bg);
+        __pset(s, x + j, y + i, bg);
       }
     }
   }
@@ -1041,11 +1068,11 @@ int character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 8; ++j) {
       if (font[uc][i] & 1 << j) {
-        psetb(s, x + j, y + i, fg);
+        __pset(s, x + j, y + i, fg);
       } else {
         if (bg == -1)
           continue;
-        psetb(s, x + j, y + i, bg);
+        __pset(s, x + j, y + i, bg);
       }
     }
   }
@@ -1215,8 +1242,15 @@ void window_wh(int* w, int* h) {
 }
 
 void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
+#if !defined(GRAPHICS_DISABLE_RGBA)
   int a = A(col);
-  if (!a || xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
+  if (!a)
+    return;
+#else
+  int a = 255;
+#endif
+  
+  if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
     return;
 
   int x = -r, y = 0, err = 2 - 2 * r;
@@ -1287,7 +1321,7 @@ void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
 #if defined(GRAPHICS_ENABLE_AA)
 #pragma TODO(Add AA option);
 #endif
-
+  
   int x = -rx, y = 0;
   long e2 = ry, dx = (1 + 2 * x) * e2 * e2;
   long dy = x * x, err = dx + dy;
@@ -2374,7 +2408,7 @@ int bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, 
       cc = (yy < yoffset || yy > yoffset + f->chars[n].bb.h ? 0 : f->chars[n].bitmap[(yy - yoffset) * ((f->fontbb.w + 7) / 8) + xx / 8]);
       
       for (i = 128, j = 0; i; i /= 2, ++j)
-        psetb(s, x + j, y + yy, (cc & i ? fg : bg));
+        __pset(s, x + j, y + yy, (cc & i ? fg : bg));
     }
   }
   
@@ -2423,7 +2457,11 @@ int image(surface_t* out, const char* path) {
   for (x = 0; x < w; ++x) {
     for (y = 0; y < h; ++y) {
       p = data + (x + w * y) * c;
+#if !defined(GRAPHICS_DISABLE_RGBA)
       out->buf[y * w + x] = RGBA(p[0], p[1], p[2], (c == 4 ? p[3] : 255));
+#else
+      out->buf[y * w + x] = (c == 4 && !p[3] ? CHROMA_KEY : RGB(p[0], p[1], p[2]));
+#endif
     }
   }
   
@@ -2442,7 +2480,13 @@ int save_image(surface_t* in, const char* path) {
     return 1;
   }
   
-  unsigned char* data = malloc(in->w * in->h * 4 * sizeof(unsigned char));
+#if !defined(GRAPHICS_DISABLE_RGBA)
+#define NC 4
+#else
+#define NC 3
+#endif
+  
+  unsigned char* data = malloc(in->w * in->h * NC * sizeof(unsigned char));
   if (!data) {
     error_handle(PRIO_NORM, "save_image() failed: Out of memory");
     return 1;
@@ -2452,12 +2496,14 @@ int save_image(surface_t* in, const char* path) {
   int i, j, c;
   for (i = 0; i < in->w; ++i) {
     for (j = 0; j < in->h; ++j) {
-      p = data + (i + in->w * j) * 4;
+      p = data + (i + in->w * j) * NC;
       c = in->buf[j * in->w + i];
       p[0] = R(c);
       p[1] = G(c);
       p[2] = B(c);
+#if !defined(GRAPHICS_DISABLE_RGBA)
       p[3] = A(c);
+#endif
     }
   }
   
@@ -2466,18 +2512,20 @@ int save_image(surface_t* in, const char* path) {
   const char* ext = extension(path);
 TRY_AGAIN_BRO:
   if (!ext || !strcmp(ext, "png"))
-    res = stbi_write_png(path, in->w, in->h, 4, data, 0);
+    res = stbi_write_png(path, in->w, in->h, NC, data, 0);
   else if (!strcmp(ext, "tga"))
-    res = stbi_write_tga(path, in->w, in->h, 4, data);
+    res = stbi_write_tga(path, in->w, in->h, NC, data);
   else if (!strcmp(ext, "bmp"))
-    res = stbi_write_bmp(path, in->w, in->h, 4, data);
+    res = stbi_write_bmp(path, in->w, in->h, NC, data);
   else if (!strcmp(ext, "jpg") || !strcmp(ext, "jpeg"))
-    stbi_write_jpg(path, in->w, in->h, 4, data, 85);
+    stbi_write_jpg(path, in->w, in->h, NC, data, 85);
   else {
     ext = "png";
     goto TRY_AGAIN_BRO;
   }
   free(data);
+  
+#undef NC
   
   if (!res) {
     error_handle(PRIO_NORM, "save_image() failed: stbi_write() failed");

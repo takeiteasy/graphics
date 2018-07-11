@@ -34,8 +34,13 @@ extern "C" {
 #include <X11/keysym.h>
 #endif
 
-#define RGBA(r, g, b, a) (((unsigned int)(a)) << 24) | (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b)
+#if !defined(GRAPHICS_DISABLE_RGBA)
+#define RGBA(r, g, b, a) ((((unsigned int)(a)) << 24) | (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b))
 #define RGB(r, g, b) (RGBA((r), (g), (b), 255))
+#else
+#define RGB(r, g, b) ((((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b))
+#define RGBA(r, g, b, a) (RGB(r, g, b))
+#endif
 #define R(v) ((v >> 16) & 0xFF)
 #define G(v) ((v >>  8) & 0xFF)
 #define B(v) ( v        & 0xFF)
@@ -184,6 +189,10 @@ extern "C" {
 #define WHITE_SMOKE RGB(245, 245, 245)
 #define YELLOW_GREEN RGB(154, 205, 50)
   
+#if !defined(GRAPHICS_DISABLE_CHROMA_KEY) && !defined(CHROMA_KEY)
+#define CHROMA_KEY LIME
+#endif
+  
   typedef struct {
     int *buf, w, h;
   } surface_t;
@@ -201,6 +210,7 @@ extern "C" {
   void fill(surface_t* s, int col);
   void cls(surface_t* s);
   void pset(surface_t* s, int x, int y, int col);
+  int alpha(int c0, int c1, float i);
   void psetb(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
   int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
