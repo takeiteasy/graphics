@@ -66,6 +66,58 @@ void on_error(ERRPRIO pri, const char* msg, const char* file, const char* func, 
     abort();
 }
 
+#define D2R(a) ((a) * M_PI / 180.0)
+#define R2D(a) ((a) * 180.0 / M_PI)
+
+int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
+  int offset_x = 0, offset_y = 0,
+  from_x = 0, from_y = 0,
+  width = src->w, height = src->h;
+  if (p) {
+    offset_x = p->x;
+    offset_y = p->y;
+  }
+  
+  if (offset_x < 0) {
+    from_x += abs(offset_x);
+    width -= abs(offset_x);
+    offset_x = 0;
+  }
+  if (offset_y < 0) {
+    from_y += abs(offset_y);
+    height -= abs(offset_y);
+    offset_y = 0;
+  }
+  
+  int to_x = offset_x + width, to_y = offset_y + height;
+  if (to_x > dst->w)
+    width += (dst->w - to_x);
+  if (to_y > dst->h)
+    height += (dst->h - to_y);
+  
+  if (offset_x > dst->w || offset_y > dst->h || to_x < 0 || to_y < 0)
+    return 0;
+  
+  
+//  p'x = cos(theta) * (px-ox) - sin(theta) * (py-oy) + ox
+//  p'y = sin(theta) * (px-ox) + cos(theta) * (py-oy) + oy
+  
+  int ox = offset_x + (src->w / 2);
+  int oy = offset_y + (src->h / 2);
+  theta = D2R(theta);
+  
+  int x, y, c;
+  for (x = 0; x < width; ++x)
+    for (y = 0; y < height; ++y) {
+      int px = offset_x + x;
+      int py = offset_y + y;
+      int rx = cosf(theta) * (px-ox) - sinf(theta) * (py-oy) + ox;
+      int ry = sinf(theta) * (px-ox) + cosf(theta) * (py-oy) + oy;
+      pset(dst, rx, ry, pget(src, x, y));
+    }
+  return 1;
+}
+
 int main(int argc, const char* argv[]) {
   screen("test", &win, &win_w, &win_h, RESIZABLE);
   resize_callback(on_resize);
@@ -120,6 +172,9 @@ int main(int argc, const char* argv[]) {
   rect(&s[5], 50, 50, 50, 50, RGBA(0, 255, 0, 128), 1);
   rect(&s[5], 50, 0,  50, 50, RGBA(0, 0, 255, 128), 1);
   rect(&s[5], 0,  50, 50, 50, RGBA(255, 255, 0, 128), 1);
+  
+  float theta = 1.f;
+  int ytest = 1;
   
   int col = 0, grey = 0;
   long sine_i = 0;
@@ -206,7 +261,8 @@ int main(int argc, const char* argv[]) {
     blit(&win, &points[1], &s[2], NULL);
     blit(&win, &points[3], &s[4], NULL);
 
-    blit(&win, &points[5], &s[5], NULL);
+    blit_rotate_test(&win, &points[5], &s[5], theta);
+//    blit(&win, &points[5], &s[5], NULL);
 
     filter(&s[0], rnd);
     blit(&s[0], NULL, &s[9], NULL);
@@ -221,7 +277,7 @@ int main(int argc, const char* argv[]) {
     circle(&win, 532, 32, 30, VIOLET, 1);
 
     update_mxy();
-    writelnf(&win, 400, 88, BLACK, -1, "mouse x,y: (%d, %d)", mx, my);
+    writelnf(&win, 400, 88, BLACK, -1, "mouse x,y: (%d, %d)\ntheta: %f", mx, my, theta);
     col = pget(&win, mx, my);
 
     line(&win, 0, 0, mx, my, col);
@@ -229,6 +285,22 @@ int main(int argc, const char* argv[]) {
 
     if (grey)
       filter(&win, greyscale);
+    
+    float t = D2R(theta);
+    point_t a = { 200, 200 };
+    point_t b = { 200, 150 };
+    point_t c = {
+      cosf(t) * (b.x - a.x) - sinf(t) * (b.y - a.y) + a.x,
+      sinf(t) * (b.x - a.x) + cosf(t) * (b.y - a.y) + a.y
+    };
+    
+    circle(&win, a.x, a.y, 3, RED, 1);
+    circle(&win, b.x, b.y, 3, BLUE, 1);
+    circle(&win, c.x, c.y, 3, LIME, 1);
+    
+    theta += (.05f * speed);
+    if (theta >= 360.f)
+      theta = 0.f;
 
     flush(&win);
   }
