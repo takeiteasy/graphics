@@ -5,17 +5,16 @@ Cross platform 2D software rendering graphics library, inspired by [graphics.h](
 Designed to be a drop-in and use sort of deal with little hassle. I don't know if anyone will really find a use for this besides me. But it's very fun to work on. It's not explicitly a game development library, just a rendering library. It's most likely less efficient, slower, more buggy and has less features, support, compatibility and portability than SDL - Just so you know, if you didn't already guess.
 
 
-## Supported
+## Features
 
 - Windows, OSX and Linux (X11)
 - Keyboard and mouse events
 - Primitive shapes
-- Optional AA for primitives
 - BMP loading (Uncompressed 8, 24 & 32 bpp) (1 & 4 bpp, RLE compression and OS/2 not supported yet)
 - Save surfaces to BMP file
 - Text rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
 - Optional OpenGL & Metal backends (Just for rendering to screen)
-- Optional extras (bdf loader, image loader using [stb_image](https://github.com/nothings/stb))
+- Optional extras (AA primitives, BDF font loader, image loader using [stb_image](https://github.com/nothings/stb))
 
 See below screenshots for TODO list and the examples folder for some idea of how to use. ___Still a WIP, API subject to change a lot___.
 
@@ -56,7 +55,6 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 - Colour escapes for ```writeln()``` & ```string()``` (also for bdf ext)
 - Cursor lock & hide
 - Joystick/Gamepad input
-- Re-add extra characters to internal font renderer
 
 ### Less important
 
@@ -65,7 +63,6 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 - Flood fill function
 - Surface flip and rotate functions
 - Add line width option
-- Macro to disable RGBA
 - Wayland window code
 - CMake file for build options
 - 1 & 4 bpp, RLE compressed and OS/2 BMP support (Just because)

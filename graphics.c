@@ -95,7 +95,7 @@ static void(*__resize_callback)(int, int) = NULL;
 #define LINE_HEIGHT 10
 
 #if !defined(GRAPHICS_DISABLE_TEXT)
-static char font[541][8] = {
+static char font[540][8] = {
   // Latin 0 - 94
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+0020 (space)
   { 0x18, 0x3C, 0x3C, 0x18, 0x18, 0x00, 0x18, 0x00 },   // U+0021 (!)
@@ -543,20 +543,7 @@ static char font[541][8] = {
   { 0x00, 0x00, 0x36, 0x36, 0x36, 0x36, 0x36, 0x00 },   // U+E559 (SGA Y)
   { 0x00, 0x00, 0x18, 0x3C, 0x66, 0x66, 0x66, 0x00 },   // U+E55A (SGA Z)
   
-  // Misc 435 - 444
-  { 0x1F, 0x33, 0x33, 0x5F, 0x63, 0xF3, 0x63, 0xE3 },   // U+20A7 (Spanish Pesetas/Pt)
-  { 0x70, 0xD8, 0x18, 0x3C, 0x18, 0x18, 0x1B, 0x0E },   // U+0192 (dutch florijn)
-  { 0x3C, 0x36, 0x36, 0x7C, 0x00, 0x7E, 0x00, 0x00 },   // U+ (underlined superscript a)
-  { 0x1C, 0x36, 0x36, 0x1C, 0x00, 0x3E, 0x00, 0x00 },   // U+ (underlined superscript 0)
-  { 0x00, 0x00, 0x00, 0x3F, 0x03, 0x03, 0x00, 0x00 },   // U+2310 (gun pointing right)
-  { 0x30, 0x18, 0x0C, 0x18, 0x30, 0x00, 0x7E, 0x00 },   // U+ (less than or equal)
-  { 0x0C, 0x18, 0x30, 0x18, 0x0C, 0x00, 0x7E, 0x00 },   // U+ (greater than or equal)
-  { 0x0C, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+ (grave)
-  { 0x0E, 0x00, 0x66, 0x66, 0x3C, 0x18, 0x18, 0x00 },   // U+ (Y grave)
-  { 0x00, 0x07, 0x00, 0x33, 0x33, 0x3E, 0x30, 0x1F },   // U+ (y grave)
-  
-  // Latin extended 445 - 540
-  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+00A0 (no break space)
+  // Latin extended 435 - 529
   { 0x18, 0x18, 0x00, 0x18, 0x18, 0x18, 0x18, 0x00 },   // U+00A1 (inverted !)
   { 0x18, 0x18, 0x7E, 0x03, 0x03, 0x7E, 0x18, 0x18 },   // U+00A2 (dollarcents)
   { 0x1C, 0x36, 0x26, 0x0F, 0x06, 0x67, 0x3F, 0x00 },   // U+00A3 (pound sterling)
@@ -651,7 +638,32 @@ static char font[541][8] = {
   { 0x00, 0x33, 0x00, 0x33, 0x33, 0x33, 0x7E, 0x00 },   // U+00FC (u umlaut)
   { 0x00, 0x38, 0x00, 0x33, 0x33, 0x3E, 0x30, 0x1F },   // U+00FD (y aigu)
   { 0x00, 0x00, 0x06, 0x3E, 0x66, 0x3E, 0x06, 0x00 },   // U+00FE (thorn)
-  { 0x00, 0x33, 0x00, 0x33, 0x33, 0x3E, 0x30, 0x1F }    // U+00FF (y umlaut)
+  { 0x00, 0x33, 0x00, 0x33, 0x33, 0x3E, 0x30, 0x1F },   // U+00FF (y umlaut)
+  
+  // Extras 530 - 539
+  { 0x1F, 0x33, 0x33, 0x5F, 0x63, 0xF3, 0x63, 0xE3 },   // U+20A7 (Spanish Pesetas/Pt)
+  { 0x70, 0xD8, 0x18, 0x3C, 0x18, 0x18, 0x1B, 0x0E },   // U+0192 (dutch florijn)
+  { 0x3C, 0x36, 0x36, 0x7C, 0x00, 0x7E, 0x00, 0x00 },   // U+ (underlined superscript a)
+  { 0x1C, 0x36, 0x36, 0x1C, 0x00, 0x3E, 0x00, 0x00 },   // U+ (underlined superscript 0)
+  { 0x00, 0x00, 0x00, 0x3F, 0x03, 0x03, 0x00, 0x00 },   // U+2310 (gun pointing right)
+  { 0x30, 0x18, 0x0C, 0x18, 0x30, 0x00, 0x7E, 0x00 },   // U+ (less than or equal)
+  { 0x0C, 0x18, 0x30, 0x18, 0x0C, 0x00, 0x7E, 0x00 },   // U+ (greater than or equal)
+  { 0x0C, 0x18, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+ (grave)
+  { 0x0E, 0x00, 0x66, 0x66, 0x3C, 0x18, 0x18, 0x00 },   // U+ (Y grave)
+  { 0x00, 0x07, 0x00, 0x33, 0x33, 0x3E, 0x30, 0x1F }    // U+ (y grave)
+};
+
+static int extra_font_lookup[10] = {
+  8359,
+  402,
+  9078,
+  9052,
+  8976,
+  8804,
+  8805,
+  96,
+  7922,
+  7923
 };
 #endif
 
@@ -693,6 +705,8 @@ void pset(surface_t* s, int x, int y, int c)  {
     s->buf[y * s->w + x] = c;
 }
 
+#define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
+
 int alpha(int c0, int c1, float i) {
   return (i == 1.f || i == 0.f ? c0 : RGB((int)roundf(R(c1) * (1 - i) + R(c0) * i),
                                           (int)roundf(G(c1) * (1 - i) + G(c0) * i),
@@ -704,34 +718,28 @@ int alpha(int c0, int c1, float i) {
 
 void psetb(surface_t* s, int x, int y, int c) {
   int a = A(c);
-  if (a == 0 || x < 0 || y < 0 || x >= s->w || y >= s->h)
+  if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
   
   int* p = &s->buf[y * s->w + x];
   int b = A(*p);
-  *p = (a == 255 || b == 0) ? c : RGBA(BLEND(R(c), R(*p), a, b),
-                                       BLEND(G(c), G(*p), a, b),
-                                       BLEND(B(c), B(*p), a, b),
-                                       a + (b * (255 - a) / 255));
+  *p = (a == 255 || !b) ? c : RGBA(BLEND(R(c), R(*p), a, b),
+                                   BLEND(G(c), G(*p), a, b),
+                                   BLEND(B(c), B(*p), a, b),
+                                   a + (b * (255 - a) / 255));
 }
-
-#define psetb
 
 static void(*__pset)(surface_t*, int, int, int) = psetb;
 #else
 void psetb(surface_t* s, int x, int y, int c) {
   int a = A(c);
-  if (a == 0 || x < 0 || y < 0 || x >= s->w || y >= s->h)
+  if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
-  
-  int* p = &s->buf[y * s->w + x];
-  *p = (a == 255 ? c : alpha(c, *p, ((float)a / 255.f)));
+  pset(s, x, y, alpha(c, XYGET(s, x, y), ((float)a / 255.f)));
 }
 
 static void(*__pset)(surface_t*, int, int, int) = pset;
 #endif
-
-#define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
 
 int pget(surface_t* s, int x, int y) {
   return (x < 0 || y < 0 || x >= s->w || y >= s->h ? -1 : XYGET(s, x, y));
@@ -772,10 +780,16 @@ int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   if (offset_x > dst->w || offset_y > dst->h || to_x < 0 || to_y < 0)
     return 0;
 
-  int x, y;
+  int x, y, c;
   for (x = 0; x < width; ++x)
-    for (y = 0; y < height; ++y)
-      __pset(dst, offset_x + x, offset_y + y, XYGET(src, from_x + x, from_y + y));
+    for (y = 0; y < height; ++y) {
+#if !defined(GRAPHICS_DISABLE_CHROMA_KEY) && defined(BLIT_CHROMA_KEY)
+      c = XYGET(src, from_x + x, from_y + y);
+      if (c == BLIT_CHROMA_KEY)
+        continue;
+#endif
+      __pset(dst, offset_x + x, offset_y + y, c);
+    }
   return 1;
 }
 
@@ -865,7 +879,7 @@ void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
       y0 += sy;
     }
 #else
-    pset(s, x0, y0, col);
+    __pset(s, x0, y0, col);
     e2 = 2 * err;
 
     if (e2 >= dy) {
@@ -1005,7 +1019,6 @@ int bmp(surface_t* s, const char* path) {
           error_handle(PRIO_NORM, "bmp() failed. Unsupported BPP: %d", info.bits);
           destroy(s);
           break;
-          
       }
       break;
     case 1: // RLE8
@@ -1034,6 +1047,15 @@ static inline int letter_index(int c) {
     return (c - 912) + 255;
   else if (c >= 12352 && c <= 12447) // Hiragana
     return (c - 12352) + 313;
+  else if (c >= 58689 && c <= 58714) // SGA
+    return (c - 58689) + 409;
+  else if (c >= 161 && c <= 255) // Latin extended
+    return (c - 161) + 435;
+  else {
+    for (int i = 0; i < 10; ++i)
+      if (extra_font_lookup[i] == c)
+        return 530 + i;
+  }
   return 0;
 }
 
@@ -1123,14 +1145,14 @@ static inline void string_size(const char* str, int* w, int* h) {
     c = *s;
     if (c >= 0 && c <= 127) {
       if (c == 10) {
-        if (n > m) {
+        if (n > m)
           m = n;
-        }
         n = 0;
         l++;
       }
       s++;
-    } else if ((c & 0xE0) == 0xC0)
+    }
+    else if ((c & 0xE0) == 0xC0)
       s += 2;
     else if ((c & 0xF0) == 0xE0)
       s += 3;
@@ -1298,10 +1320,10 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
       err += ++y * 2 + 1;
     }
 #else
-    pset(s, xc - x, yc + y, col);
-    pset(s, xc - y, yc - x, col);
-    pset(s, xc + x, yc - y, col);
-    pset(s, xc + y, yc + x, col);
+    __pset(s, xc - x, yc + y, col);
+    __pset(s, xc - y, yc - x, col);
+    __pset(s, xc + x, yc - y, col);
+    __pset(s, xc + y, yc + x, col);
 
     if (fill) {
       hline(s, yc - y, xc - x, xc + x, col);
@@ -1445,10 +1467,10 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
     }
 #else
   do {
-    pset(s, x1, y0, col);
-    pset(s, x0, y0, col);
-    pset(s, x0, y1, col);
-    pset(s, x1, y1, col);
+    __pset(s, x1, y0, col);
+    __pset(s, x0, y0, col);
+    __pset(s, x0, y1, col);
+    __pset(s, x1, y1, col);
 
     if (fill) {
       hline(s, y0, x0, x1, col);
@@ -1538,7 +1560,7 @@ static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int
       }
     } while (dy < dx);
 #else
-      pset(s, x0, y0, col);
+      __pset(s, x0, y0, col);
       if (x0 == x2 && y0 == y2)
         return;
 
@@ -1690,7 +1712,7 @@ static void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, in
       }
     } while (dy < dx);
 #else
-      pset(s, x0, y0, col);
+      __pset(s, x0, y0, col);
       if (x0 == x2 && y0 == y2)
         return;
 
@@ -1951,7 +1973,7 @@ static void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, f
     x1 = x2;
 #else
     for (pxy = &xy, fx = fy = f; x0 != x3 && y0 != y3;) {
-      pset(s, x0, y0, col);
+      __pset(s, x0, y0, col);
       do {
         if (dx > *pxy || dy < *pxy)
           goto exit;
@@ -2187,7 +2209,7 @@ void filter(surface_t* s, int (*fn)(int x, int y, int col)) {
   int x, y;
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
-      pset(s, x, y, fn(x, y, XYGET(s, x, y)));
+      __pset(s, x, y, fn(x, y, XYGET(s, x, y)));
 }
 
 int resize(surface_t* in, int nw, int nh, surface_t* out) {
@@ -2460,7 +2482,7 @@ int image(surface_t* out, const char* path) {
 #if !defined(GRAPHICS_DISABLE_RGBA)
       out->buf[y * w + x] = RGBA(p[0], p[1], p[2], (c == 4 ? p[3] : 255));
 #else
-      out->buf[y * w + x] = (c == 4 && !p[3] ? CHROMA_KEY : RGB(p[0], p[1], p[2]));
+      out->buf[y * w + x] = (c == 4 && !p[3] ? BLIT_CHROMA_KEY : RGB(p[0], p[1], p[2]));
 #endif
     }
   }
@@ -3287,7 +3309,7 @@ extern surface_t* buffer;
 }
 @end
 
-int screen(const char* t, int* w, int* h, short flags) {
+int screen(const char* t, surface_t* s, int* w, int* h, short flags) {
   if (!w || !h) {
     error_handle(PRIO_NORM, "screen() failed: W/H params NULL");
     return 0;
@@ -3435,6 +3457,10 @@ int screen(const char* t, int* w, int* h, short flags) {
     win_w = *w;
     win_h = *h;
   }
+  
+  if (s)
+    if (!surface(s, *w, *h + border_off))
+      return 0;
 
   app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, *w, *h + border_off)
                                      styleMask:_flags

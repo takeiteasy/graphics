@@ -189,8 +189,8 @@ extern "C" {
 #define WHITE_SMOKE RGB(245, 245, 245)
 #define YELLOW_GREEN RGB(154, 205, 50)
   
-#if !defined(GRAPHICS_DISABLE_CHROMA_KEY) && !defined(CHROMA_KEY)
-#define CHROMA_KEY LIME
+#if !defined(GRAPHICS_DISABLE_CHROMA_KEY) && !defined(BLIT_CHROMA_KEY)
+#define BLIT_CHROMA_KEY LIME
 #endif
   
   typedef struct {
@@ -204,6 +204,14 @@ extern "C" {
   typedef struct {
     int x, y;
   } point_t;
+  
+  typedef enum {
+    PRIO_HIGH = 0x0001,
+    PRIO_NORM = 0x0002,
+    PRIO_LOW  = 0x0004
+  } ERRPRIO;
+  
+  void error_callback(void(*cb)(ERRPRIO, const char*, const char*, const char*, int));
   
   int surface(surface_t* s, unsigned int w, unsigned int h);
   void destroy(surface_t*);
@@ -225,14 +233,6 @@ extern "C" {
   void writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...);
   void string(surface_t* out, int fg, int bg, const char* str);
   void stringf(surface_t* out, int fg, int bg, const char* fmt, ...);
-  
-  typedef enum {
-    PRIO_HIGH = 0x0001,
-    PRIO_NORM = 0x0002,
-    PRIO_LOW  = 0x0004
-  } ERRPRIO;
-  void error_callback(void(*cb)(ERRPRIO, const char*, const char*, const char*, int));
-  
 #endif
   long ticks(void);
   void delay(long ms);
@@ -456,7 +456,7 @@ extern "C" {
     ALWAYS_ON_TOP = 0x0010,
   } WINDOWFLAGS;
   
-  int screen(const char* title, int* w, int* h, short flags);
+  int screen(const char* title, surface_t* s, int* w, int* h, short flags);
   int closed(void);
   int poll(event_t* e);
   void flush(surface_t* s);

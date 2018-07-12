@@ -67,13 +67,7 @@ void on_error(ERRPRIO pri, const char* msg, const char* file, const char* func, 
 }
 
 int main(int argc, const char* argv[]) {
-  surface(&win, win_w, win_h);
-  screen("test", &win_w, &win_h, RESIZABLE);
-#if !DEBUG_NATIVE_RESIZE
-  if (win.w != win_w || win.h != win_h)
-    reset(&win, win_w, win_h);
-#endif
-  
+  screen("test", &win, &win_w, &win_h, RESIZABLE);
   resize_callback(on_resize);
   error_callback(on_error);
 
@@ -108,15 +102,18 @@ int main(int argc, const char* argv[]) {
   points[3].y = points[1].y;
 
   rect_t cutr  = { 125, 120, 50, 50 };
+#if !defined(GRAPHICS_DISABLE_RGBA)
   stringf(&s[3], RED, 0, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", cutr.x, cutr.y, cutr.w, cutr.h);
+#else
+  stringf(&s[3], RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", cutr.x, cutr.y, cutr.w, cutr.h);
+#endif
   
-  string(&s[8], LIME, BLACK, "WOW");
   surface(&s[9], 50, 50);
   fill(&s[9], BLACK);
-  point_t tmmp8 = { 13, 20 };
-  blit(&s[9], &tmmp8, &s[8], NULL);
+  writeln(&s[9], 13, 20, LIME, BLACK, "WOW");
+#if !defined(GRAPHICS_DISABLE_RGBA)
   filter(&s[9], remove_lime);
-  destroy(&s[8]);
+#endif
 
   surface(&s[5], 100, 100);
   rect(&s[5], 0,  0,  50, 50, RGBA(255, 0, 0, 128), 1);
@@ -215,11 +212,11 @@ int main(int argc, const char* argv[]) {
     blit(&s[0], NULL, &s[9], NULL);
     blit(&win, &points[2], &s[0], NULL);
 
-    circle(&win, 352, 32, 30, RED, 1);
+    circle(&win, 352, 32, 30, RED,    1);
     circle(&win, 382, 32, 30, ORANGE, 1);
     circle(&win, 412, 32, 30, YELLOW, 1);
-    circle(&win, 442, 32, 30, LIME, 1);
-    circle(&win, 472, 32, 30, BLUE, 1);
+    circle(&win, 442, 32, 30, LIME,   1);
+    circle(&win, 472, 32, 30, BLUE,   1);
     circle(&win, 502, 32, 30, INDIGO, 1);
     circle(&win, 532, 32, 30, VIOLET, 1);
 
