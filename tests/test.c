@@ -66,13 +66,31 @@ void on_error(ERRPRIO pri, const char* msg, const char* file, const char* func, 
     abort();
 }
 
-#define D2R(a) ((a) * M_PI / 180.0)
-#define R2D(a) ((a) * 180.0 / M_PI)
+#define DEG2RAD(a) ((a) * M_PI / 180.0)
+#define RAD2DEG(a) ((a) * 180.0 / M_PI)
+
+//  p'x = cos(theta) * (px - ox) - sin(theta) * (py-oy) + ox
+//  p'y = sin(theta) * (px - ox) + cos(theta) * (py-oy) + oy
+point_t rotate_point(int x0, int y0, int x1, int y1, float angle) {
+  angle = DEG2RAD(angle);
+  float c = cosf(angle),
+        s = sinf(angle);
+  int   x = x1 - x0,
+        y = y1 - y0;
+  return (point_t) {
+    c * x - s * y + x0,
+    s * x + c * y + y0
+  };
+}
+
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#define max(a, b) (((a) > (b)) ? (a) : (b))
 
 int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
   int offset_x = 0, offset_y = 0,
-  from_x = 0, from_y = 0,
-  width = src->w, height = src->h;
+      from_x = 0, from_y = 0,
+      width = src->w, height = src->h;
+  
   if (p) {
     offset_x = p->x;
     offset_y = p->y;
@@ -98,25 +116,53 @@ int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
   if (offset_x > dst->w || offset_y > dst->h || to_x < 0 || to_y < 0)
     return 0;
   
+  theta = DEG2RAD(theta);
+  float c = cosf(theta), s = sinf(theta);
+  float r[3][2] = {
+    { -src->h * s, src->h * c },
+    { src->w * c - src->h * s, src->h * c + src->w * s },
+    { src->w * c, src->w * s }
+  };
   
-//  p'x = cos(theta) * (px-ox) - sin(theta) * (py-oy) + ox
-//  p'y = sin(theta) * (px-ox) + cos(theta) * (py-oy) + oy
-  
-  int ox = offset_x + (src->w / 2);
-  int oy = offset_y + (src->h / 2);
-  theta = D2R(theta);
-  
-  int x, y, c;
-  for (x = 0; x < width; ++x)
-    for (y = 0; y < height; ++y) {
-      int px = offset_x + x;
-      int py = offset_y + y;
-      int rx = cosf(theta) * (px-ox) - sinf(theta) * (py-oy) + ox;
-      int ry = sinf(theta) * (px-ox) + cosf(theta) * (py-oy) + oy;
-      pset(dst, rx, ry, pget(src, x, y));
+  float mm[2][2] = { {
+      min(0, min(r[0][0], min(r[1][0], r[2][0]))),
+      min(0, min(r[0][1], min(r[1][1], r[2][1])))
+    }, {
+      (theta > 1.5708  && theta < 3.14159 ? 0.f : max(r[0][0], max(r[1][0], r[2][0]))),
+      (theta > 3.14159 && theta < 4.71239 ? 0.f : max(r[0][1], max(r[1][1], r[2][1])))
     }
+  };
+  
+  int dw = (int)ceil(fabsf(mm[1][0]) - mm[0][0]);
+  int dh = (int)ceil(fabsf(mm[1][1]) - mm[0][1]);
+  int x, y, sx, sy;
+  for (x = 0; x < dw; ++x)
+    for (y = 0; y < dh; ++y) {
+      sx = ((x + mm[0][0]) * c + (y + mm[0][1]) * s);
+      sy = ((y + mm[0][1]) * c - (x + mm[0][0]) * s);
+      if (sx < 0 || sx >= src->w || sy < 0 || sy >= src->h)
+        continue;
+      pset(dst, x + offset_x - dw / 2  + src->w / 2, y + offset_y - dh / 2 + src->h / 2, pget(src, sx, sy));
+    }
+
   return 1;
 }
+
+void upsample(surface_t* src, surface_t* dst) {
+  const int wd = ((dst->w / 2) < (src->w)) ? (dst->w / 2) : (src->w);
+  const int hg = ((dst->h) < (src->h * 2)) ? (dst->h / 2) : (src->h);
+}
+
+/* TODO
+ - rotozoom blit
+ - rotozoom to new surface
+ - skew to surface
+ - handle these by matrix?
+ - upsample
+ - rotated rect
+ - mirror surface
+ - mirror surface in blit too
+ */
 
 int main(int argc, const char* argv[]) {
   screen("test", &win, &win_w, &win_h, RESIZABLE);
@@ -174,7 +220,6 @@ int main(int argc, const char* argv[]) {
   rect(&s[5], 0,  50, 50, 50, RGBA(255, 255, 0, 128), 1);
   
   float theta = 1.f;
-  int ytest = 1;
   
   int col = 0, grey = 0;
   long sine_i = 0;
@@ -262,7 +307,10 @@ int main(int argc, const char* argv[]) {
     blit(&win, &points[3], &s[4], NULL);
 
     blit_rotate_test(&win, &points[5], &s[5], theta);
-//    blit(&win, &points[5], &s[5], NULL);
+    blit(&win, &points[5], &s[5], NULL);
+    theta += (.05f * speed);
+    if (theta >= 360.f)
+      theta = 0.f;
 
     filter(&s[0], rnd);
     blit(&s[0], NULL, &s[9], NULL);
@@ -285,22 +333,6 @@ int main(int argc, const char* argv[]) {
 
     if (grey)
       filter(&win, greyscale);
-    
-    float t = D2R(theta);
-    point_t a = { 200, 200 };
-    point_t b = { 200, 150 };
-    point_t c = {
-      cosf(t) * (b.x - a.x) - sinf(t) * (b.y - a.y) + a.x,
-      sinf(t) * (b.x - a.x) + cosf(t) * (b.y - a.y) + a.y
-    };
-    
-    circle(&win, a.x, a.y, 3, RED, 1);
-    circle(&win, b.x, b.y, 3, BLUE, 1);
-    circle(&win, c.x, c.y, 3, LIME, 1);
-    
-    theta += (.05f * speed);
-    if (theta >= 360.f)
-      theta = 0.f;
 
     flush(&win);
   }

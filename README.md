@@ -59,9 +59,7 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 ### Less important
 
 - Add fill option for ```ellipse_rotated()``` and other functions
-- Add rotated rect function
 - Flood fill function
-- Surface flip and rotate functions
 - Add line width option
 - Wayland window code
 - CMake file for build options

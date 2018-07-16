@@ -742,7 +742,7 @@ static void(*__pset)(surface_t*, int, int, int) = pset;
 #endif
 
 int pget(surface_t* s, int x, int y) {
-  return (x < 0 || y < 0 || x >= s->w || y >= s->h ? -1 : XYGET(s, x, y));
+  return (x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
 }
 
 int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
@@ -1035,7 +1035,6 @@ int bmp(surface_t* s, const char* path) {
 }
 
 #if !defined(GRAPHICS_DISABLE_TEXT)
-#pragma TODO(Add the other character ranges)
 static inline int letter_index(int c) {
   if (c >= 32 && c <= 126) // Latin
     return c - 32;
@@ -2928,7 +2927,7 @@ static int translate_key(unsigned int key) {
   id<MTLBuffer> _vertices;
   NSUInteger _n_vertices;
 #else
-  @interface osx_view_t : NSView {
+@interface osx_view_t : NSView {
 #endif
   NSTrackingArea* track;
 }
@@ -3036,7 +3035,7 @@ extern surface_t* buffer;
                                        error:&err];
     if (err || !_library) {
       release();
-      error_handle("[device newLibraryWithSource] failed: %s", [[err localizedDescription] UTF8String]);
+      error_handle(PRIO_HIGH, "[device newLibraryWithSource] failed: %s", [[err localizedDescription] UTF8String]);
       return nil;
     }
     
@@ -3053,7 +3052,7 @@ extern surface_t* buffer;
                                                         error:&err];
     if (err || !_pipeline) {
       release();
-      error_handle("[device newRenderPipelineStateWithDescriptor] failed: %s", [[err localizedDescription] UTF8String]);
+      error_handle(PRIO_HIGH, "[device newRenderPipelineStateWithDescriptor] failed: %s", [[err localizedDescription] UTF8String]);
       return nil;
     }
   }
@@ -3087,6 +3086,7 @@ extern surface_t* buffer;
 }
 
 -(BOOL)performKeyEquivalent:(NSEvent*)event {
+  (void)event;
   return YES;
 }
 
@@ -3273,6 +3273,7 @@ extern surface_t* buffer;
 }
 
 -(void)win_resize:(NSNotification *)n {
+  (void)n;
   CGSize size = [app contentRectForFrameRect:[app frame]].size;
   win_w = size.width;
   win_h = size.height - border_off;
@@ -3459,7 +3460,7 @@ int screen(const char* t, surface_t* s, int* w, int* h, short flags) {
   }
   
   if (s)
-    if (!surface(s, *w, *h + border_off))
+    if (!surface(s, *w, *h))
       return 0;
 
   app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, *w, *h + border_off)
