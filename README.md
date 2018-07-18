@@ -59,7 +59,6 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 
 - Come back to surface transformation
 - Add fill option for ```ellipse_rotated()``` and other functions
-- Flood fill function
 - Add line width option
 - Wayland window code
 - CMake file for build options

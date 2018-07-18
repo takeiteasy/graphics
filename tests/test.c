@@ -194,7 +194,6 @@ int main(int argc, const char* argv[]) {
   rect(&s[5], 0,  50, 50, 50, RGBA(255, 255, 0, 128), 1);
   
   float theta = 1.f;
-  
   int col = 0, grey = 0;
   long sine_i = 0;
   event_t e;
@@ -300,11 +299,13 @@ int main(int argc, const char* argv[]) {
     circle(&win, 532, 32, 30, VIOLET, 1);
 
     update_mxy();
-    writelnf(&win, 400, 88, BLACK, -1, "mouse x,y: (%d, %d)\ntheta: %f", mx, my, theta);
+    writelnf(&win, 400, 88, BLACK, 0, "mouse pos: (%d, %d)\ntheta: %f", mx, my, theta);
     col = pget(&win, mx, my);
 
     line(&win, 0, 0, mx, my, col);
     circle(&win, mx, my, 30, col, 0);
+    
+    blit(&win, NULL, &s[8], NULL);
 
     if (grey)
       filter(&win, greyscale);

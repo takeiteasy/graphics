@@ -212,20 +212,20 @@ extern "C" {
     PRIO_LOW  = 0x0004
   } ERRPRIO;
   
-  void error_callback(void(*cb)(ERRPRIO, const char*, const char*, const char*, int));
+  void error_callback(void (*cb)(ERRPRIO, const char*, const char*, const char*, int));
   
   int surface(surface_t* s, unsigned int w, unsigned int h);
   void destroy(surface_t*);
   void fill(surface_t* s, int col);
+  void flood(surface_t* s, int x, int y, int col);
   void cls(surface_t* s);
   void pset(surface_t* s, int x, int y, int col);
-  int blend(int c0, int c1, float i);
   void psetb(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
   int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
   int reset(surface_t* s, int nw, int nh);
   int copy(surface_t* in, surface_t* out);
-  void filter(surface_t* s, int(*fn)(int x, int y, int col));
+  void filter(surface_t* s, int (*fn)(int x, int y, int col));
   int resize(surface_t* in, int nw, int nh, surface_t* out);
   
   void vline(surface_t* s, int x, int y0, int y1, int col);
@@ -284,7 +284,7 @@ extern "C" {
 #if !defined(GRAPHICS_DISABLE_WINDOW)
   void mouse_xy(int* x, int* y);
   void window_wh(int* w, int* h);
-  void resize_callback(void(*cb)(int, int));
+  void resize_callback(void (*cb)(int, int));
   
   typedef enum {
     MOUSE_BTN_0, // No mouse button

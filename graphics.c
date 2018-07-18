@@ -31,9 +31,9 @@ if ((x)) {  \
   (x) = NULL; \
 }
 
-static void(*__error_callback)(ERRPRIO, const char*, const char*, const char*, int) = NULL;
+static void (*__error_callback)(ERRPRIO, const char*, const char*, const char*, int) = NULL;
 
-void error_callback(void(*cb)(ERRPRIO, const char*, const char*, const char*, int)) {
+void error_callback(void (*cb)(ERRPRIO, const char*, const char*, const char*, int)) {
   if (cb)
     __error_callback = cb;
 }
@@ -111,16 +111,61 @@ void fill(surface_t* s, int col) {
     s->buf[i] = col;
 }
 
-void cls(surface_t* s) {
-  memset(s->buf, 0, s->w * s->h * sizeof(int));
-}
-
 #define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
 
-int blend(int c0, int c1, float i) {
-  return (i == 1.f || i == 0.f ? c0 : RGB((int)roundf(R(c1) * (1 - i) + R(c0) * i),
-                                          (int)roundf(G(c1) * (1 - i) + G(c0) * i),
-                                          (int)roundf(B(c1) * (1 - i) + B(c0) * i)));
+static inline void __flood(surface_t* s, int x, int y, int new, int old) {
+  if (new == old || XYGET(s, x, y) != old)
+    return;
+  
+  int x1 = x;
+  while (x1 < s->w && XYGET(s, x1, y) == old) {
+    XYGET(s, x1, y) = new;
+    x1++;
+  }
+  
+  x1 = x - 1;
+  while (x1 >= 0 && XYGET(s, x1, y) == old) {
+    XYGET(s, x1, y) = new;
+    x1--;
+  }
+  
+  x1 = x;
+  while (x1 < s->w && XYGET(s, x1, y) == new) {
+    if(y > 0 && XYGET(s, x1, y - 1) == old)
+      __flood(s, x1, y - 1, new, old);
+    x1++;
+  }
+  
+  x1 = x - 1;
+  while(x1 >= 0 && XYGET(s, x1, y) == new) {
+    if(y > 0 && XYGET(s, x1, y - 1) == old)
+      __flood(s, x1, y - 1, new, old);
+    x1--;
+  }
+  
+  x1 = x;
+  while(x1 < s->w && XYGET(s, x1, y) == new) {
+    if(y < s->h - 1 && XYGET(s, x1, y + 1) == old)
+      __flood(s, x1, y + 1, new, old);
+    x1++;
+  }
+  
+  x1 = x - 1;
+  while(x1 >= 0 && XYGET(s, x1, y) == new) {
+    if(y < s->h - 1 && XYGET(s, x1, y + 1) == old)
+      __flood(s, x1, y + 1, new, old);
+    x1--;
+  }
+}
+
+void flood(surface_t* s, int x, int y, int col) {
+  if (!s || x < 0 || y < 0 || x >= s->w || y >= s->h)
+    return;
+  __flood(s, x, y, col, XYGET(s, x, y));
+}
+
+void cls(surface_t* s) {
+  memset(s->buf, 0, s->w * s->h * sizeof(int));
 }
 
 void pset(surface_t* s, int x, int y, int c)  {
@@ -150,7 +195,12 @@ void psetb(surface_t* s, int x, int y, int c) {
   int a = A(c);
   if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
-  pset(s, x, y, alpha(c, XYGET(s, x, y), ((float)a / 255.f)));
+  
+  int b = XYGET(s, x, y);
+  float i = (float)a / 255.f;
+  pset(s, x, y, (i >= 1.f || i <= 0.f) ? c : RGB((int)roundf(R(c) * (1 - i) + R(b) * i),
+                                                 (int)roundf(G(c) * (1 - i) + G(b) * i),
+                                                 (int)roundf(B(c) * (1 - i) + B(b) * i)));
 }
 
 static void(*__pset)(surface_t*, int, int, int) = pset;
@@ -2598,7 +2648,7 @@ TRY_AGAIN_BRO:
 static short int keycodes[512];
 static short int scancodes[KB_KEY_LAST + 1];
 static surface_t* buffer;
-static void(*__resize_callback)(int, int) = NULL;
+static void (*__resize_callback)(int, int) = NULL;
 static int mx = 0, my = 0, win_w, win_h;
 
 void mouse_xy(int* x, int* y) {
@@ -2617,7 +2667,7 @@ void window_wh(int* w, int* h) {
   *h = win_h;
 }
 
-void resize_callback(void(*cb)(int, int)) {
+void resize_callback(void (*cb)(int, int)) {
   if (cb)
     __resize_callback = cb;
 }
