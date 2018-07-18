@@ -15,15 +15,15 @@ int rnd(int x, int y, int c) {
   return RGB(RND_255, RND_255, RND_255);
 }
 
-int remove_lime(int x, int y, int c) {
-  return (c == LIME ? 0 : c);
-}
-
 static surface_t win;
 static int win_w = 575, win_h = 500, mx = 0, my = 0, running = 1;
 
 #define DEBUG_NATIVE_RESIZE 0
 #define SKIP_PRINTF 0
+
+#if SKIP_PRINTF
+#define printf(fmt, ...) (0)
+#endif
 
 void update_mxy() {
   mouse_xy(&mx, &my);
@@ -44,6 +44,7 @@ void on_resize(int w, int h) {
   writelnf(&win, 4, 5, WHITE, -1, "%dx%d\n", w, h);
 }
 
+// Define RES_PATH or it will use defaults below
 #if !defined(RES_PATH)
 #if defined(__APPLE__)
 #define RES_PATH "/Users/roryb/Documents/git/graphics.h/tests/"
@@ -55,10 +56,6 @@ void on_resize(int w, int h) {
 #endif
 #define RES_JOIN(X,Y) (X Y)
 #define RES(X) (RES_JOIN(RES_PATH, X))
-
-#if SKIP_PRINTF
-#define printf(fmt, ...) (0)
-#endif
 
 void on_error(ERRPRIO pri, const char* msg, const char* file, const char* func, int line) {
   fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
@@ -148,22 +145,6 @@ int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
   return 1;
 }
 
-void upsample(surface_t* src, surface_t* dst) {
-  const int wd = ((dst->w / 2) < (src->w)) ? (dst->w / 2) : (src->w);
-  const int hg = ((dst->h) < (src->h * 2)) ? (dst->h / 2) : (src->h);
-}
-
-/* TODO
- - rotozoom blit
- - rotozoom to new surface
- - skew to surface
- - handle these by matrix?
- - upsample
- - rotated rect
- - mirror surface
- - mirror surface in blit too
- */
-
 int main(int argc, const char* argv[]) {
   screen("test", &win, &win_w, &win_h, RESIZABLE);
   resize_callback(on_resize);
@@ -183,7 +164,7 @@ int main(int argc, const char* argv[]) {
   bdf(&tewi, RES("tewi.bdf"));
   
   copy(&s[2], &s[4]);
-  filter(&s[4], invert);
+  //filter(&s[4], invert);
   
   point_t points[9] = {
     { 10,  150 },
@@ -200,18 +181,11 @@ int main(int argc, const char* argv[]) {
   points[3].y = points[1].y;
 
   rect_t cutr  = { 125, 120, 50, 50 };
-#if !defined(GRAPHICS_DISABLE_RGBA)
-  stringf(&s[3], RED, 0, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", cutr.x, cutr.y, cutr.w, cutr.h);
-#else
   stringf(&s[3], RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", cutr.x, cutr.y, cutr.w, cutr.h);
-#endif
   
   surface(&s[9], 50, 50);
   fill(&s[9], BLACK);
   writeln(&s[9], 13, 20, LIME, BLACK, "WOW");
-#if !defined(GRAPHICS_DISABLE_RGBA)
-  filter(&s[9], remove_lime);
-#endif
 
   surface(&s[5], 100, 100);
   rect(&s[5], 0,  0,  50, 50, RGBA(255, 0, 0, 128), 1);
@@ -289,6 +263,7 @@ int main(int argc, const char* argv[]) {
     writeln(&win, 10, 10, RED, -1, "Hello World");
     writeln(&win, 10, 22, MAROON, -1, "こんにちは");
     bdf_writeln(&win, &tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ bdf!");
+    writeln(&win, 10, 48, RED, BLACK, "\f(255,0,0)\b(0,0,0)test\f(0,255,0)\b(0,0,0)test");
 
     int last_x = 0, last_y = 200;
     for (long i = sine_i; i < (sine_i + win.w); ++i) {

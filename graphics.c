@@ -31,10 +31,6 @@ if ((x)) {  \
   (x) = NULL; \
 }
 
-static short int keycodes[512];
-static short int scancodes[KB_KEY_LAST + 1];
-static surface_t* buffer;
-
 static void(*__error_callback)(ERRPRIO, const char*, const char*, const char*, int) = NULL;
 
 void error_callback(void(*cb)(ERRPRIO, const char*, const char*, const char*, int)) {
@@ -88,11 +84,1354 @@ void error_handle(ERRPRIO pri, const char* msg, ...) {
 #define todo(x) message(__FILE__LINE__" TODO " __FUNCTION__ "() -> " #x)
 #define fixme(x) message(__FILE__LINE__" FIXME " __FUNCTION__ "() -> " #x)
 
-static int ticks_started = 0;
+int surface(surface_t* s, unsigned int w, unsigned int h) {
+  s->w = w;
+  s->h = h;
+  size_t sz = w * h * sizeof(unsigned int) + 1;
+  s->buf = malloc(sz);
+  if (!s->buf) {
+    error_handle(PRIO_HIGH, "malloc() failed");
+    return 0;
+  }
+  memset(s->buf, 0, sz);
 
-static void(*__resize_callback)(int, int) = NULL;
+  return 1;
+}
 
-#define LINE_HEIGHT 10
+void destroy(surface_t* s) {
+  if (s) {
+    FREE_SAFE(s->buf);
+    s->w = 0;
+    s->h = 0;
+  }
+}
+
+void fill(surface_t* s, int col) {
+  for (int i = 0; i < s->w * s->h; ++i)
+    s->buf[i] = col;
+}
+
+void cls(surface_t* s) {
+  memset(s->buf, 0, s->w * s->h * sizeof(int));
+}
+
+#define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
+
+int blend(int c0, int c1, float i) {
+  return (i == 1.f || i == 0.f ? c0 : RGB((int)roundf(R(c1) * (1 - i) + R(c0) * i),
+                                          (int)roundf(G(c1) * (1 - i) + G(c0) * i),
+                                          (int)roundf(B(c1) * (1 - i) + B(c0) * i)));
+}
+
+void pset(surface_t* s, int x, int y, int c)  {
+  if (x >= 0 && y >= 0 && x < s->w && y < s->h)
+    s->buf[y * s->w + x] = c;
+}
+
+#if !defined(GRAPHICS_DISABLE_RGBA)
+#define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
+
+void psetb(surface_t* s, int x, int y, int c) {
+  int a = A(c);
+  if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
+    return;
+  
+  int* p = &s->buf[y * s->w + x];
+  int b = A(*p);
+  *p = (a == 255 || !b) ? c : RGBA(BLEND(R(c), R(*p), a, b),
+                                   BLEND(G(c), G(*p), a, b),
+                                   BLEND(B(c), B(*p), a, b),
+                                   a + (b * (255 - a) / 255));
+}
+
+static void(*__pset)(surface_t*, int, int, int) = psetb;
+#else
+void psetb(surface_t* s, int x, int y, int c) {
+  int a = A(c);
+  if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
+    return;
+  pset(s, x, y, alpha(c, XYGET(s, x, y), ((float)a / 255.f)));
+}
+
+static void(*__pset)(surface_t*, int, int, int) = pset;
+#endif
+
+int pget(surface_t* s, int x, int y) {
+  return (x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
+}
+
+int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
+  int offset_x = 0, offset_y = 0,
+      from_x = 0, from_y = 0,
+      width = src->w, height = src->h;
+  if (p) {
+    offset_x = p->x;
+    offset_y = p->y;
+  }
+  if (r) {
+    from_x = r->x;
+    from_y = r->y;
+    width  = r->w;
+    height = r->h;
+  }
+
+  if (offset_x < 0) {
+    from_x += abs(offset_x);
+    width -= abs(offset_x);
+    offset_x = 0;
+  }
+  if (offset_y < 0) {
+    from_y += abs(offset_y);
+    height -= abs(offset_y);
+    offset_y = 0;
+  }
+
+  int to_x = offset_x + width, to_y = offset_y + height;
+  if (to_x > dst->w)
+    width += (dst->w - to_x);
+  if (to_y > dst->h)
+    height += (dst->h - to_y);
+
+  if (offset_x > dst->w || offset_y > dst->h || to_x < 0 || to_y < 0)
+    return 0;
+
+  int x, y, c;
+  for (x = 0; x < width; ++x)
+    for (y = 0; y < height; ++y) {
+#if !defined(GRAPHICS_DISABLE_CHROMA_KEY) && defined(BLIT_CHROMA_KEY)
+      c = XYGET(src, from_x + x, from_y + y);
+      if (c == BLIT_CHROMA_KEY)
+        continue;
+#endif
+      __pset(dst, offset_x + x, offset_y + y, c);
+    }
+  return 1;
+}
+
+int reset(surface_t* s, int nw, int nh) {
+  size_t sz = nw * nh * sizeof(unsigned int) + 1;
+  int* tmp = realloc(s->buf, sz);
+  if (!tmp) {
+    error_handle(PRIO_HIGH, "realloc() failed");
+    return 0;
+  }
+  s->buf = tmp;
+  s->w = nw;
+  s->h = nh;
+  memset(s->buf, 0, sz);
+  return 1;
+}
+
+int copy(surface_t* in, surface_t* out) {
+  if (!surface(out, in->w, in->h))
+    return 0;
+  memcpy(out->buf, in->buf, in->w * in->h * sizeof(unsigned int) + 1);
+  return !!out->buf;
+}
+
+void filter(surface_t* s, int (*fn)(int x, int y, int col)) {
+  if (!s)
+    return;
+  
+  int x, y;
+  for (x = 0; x < s->w; ++x)
+    for (y = 0; y < s->h; ++y)
+      pset(s, x, y, fn(x, y, XYGET(s, x, y)));
+}
+
+int resize(surface_t* in, int nw, int nh, surface_t* out) {
+  if (!surface(out, nw, nh))
+    return 0;
+  
+  int x_ratio = (int)((in->w << 16) / nw) + 1;
+  int y_ratio = (int)((in->h << 16) / nh) + 1;
+  int x2, y2, i, j;
+  for (i = 0; i < nh; ++i) {
+    int* t = out->buf + i * nw;
+    y2 = ((i * y_ratio) >> 16);
+    int* p = in->buf + y2 * in->w;
+    int rat = 0;
+    for (j = 0; j < nw; ++j) {
+      x2 = (rat >> 16);
+      *t++ = p[x2];
+      rat += x_ratio;
+    }
+  }
+  return 1;
+}
+
+void vline(surface_t* s, int x, int y0, int y1, int col) {
+  if (y1 < y0) {
+    y0 += y1;
+    y1  = y0 - y1;
+    y0 -= y1;
+  }
+
+  if (x < 0 || x >= s->w || y0 >= s->h)
+    return;
+
+  if (y0 < 0)
+    y0 = 0;
+  if (y1 >= s->h)
+    y1 = s->h - 1;
+
+  for(int y = y0; y <= y1; y++)
+    __pset(s, x, y, col);
+}
+
+void hline(surface_t* s, int y, int x0, int x1, int col) {
+  if (x1 < x0) {
+    x0 += x1;
+    x1  = x0 - x1;
+    x0 -= x1;
+  }
+
+  if (y < 0 || y >= s->h || x0 >= s->w)
+    return;
+
+  if (x0 < 0)
+    x0 = 0;
+  if (x1 >= s->w)
+    x1 = s->w - 1;
+
+  for(int x = x0; x <= x1; x++)
+    __pset(s, x, y, col);
+}
+
+void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
+#if !defined(GRAPHICS_DISABLE_RGBA)
+  int a = A(col);
+  if (!a)
+    return;
+#else
+  int a = 255;
+#endif
+  
+  if (x0 == x1)
+    vline(s, x0, y0, y1, col);
+  if (y0 == y1)
+    hline(s, y0, x0, x1, col);
+
+  int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+#if defined(GRAPHICS_ENABLE_AA)
+  int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+  int err = dx - dy, e2, x2;
+  int ed = dx + dy == 0 ? 1 : sqrtf((float)dx * dx + (float)dy * dy);
+#else
+  int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+  int err = dx + dy, e2;
+#endif
+
+  for (;;) {
+#if defined(GRAPHICS_ENABLE_AA)
+    psetb(s, x0, y0, ACHAN(col, a - (a * abs(err - dx + dy) / ed)));
+    e2 = err;
+    x2 = x0;
+
+    if (2 * e2 >= -dx) {
+      if (x0 == x1)
+        break;
+      if (e2 + dy < ed)
+        psetb(s, x0, y0 + sy, ACHAN(col, a - (a * (e2 + dy) / ed)));
+      err -= dy;
+      x0 += sx;
+    }
+
+    if (2 * e2 <= dy) {
+      if (y0 == y1)
+        break;
+      if (dx - e2 < ed)
+        psetb(s, x2 + sx, y0, ACHAN(col, a - (a * (dx - e2) / ed)));
+      err += dx;
+      y0 += sy;
+    }
+#else
+    __pset(s, x0, y0, col);
+    e2 = 2 * err;
+
+    if (e2 >= dy) {
+      if (x0 == x1)
+        break;
+      err += dy;
+      x0 += sx;
+    }
+
+    if (e2 <= dx) {
+      if (y0 == y1)
+        break;
+      err += dx;
+      y0 += sy;
+    }
+#endif
+  }
+}
+
+void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
+#if !defined(GRAPHICS_DISABLE_RGBA)
+  int a = A(col);
+  if (!a)
+    return;
+#else
+  int a = 255;
+#endif
+  
+  if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
+    return;
+  
+  int x = -r, y = 0, err = 2 - 2 * r;
+#if defined(GRAPHICS_ENABLE_AA)
+  int i, x2, e2;
+  r = 1 - err;
+#endif
+  
+  do {
+#if defined(GRAPHICS_ENABLE_AA)
+    i = ACHAN(col, 255 - (255 * abs(err - 2 * (x + y) - 2) / r));
+    psetb(s, xc - x, yc + y, i);
+    psetb(s, xc - y, yc - x, i);
+    psetb(s, xc + x, yc - y, i);
+    psetb(s, xc + y, yc + x, i);
+    
+    if (fill) {
+      hline(s, yc - y, xc - x - 1, xc + x + 1, col);
+      hline(s, yc + y, xc - x - 1, xc + x + 1, col);
+    }
+    
+    e2 = err;
+    x2 = x;
+    if (err + y > 0) {
+      i = 255 * (err - 2 * x - 1) / r;
+      if (i < 256) {
+        i = ACHAN(col, 255 - i);
+        psetb(s, xc - x, yc + y + 1, i);
+        psetb(s, xc - y - 1, yc - x, i);
+        psetb(s, xc + x, yc - y - 1, i);
+        psetb(s, xc + y + 1, yc + x, i);
+      }
+      err += ++x * 2 + 1;
+    }
+    
+    if (e2 + x2 <= 0) {
+      i = 255 * (2 * y + 3 - e2) / r;
+      if (i < 256) {
+        i = ACHAN(col, 255 - i);
+        psetb(s, xc - x2 - 1, yc + y, i);
+        psetb(s, xc - y, yc - x2 - 1, i);
+        psetb(s, xc + x2 + 1, yc - y, i);
+        psetb(s, xc + y, yc + x2 + 1, i);
+      }
+      err += ++y * 2 + 1;
+    }
+#else
+    __pset(s, xc - x, yc + y, col);
+    __pset(s, xc - y, yc - x, col);
+    __pset(s, xc + x, yc - y, col);
+    __pset(s, xc + y, yc + x, col);
+    
+    if (fill) {
+      hline(s, yc - y, xc - x, xc + x, col);
+      hline(s, yc + y, xc - x, xc + x, col);
+    }
+    
+    r = err;
+    if (r <= y)
+      err += ++y * 2 + 1;
+    if (r > x || err > y)
+      err += ++x * 2 + 1;
+#endif
+  } while (x < 0);
+}
+
+void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
+#if defined(GRAPHICS_ENABLE_AA)
+#pragma TODO(Add AA option);
+#endif
+  
+  int x = -rx, y = 0;
+  long e2 = ry, dx = (1 + 2 * x) * e2 * e2;
+  long dy = x * x, err = dx + dy;
+  
+  do {
+    psetb(s, xc - x, yc + y, col);
+    psetb(s, xc + x, yc + y, col);
+    psetb(s, xc + x, yc - y, col);
+    psetb(s, xc - x, yc - y, col);
+    
+    if (fill) {
+      hline(s, yc - y, xc - x, xc + x, col);
+      hline(s, yc + y, xc - x, xc + x, col);
+    }
+    
+    e2 = 2 * err;
+    if (e2 >= dx) {
+      x++;
+      err += dx += 2 * (long)ry * ry;
+    }
+    if (e2 <= dy) {
+      y++;
+      err += dy += 2 * (long)rx * rx;
+    }
+  } while (x <= 0);
+}
+
+void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill) {
+#pragma FIXME(This is borked without AA)
+#pragma FIXME(Arithmic error when too big with AA)
+  
+  long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
+  float dx = 4 * (a - 1.) * b * b, dy = 4 * (b1 + 1) * a * a;
+  float err = b1 * a * a - dx + dy;
+  
+#if defined(GRAPHICS_ENABLE_AA)
+  int f, ed, i;
+  
+  if (a == 0 || b == 0)
+    line(s, x0, y0, x1, y1, col);
+#else
+  long e2;
+#endif
+  
+  if (x0 > x1) {
+    x0 = x1;
+    x1 += a;
+  }
+  if (y0 > y1)
+    y0 = y1;
+  y0 += (b + 1) / 2;
+  y1 = y0 - (int)b1;
+  a = 8 * a * a;
+  b1 = 8 * b * b;
+  
+#if defined(GRAPHICS_ENABLE_AA)
+  for (;;) {
+    i = fminf(dx, dy);
+    ed = fmaxf(dx, dy);
+    if (!i || !ed)
+      break;
+    if (y0 == y1 + 1 && err > dy && a > b1)
+      ed = 255 * 4. / a;
+    else
+      ed = 255 / (ed + 2 * ed * i * i / (4 * ed * ed + i * i)); // Fix overflow
+    
+    i = ACHAN(col, 255 - (ed * (int)fabsf(err + dx - dy)));
+    psetb(s, x0, y0, i);
+    psetb(s, x0, y1, i);
+    psetb(s, x1, y0, i);
+    psetb(s, x1, y1, i);
+    
+    if (fill) {
+      hline(s, y0, x0 + 1, x1 - 1, col);
+      hline(s, y1, x0 + 1, x1 - 1, col);
+    }
+    
+    if ((f = 2 * err + dy >= 0)) {
+      if (x0 >= x1)
+        break;
+      
+      i = ed * (err + dx);
+      if (i < 255) {
+        i = ACHAN(col, 255 - i);
+        psetb(s, x0, y0 + 1, i);
+        psetb(s, x0, y1 - 1, i);
+        psetb(s, x1, y0 + 1, i);
+        psetb(s, x1, y1 - 1, i);
+      }
+    }
+    
+    if (2 * err <= dx) {
+      i = ed * (dy - err);
+      if (i < 255) {
+        i = ACHAN(col, 255 - i);
+        psetb(s, x0 + 1, y0, i);
+        psetb(s, x1 - 1, y0, i);
+        psetb(s, x0 + 1, y1, i);
+        psetb(s, x1 - 1, y1, i);
+      }
+      
+      y0++;
+      y1--;
+      err += dy += a;
+    }
+    
+    if (f) {
+      x0++; x1--;
+      err -= dx -= b1;
+    }
+  }
+  
+  if (--x0 == x1++)
+    while (y0 - y1 < b) {
+      i = ACHAN(col, 255 - (255 * 4 * (int)fabsf(err + dx) / (int)b1));
+      psetb(s, x0, ++y0, i);
+      psetb(s, x1, y0, i);
+      psetb(s, x0, --y1, i);
+      psetb(s, x1, y1, i);
+      err += dy += a;
+    }
+#else
+  do {
+    __pset(s, x1, y0, col);
+    __pset(s, x0, y0, col);
+    __pset(s, x0, y1, col);
+    __pset(s, x1, y1, col);
+    
+    if (fill) {
+      hline(s, y0, x0, x1, col);
+      hline(s, y1, x0, x1, col);
+    }
+    
+    e2 = 2 * err;
+    if (e2 <= dy) {
+      y0++;
+      y1--;
+      err += dy += a;
+    }
+    
+    if (e2 >= dx || 2 * err > dy) {
+      x0++;
+      x1--;
+      err += dx += b1;
+    }
+  } while (x0 <= x1);
+#endif
+}
+
+static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
+  int sx = x2 - x1, sy = y2 - y1;
+  long xx = x0 - x1, yy = y0 - y1, xy;
+  float dx, dy, err, cur = xx * sy - yy * sx;
+  
+  if (sx * (long)sx + sy * (long)sy > xx * xx + yy * yy) {
+    x2 = x0;
+    x0 = sx + x1;
+    y2 = y0;
+    y0 = sy + y1;
+    cur = -cur;
+  }
+  
+  if (cur != 0.f) {
+    xx += sx;
+    xx *= sx = x0 < x2 ? 1 : -1;
+    yy += sy;
+    yy *= sy = y0 < y2 ? 1 : -1;
+    xy = 2 * xx * yy;
+    xx *= xx;
+    yy *= yy;
+    if (cur * sx * sy < 0) {
+      xx = -xx;
+      yy = -yy;
+      xy = -xy;
+      cur = -cur;
+    }
+    
+    dx = 4.f * sy * (x1 - x0) * cur + xx - xy;
+    dy = 4.f * sx * (y0 - y1) * cur + yy - xy;
+    xx += xx;
+    yy += yy;
+    err = dx + dy + xy;
+    
+#if defined(GRAPHICS_ENABLE_AA)
+    float ed;
+#endif
+    
+    do {
+#if defined(GRAPHICS_ENABLE_AA)
+      cur = fminf(dx + xy, -xy - dy);
+      ed = fmaxf(dx + xy, -xy - dy);
+      ed += 2 * ed * cur * cur / (4 * ed * ed + cur * cur);
+      psetb(s, x0, y0, ACHAN(col, 255 - (int)(255 * fabsf(err - dx - dy - xy) / ed)));
+      if (x0 == x2 || y0 == y2)
+        break;
+      
+      x1 = x0;
+      cur = dx - err;
+      y1 = 2 * err + dy < 0;
+      if (2 * err + dx > 0) {
+        if (err - dy < ed)
+          psetb(s, x0, y0 + sy, ACHAN(col, 255 - (int)(255 * fabsf(err - dy) / ed)));
+        x0 += sx;
+        dx -= xy;
+        err += dy += yy;
+      }
+      
+      if (y1) {
+        if (cur < ed)
+          psetb(s, x1 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(cur) / ed)));
+        y0 += sy;
+        dy -= xy;
+        err += dx += xx;
+      }
+    } while (dy < dx);
+#else
+    __pset(s, x0, y0, col);
+    if (x0 == x2 && y0 == y2)
+      return;
+    
+    y1 = 2 * err < dx;
+    if (2 * err > dy) {
+      x0 += sx;
+      dx -= xy;
+      err += dy += yy;
+    }
+    
+    if (y1) {
+      y0 += sy;
+      dy -= xy;
+      err += dx += xx;
+    }
+  } while (dy < 0 && dx > 0);
+#endif
+}
+
+line(s, x0, y0, x2, y2, col);
+}
+
+void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
+  int x = x0 - x1, y = y0 - y1;
+  float t = x0 - 2 * x1 + x2, r;
+  
+  if ((long)x * (x2 - x1) > 0) {
+    if ((long)y * (y2 - y1) > 0)
+      if (fabsf((y0 - 2 * y1 + y2) / t * x) > abs(y)) {
+        x0 = x2;
+        x2 = x + x1;
+        y0 = y2;
+        y2 = y + y1;
+      }
+    
+    t = (x0 - x1) / t;
+    r = (1 - t) * ((1 - t) * y0 + 2.f * t * y1) + t * t*y2;
+    t = (x0 * x2 - x1 * x1) * t / (x0 - x1);
+    x = floorf(t + .5f);
+    y = floorf(r + .5f);
+    r = (y1 - y0) * (t - x0) / (x1 - x0) + y0;
+    bezier_seg(s, x0, y0, x, floorf(r + .5f), x, y, col);
+    r = (y1 - y2) * (t - x2) / (x1 - x2) + y2;
+    x0 = x1 = x;
+    y0 = y;
+    y1 = floorf(r + .5f);
+  }
+  
+  if ((long)(y0 - y1) * (y2 - y1) > 0) {
+    t = y0 - 2 * y1 + y2; t = (y0 - y1) / t;
+    r = (1 - t) * ((1 - t) * x0 + 2.f * t * x1) + t * t * x2;
+    t = (y0 * y2 - y1 * y1) * t / (y0 - y1);
+    x = floorf(r + .5f);
+    y = floorf(t + .5f);
+    r = (x1 - x0) * (t - y0) / (y1 - y0) + x0;
+    bezier_seg(s, x0, y0, floorf(r + .5f), y, x, y, col);
+    r = (x1 - x2) * (t - y2) / (y1 - y2) + x2;
+    x0 = x;
+    x1 = floorf(r + .5f);
+    y0 = y1 = y;
+  }
+  
+  bezier_seg(s, x0, y0, x1, y1, x2, y2, col);
+}
+
+static void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
+  int sx = x2 - x1, sy = y2 - y1;
+  float dx = x0 - x2, dy = y0 - y2, xx = x0 - x1, yy = y0 - y1;
+  float xy = xx * sy + yy * sx, cur = xx * sy - yy * sx, err;
+  
+#if defined(GRAPHICS_ENABLE_AA)
+  float ed;
+  int f;
+#endif
+  
+  if (cur != .0f && w > .0f) {
+    if (sx * (long)sx + sy * (long)sy > xx * xx + yy * yy) {
+      x2 = x0;
+      x0 -= dx;
+      y2 = y0;
+      y0 -= dy;
+      cur = -cur;
+    }
+    xx = 2.f * (4.f * w * sx * xx + dx * dx);
+    yy = 2.f * (4.f * w * sy * yy + dy * dy);
+    sx = x0 < x2 ? 1 : -1;
+    sy = y0 < y2 ? 1 : -1;
+    xy = -2.f * sx * sy * (2.f * w * xy + dx * dy);
+    
+    if (cur * sx * sy < .0f) {
+      xx = -xx;
+      yy = -yy;
+      cur = -cur;
+      xy = -xy;
+    }
+    dx = 4.f * w * (x1 - x0) * sy * cur + xx / 2.f + xy;
+    dy = 4.f * w * (y0 - y1) * sx * cur + yy / 2.f + xy;
+    
+#if defined(GRAPHICS_ENABLE_AA)
+    if (w < .5f && dy > dx) {
+#else
+      if (w < .5f && (dy > xy || dx < xy)) {
+#endif
+        cur = (w + 1.f) / 2.f;
+        w = sqrtf(w);
+        xy = 1.f / (w + 1.f);
+        sx = floorf((x0 + 2.f * w * x1 + x2) * xy / 2.f + .5f);
+        sy = floorf((y0 + 2.f * w * y1 + y2) * xy / 2.f + .5f);
+        dx = floorf((w * x1 + x0) * xy + .5f);
+        dy = floorf((y1 * w + y0) * xy + .5f);
+        bezier_seg_rational(s, x0, y0, dx, dy, sx, sy, cur, col);
+        dx = floorf((w * x1 + x2) * xy + .5f);
+        dy = floorf((y1 * w + y2) * xy + .5f);
+        bezier_seg_rational(s, sx, sy, dx, dy, x2, y2, cur, col);
+        return;
+      }
+      
+      err = dx + dy - xy;
+      do {
+#if defined(GRAPHICS_ENABLE_AA)
+        cur = fminf(dx - xy, xy - dy);
+        ed = fmaxf(dx - xy, xy - dy);
+        ed += 2 * ed * cur * cur / (4.f * ed * ed + cur * cur);
+        x1 = 255 * fabsf(err - dx - dy + xy) / ed;
+        if (x1 < 256)
+          psetb(s, x0, y0, ACHAN(col, 255 - x1));
+        
+        if ((f = 2 * err + dy < 0)) {
+          if (y0 == y2)
+            return;
+          if (dx - err < ed)
+            psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(dx - err) / ed)));
+        }
+        
+        if (2 * err + dx > 0) {
+          if (x0 == x2)
+            return;
+          if (err - dy < ed)
+            psetb(s, x0, y0 + sy, ACHAN(col, 255 - (int)(255 * fabsf(err - dy) / ed)));
+          x0 += sx;
+          dx += xy;
+          err += dy += yy;
+        }
+        
+        if (f) {
+          y0 += sy;
+          dy += xy;
+          err += dx += xx;
+        }
+      } while (dy < dx);
+#else
+      __pset(s, x0, y0, col);
+      if (x0 == x2 && y0 == y2)
+        return;
+      
+      x1 = 2 * err > dy;
+      y1 = 2 * (err + yy) < -dy;
+      if (2 * err < dx || y1) {
+        y0 += sy;
+        dy += xy;
+        err += dx += xx;
+      }
+      
+      if (2 * err > dx || x1) {
+        x0 += sx;
+        dx += xy;
+        err += dy += yy;
+      }
+    } while (dy < dx);
+#endif
+  }
+  line(s, x0, y0, x2, y2, col);
+}
+
+void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
+  int x = x0 - 2 * x1 + x2, y = y0 - 2 * y1 + y2;
+  float xx = x0 - x1, yy = y0 - y1, ww, t, q;
+  
+  if (xx * (x2 - x1) > 0) {
+    if (yy * (y2 - y1) > 0)
+      if (fabsf(xx * y) > fabsf(yy * x)) {
+        x0 = x2;
+        x2 = xx + x1;
+        y0 = y2;
+        y2 = yy + y1;
+      }
+    
+    if (x0 == x2 || w == 1.f)
+      t = (x0 - x1) / (double)x;
+    else {
+      q = sqrtf(4.f * w * w * (x0 - x1) * (x2 - x1) + (x2 - x0) * (long)(x2 - x0));
+      if (x1 < x0)
+        q = -q;
+      t = (2.f * w * (x0 - x1) - x0 + x2 + q) / (2.f * (1.f - w) * (x2 - x0));
+    }
+    
+    q = 1.f / (2.f * t * (1.f - t) * (w - 1.f) + 1.f);
+    xx = (t * t * (x0 - 2.f * w * x1 + x2) + 2.f * t * (w * x1 - x0) + x0) * q;
+    yy = (t * t * (y0 - 2.f * w * y1 + y2) + 2.f * t * (w * y1 - y0) + y0) * q;
+    ww = t * (w - 1.f) + 1.f;
+    ww *= ww * q;
+    w = ((1.f - t) * (w - 1.f) + 1.f) * sqrtf(q);
+    x = floorf(xx + .5f);
+    y = floorf(yy + .5f);
+    yy = (xx - x0) * (y1 - y0) / (x1 - x0) + y0;
+    bezier_seg_rational(s, x0, y0, x, floorf(yy + .5f), x, y, ww, col);
+    yy = (xx - x2) * (y1 - y2) / (x1 - x2) + y2;
+    y1 = floorf(yy + .5f);
+    x0 = x1 = x;
+    y0 = y;
+  }
+  
+  if ((y0 - y1) * (long)(y2 - y1) > 0) {
+    if (y0 == y2 || w == 1.f)
+      t = (y0 - y1) / (y0 - 2.f * y1 + y2);
+    else {
+      q = sqrtf(4.f * w * w * (y0 - y1) * (y2 - y1) + (y2 - y0) * (long)(y2 - y0));
+      if (y1 < y0)
+        q = -q;
+      t = (2.f * w * (y0 - y1) - y0 + y2 + q) / (2.f * (1.f - w) * (y2 - y0));
+    }
+    
+    q = 1.f / (2.f * t * (1.f - t) * (w - 1.f) + 1.f);
+    xx = (t * t * (x0 - 2.f * w * x1 + x2) + 2.f * t * (w * x1 - x0) + x0) * q;
+    yy = (t * t * (y0 - 2.f * w * y1 + y2) + 2.f * t * (w * y1 - y0) + y0) * q;
+    ww = t * (w - 1.f) + 1.f;
+    ww *= ww * q;
+    w = ((1.f - t) * (w - 1.f) + 1.f) * sqrtf(q);
+    x = floorf(xx + .5f);
+    y = floorf(yy + .5f);
+    xx = (x1 - x0) * (yy - y0) / (y1 - y0) + x0;
+    bezier_seg_rational(s, x0, y0, floorf(xx + .5f), y, x, y, ww, col);
+    xx = (x1 - x2) * (yy - y2) / (y1 - y2) + x2;
+    x1 = floorf(xx + .5f);
+    x0 = x;
+    y0 = y1 = y;
+  }
+  
+  bezier_seg_rational(s, x0, y0, x1, y1, x2, y2, w*w, col);
+}
+
+void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col) {
+#pragma TODO(Add fill option);
+  int xd = x1 - x0, yd = y1 - y0;
+  float w = xd * (long)yd;
+  if (zd == 0)
+    ellipse_rect(s, x0, y0, x1, y1, col, 0);
+  if (w != 0.f)
+    w = (w - zd) / (w + w);
+  
+  xd = floorf(xd * w + .5f);
+  yd = floorf(yd * w + .5f);
+  
+  bezier_seg_rational(s, x0, y0 + yd, x0, y0, x0 + xd, y0, 1.f - w, col);
+  bezier_seg_rational(s, x0, y0 + yd, x0, y1, x1 - xd, y1, w, col);
+  bezier_seg_rational(s, x1, y1 - yd, x1, y1, x1 - xd, y1, 1.f - w, col);
+  bezier_seg_rational(s, x1, y1 - yd, x1, y0, x0 + xd, y0, w, col);
+}
+
+void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col) {
+#pragma TODO(Add fill option);
+  float xd = (long)a * a, yd = (long)b * b;
+  float q = sinf(angle), zd = (xd - yd) * q;
+  xd = sqrtf(xd - zd * q);
+  yd = sqrtf(yd + zd * q);
+  a = xd + .5f;
+  b = yd + .5f;
+  zd = zd * a * b / (xd * yd);
+  ellipse_rect_rotated(s, x - a, y - b, x + a, y + b, (long)(4 * zd * cosf(angle)), col);
+}
+
+static void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, float x2, float y2, int x3, int y3, int col) {
+  int f, fx, fy, leg = 1;
+  int sx = x0 < x3 ? 1 : -1, sy = y0 < y3 ? 1 : -1;
+  float xc = -fabsf(x0 + x1 - x2 - x3), xa = xc - 4 * sx * (x1 - x2), xb = sx * (x0 - x1 - x2 + x3);
+  float yc = -fabsf(y0 + y1 - y2 - y3), ya = yc - 4 * sy * (y1 - y2), yb = sy * (y0 - y1 - y2 + y3);
+  float ab, ac, bc, ba, xx, xy, yy, dx, dy, ex, EP = .01f;
+  
+#if defined(GRAPHICS_ENABLE_AA)
+  float px, py, ed, ip;
+#else
+  float* pxy;
+#endif
+  
+  if (xa == 0.f && ya == 0.f) {
+    sx = floorf((3 * x1 - x0 + 1) / 2); sy = floorf((3 * y1 - y0 + 1) / 2);
+    bezier_seg(s, x0, y0, sx, sy, x3, y3, col);
+    return;
+  }
+  
+  x1 = (x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0) + 1;
+  x2 = (x2 - x3) * (x2 - x3) + (y2 - y3) * (y2 - y3) + 1;
+  
+  do {
+    ab = xa * yb - xb * ya;
+    ac = xa * yc - xc * ya;
+    bc = xb * yc - xc * yb;
+    ex = ab * (ab + ac - 3 * bc) + ac * ac;
+    f = ex > 0 ? 1 : sqrtf(1 + 1024 / x1);
+    
+    ab *= f; ac *= f;
+    bc *= f;
+    ex *= f * f;
+    xy = 9 * (ab + ac + bc) / 8;
+#if defined(GRAPHICS_ENABLE_AA)
+    ip = 4 * ab * bc - ac * ac;
+#endif
+    ba = 8 * (xa - ya);
+    dx = 27 * (8 * ab * (yb * yb - ya * yc) + ex * (ya + 2 * yb + yc)) / 64 - ya * ya * (xy - ya);
+    dy = 27 * (8 * ab * (xb * xb - xa * xc) - ex * (xa + 2 * xb + xc)) / 64 - xa * xa * (xy + xa);
+    
+    xx = 3 * (3 * ab * (3 * yb * yb - ya * ya - 2 * ya * yc) - ya * (3 * ac * (ya + yb) + ya * ba)) / 4;
+    yy = 3 * (3 * ab * (3 * xb * xb - xa * xa - 2 * xa * xc) - xa * (3 * ac * (xa + xb) + xa * ba)) / 4;
+    xy = xa * ya * (6 * ab + 6 * ac - 3 * bc + ba);
+    ac = ya * ya;
+    ba = xa * xa;
+    xy = 3 * (xy + 9 * f * (ba * yb * yc - xb * xc * ac) - 18 * xb * yb * ab) / 8;
+    
+    if (ex < 0) {
+      dx = -dx;
+      dy = -dy;
+      xx = -xx;
+      yy = -yy;
+      xy = -xy;
+      ac = -ac;
+      ba = -ba;
+    }
+    ab = 6 * ya * ac;
+    ac = -6 * xa * ac;
+    bc = 6 * ya * ba;
+    ba = -6 * xa * ba;
+    dx += xy;
+    ex = dx + dy;
+    dy += xy;
+    
+#if defined(GRAPHICS_ENABLE_AA)
+    for (fx = fy = f; x0 != x3 && y0 != y3; ) {
+      y1 = fminf(fabsf(xy - dx), fabsf(dy - xy));
+      ed = fmaxf(fabsf(xy - dx), fabsf(dy - xy));
+      ed = f * (ed + 2 * ed * y1 * y1 / (4 * ed * ed + y1 * y1));
+      y1 = 255 * fabsf(ex - (f - fx + 1) * dx - (f - fy + 1) * dy + f * xy) / ed;
+      if (y1 < 256)
+        psetb(s, x0, y0, ACHAN(col, 255 - (int)y1));
+      px = fabsf(ex - (f - fx + 1) * dx + (fy - 1) * dy);
+      py = fabsf(ex + (fx - 1) * dx - (f - fy + 1) * dy);
+      y2 = y0;
+      do {
+        if (ip >= -EP)
+          if (dx + xx > xy || dy + yy < xy)
+            goto exit;
+        
+        y1 = 2 * ex + dx;
+        if (2 * ex + dy > 0) {
+          fx--;
+          ex += dx += xx;
+          dy += xy += ac;
+          yy += bc;
+          xx += ab;
+        }
+        else if (y1 > 0)
+          goto exit;
+        if (y1 <= 0) {
+          fy--;
+          ex += dy += yy;
+          dx += xy += bc;
+          xx += ac;
+          yy += ba;
+        }
+      } while (fx > 0 && fy > 0);
+      
+      if (2 * fy <= f) {
+        if (py < ed)
+          psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
+        y0 += sy;
+        fy += f;
+      }
+      
+      if (2 * fx <= f) {
+        if (px < ed)
+          psetb(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
+        x0 += sx;
+        fx += f;
+      }
+    }
+    break;
+    
+  exit:
+    if (2 * ex < dy && 2 * fy <= f + 2) {
+      if (py < ed)
+        psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
+      y0 += sy;
+    }
+    
+    if (2 * ex > dx && 2 * fx <= f + 2) {
+      if (px < ed)
+        psetb(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
+      x0 += sx;
+    }
+    
+    xx = x0;
+    x0 = x3;
+    x3 = xx;
+    sx = -sx;
+    xb = -xb;
+    yy = y0;
+    y0 = y3;
+    y3 = yy;
+    sy = -sy;
+    yb = -yb;
+    x1 = x2;
+#else
+    for (pxy = &xy, fx = fy = f; x0 != x3 && y0 != y3;) {
+      __pset(s, x0, y0, col);
+      do {
+        if (dx > *pxy || dy < *pxy)
+          goto exit;
+        
+        y1 = 2 * ex - dy;
+        if (2 * ex >= dx) {
+          fx--;
+          ex += dx += xx;
+          dy += xy += ac;
+          yy += bc;
+          xx += ab;
+        }
+        
+        if (y1 <= 0) {
+          fy--;
+          ex += dy += yy;
+          dx += xy += bc;
+          xx += ac;
+          yy += ba;
+        }
+      } while (fx > 0 && fy > 0);
+      
+      if (2 * fx <= f) {
+        x0 += sx;
+        fx += f;
+      }
+      if (2 * fy <= f) {
+        y0 += sy;
+        fy += f;
+      }
+      if (pxy == &xy && dx < 0 && dy > 0)
+        pxy = &EP;
+    }
+    
+  exit:
+    xx = x0;
+    x0 = x3;
+    x3 = xx;
+    sx = -sx;
+    xb = -xb;
+    yy = y0;
+    y0 = y3;
+    y3 = yy;
+    sy = -sy;
+    yb = -yb;
+    x1 = x2;
+#endif
+  } while (leg--);
+  
+  line(s, x0, y0, x3, y3, col);
+}
+
+void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col) {
+  int n = 0, i = 0;
+  long xc = x0 + x1 - x2 - x3, xa = xc - 4 * (x1 - x2);
+  long xb = x0 - x1 - x2 + x3, xd = xb + 4 * (x1 + x2);
+  long yc = y0 + y1 - y2 - y3, ya = yc - 4 * (y1 - y2);
+  long yb = y0 - y1 - y2 + y3, yd = yb + 4 * (y1 + y2);
+  float fx0 = x0, fx1, fx2, fx3, fy0 = y0, fy1, fy2, fy3;
+  float t1 = xb * xb - xa * xc, t2, t[5];
+  
+  if (xa == 0) {
+    if (labs(xc) < 2 * labs(xb))
+      t[n++] = xc / (2.f * xb);
+  } else if (t1 > .0f) {
+    t2 = sqrtf(t1);
+    t1 = (xb - t2) / xa;
+    if (fabsf(t1) < 1.f)
+      t[n++] = t1;
+    t1 = (xb + t2) / xa;
+    if (fabsf(t1) < 1.f)
+      t[n++] = t1;
+  }
+  
+  t1 = yb * yb - ya * yc;
+  if (ya == 0) {
+    if (labs(yc) < 2 * labs(yb))
+      t[n++] = yc / (2.f * yb);
+  } else if (t1 > .0f) {
+    t2 = sqrtf(t1);
+    t1 = (yb - t2) / ya;
+    if (fabsf(t1) < 1.f)
+      t[n++] = t1;
+    t1 = (yb + t2) / ya;
+    if (fabsf(t1) < 1.f)
+      t[n++] = t1;
+  }
+  
+  for (i = 1; i < n; i++)
+    if ((t1 = t[i - 1]) > t[i]) {
+      t[i - 1] = t[i];
+      t[i] = t1; i = 0;
+    }
+  
+  t1 = -1.; t[n] = 1.;
+  for (i = 0; i <= n; i++) {
+    t2 = t[i];
+    fx1 = (t1 * (t1 * xb - 2 * xc) - t2 * (t1 * (t1 * xa - 2 * xb) + xc) + xd) / 8 - fx0;
+    fy1 = (t1 * (t1 * yb - 2 * yc) - t2 * (t1 * (t1 * ya - 2 * yb) + yc) + yd) / 8 - fy0;
+    fx2 = (t2 * (t2 * xb - 2 * xc) - t1 * (t2 * (t2 * xa - 2 * xb) + xc) + xd) / 8 - fx0;
+    fy2 = (t2 * (t2 * yb - 2 * yc) - t1 * (t2 * (t2 * ya - 2 * yb) + yc) + yd) / 8 - fy0;
+    fx0 -= fx3 = (t2 * (t2 * (3 * xb - t2 * xa) - 3 * xc) + xd) / 8;
+    fy0 -= fy3 = (t2 * (t2 * (3 * yb - t2 * ya) - 3 * yc) + yd) / 8;
+    x3 = floorf(fx3 + .5f);
+    y3 = floorf(fy3 + .5f);
+    
+    if (fx0 != .0f) {
+      fx1 *= fx0 = (x0 - x3) / fx0;
+      fx2 *= fx0;
+    }
+    if (fy0 != .0f) {
+      fy1 *= fy0 = (y0 - y3) / fy0;
+      fy2 *= fy0;
+    }
+    if (x0 != x3 || y0 != y3)
+      bezier_seg_cubic(s, x0, y0, x0 + fx1, y0 + fy1, x0 + fx2, y0 + fy2, x3, y3, col);
+    
+    x0 = x3;
+    y0 = y3;
+    fx0 = fx3;
+    fy0 = fy3;
+    t1 = t2;
+  }
+}
+
+void rect(surface_t* s, int x, int y, int w, int h, int col, int fill) {
+  if (x < 0) {
+    w += x;
+    x  = 0;
+  }
+  if (y < 0) {
+    h += y;
+    y  = 0;
+  }
+  
+  w += x;
+  h += y;
+  if (w < 0 || h < 0 || x > s->w || y > s->h)
+    return;
+  
+  if (w > s->w)
+    w = s->w;
+  if (h > s->h)
+    h = s->h;
+  
+  if (fill) {
+    for (; y < h; ++y)
+      hline(s, y, x, w, col);
+  } else {
+    hline(s, y, x, w, col);
+    hline(s, h, x, w, col);
+    vline(s, x, y, h, col);
+    vline(s, w, y, h, col);
+  }
+}
+
+#if defined(_MSC_VER)
+#define ALIGN_STRUCT(x) __declspec(align(x))
+#else
+#define ALIGN_STRUCT(x) __attribute__((aligned(x)))
+#endif
+
+#pragma pack(1)
+typedef struct {
+  unsigned short type; /* Magic identifier */
+  unsigned int size; /* File size in bytes */
+  unsigned int reserved;
+  unsigned int offset; /* Offset to image data, bytes */
+} ALIGN_STRUCT(2) BMPHEADER;
+#pragma pack()
+
+typedef struct {
+  unsigned int size; /* Header size in bytes */
+  int width, height; /* Width and height of image */
+  unsigned short planes; /* Number of colour planes */
+  unsigned short bits; /* Bits per pixel */
+  unsigned int compression; /* Compression type */
+  unsigned int image_size; /* Image size in bytes */
+  int xresolution, yresolution; /* Pixels per meter */
+  unsigned int ncolours; /* Number of colours */
+  unsigned int important_colours; /* Important colours */
+} BMPINFOHEADER;
+
+typedef struct {
+  unsigned int size; /* size of bitmap core header */
+  unsigned short width; /* image with */
+  unsigned short height; /* image height */
+  unsigned short planes; /* must be equal to 1 */
+  unsigned short count; /* bits per pixel */
+} BMPCOREHEADER;
+
+#define BMP_GET(d, b, s) \
+memcpy(d, b + off, s); \
+off += s;
+
+#define BMP_SET(c) (s->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
+
+int bmp(surface_t* s, const char* path) {
+  FILE* fp = fopen(path, "rb");
+  if (!fp) {
+    error_handle(PRIO_NORM, "fopen() failed: %s", path);
+    return 0;
+  }
+  
+  fseek(fp, 0, SEEK_END);
+  size_t length = ftell(fp);
+  rewind(fp);
+  
+  unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
+  if (!data) {
+    error_handle(PRIO_HIGH, "calloc() failed");
+    return 0;
+  }
+  fread(data, 1, length, fp);
+  fclose(fp);
+  
+  int off = 0;
+  BMPHEADER header;
+  BMPINFOHEADER info;
+  //BMPCOREHEADER core;
+  BMP_GET(&header, data, sizeof(BMPHEADER));
+  //int info_pos = off;
+  BMP_GET(&info, data, sizeof(BMPINFOHEADER));
+  
+  if (header.type != 0x4D42) {
+    error_handle(PRIO_NORM, "bmp() failed: invalid BMP signiture '%d'", header.type);
+    return 0;
+  }
+  
+#pragma TODO(Add support for OS/2 bitmaps)
+  
+  unsigned char* color_map = NULL;
+  int color_map_size = 0;
+  if (info.bits <= 8) {
+    color_map_size = (1 << info.bits) * 4;
+    color_map = (unsigned char*)malloc(color_map_size * sizeof(unsigned char));
+    if (!color_map) {
+      error_handle(PRIO_HIGH, "malloc() failed");
+      return 0;
+    }
+    BMP_GET(color_map, data, color_map_size);
+  }
+  
+  if (!surface(s, info.width, info.height)) {
+    FREE_SAFE(color_map);
+    error_handle(PRIO_HIGH, "malloc() failed");
+    return 0;
+  }
+  
+  off = header.offset;
+  int i, sz = info.width * info.height;
+  unsigned char color;
+  switch (info.compression) {
+    case 0: // RGB
+      switch (info.bits) { // BPP
+        case 1:
+        case 4:
+#pragma TODO(Add 1 & 4 bpp support);
+          error_handle(PRIO_NORM, "bmp() failed. Unsupported BPP: %d", info.bits);
+          destroy(s);
+          break;
+        case 8:
+          for (i = (sz - 1); i != -1; --i, ++off) {
+            color = data[off];
+            BMP_SET(RGB(color_map[(color * 4) + 2], color_map[(color * 4) + 1], color_map[(color * 4)]));
+          }
+          break;
+        case 24:
+        case 32:
+          for (i = (sz - 1); i != -1; --i, off += (info.bits == 32 ? 4 : 3))
+            BMP_SET(RGB(data[off + 2], data[off + 1], data[off]));
+          break;
+        default:
+          error_handle(PRIO_NORM, "bmp() failed. Unsupported BPP: %d", info.bits);
+          destroy(s);
+          break;
+      }
+      break;
+    case 1: // RLE8
+    case 2: // RLE4
+    default:
+#pragma TODO(Add RLE support);
+      error_handle(PRIO_NORM, "bmp() failed. Unsupported compression: %d", info.compression);
+      destroy(s);
+      break;
+  }
+  
+  FREE_SAFE(color_map);
+  return 1;
+}
+
+int save_bmp(surface_t* s, const char* path) {
+  const int filesize = 54 + 3 * s->w * s->h;
+  unsigned char* img = (unsigned char *)malloc(3 * s->w * s->h);
+  if (!img) {
+    error_handle(PRIO_HIGH, "malloc() failed");
+    return 0;
+  }
+  memset(img, 0, 3 * s->w * s->h);
+  
+  int i, j, y, c;
+  for (i = 0; i < s->w; ++i) {
+    for (j = s->h; j > 0; --j) {
+      y = (s->h - 1) - j;
+      c = XYGET(s, i, y);
+      img[(i + y * s->w) * 3 + 2] = (unsigned char)R(c);
+      img[(i + y * s->w) * 3 + 1] = (unsigned char)G(c);
+      img[(i + y * s->w) * 3 + 0] = (unsigned char)B(c);
+    }
+  }
+  
+  unsigned char header[14] = {'B', 'M',
+    0,  0, 0, 0,
+    0,  0,
+    0,  0,
+    54, 0, 0, 0};
+  unsigned char info[40] = {40, 0, 0, 0,
+    0,  0, 0, 0,
+    0,  0, 0, 0,
+    1,  0,
+    24, 0};
+  unsigned char pad[3] = {0, 0, 0};
+  
+  header[2]  = (unsigned char)(filesize);
+  header[3]  = (unsigned char)(filesize >> 8);
+  header[4]  = (unsigned char)(filesize >> 16);
+  header[5]  = (unsigned char)(filesize >> 24);
+  
+  info[4]  = (unsigned char)(s->w);
+  info[5]  = (unsigned char)(s->w >> 8);
+  info[6]  = (unsigned char)(s->w >> 16);
+  info[7]  = (unsigned char)(s->w >> 24);
+  info[8]  = (unsigned char)(s->h);
+  info[9]  = (unsigned char)(s->h >> 8);
+  info[10] = (unsigned char)(s->h >> 16);
+  info[11] = (unsigned char)(s->h >> 24);
+  
+  FILE* fp = fopen(path, "wb");
+  if (!fp) {
+    error_handle(PRIO_NORM, "fopen() failed: %s", path);
+    free(img);
+    return 0;
+  }
+  
+  fwrite(header, 1, 14, fp);
+  fwrite(info, 1, 40, fp);
+  for(i = 0; i < s->h; ++i) {
+    fwrite(img + (s->w * (s->h - i - 1) * 3), 3, s->w, fp);
+    fwrite(pad, 1, (4 - (s->w * 3) % 4) % 4,fp);
+  }
+  
+  free(img);
+  fclose(fp);
+  return 1;
+}
 
 #if !defined(GRAPHICS_DISABLE_TEXT)
 static char font[540][8] = {
@@ -665,376 +2004,9 @@ static int extra_font_lookup[10] = {
   7922,
   7923
 };
-#endif
 
-static int mx = 0, my = 0, win_w, win_h;
+#define LINE_HEIGHT 10
 
-int surface(surface_t* s, unsigned int w, unsigned int h) {
-  s->w = w;
-  s->h = h;
-  size_t sz = w * h * sizeof(unsigned int) + 1;
-  s->buf = malloc(sz);
-  if (!s->buf) {
-    error_handle(PRIO_HIGH, "malloc() failed");
-    return 0;
-  }
-  memset(s->buf, 0, sz);
-
-  return 1;
-}
-
-void destroy(surface_t* s) {
-  if (s) {
-    FREE_SAFE(s->buf);
-    s->w = 0;
-    s->h = 0;
-  }
-}
-
-void fill(surface_t* s, int col) {
-  for (int i = 0; i < s->w * s->h; ++i)
-    s->buf[i] = col;
-}
-
-void cls(surface_t* s) {
-  memset(s->buf, 0, s->w * s->h * sizeof(int));
-}
-
-void pset(surface_t* s, int x, int y, int c)  {
-  if (x >= 0 && y >= 0 && x < s->w && y < s->h)
-    s->buf[y * s->w + x] = c;
-}
-
-#define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
-
-int alpha(int c0, int c1, float i) {
-  return (i == 1.f || i == 0.f ? c0 : RGB((int)roundf(R(c1) * (1 - i) + R(c0) * i),
-                                          (int)roundf(G(c1) * (1 - i) + G(c0) * i),
-                                          (int)roundf(B(c1) * (1 - i) + B(c0) * i)));
-}
-
-#if !defined(GRAPHICS_DISABLE_RGBA)
-#define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
-
-void psetb(surface_t* s, int x, int y, int c) {
-  int a = A(c);
-  if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
-    return;
-  
-  int* p = &s->buf[y * s->w + x];
-  int b = A(*p);
-  *p = (a == 255 || !b) ? c : RGBA(BLEND(R(c), R(*p), a, b),
-                                   BLEND(G(c), G(*p), a, b),
-                                   BLEND(B(c), B(*p), a, b),
-                                   a + (b * (255 - a) / 255));
-}
-
-static void(*__pset)(surface_t*, int, int, int) = psetb;
-#else
-void psetb(surface_t* s, int x, int y, int c) {
-  int a = A(c);
-  if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
-    return;
-  pset(s, x, y, alpha(c, XYGET(s, x, y), ((float)a / 255.f)));
-}
-
-static void(*__pset)(surface_t*, int, int, int) = pset;
-#endif
-
-int pget(surface_t* s, int x, int y) {
-  return (x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
-}
-
-int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
-  int offset_x = 0, offset_y = 0,
-      from_x = 0, from_y = 0,
-      width = src->w, height = src->h;
-  if (p) {
-    offset_x = p->x;
-    offset_y = p->y;
-  }
-  if (r) {
-    from_x = r->x;
-    from_y = r->y;
-    width  = r->w;
-    height = r->h;
-  }
-
-  if (offset_x < 0) {
-    from_x += abs(offset_x);
-    width -= abs(offset_x);
-    offset_x = 0;
-  }
-  if (offset_y < 0) {
-    from_y += abs(offset_y);
-    height -= abs(offset_y);
-    offset_y = 0;
-  }
-
-  int to_x = offset_x + width, to_y = offset_y + height;
-  if (to_x > dst->w)
-    width += (dst->w - to_x);
-  if (to_y > dst->h)
-    height += (dst->h - to_y);
-
-  if (offset_x > dst->w || offset_y > dst->h || to_x < 0 || to_y < 0)
-    return 0;
-
-  int x, y, c;
-  for (x = 0; x < width; ++x)
-    for (y = 0; y < height; ++y) {
-#if !defined(GRAPHICS_DISABLE_CHROMA_KEY) && defined(BLIT_CHROMA_KEY)
-      c = XYGET(src, from_x + x, from_y + y);
-      if (c == BLIT_CHROMA_KEY)
-        continue;
-#endif
-      __pset(dst, offset_x + x, offset_y + y, c);
-    }
-  return 1;
-}
-
-void vline(surface_t* s, int x, int y0, int y1, int col) {
-  if (y1 < y0) {
-    y0 += y1;
-    y1  = y0 - y1;
-    y0 -= y1;
-  }
-
-  if (x < 0 || x >= s->w || y0 >= s->h)
-    return;
-
-  if (y0 < 0)
-    y0 = 0;
-  if (y1 >= s->h)
-    y1 = s->h - 1;
-
-  for(int y = y0; y <= y1; y++)
-    __pset(s, x, y, col);
-}
-
-void hline(surface_t* s, int y, int x0, int x1, int col) {
-  if (x1 < x0) {
-    x0 += x1;
-    x1  = x0 - x1;
-    x0 -= x1;
-  }
-
-  if (y < 0 || y >= s->h || x0 >= s->w)
-    return;
-
-  if (x0 < 0)
-    x0 = 0;
-  if (x1 >= s->w)
-    x1 = s->w - 1;
-
-  for(int x = x0; x <= x1; x++)
-    __pset(s, x, y, col);
-}
-
-void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
-#if !defined(GRAPHICS_DISABLE_RGBA)
-  int a = A(col);
-  if (!a)
-    return;
-#else
-  int a = 255;
-#endif
-  
-  if (x0 == x1)
-    vline(s, x0, y0, y1, col);
-  if (y0 == y1)
-    hline(s, y0, x0, x1, col);
-
-  int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-#if defined(GRAPHICS_ENABLE_AA)
-  int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-  int err = dx - dy, e2, x2;
-  int ed = dx + dy == 0 ? 1 : sqrtf((float)dx * dx + (float)dy * dy);
-#else
-  int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-  int err = dx + dy, e2;
-#endif
-
-  for (;;) {
-#if defined(GRAPHICS_ENABLE_AA)
-    psetb(s, x0, y0, ACHAN(col, a - (a * abs(err - dx + dy) / ed)));
-    e2 = err;
-    x2 = x0;
-
-    if (2 * e2 >= -dx) {
-      if (x0 == x1)
-        break;
-      if (e2 + dy < ed)
-        psetb(s, x0, y0 + sy, ACHAN(col, a - (a * (e2 + dy) / ed)));
-      err -= dy;
-      x0 += sx;
-    }
-
-    if (2 * e2 <= dy) {
-      if (y0 == y1)
-        break;
-      if (dx - e2 < ed)
-        psetb(s, x2 + sx, y0, ACHAN(col, a - (a * (dx - e2) / ed)));
-      err += dx;
-      y0 += sy;
-    }
-#else
-    __pset(s, x0, y0, col);
-    e2 = 2 * err;
-
-    if (e2 >= dy) {
-      if (x0 == x1)
-        break;
-      err += dy;
-      x0 += sx;
-    }
-
-    if (e2 <= dx) {
-      if (y0 == y1)
-        break;
-      err += dx;
-      y0 += sy;
-    }
-#endif
-  }
-}
-
-#if defined(_MSC_VER)
-#define ALIGN_STRUCT(x) __declspec(align(x))
-#else
-#define ALIGN_STRUCT(x) __attribute__((aligned(x)))
-#endif
-
-#pragma pack(1)
-typedef struct {
-  unsigned short type; /* Magic identifier */
-  unsigned int size; /* File size in bytes */
-  unsigned int reserved;
-  unsigned int offset; /* Offset to image data, bytes */
-} ALIGN_STRUCT(2) BMPHEADER;
-#pragma pack()
-
-typedef struct {
-  unsigned int size; /* Header size in bytes */
-  int width, height; /* Width and height of image */
-  unsigned short planes; /* Number of colour planes */
-  unsigned short bits; /* Bits per pixel */
-  unsigned int compression; /* Compression type */
-  unsigned int image_size; /* Image size in bytes */
-  int xresolution, yresolution; /* Pixels per meter */
-  unsigned int ncolours; /* Number of colours */
-  unsigned int important_colours; /* Important colours */
-} BMPINFOHEADER;
-
-typedef struct {
-  unsigned int size; /* size of bitmap core header */
-  unsigned short width; /* image with */
-  unsigned short height; /* image height */
-  unsigned short planes; /* must be equal to 1 */
-  unsigned short count; /* bits per pixel */
-} BMPCOREHEADER;
-
-#define BMP_GET(d, b, s) \
-memcpy(d, b + off, s); \
-off += s;
-
-#define BMP_SET(c) (s->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
-
-int bmp(surface_t* s, const char* path) {
-  FILE* fp = fopen(path, "rb");
-  if (!fp) {
-    error_handle(PRIO_NORM, "fopen() failed: %s", path);
-    return 0;
-  }
-  
-  fseek(fp, 0, SEEK_END);
-  size_t length = ftell(fp);
-  rewind(fp);
-  
-  unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
-  if (!data) {
-    error_handle(PRIO_HIGH, "calloc() failed");
-    return 0;
-  }
-  fread(data, 1, length, fp);
-  fclose(fp);
-  
-  int off = 0;
-  BMPHEADER header;
-  BMPINFOHEADER info;
-  //BMPCOREHEADER core;
-  BMP_GET(&header, data, sizeof(BMPHEADER));
-  //int info_pos = off;
-  BMP_GET(&info, data, sizeof(BMPINFOHEADER));
-  
-  if (header.type != 0x4D42) {
-    error_handle(PRIO_NORM, "bmp() failed: invalid BMP signiture '%d'", header.type);
-    return 0;
-  }
-  
-#pragma TODO(Add support for OS/2 bitmaps)
-  
-  unsigned char* color_map = NULL;
-  int color_map_size = 0;
-  if (info.bits <= 8) {
-    color_map_size = (1 << info.bits) * 4;
-    color_map = (unsigned char*)malloc(color_map_size * sizeof(unsigned char));
-    if (!color_map) {
-      error_handle(PRIO_HIGH, "malloc() failed");
-      return 0;
-    }
-    BMP_GET(color_map, data, color_map_size);
-  }
-  
-  if (!surface(s, info.width, info.height)) {
-    FREE_SAFE(color_map);
-    error_handle(PRIO_HIGH, "malloc() failed");
-    return 0;
-  }
-  
-  off = header.offset;
-  int i, sz = info.width * info.height;
-  unsigned char color;
-  switch (info.compression) {
-    case 0: // RGB
-      switch (info.bits) { // BPP
-        case 1:
-        case 4:
-#pragma TODO(Add 1 & 4 bpp support);
-          error_handle(PRIO_NORM, "bmp() failed. Unsupported BPP: %d", info.bits);
-          destroy(s);
-          break;
-        case 8:
-          for (i = (sz - 1); i != -1; --i, ++off) {
-            color = data[off];
-            BMP_SET(RGB(color_map[(color * 4) + 2], color_map[(color * 4) + 1], color_map[(color * 4)]));
-          }
-          break;
-        case 24:
-        case 32:
-          for (i = (sz - 1); i != -1; --i, off += (info.bits == 32 ? 4 : 3))
-            BMP_SET(RGB(data[off + 2], data[off + 1], data[off]));
-          break;
-        default:
-          error_handle(PRIO_NORM, "bmp() failed. Unsupported BPP: %d", info.bits);
-          destroy(s);
-          break;
-      }
-      break;
-    case 1: // RLE8
-    case 2: // RLE4
-    default:
-#pragma TODO(Add RLE support);
-      error_handle(PRIO_NORM, "bmp() failed. Unsupported compression: %d", info.compression);
-      destroy(s);
-      break;
-  }
-  
-  FREE_SAFE(color_map);
-  return 1;
-}
-
-#if !defined(GRAPHICS_DISABLE_TEXT)
 static inline int letter_index(int c) {
   if (c >= 32 && c <= 126) // Latin
     return c - 32;
@@ -1101,17 +2073,75 @@ int character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
   return l;
 }
 
+int read_color(const char* str, int* col, int* len) {
+  const char* c = str;
+  if (*c != '(')
+    return 0;
+  int _len = 0;
+  while (c) {
+    _len++;
+    if (*c == ')' || _len > 17)
+      break;
+    c++;
+  }
+  if (_len > 17)
+    return 0;
+  *len = _len + 1;
+  if (!col)
+    return 1; // Skip colour parsing
+  
+  c = str + 1;
+  char rgba[4][4] = {
+    "0",
+    "0",
+    "0",
+    "255"
+  };
+  int n = 0;
+  for (int i = 0, j = 0, k = 0; i < (_len - 2); ++i) {
+    if (*c == ',') {
+      k++;
+      n++;
+      j = 0;
+    } else if (isdigit(*c) != -1) {
+      rgba[k][j++] = *c;
+    } else
+      return 0;
+    c++;
+  }
+  
+  *col = RGBA(atoi(rgba[0]), atoi(rgba[1]), atoi(rgba[2]), atoi(rgba[3]));
+  return 1;
+}
+
 void writeln(surface_t* s, int x, int y, int fg, int bg, const char* str) {
-  const char* c = (const char*)str;
-  int u = x, v = y;
-  while (c != NULL && *c != '\0') {
-    if (*c == '\n') {
-      v += LINE_HEIGHT;
-      u  = x;
-      c += 1;
-    } else {
-      c += character(s, c, u, v, fg, bg);
-      u += 8;
+  const char* c = str;
+  int u = x, v = y, col, len;
+  while (c && *c != '\0') {
+    switch (*c) {
+      case '\n':
+        v += LINE_HEIGHT;
+        u  = x;
+        c++;
+        break;
+      case '\f':
+        if (read_color(c + 1, &col, &len)) {
+          fg = col;
+          c += len;
+        } else
+          c++;
+        break;
+      case '\b':
+        if (read_color(c + 1, &col, &len)) {
+          bg = col;
+          c += len;
+        } else
+          c++;
+        break;
+      default:
+        c += character(s, c, u, v, fg, bg);
+        u += 8;
+        break;
     }
   }
 }
@@ -1137,19 +2167,30 @@ void writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...) 
   free(buffer);
 }
 
-static inline void string_size(const char* str, int* w, int* h) {
+static inline void str_size(const char* str, int* w, int* h) {
   const char* s = (const char*)str;
-  int n = 0, m = 0, l = 1, c;
+  int n = 0, m = 0, l = 1, c, len;
   while (s != NULL && *s != '\0') {
     c = *s;
     if (c >= 0 && c <= 127) {
-      if (c == 10) {
-        if (n > m)
-          m = n;
-        n = 0;
-        l++;
+      switch (c) {
+        case '\f':
+        case '\b':
+          if (read_color(s, NULL, &len)) {
+            s += len;
+            continue;
+          } else
+            s++;
+          break;
+        case '\n':
+          if (n > m)
+            m = n;
+          n = 0;
+          l++;
+        default:
+          s++;
+          break;
       }
-      s++;
     }
     else if ((c & 0xE0) == 0xC0)
       s += 2;
@@ -1167,7 +2208,7 @@ static inline void string_size(const char* str, int* w, int* h) {
 
 void string(surface_t* out, int fg, int bg, const char* str) {
   int w, h;
-  string_size(str, &w, &h);
+  str_size(str, &w, &h);
   surface(out, w * 8, h * LINE_HEIGHT);
   fill(out, (bg == -1 ? 0 : bg));
   writeln(out, 0, 0, fg, bg, str);
@@ -1192,6 +2233,8 @@ void stringf(surface_t* out, int fg, int bg, const char* fmt, ...) {
   string(out, fg, bg, buffer);
 }
 #endif
+
+static int ticks_started = 0;
 
 long ticks() {
 #if defined(_WIN32)
@@ -1225,1011 +2268,6 @@ void delay(long ms) {
 #else
   usleep((unsigned int)(ms * 1000));
 #endif
-}
-
-int reset(surface_t* s, int nw, int nh) {
-  size_t sz = nw * nh * sizeof(unsigned int) + 1;
-  int* tmp = realloc(s->buf, sz);
-  if (!tmp) {
-    error_handle(PRIO_HIGH, "realloc() failed");
-    return 0;
-  }
-  s->buf = tmp;
-  s->w = win_w;
-  s->h = win_h;
-  memset(s->buf, 0, sz);
-  return 1;
-}
-
-void resize_callback(void(*cb)(int, int)) {
-  if (cb)
-    __resize_callback = cb;
-}
-
-void mouse_xy(int* x, int* y) {
-  if (!x || !y)
-    return;
-
-  *x = mx;
-  *y = my;
-}
-
-void window_wh(int* w, int* h) {
-  if (!w || !h)
-    return;
-  
-  *w = win_w;
-  *h = win_h;
-}
-
-void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
-#if !defined(GRAPHICS_DISABLE_RGBA)
-  int a = A(col);
-  if (!a)
-    return;
-#else
-  int a = 255;
-#endif
-  
-  if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
-    return;
-
-  int x = -r, y = 0, err = 2 - 2 * r;
-#if defined(GRAPHICS_ENABLE_AA)
-  int i, x2, e2;
-  r = 1 - err;
-#endif
-
-  do {
-#if defined(GRAPHICS_ENABLE_AA)
-    i = ACHAN(col, 255 - (255 * abs(err - 2 * (x + y) - 2) / r));
-    psetb(s, xc - x, yc + y, i);
-    psetb(s, xc - y, yc - x, i);
-    psetb(s, xc + x, yc - y, i);
-    psetb(s, xc + y, yc + x, i);
-
-    if (fill) {
-      hline(s, yc - y, xc - x - 1, xc + x + 1, col);
-      hline(s, yc + y, xc - x - 1, xc + x + 1, col);
-    }
-
-    e2 = err;
-    x2 = x;
-    if (err + y > 0) {
-      i = 255 * (err - 2 * x - 1) / r;
-      if (i < 256) {
-        i = ACHAN(col, 255 - i);
-        psetb(s, xc - x, yc + y + 1, i);
-        psetb(s, xc - y - 1, yc - x, i);
-        psetb(s, xc + x, yc - y - 1, i);
-        psetb(s, xc + y + 1, yc + x, i);
-      }
-      err += ++x * 2 + 1;
-    }
-
-    if (e2 + x2 <= 0) {
-      i = 255 * (2 * y + 3 - e2) / r;
-      if (i < 256) {
-        i = ACHAN(col, 255 - i);
-        psetb(s, xc - x2 - 1, yc + y, i);
-        psetb(s, xc - y, yc - x2 - 1, i);
-        psetb(s, xc + x2 + 1, yc - y, i);
-        psetb(s, xc + y, yc + x2 + 1, i);
-      }
-      err += ++y * 2 + 1;
-    }
-#else
-    __pset(s, xc - x, yc + y, col);
-    __pset(s, xc - y, yc - x, col);
-    __pset(s, xc + x, yc - y, col);
-    __pset(s, xc + y, yc + x, col);
-
-    if (fill) {
-      hline(s, yc - y, xc - x, xc + x, col);
-      hline(s, yc + y, xc - x, xc + x, col);
-  }
-
-    r = err;
-    if (r <= y)
-      err += ++y * 2 + 1;
-    if (r > x || err > y)
-      err += ++x * 2 + 1;
-#endif
-  } while (x < 0);
-}
-
-void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
-#if defined(GRAPHICS_ENABLE_AA)
-#pragma TODO(Add AA option);
-#endif
-  
-  int x = -rx, y = 0;
-  long e2 = ry, dx = (1 + 2 * x) * e2 * e2;
-  long dy = x * x, err = dx + dy;
-
-  do {
-    psetb(s, xc - x, yc + y, col);
-    psetb(s, xc + x, yc + y, col);
-    psetb(s, xc + x, yc - y, col);
-    psetb(s, xc - x, yc - y, col);
-
-    if (fill) {
-      hline(s, yc - y, xc - x, xc + x, col);
-      hline(s, yc + y, xc - x, xc + x, col);
-    }
-
-    e2 = 2 * err;
-    if (e2 >= dx) {
-      x++;
-      err += dx += 2 * (long)ry * ry;
-    }
-    if (e2 <= dy) {
-      y++;
-      err += dy += 2 * (long)rx * rx;
-    }
-  } while (x <= 0);
-}
-
-void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill) {
-#pragma FIXME(This is borked without AA)
-#pragma FIXME(Arithmic error when too big with AA)
-  
-  long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
-  float dx = 4 * (a - 1.) * b * b, dy = 4 * (b1 + 1) * a * a;
-  float err = b1 * a * a - dx + dy;
-
-#if defined(GRAPHICS_ENABLE_AA)
-  int f, ed, i;
-
-  if (a == 0 || b == 0)
-    line(s, x0, y0, x1, y1, col);
-#else
-  long e2;
-#endif
-
-  if (x0 > x1) {
-    x0 = x1;
-    x1 += a;
-  }
-  if (y0 > y1)
-    y0 = y1;
-  y0 += (b + 1) / 2;
-  y1 = y0 - (int)b1;
-  a = 8 * a * a;
-  b1 = 8 * b * b;
-
-#if defined(GRAPHICS_ENABLE_AA)
-  for (;;) {
-    i = fminf(dx, dy);
-    ed = fmaxf(dx, dy);
-    if (!i || !ed)
-      break;
-    if (y0 == y1 + 1 && err > dy && a > b1)
-      ed = 255 * 4. / a;
-    else
-      ed = 255 / (ed + 2 * ed * i * i / (4 * ed * ed + i * i)); // Fix overflow
-    
-    i = ACHAN(col, 255 - (ed * (int)fabsf(err + dx - dy)));
-    psetb(s, x0, y0, i);
-    psetb(s, x0, y1, i);
-    psetb(s, x1, y0, i);
-    psetb(s, x1, y1, i);
-
-    if (fill) {
-      hline(s, y0, x0 + 1, x1 - 1, col);
-      hline(s, y1, x0 + 1, x1 - 1, col);
-    }
-
-    if ((f = 2 * err + dy >= 0)) {
-      if (x0 >= x1)
-        break;
-
-      i = ed * (err + dx);
-      if (i < 255) {
-        i = ACHAN(col, 255 - i);
-        psetb(s, x0, y0 + 1, i);
-        psetb(s, x0, y1 - 1, i);
-        psetb(s, x1, y0 + 1, i);
-        psetb(s, x1, y1 - 1, i);
-      }
-    }
-
-    if (2 * err <= dx) {
-      i = ed * (dy - err);
-      if (i < 255) {
-        i = ACHAN(col, 255 - i);
-        psetb(s, x0 + 1, y0, i);
-        psetb(s, x1 - 1, y0, i);
-        psetb(s, x0 + 1, y1, i);
-        psetb(s, x1 - 1, y1, i);
-      }
-
-      y0++;
-      y1--;
-      err += dy += a;
-    }
-
-    if (f) {
-      x0++; x1--;
-      err -= dx -= b1;
-    }
-  }
-
-  if (--x0 == x1++)
-    while (y0 - y1 < b) {
-      i = ACHAN(col, 255 - (255 * 4 * (int)fabsf(err + dx) / (int)b1));
-      psetb(s, x0, ++y0, i);
-      psetb(s, x1, y0, i);
-      psetb(s, x0, --y1, i);
-      psetb(s, x1, y1, i);
-      err += dy += a;
-    }
-#else
-  do {
-    __pset(s, x1, y0, col);
-    __pset(s, x0, y0, col);
-    __pset(s, x0, y1, col);
-    __pset(s, x1, y1, col);
-
-    if (fill) {
-      hline(s, y0, x0, x1, col);
-      hline(s, y1, x0, x1, col);
-    }
-
-    e2 = 2 * err;
-    if (e2 <= dy) {
-      y0++;
-      y1--;
-      err += dy += a;
-    }
-
-    if (e2 >= dx || 2 * err > dy) {
-      x0++;
-      x1--;
-      err += dx += b1;
-    }
-  } while (x0 <= x1);
-#endif
-}
-
-static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
-  int sx = x2 - x1, sy = y2 - y1;
-  long xx = x0 - x1, yy = y0 - y1, xy;
-  float dx, dy, err, cur = xx * sy - yy * sx;
-
-  if (sx * (long)sx + sy * (long)sy > xx * xx + yy * yy) {
-    x2 = x0;
-    x0 = sx + x1;
-    y2 = y0;
-    y0 = sy + y1;
-    cur = -cur;
-  }
-
-  if (cur != 0.f) {
-    xx += sx;
-    xx *= sx = x0 < x2 ? 1 : -1;
-    yy += sy;
-    yy *= sy = y0 < y2 ? 1 : -1;
-    xy = 2 * xx * yy;
-    xx *= xx;
-    yy *= yy;
-    if (cur * sx * sy < 0) {
-      xx = -xx;
-      yy = -yy;
-      xy = -xy;
-      cur = -cur;
-    }
-
-    dx = 4.f * sy * (x1 - x0) * cur + xx - xy;
-    dy = 4.f * sx * (y0 - y1) * cur + yy - xy;
-    xx += xx;
-    yy += yy;
-    err = dx + dy + xy;
-
-#if defined(GRAPHICS_ENABLE_AA)
-    float ed;
-#endif
-
-    do {
-#if defined(GRAPHICS_ENABLE_AA)
-      cur = fminf(dx + xy, -xy - dy);
-      ed = fmaxf(dx + xy, -xy - dy);
-      ed += 2 * ed * cur * cur / (4 * ed * ed + cur * cur);
-      psetb(s, x0, y0, ACHAN(col, 255 - (int)(255 * fabsf(err - dx - dy - xy) / ed)));
-      if (x0 == x2 || y0 == y2)
-        break;
-
-      x1 = x0;
-      cur = dx - err;
-      y1 = 2 * err + dy < 0;
-      if (2 * err + dx > 0) {
-        if (err - dy < ed)
-          psetb(s, x0, y0 + sy, ACHAN(col, 255 - (int)(255 * fabsf(err - dy) / ed)));
-        x0 += sx;
-        dx -= xy;
-        err += dy += yy;
-      }
-
-      if (y1) {
-        if (cur < ed)
-          psetb(s, x1 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(cur) / ed)));
-        y0 += sy;
-        dy -= xy;
-        err += dx += xx;
-      }
-    } while (dy < dx);
-#else
-      __pset(s, x0, y0, col);
-      if (x0 == x2 && y0 == y2)
-        return;
-
-      y1 = 2 * err < dx;
-      if (2 * err > dy) {
-        x0 += sx;
-        dx -= xy;
-        err += dy += yy;
-      }
-
-      if (y1) {
-        y0 += sy;
-        dy -= xy;
-        err += dx += xx;
-      }
-    } while (dy < 0 && dx > 0);
-#endif
-  }
-
-  line(s, x0, y0, x2, y2, col);
-}
-
-void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
-  int x = x0 - x1, y = y0 - y1;
-  float t = x0 - 2 * x1 + x2, r;
-
-  if ((long)x * (x2 - x1) > 0) {
-    if ((long)y * (y2 - y1) > 0)
-      if (fabsf((y0 - 2 * y1 + y2) / t * x) > abs(y)) {
-        x0 = x2;
-        x2 = x + x1;
-        y0 = y2;
-        y2 = y + y1;
-      }
-
-    t = (x0 - x1) / t;
-    r = (1 - t) * ((1 - t) * y0 + 2.f * t * y1) + t * t*y2;
-    t = (x0 * x2 - x1 * x1) * t / (x0 - x1);
-    x = floorf(t + .5f);
-    y = floorf(r + .5f);
-    r = (y1 - y0) * (t - x0) / (x1 - x0) + y0;
-    bezier_seg(s, x0, y0, x, floorf(r + .5f), x, y, col);
-    r = (y1 - y2) * (t - x2) / (x1 - x2) + y2;
-    x0 = x1 = x;
-    y0 = y;
-    y1 = floorf(r + .5f);
-  }
-
-  if ((long)(y0 - y1) * (y2 - y1) > 0) {
-    t = y0 - 2 * y1 + y2; t = (y0 - y1) / t;
-    r = (1 - t) * ((1 - t) * x0 + 2.f * t * x1) + t * t * x2;
-    t = (y0 * y2 - y1 * y1) * t / (y0 - y1);
-    x = floorf(r + .5f);
-    y = floorf(t + .5f);
-    r = (x1 - x0) * (t - y0) / (y1 - y0) + x0;
-    bezier_seg(s, x0, y0, floorf(r + .5f), y, x, y, col);
-    r = (x1 - x2) * (t - y2) / (y1 - y2) + x2;
-    x0 = x;
-    x1 = floorf(r + .5f);
-    y0 = y1 = y;
-  }
-
-  bezier_seg(s, x0, y0, x1, y1, x2, y2, col);
-}
-
-static void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
-  int sx = x2 - x1, sy = y2 - y1;
-  float dx = x0 - x2, dy = y0 - y2, xx = x0 - x1, yy = y0 - y1;
-  float xy = xx * sy + yy * sx, cur = xx * sy - yy * sx, err;
-
-#if defined(GRAPHICS_ENABLE_AA)
-  float ed;
-  int f;
-#endif
-
-  if (cur != .0f && w > .0f) {
-    if (sx * (long)sx + sy * (long)sy > xx * xx + yy * yy) {
-      x2 = x0;
-      x0 -= dx;
-      y2 = y0;
-      y0 -= dy;
-      cur = -cur;
-    }
-    xx = 2.f * (4.f * w * sx * xx + dx * dx);
-    yy = 2.f * (4.f * w * sy * yy + dy * dy);
-    sx = x0 < x2 ? 1 : -1;
-    sy = y0 < y2 ? 1 : -1;
-    xy = -2.f * sx * sy * (2.f * w * xy + dx * dy);
-
-    if (cur * sx * sy < .0f) {
-      xx = -xx;
-      yy = -yy;
-      cur = -cur;
-      xy = -xy;
-    }
-    dx = 4.f * w * (x1 - x0) * sy * cur + xx / 2.f + xy;
-    dy = 4.f * w * (y0 - y1) * sx * cur + yy / 2.f + xy;
-
-#if defined(GRAPHICS_ENABLE_AA)
-    if (w < .5f && dy > dx) {
-#else
-    if (w < .5f && (dy > xy || dx < xy)) {
-#endif
-      cur = (w + 1.f) / 2.f;
-      w = sqrtf(w);
-      xy = 1.f / (w + 1.f);
-      sx = floorf((x0 + 2.f * w * x1 + x2) * xy / 2.f + .5f);
-      sy = floorf((y0 + 2.f * w * y1 + y2) * xy / 2.f + .5f);
-      dx = floorf((w * x1 + x0) * xy + .5f);
-      dy = floorf((y1 * w + y0) * xy + .5f);
-      bezier_seg_rational(s, x0, y0, dx, dy, sx, sy, cur, col);
-      dx = floorf((w * x1 + x2) * xy + .5f);
-      dy = floorf((y1 * w + y2) * xy + .5f);
-      bezier_seg_rational(s, sx, sy, dx, dy, x2, y2, cur, col);
-      return;
-    }
-
-    err = dx + dy - xy;
-    do {
-#if defined(GRAPHICS_ENABLE_AA)
-      cur = fminf(dx - xy, xy - dy);
-      ed = fmaxf(dx - xy, xy - dy);
-      ed += 2 * ed * cur * cur / (4.f * ed * ed + cur * cur);
-      x1 = 255 * fabsf(err - dx - dy + xy) / ed;
-      if (x1 < 256)
-        psetb(s, x0, y0, ACHAN(col, 255 - x1));
-
-      if ((f = 2 * err + dy < 0)) {
-        if (y0 == y2)
-          return;
-        if (dx - err < ed)
-          psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(dx - err) / ed)));
-      }
-
-      if (2 * err + dx > 0) {
-        if (x0 == x2)
-          return;
-        if (err - dy < ed)
-          psetb(s, x0, y0 + sy, ACHAN(col, 255 - (int)(255 * fabsf(err - dy) / ed)));
-        x0 += sx;
-        dx += xy;
-        err += dy += yy;
-      }
-
-      if (f) {
-        y0 += sy;
-        dy += xy;
-        err += dx += xx;
-      }
-    } while (dy < dx);
-#else
-      __pset(s, x0, y0, col);
-      if (x0 == x2 && y0 == y2)
-        return;
-
-      x1 = 2 * err > dy;
-      y1 = 2 * (err + yy) < -dy;
-      if (2 * err < dx || y1) {
-        y0 += sy;
-        dy += xy;
-        err += dx += xx;
-      }
-
-      if (2 * err > dx || x1) {
-        x0 += sx;
-        dx += xy;
-        err += dy += yy;
-      }
-    } while (dy < dx);
-#endif
-  }
-  line(s, x0, y0, x2, y2, col);
-}
-
-void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
-  int x = x0 - 2 * x1 + x2, y = y0 - 2 * y1 + y2;
-  float xx = x0 - x1, yy = y0 - y1, ww, t, q;
-
-  if (xx * (x2 - x1) > 0) {
-    if (yy * (y2 - y1) > 0)
-      if (fabsf(xx * y) > fabsf(yy * x)) {
-        x0 = x2;
-        x2 = xx + x1;
-        y0 = y2;
-        y2 = yy + y1;
-      }
-
-    if (x0 == x2 || w == 1.f)
-      t = (x0 - x1) / (double)x;
-    else {
-      q = sqrtf(4.f * w * w * (x0 - x1) * (x2 - x1) + (x2 - x0) * (long)(x2 - x0));
-      if (x1 < x0)
-        q = -q;
-      t = (2.f * w * (x0 - x1) - x0 + x2 + q) / (2.f * (1.f - w) * (x2 - x0));
-    }
-
-    q = 1.f / (2.f * t * (1.f - t) * (w - 1.f) + 1.f);
-    xx = (t * t * (x0 - 2.f * w * x1 + x2) + 2.f * t * (w * x1 - x0) + x0) * q;
-    yy = (t * t * (y0 - 2.f * w * y1 + y2) + 2.f * t * (w * y1 - y0) + y0) * q;
-    ww = t * (w - 1.f) + 1.f;
-    ww *= ww * q;
-    w = ((1.f - t) * (w - 1.f) + 1.f) * sqrtf(q);
-    x = floorf(xx + .5f);
-    y = floorf(yy + .5f);
-    yy = (xx - x0) * (y1 - y0) / (x1 - x0) + y0;
-    bezier_seg_rational(s, x0, y0, x, floorf(yy + .5f), x, y, ww, col);
-    yy = (xx - x2) * (y1 - y2) / (x1 - x2) + y2;
-    y1 = floorf(yy + .5f);
-    x0 = x1 = x;
-    y0 = y;
-  }
-
-  if ((y0 - y1) * (long)(y2 - y1) > 0) {
-    if (y0 == y2 || w == 1.f)
-      t = (y0 - y1) / (y0 - 2.f * y1 + y2);
-    else {
-      q = sqrtf(4.f * w * w * (y0 - y1) * (y2 - y1) + (y2 - y0) * (long)(y2 - y0));
-      if (y1 < y0)
-        q = -q;
-      t = (2.f * w * (y0 - y1) - y0 + y2 + q) / (2.f * (1.f - w) * (y2 - y0));
-    }
-
-    q = 1.f / (2.f * t * (1.f - t) * (w - 1.f) + 1.f);
-    xx = (t * t * (x0 - 2.f * w * x1 + x2) + 2.f * t * (w * x1 - x0) + x0) * q;
-    yy = (t * t * (y0 - 2.f * w * y1 + y2) + 2.f * t * (w * y1 - y0) + y0) * q;
-    ww = t * (w - 1.f) + 1.f;
-    ww *= ww * q;
-    w = ((1.f - t) * (w - 1.f) + 1.f) * sqrtf(q);
-    x = floorf(xx + .5f);
-    y = floorf(yy + .5f);
-    xx = (x1 - x0) * (yy - y0) / (y1 - y0) + x0;
-    bezier_seg_rational(s, x0, y0, floorf(xx + .5f), y, x, y, ww, col);
-    xx = (x1 - x2) * (yy - y2) / (y1 - y2) + x2;
-    x1 = floorf(xx + .5f);
-    x0 = x;
-    y0 = y1 = y;
-  }
-
-  bezier_seg_rational(s, x0, y0, x1, y1, x2, y2, w*w, col);
-}
-
-void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col) {
-#pragma TODO(Add fill option);
-  int xd = x1 - x0, yd = y1 - y0;
-  float w = xd * (long)yd;
-  if (zd == 0)
-    ellipse_rect(s, x0, y0, x1, y1, col, 0);
-  if (w != 0.f)
-    w = (w - zd) / (w + w);
-
-  xd = floorf(xd * w + .5f);
-  yd = floorf(yd * w + .5f);
-
-  bezier_seg_rational(s, x0, y0 + yd, x0, y0, x0 + xd, y0, 1.f - w, col);
-  bezier_seg_rational(s, x0, y0 + yd, x0, y1, x1 - xd, y1, w, col);
-  bezier_seg_rational(s, x1, y1 - yd, x1, y1, x1 - xd, y1, 1.f - w, col);
-  bezier_seg_rational(s, x1, y1 - yd, x1, y0, x0 + xd, y0, w, col);
-}
-
-void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col) {
-#pragma TODO(Add fill option);
-  float xd = (long)a * a, yd = (long)b * b;
-  float q = sinf(angle), zd = (xd - yd) * q;
-  xd = sqrtf(xd - zd * q);
-  yd = sqrtf(yd + zd * q);
-  a = xd + .5f;
-  b = yd + .5f;
-  zd = zd * a * b / (xd * yd);
-  ellipse_rect_rotated(s, x - a, y - b, x + a, y + b, (long)(4 * zd * cosf(angle)), col);
-}
-
-static void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, float x2, float y2, int x3, int y3, int col) {
-  int f, fx, fy, leg = 1;
-  int sx = x0 < x3 ? 1 : -1, sy = y0 < y3 ? 1 : -1;
-  float xc = -fabsf(x0 + x1 - x2 - x3), xa = xc - 4 * sx * (x1 - x2), xb = sx * (x0 - x1 - x2 + x3);
-  float yc = -fabsf(y0 + y1 - y2 - y3), ya = yc - 4 * sy * (y1 - y2), yb = sy * (y0 - y1 - y2 + y3);
-  float ab, ac, bc, ba, xx, xy, yy, dx, dy, ex, EP = .01f;
-
-#if defined(GRAPHICS_ENABLE_AA)
-  float px, py, ed, ip;
-#else
-  float* pxy;
-#endif
-
-  if (xa == 0.f && ya == 0.f) {
-    sx = floorf((3 * x1 - x0 + 1) / 2); sy = floorf((3 * y1 - y0 + 1) / 2);
-    bezier_seg(s, x0, y0, sx, sy, x3, y3, col);
-    return;
-  }
-
-  x1 = (x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0) + 1;
-  x2 = (x2 - x3) * (x2 - x3) + (y2 - y3) * (y2 - y3) + 1;
-
-  do {
-    ab = xa * yb - xb * ya;
-    ac = xa * yc - xc * ya;
-    bc = xb * yc - xc * yb;
-    ex = ab * (ab + ac - 3 * bc) + ac * ac;
-    f = ex > 0 ? 1 : sqrtf(1 + 1024 / x1);
-
-    ab *= f; ac *= f;
-    bc *= f;
-    ex *= f * f;
-    xy = 9 * (ab + ac + bc) / 8;
-#if defined(GRAPHICS_ENABLE_AA)
-    ip = 4 * ab * bc - ac * ac;
-#endif
-    ba = 8 * (xa - ya);
-    dx = 27 * (8 * ab * (yb * yb - ya * yc) + ex * (ya + 2 * yb + yc)) / 64 - ya * ya * (xy - ya);
-    dy = 27 * (8 * ab * (xb * xb - xa * xc) - ex * (xa + 2 * xb + xc)) / 64 - xa * xa * (xy + xa);
-
-    xx = 3 * (3 * ab * (3 * yb * yb - ya * ya - 2 * ya * yc) - ya * (3 * ac * (ya + yb) + ya * ba)) / 4;
-    yy = 3 * (3 * ab * (3 * xb * xb - xa * xa - 2 * xa * xc) - xa * (3 * ac * (xa + xb) + xa * ba)) / 4;
-    xy = xa * ya * (6 * ab + 6 * ac - 3 * bc + ba);
-    ac = ya * ya;
-    ba = xa * xa;
-    xy = 3 * (xy + 9 * f * (ba * yb * yc - xb * xc * ac) - 18 * xb * yb * ab) / 8;
-
-    if (ex < 0) {
-      dx = -dx;
-      dy = -dy;
-      xx = -xx;
-      yy = -yy;
-      xy = -xy;
-      ac = -ac;
-      ba = -ba;
-    }
-    ab = 6 * ya * ac;
-    ac = -6 * xa * ac;
-    bc = 6 * ya * ba;
-    ba = -6 * xa * ba;
-    dx += xy;
-    ex = dx + dy;
-    dy += xy;
-
-#if defined(GRAPHICS_ENABLE_AA)
-    for (fx = fy = f; x0 != x3 && y0 != y3; ) {
-      y1 = fminf(fabsf(xy - dx), fabsf(dy - xy));
-      ed = fmaxf(fabsf(xy - dx), fabsf(dy - xy));
-      ed = f * (ed + 2 * ed * y1 * y1 / (4 * ed * ed + y1 * y1));
-      y1 = 255 * fabsf(ex - (f - fx + 1) * dx - (f - fy + 1) * dy + f * xy) / ed;
-      if (y1 < 256)
-        psetb(s, x0, y0, ACHAN(col, 255 - (int)y1));
-      px = fabsf(ex - (f - fx + 1) * dx + (fy - 1) * dy);
-      py = fabsf(ex + (fx - 1) * dx - (f - fy + 1) * dy);
-      y2 = y0;
-      do {
-        if (ip >= -EP)
-          if (dx + xx > xy || dy + yy < xy)
-            goto exit;
-
-        y1 = 2 * ex + dx;
-        if (2 * ex + dy > 0) {
-          fx--;
-          ex += dx += xx;
-          dy += xy += ac;
-          yy += bc;
-          xx += ab;
-        }
-        else if (y1 > 0)
-          goto exit;
-        if (y1 <= 0) {
-          fy--;
-          ex += dy += yy;
-          dx += xy += bc;
-          xx += ac;
-          yy += ba;
-        }
-      } while (fx > 0 && fy > 0);
-
-      if (2 * fy <= f) {
-        if (py < ed)
-          psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
-        y0 += sy;
-        fy += f;
-      }
-
-      if (2 * fx <= f) {
-        if (px < ed)
-          psetb(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
-        x0 += sx;
-        fx += f;
-      }
-    }
-    break;
-
-  exit:
-    if (2 * ex < dy && 2 * fy <= f + 2) {
-      if (py < ed)
-        psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
-      y0 += sy;
-    }
-
-    if (2 * ex > dx && 2 * fx <= f + 2) {
-      if (px < ed)
-        psetb(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
-      x0 += sx;
-    }
-
-    xx = x0;
-    x0 = x3;
-    x3 = xx;
-    sx = -sx;
-    xb = -xb;
-    yy = y0;
-    y0 = y3;
-    y3 = yy;
-    sy = -sy;
-    yb = -yb;
-    x1 = x2;
-#else
-    for (pxy = &xy, fx = fy = f; x0 != x3 && y0 != y3;) {
-      __pset(s, x0, y0, col);
-      do {
-        if (dx > *pxy || dy < *pxy)
-          goto exit;
-
-        y1 = 2 * ex - dy;
-        if (2 * ex >= dx) {
-          fx--;
-          ex += dx += xx;
-          dy += xy += ac;
-          yy += bc;
-          xx += ab;
-        }
-
-        if (y1 <= 0) {
-          fy--;
-          ex += dy += yy;
-          dx += xy += bc;
-          xx += ac;
-          yy += ba;
-        }
-      } while (fx > 0 && fy > 0);
-
-      if (2 * fx <= f) {
-        x0 += sx;
-        fx += f;
-      }
-      if (2 * fy <= f) {
-        y0 += sy;
-        fy += f;
-      }
-      if (pxy == &xy && dx < 0 && dy > 0)
-        pxy = &EP;
-    }
-
-  exit:
-    xx = x0;
-    x0 = x3;
-    x3 = xx;
-    sx = -sx;
-    xb = -xb;
-    yy = y0;
-    y0 = y3;
-    y3 = yy;
-    sy = -sy;
-    yb = -yb;
-    x1 = x2;
-#endif
-  } while (leg--);
-
-  line(s, x0, y0, x3, y3, col);
-}
-
-void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col) {
-  int n = 0, i = 0;
-  long xc = x0 + x1 - x2 - x3, xa = xc - 4 * (x1 - x2);
-  long xb = x0 - x1 - x2 + x3, xd = xb + 4 * (x1 + x2);
-  long yc = y0 + y1 - y2 - y3, ya = yc - 4 * (y1 - y2);
-  long yb = y0 - y1 - y2 + y3, yd = yb + 4 * (y1 + y2);
-  float fx0 = x0, fx1, fx2, fx3, fy0 = y0, fy1, fy2, fy3;
-  float t1 = xb * xb - xa * xc, t2, t[5];
-
-  if (xa == 0) {
-    if (labs(xc) < 2 * labs(xb))
-      t[n++] = xc / (2.f * xb);
-  } else if (t1 > .0f) {
-    t2 = sqrtf(t1);
-    t1 = (xb - t2) / xa;
-    if (fabsf(t1) < 1.f)
-      t[n++] = t1;
-    t1 = (xb + t2) / xa;
-    if (fabsf(t1) < 1.f)
-      t[n++] = t1;
-  }
-
-  t1 = yb * yb - ya * yc;
-  if (ya == 0) {
-    if (labs(yc) < 2 * labs(yb))
-      t[n++] = yc / (2.f * yb);
-  } else if (t1 > .0f) {
-    t2 = sqrtf(t1);
-    t1 = (yb - t2) / ya;
-    if (fabsf(t1) < 1.f)
-      t[n++] = t1;
-    t1 = (yb + t2) / ya;
-    if (fabsf(t1) < 1.f)
-      t[n++] = t1;
-  }
-
-  for (i = 1; i < n; i++)
-    if ((t1 = t[i - 1]) > t[i]) {
-      t[i - 1] = t[i];
-      t[i] = t1; i = 0;
-    }
-
-  t1 = -1.; t[n] = 1.;
-  for (i = 0; i <= n; i++) {
-    t2 = t[i];
-    fx1 = (t1 * (t1 * xb - 2 * xc) - t2 * (t1 * (t1 * xa - 2 * xb) + xc) + xd) / 8 - fx0;
-    fy1 = (t1 * (t1 * yb - 2 * yc) - t2 * (t1 * (t1 * ya - 2 * yb) + yc) + yd) / 8 - fy0;
-    fx2 = (t2 * (t2 * xb - 2 * xc) - t1 * (t2 * (t2 * xa - 2 * xb) + xc) + xd) / 8 - fx0;
-    fy2 = (t2 * (t2 * yb - 2 * yc) - t1 * (t2 * (t2 * ya - 2 * yb) + yc) + yd) / 8 - fy0;
-    fx0 -= fx3 = (t2 * (t2 * (3 * xb - t2 * xa) - 3 * xc) + xd) / 8;
-    fy0 -= fy3 = (t2 * (t2 * (3 * yb - t2 * ya) - 3 * yc) + yd) / 8;
-    x3 = floorf(fx3 + .5f);
-    y3 = floorf(fy3 + .5f);
-
-    if (fx0 != .0f) {
-      fx1 *= fx0 = (x0 - x3) / fx0;
-      fx2 *= fx0;
-    }
-    if (fy0 != .0f) {
-      fy1 *= fy0 = (y0 - y3) / fy0;
-      fy2 *= fy0;
-    }
-    if (x0 != x3 || y0 != y3)
-      bezier_seg_cubic(s, x0, y0, x0 + fx1, y0 + fy1, x0 + fx2, y0 + fy2, x3, y3, col);
-
-    x0 = x3;
-    y0 = y3;
-    fx0 = fx3;
-    fy0 = fy3;
-    t1 = t2;
-  }
-}
-
-void rect(surface_t* s, int x, int y, int w, int h, int col, int fill) {
-  if (x < 0) {
-    w += x;
-    x  = 0;
-  }
-  if (y < 0) {
-    h += y;
-    y  = 0;
-  }
-
-  w += x;
-  h += y;
-  if (w < 0 || h < 0 || x > s->w || y > s->h)
-    return;
-
-  if (w > s->w)
-    w = s->w;
-  if (h > s->h)
-    h = s->h;
-
-  if (fill) {
-    for (; y < h; ++y)
-      hline(s, y, x, w, col);
-  } else {
-    hline(s, y, x, w, col);
-    hline(s, h, x, w, col);
-    vline(s, x, y, h, col);
-    vline(s, w, y, h, col);
-  }
-}
-
-int save_bmp(surface_t* s, const char* path) {
-  const int filesize = 54 + 3 * s->w * s->h;
-  unsigned char* img = (unsigned char *)malloc(3 * s->w * s->h);
-  if (!img) {
-    error_handle(PRIO_HIGH, "malloc() failed");
-    return 0;
-  }
-  memset(img, 0, 3 * s->w * s->h);
-
-  int i, j, y, c;
-  for (i = 0; i < s->w; ++i) {
-    for (j = s->h; j > 0; --j) {
-      y = (s->h - 1) - j;
-      c = XYGET(s, i, y);
-      img[(i + y * s->w) * 3 + 2] = (unsigned char)R(c);
-      img[(i + y * s->w) * 3 + 1] = (unsigned char)G(c);
-      img[(i + y * s->w) * 3 + 0] = (unsigned char)B(c);
-    }
-  }
-
-  unsigned char header[14] = {'B', 'M',
-                               0,  0, 0, 0,
-                               0,  0,
-                               0,  0,
-                               54, 0, 0, 0};
-  unsigned char info[40] = {40, 0, 0, 0,
-                            0,  0, 0, 0,
-                            0,  0, 0, 0,
-                            1,  0,
-                            24, 0};
-  unsigned char pad[3] = {0, 0, 0};
-
-  header[2]  = (unsigned char)(filesize);
-  header[3]  = (unsigned char)(filesize >> 8);
-  header[4]  = (unsigned char)(filesize >> 16);
-  header[5]  = (unsigned char)(filesize >> 24);
-
-  info[4]  = (unsigned char)(s->w);
-  info[5]  = (unsigned char)(s->w >> 8);
-  info[6]  = (unsigned char)(s->w >> 16);
-  info[7]  = (unsigned char)(s->w >> 24);
-  info[8]  = (unsigned char)(s->h);
-  info[9]  = (unsigned char)(s->h >> 8);
-  info[10] = (unsigned char)(s->h >> 16);
-  info[11] = (unsigned char)(s->h >> 24);
-
-  FILE* fp = fopen(path, "wb");
-  if (!fp) {
-    error_handle(PRIO_NORM, "fopen() failed: %s", path);
-    free(img);
-    return 0;
-  }
-
-  fwrite(header, 1, 14, fp);
-  fwrite(info, 1, 40, fp);
-  for(i = 0; i < s->h; ++i) {
-    fwrite(img + (s->w * (s->h - i - 1) * 3), 3, s->w, fp);
-    fwrite(pad, 1, (4 - (s->w * 3) % 4) % 4,fp);
-  }
-
-  free(img);
-  fclose(fp);
-  return 1;
-}
-
-int copy(surface_t* in, surface_t* out) {
-  if (!surface(out, in->w, in->h))
-    return 0;
-  memcpy(out->buf, in->buf, in->w * in->h * sizeof(unsigned int) + 1);
-  return !!out->buf;
-}
-
-void filter(surface_t* s, int (*fn)(int x, int y, int col)) {
-  if (!s)
-    return;
-
-  int x, y;
-  for (x = 0; x < s->w; ++x)
-    for (y = 0; y < s->h; ++y)
-      __pset(s, x, y, fn(x, y, XYGET(s, x, y)));
-}
-
-int resize(surface_t* in, int nw, int nh, surface_t* out) {
-  if (!surface(out, nw, nh))
-    return 0;
-
-  int x_ratio = (int)((in->w << 16) / nw) + 1;
-  int y_ratio = (int)((in->h << 16) / nh) + 1;
-  int x2, y2, i, j;
-  for (i = 0; i < nh; ++i) {
-    int* t = out->buf + i * nw;
-    y2 = ((i * y_ratio) >> 16);
-    int* p = in->buf + y2 * in->w;
-    int rat = 0;
-    for (j = 0; j < nw; ++j) {
-      x2 = (rat >> 16);
-      *t++ = p[x2];
-      rat += x_ratio;
-    }
-  }
-  return 1;
 }
 
 #if defined(GRAPHICS_ENABLE_BDF)
@@ -2557,6 +2595,33 @@ TRY_AGAIN_BRO:
 #endif
 
 #if !defined(GRAPHICS_DISABLE_WINDOW)
+static short int keycodes[512];
+static short int scancodes[KB_KEY_LAST + 1];
+static surface_t* buffer;
+static void(*__resize_callback)(int, int) = NULL;
+static int mx = 0, my = 0, win_w, win_h;
+
+void mouse_xy(int* x, int* y) {
+  if (!x || !y)
+    return;
+  
+  *x = mx;
+  *y = my;
+}
+
+void window_wh(int* w, int* h) {
+  if (!w || !h)
+    return;
+  
+  *w = win_w;
+  *h = win_h;
+}
+
+void resize_callback(void(*cb)(int, int)) {
+  if (cb)
+    __resize_callback = cb;
+}
+
 #if defined(GRAPHICS_ENABLE_OPENGL)
 #if defined(__APPLE__)
 #include <OpenGL/gl3.h>

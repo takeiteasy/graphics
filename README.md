@@ -51,13 +51,13 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 
 ### Important
 
-- Port new stuff to Windows/Linux
-- Colour escapes for ```writeln()``` & ```string()``` (also for bdf ext)
 - Cursor lock & hide
 - Joystick/Gamepad input
+- Port new stuff to Windows/Linux
 
 ### Less important
 
+- Come back to surface transformation
 - Add fill option for ```ellipse_rotated()``` and other functions
 - Flood fill function
 - Add line width option
@@ -66,6 +66,7 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 - 1 & 4 bpp, RLE compressed and OS/2 BMP support (Just because)
 - Message box support
 - Window icon support
+- Colour escapes for BDF extension
 
 ### Maybe
 

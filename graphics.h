@@ -18,6 +18,7 @@ extern "C" {
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <ctype.h>
 #if defined(_WIN32)
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -218,14 +219,31 @@ extern "C" {
   void fill(surface_t* s, int col);
   void cls(surface_t* s);
   void pset(surface_t* s, int x, int y, int col);
-  int alpha(int c0, int c1, float i);
+  int blend(int c0, int c1, float i);
   void psetb(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
   int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
+  int reset(surface_t* s, int nw, int nh);
+  int copy(surface_t* in, surface_t* out);
+  void filter(surface_t* s, int(*fn)(int x, int y, int col));
+  int resize(surface_t* in, int nw, int nh, surface_t* out);
+  
   void vline(surface_t* s, int x, int y0, int y1, int col);
   void hline(surface_t* s, int y, int x0, int x1, int col);
   void line(surface_t* s, int x0, int y0, int x1, int y1, int col);
+  void circle(surface_t* s, int xc, int yc, int r, int col, int fill);
+  void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill);
+  void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col);
+  void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill);
+  void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col);
+  void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col);
+  void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col);
+  void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
+  void rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
+  
   int bmp(surface_t* s, const char* path);
+  int save_bmp(surface_t* s, const char* path);
+  
 #if !defined(GRAPHICS_DISABLE_TEXT)
   void ascii(surface_t* s, char ch, int x, int y, int fg, int bg);
   int character(surface_t* s, const char* ch, int x, int y, int fg, int bg);
@@ -234,23 +252,9 @@ extern "C" {
   void string(surface_t* out, int fg, int bg, const char* str);
   void stringf(surface_t* out, int fg, int bg, const char* fmt, ...);
 #endif
+  
   long ticks(void);
   void delay(long ms);
-  int reset(surface_t* s, int nw, int nh);
-  void resize_callback(void(*cb)(int, int));
-  void circle(surface_t* s, int xc, int yc, int r, int col, int fill);
-  void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill);
-  void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill);
-  void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col);
-  void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col);
-  void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col);
-  void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col);
-  void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
-  void rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
-  int save_bmp(surface_t* s, const char* path);
-  int copy(surface_t* in, surface_t* out);
-  void filter(surface_t* s, int(*fn)(int x, int y, int col));
-  int resize(surface_t* in, int nw, int nh, surface_t* out);
   
 #if defined(GRAPHICS_ENABLE_BDF)
   typedef struct {
@@ -278,6 +282,10 @@ extern "C" {
 #endif
   
 #if !defined(GRAPHICS_DISABLE_WINDOW)
+  void mouse_xy(int* x, int* y);
+  void window_wh(int* w, int* h);
+  void resize_callback(void(*cb)(int, int));
+  
   typedef enum {
     MOUSE_BTN_0, // No mouse button
     MOUSE_BTN_1,
@@ -461,8 +469,6 @@ extern "C" {
   int poll(event_t* e);
   void flush(surface_t* s);
   void release(void);
-  void mouse_xy(int* x, int* y);
-  void window_wh(int* w, int* h);
 #endif
   
 #if defined(__cplusplus)
