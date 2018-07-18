@@ -10,9 +10,10 @@ int greyscale(int x, int y, int c) {
 }
 
 #define RND_255 (rand() % 256)
+#define RND_RGB (RGB(RND_255, RND_255, RND_255))
 
 int rnd(int x, int y, int c) {
-  return RGB(RND_255, RND_255, RND_255);
+  return RND_RGB;
 }
 
 static surface_t win;
@@ -145,10 +146,23 @@ int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
   return 1;
 }
 
+/* TODO next
+ - Cursor flags - DONE
+ - Set cursor - DONE
+ - Cursor warping
+ - Cursor locking to view
+ - Custom cursor from surface
+ - Joystick API
+ - Port new things to windows
+ - Update TODO list in README
+ */
+
 int main(int argc, const char* argv[]) {
-  screen("test", &win, &win_w, &win_h, RESIZABLE);
+  screen("test", &win, &win_w, &win_h, BORDERLESS | RESIZABLE);
   resize_callback(on_resize);
   error_callback(on_error);
+  
+  cursor(WARPED, CURSOR_HAND);
 
   surface_t s[10];
   surface(&s[0], 50, 50);
@@ -164,7 +178,7 @@ int main(int argc, const char* argv[]) {
   bdf(&tewi, RES("tewi.bdf"));
   
   copy(&s[2], &s[4]);
-  //filter(&s[4], invert);
+  filter(&s[4], invert);
   
   point_t points[9] = {
     { 10,  150 },
@@ -212,6 +226,7 @@ int main(int argc, const char* argv[]) {
           switch (e.sym) {
 #if defined(__APPLE__)
             case KB_KEY_Q:
+            case KB_KEY_W:
               if (e.mod & KB_MOD_SUPER)
                 running = 0;
               break;

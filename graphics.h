@@ -456,12 +456,41 @@ extern "C" {
   } event_t;
   
   typedef enum {
-    DEFAULT = 0x0000,
-    RESIZABLE = 0x0001,
-    FULLSCREEN = 0x0002,
-    FULLSCREEN_DESKTOP = 0x0004,
-    BORDERLESS = 0x0008,
-    ALWAYS_ON_TOP = 0x0010,
+    DEFAULT = 0x00,
+    HIDDEN = 0x01,
+    SHOWN = 0x02,
+    LOCKED = 0x04,
+    UNLOCKED = 0x08,
+    WARPED = 0x10,
+    NO_CHANGE = 0x20
+  } CURSORFLAGS;
+  
+  typedef enum {
+    CURSOR_NO_CHANGE,
+    CURSOR_ARROW,     // Arrow
+    CURSOR_IBEAM,     // I-beam
+    CURSOR_WAIT,      // Wait
+    CURSOR_CROSSHAIR, // Crosshair
+    CURSOR_WAITARROW, // Small wait cursor (or Wait if not available)
+    CURSOR_SIZENWSE,  // Double arrow pointing northwest and southeast
+    CURSOR_SIZENESW,  // Double arrow pointing northeast and southwest
+    CURSOR_SIZEWE,    // Double arrow pointing west and east
+    CURSOR_SIZENS,    // Double arrow pointing north and south
+    CURSOR_SIZEALL,   // Four pointed arrow pointing north, south, east, and west
+    CURSOR_NO,        // Slashed circle or crossbones
+    CURSOR_HAND,      // Hand
+    CURSOR_CUSTOM     // Use your own
+  } CURSORTYPE;
+  
+  void cursor(CURSORFLAGS flags, CURSORTYPE flag);
+  void custom_cursor(surface_t* s);
+  
+  typedef enum {
+    RESIZABLE = 0x01,
+    FULLSCREEN = 0x02,
+    FULLSCREEN_DESKTOP = 0x04,
+    BORDERLESS = 0x08,
+    ALWAYS_ON_TOP = 0x10,
   } WINDOWFLAGS;
   
   int screen(const char* title, surface_t* s, int* w, int* h, short flags);

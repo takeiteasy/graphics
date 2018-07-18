@@ -51,13 +51,13 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 
 ### Important
 
-- Cursor lock & hide
 - Joystick/Gamepad input
 - Port new stuff to Windows/Linux
 
 ### Less important
 
 - Come back to surface transformation
+- Test different scaling functions
 - Add fill option for ```ellipse_rotated()``` and other functions
 - Add line width option
 - Wayland window code

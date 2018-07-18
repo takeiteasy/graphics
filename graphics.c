@@ -646,7 +646,7 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
 #endif
 }
 
-static void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
+static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
   int sx = x2 - x1, sy = y2 - y1;
   long xx = x0 - x1, yy = y0 - y1, xy;
   float dx, dy, err, cur = xx * sy - yy * sx;
@@ -779,7 +779,7 @@ void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int co
   bezier_seg(s, x0, y0, x1, y1, x2, y2, col);
 }
 
-static void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
+static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
   int sx = x2 - x1, sy = y2 - y1;
   float dx = x0 - x2, dy = y0 - y2, xx = x0 - x1, yy = y0 - y1;
   float xy = xx * sy + yy * sx, cur = xx * sy - yy * sx, err;
@@ -985,7 +985,7 @@ void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int 
   ellipse_rect_rotated(s, x - a, y - b, x + a, y + b, (long)(4 * zd * cosf(angle)), col);
 }
 
-static void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, float x2, float y2, int x3, int y3, int col) {
+static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, float x2, float y2, int x3, int y3, int col) {
   int f, fx, fy, leg = 1;
   int sx = x0 < x3 ? 1 : -1, sy = y0 < y3 ? 1 : -1;
   float xc = -fabsf(x0 + x1 - x2 - x3), xa = xc - 4 * sx * (x1 - x2), xb = sx * (x0 - x1 - x2 + x3);
@@ -2974,13 +2974,12 @@ typedef struct {
 } AAPLVertex;
 
 static const AAPLVertex quad_vertices[] = {
-  { {  1.f,  -1.f  }, { 1.f, 0.f } },
-  { { -1.f,  -1.f  }, { 0.f, 0.f } },
-  { { -1.f,   1.f  }, { 0.f, 1.f } },
-  
-  { {  1.f,  -1.f  }, { 1.f, 0.f } },
-  { { -1.f,   1.f  }, { 0.f, 1.f } },
-  { {  1.f,   1.f  }, { 1.f, 1.f } },
+  {{  1.f,  -1.f  }, { 1.f, 0.f }},
+  {{ -1.f,  -1.f  }, { 0.f, 0.f }},
+  {{ -1.f,   1.f  }, { 0.f, 1.f }},
+  {{  1.f,  -1.f  }, { 1.f, 0.f }},
+  {{ -1.f,   1.f  }, { 0.f, 1.f }},
+  {{  1.f,   1.f  }, { 1.f, 1.f }},
 };
 
 static vector_uint2 mtk_viewport;
@@ -3067,6 +3066,140 @@ static int translate_key(unsigned int key) {
 
 static osx_app_t* app;
 static int border_off = 22;
+
+@interface NSCursor(InvisibleCursor)
++(NSCursor*)invisibleCursor;
+@end
+
+@implementation NSCursor(InvisibleCursor)
++(NSCursor*)invisibleCursor {
+  static NSCursor* invisibleCursor = NULL;
+  if (!invisibleCursor) {
+    /* RAW 16x16 transparent GIF */
+    static unsigned char cursorBytes[] = {
+      0x47, 0x49, 0x46, 0x38, 0x37, 0x61, 0x10, 0x00, 0x10, 0x00, 0x80,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x21, 0xF9, 0x04,
+      0x01, 0x00, 0x00, 0x01, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x10,
+      0x00, 0x10, 0x00, 0x00, 0x02, 0x0E, 0x8C, 0x8F, 0xA9, 0xCB, 0xED,
+      0x0F, 0xA3, 0x9C, 0xB4, 0xDA, 0x8B, 0xB3, 0x3E, 0x05, 0x00, 0x3B
+    };
+    
+    NSData *cursorData = [NSData dataWithBytesNoCopy:&cursorBytes[0]
+                                              length:sizeof(cursorBytes)
+                                        freeWhenDone:NO];
+    NSImage *cursorImage = [[[NSImage alloc] initWithData:cursorData] autorelease];
+    invisibleCursor = [[NSCursor alloc] initWithImage:cursorImage
+                                              hotSpot:NSZeroPoint];
+  }
+  
+  return invisibleCursor;
+}
+@end
+
+static NSCursor *__custom_cursor = nil, *__cursor = nil;
+
+void cursor(CURSORFLAGS flags, CURSORTYPE type) {
+  if (flags & NO_CHANGE)
+    goto SKIP_CURSOR_FLAGS;
+  
+  if (flags == DEFAULT)
+    flags = SHOWN | UNLOCKED;
+  
+  if (flags & HIDDEN)
+    [NSCursor hide];
+  if (flags & SHOWN)
+    [NSCursor unhide];
+  if (flags & UNLOCKED) {
+    if (flags & WARPED)
+      flags |= ~WARPED;
+    if (flags & LOCKED)
+      flags |= ~LOCKED;
+  }
+  if (flags & WARPED) {
+    
+  }
+  if (flags & LOCKED) {
+    
+  }
+  
+SKIP_CURSOR_FLAGS:
+  if (type == CURSOR_NO_CHANGE)
+    return;
+  
+  if (__cursor)
+    [__cursor release];
+  
+  switch (type) {
+    case CURSOR_ARROW:
+    case CURSOR_WAIT:
+    case CURSOR_WAITARROW:
+      __cursor = [NSCursor arrowCursor];
+      break;
+    case CURSOR_IBEAM:
+      __cursor = [NSCursor IBeamCursor];
+      break;
+    case CURSOR_CROSSHAIR:
+      __cursor = [NSCursor crosshairCursor];
+      break;
+    case CURSOR_SIZENWSE:
+    case CURSOR_SIZENESW:
+      __cursor = [NSCursor closedHandCursor];
+      break;
+    case CURSOR_SIZEWE:
+      __cursor = [NSCursor resizeLeftRightCursor];
+      break;
+    case CURSOR_SIZENS:
+      __cursor = [NSCursor resizeUpDownCursor];
+      break;
+    case CURSOR_SIZEALL:
+      __cursor = [NSCursor closedHandCursor];
+      break;
+    case CURSOR_NO:
+      __cursor = [NSCursor operationNotAllowedCursor];
+      break;
+    case CURSOR_HAND:
+      __cursor = [NSCursor pointingHandCursor];
+      break;
+    case CURSOR_CUSTOM:
+      if (__custom_cursor)
+        __cursor = __custom_cursor;
+      break;
+    default:
+      __cursor = [NSCursor invisibleCursor];
+      break;
+  }
+  
+  [__cursor retain];
+  
+  if (app && [app contentView])
+    [[app contentView] resetCursorRects];
+}
+
+static inline NSImage* create_cocoa_image(surface_t* s) {
+  NSImage* nsi = [[[NSImage alloc] initWithSize: NSMakeSize(s->w, s->h)] autorelease];
+  NSBitmapImageRep* nsbir = nil;
+  
+  if (nsi && nsbir)
+    [nsi addRepresentation:nsbir];
+  return nsi;
+}
+
+void custom_cursor(surface_t* s) {
+  NSImage* nsi = create_cocoa_image(s);
+  if (!nsi)
+    return;
+  
+  if (__custom_cursor)
+    [__custom_cursor release];
+  
+  __custom_cursor = [[NSCursor alloc] initWithImage:nsi
+                                            hotSpot:NSMakePoint(0, 0)];
+  if (!__custom_cursor) {
+    __custom_cursor = nil;
+    return;
+  }
+  [__custom_cursor retain];
+}
 
 @implementation osx_view_t
 extern surface_t* buffer;
@@ -3155,7 +3288,7 @@ extern surface_t* buffer;
     }
     
     id<MTLFunction> vs = [_library newFunctionWithName:@"vertexShader"];
-    id <MTLFunction> fs = [_library newFunctionWithName:@"samplingShader"];
+    id<MTLFunction> fs = [_library newFunctionWithName:@"samplingShader"];
     
     MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
     pipelineStateDescriptor.label = @"[Texturing Pipeline]";
@@ -3178,6 +3311,7 @@ extern surface_t* buffer;
     [self updateTrackingAreas];
   }
 #endif
+  
   return self;
 }
 
@@ -3187,13 +3321,23 @@ extern surface_t* buffer;
     [track release];
   }
 
-  track = [[NSTrackingArea alloc] initWithRect:[self bounds]
-                                       options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow | NSTrackingEnabledDuringMouseDrag | NSTrackingCursorUpdate | NSTrackingInVisibleRect | NSTrackingAssumeInside | NSTrackingMouseMoved
+  track = [[NSTrackingArea alloc] initWithRect:[self visibleRect]
+                                       options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow | NSTrackingEnabledDuringMouseDrag | NSTrackingCursorUpdate | NSTrackingInVisibleRect | NSTrackingAssumeInside | NSTrackingMouseMoved | NSTrackingActiveInActiveApp
                                          owner:self
                                       userInfo:nil];
 
   [self addTrackingArea:track];
   [super updateTrackingAreas];
+}
+
+-(void)resetCursorRects {
+  [super resetCursorRects];
+  [self addCursorRect:[self visibleRect] cursor:(__custom_cursor ? __custom_cursor : [NSCursor arrowCursor])];
+}
+
+-(void)cursorUpdate:(NSEvent*)event {
+  if (__cursor)
+    [__cursor set];
 }
 
 -(BOOL)acceptsFirstResponder {
@@ -3241,7 +3385,7 @@ extern surface_t* buffer;
   td.height = buffer->h;
   
   _texture = [_device newTextureWithDescriptor:td];
-  [_texture replaceRegion:(MTLRegion){{ 0, 0, 0 }, {buffer->w, buffer->h, 1 }}
+  [_texture replaceRegion:(MTLRegion){{ 0, 0, 0 }, { buffer->w, buffer->h, 1 }}
               mipmapLevel:0
                 withBytes:buffer->buf
               bytesPerRow:buffer->w * 4];
@@ -3549,16 +3693,15 @@ int screen(const char* t, surface_t* s, int* w, int* h, short flags) {
   keycodes[0x43] = KB_KEY_KP_MULTIPLY;
   keycodes[0x4E] = KB_KEY_KP_SUBTRACT;
 
-  for (int sc = 0;  sc < 256; ++sc) {
+  for (int sc = 0;  sc < 256; ++sc)
     if (keycodes[sc] >= 0)
       scancodes[keycodes[sc]] = sc;
-  }
 
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
   
-  NSWindowStyleMask _flags = NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
+  NSWindowStyleMask _flags = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
   _flags |= (flags & RESIZABLE ? NSWindowStyleMaskResizable : 0);
   if (flags & BORDERLESS || flags & FULLSCREEN) {
     border_off = 0;
@@ -3572,6 +3715,11 @@ int screen(const char* t, surface_t* s, int* w, int* h, short flags) {
   } else {
     win_w = *w;
     win_h = *h;
+  }
+  
+  if (!border_off && flags & ~FULLSCREEN) {
+    _flags &= ~NSWindowStyleMaskBorderless;
+    _flags |= NSWindowStyleMaskFullSizeContentView;
   }
   
   if (s)
@@ -3605,6 +3753,14 @@ int screen(const char* t, surface_t* s, int* w, int* h, short flags) {
   [app setReleasedWhenClosed:NO];
   [app performSelectorOnMainThread:@selector(makeKeyAndOrderFront:) withObject:nil waitUntilDone:YES];
   [app center];
+  
+  if (!border_off && flags & ~FULLSCREEN) {
+    [app setTitle:@""];
+    [app setTitlebarAppearsTransparent:YES];
+    [[app standardWindowButton:NSWindowZoomButton] setHidden:YES];
+    [[app standardWindowButton:NSWindowCloseButton] setHidden:YES];
+    [[app standardWindowButton:NSWindowMiniaturizeButton] setHidden:YES];
+  }
 
   [NSApp activateIgnoringOtherApps:YES];
   [pool drain];
@@ -3680,6 +3836,10 @@ void release() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   if (app)
     [app close];
+  if (__cursor)
+    [__cursor release];
+  if (__custom_cursor)
+    [__custom_cursor release];
   [pool drain];
 }
 #elif defined(_WIN32)
@@ -3697,7 +3857,7 @@ static BITMAPINFO* bmpinfo;
 static user_event_t* tmp_ue;
 static int event_fired = 0;
 static int adjusted_win_w, adjusted_win_h;
-static int ifuckinghatethewin32api = 0;
+static int ifuckinghatethewin32api = 0; // Should always be 1 because I do
 
 static int translate_mod() {
   int mods = 0;
