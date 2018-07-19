@@ -21,7 +21,7 @@ static int win_w = 575, win_h = 500, mx = 0, my = 0, running = 1;
 
 #define DEBUG_NATIVE_RESIZE 0
 #define SKIP_PRINTF 0
-#define SKIP_RENDING 1
+#define SKIP_RENDING 0
 
 #if SKIP_PRINTF
 #define printf(fmt, ...) (0)
@@ -44,6 +44,12 @@ void on_resize(int w, int h) {
   cls(&win);
 #endif
   writelnf(&win, 4, 5, WHITE, -1, "%dx%d\n", w, h);
+}
+
+void on_mouse_moved(int x, int y, float dx, float dy) {
+  mx += dx;
+  my += dy;
+  printf("%d %d, %f %f\n", x, y, dx, dy);
 }
 
 // Define RES_PATH or it will use defaults below
@@ -141,7 +147,7 @@ int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
       sy = ((y + mm[0][1]) * c - (x + mm[0][0]) * s);
       if (sx < 0 || sx >= src->w || sy < 0 || sy >= src->h)
         continue;
-      pset(dst, x + offset_x - dw / 2  + src->w / 2, y + offset_y - dh / 2 + src->h / 2, pget(src, sx, sy));
+      psetb(dst, x + offset_x - dw / 2  + src->w / 2, y + offset_y - dh / 2 + src->h / 2, pget(src, sx, sy));
     }
 
   return 1;
@@ -161,10 +167,12 @@ int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
 int main(int argc, const char* argv[]) {
   screen("test", &win, &win_w, &win_h, BORDERLESS | RESIZABLE);
   resize_callback(on_resize);
+  mouse_callback(on_mouse_moved);
   error_callback(on_error);
   
-//  cursor(LOCKED, CURSOR_HAND);
-
+  cursor(WARPED, CURSOR_HAND);
+  mouse_xy(&mx, &my);
+  
   surface_t s[10];
   surface(&s[0], 50, 50);
   
@@ -318,7 +326,6 @@ int main(int argc, const char* argv[]) {
     circle(&win, 502, 32, 30, INDIGO, 1);
     circle(&win, 532, 32, 30, VIOLET, 1);
 
-    update_mxy();
     writelnf(&win, 400, 88, BLACK, 0, "mouse pos: (%d, %d)\ntheta: %f", mx, my, theta);
     col = pget(&win, mx, my);
 

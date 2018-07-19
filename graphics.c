@@ -2649,6 +2649,7 @@ static short int keycodes[512];
 static short int scancodes[KB_KEY_LAST + 1];
 static surface_t* buffer;
 static void (*__resize_callback)(int, int) = NULL;
+static void (*__mouse_callback)(int, int, float, float) = NULL;
 static int mx = 0, my = 0, win_w, win_h;
 
 void mouse_xy(int* x, int* y) {
@@ -2670,6 +2671,11 @@ void window_wh(int* w, int* h) {
 void resize_callback(void (*cb)(int, int)) {
   if (cb)
     __resize_callback = cb;
+}
+
+void mouse_callback(void (*cb)(int, int, float, float)) {
+  if (cb)
+    __mouse_callback = cb;
 }
 
 #if defined(GRAPHICS_ENABLE_OPENGL)
@@ -3098,9 +3104,27 @@ static int border_off = 22;
 
 static NSCursor *__custom_cursor = nil, *__cursor = nil;
 static int __cursor_state = 0;
-static int lmx = 0, lmy = 0, wdx = 0, wdy = 0, ws = 0;
-  
+static CGFloat lmx = 0, lmy = 0, wdx = 0, wdy = 0;
+
+NSPoint cursor_pos_abs() {
+  const NSPoint p = [NSEvent mouseLocation];
+  return (NSPoint){ p.x, [app screen].frame.size.height - p.y };
+}
+
+//NSPoint cursor_pos_rel() {
+//  const NSPoint p = cursor_pos_abs();
+//  const NSPoint so = [app convertRectToScreen:(NSRect){ [[app contentView] convertPoint:NSMakePoint([[app contentView] bounds].origin.x,
+//                                                                                                    [[app contentView] bounds].origin.y + [[app contentView] bounds].size.height)
+//                                                                                 toView:nil], { 0, 0 }}].origin;
+//  return (CGPoint){ p.x - so.x, p.y - so.y };
+//}
+
 void cursor(CURSORFLAGS flags, CURSORTYPE type) {
+  if (!app) {
+    error_handle(PRIO_LOW, "cursor() failed: Called before screen is set up");
+    return;
+  }
+  
   if (flags & NO_CHANGE)
     goto SKIP_CURSOR_FLAGS;
   
@@ -3120,6 +3144,10 @@ void cursor(CURSORFLAGS flags, CURSORTYPE type) {
   }
   if (flags & WARPED) {
     __cursor_state = 1;
+    const NSPoint p = cursor_pos_abs();
+    mx = lmx = p.x;
+    my = lmy = p.y;
+    printf("%d %d\n", mx, my);
     [[app contentView] mouseMoved:nil]; // Force warp
   }
   if (flags & LOCKED)
@@ -3357,15 +3385,29 @@ extern surface_t* buffer;
 }
 
 -(void)mouseMoved:(NSEvent*)event {
-  mx  = CLAMP(mx + ([event deltaX] - wdx), 0, [[self window] screen].frame.size.width);
-  my  = CLAMP(my + ([event deltaY] - wdy), 0, [[self window] screen].frame.size.height);
-  wdx = [event deltaX];
-  wdy = [event deltaY];
+  switch (__cursor_state) {
+    default:
+    case 0:
+      mx = CLAMP((int)(floorf([event locationInWindow].x - 1) + [event deltaX]), 0, win_w);
+      my = CLAMP((int)(floorf(win_h - 1 - [event locationInWindow].y) + [event deltaY]), 0, win_h);
+      if (__mouse_callback)
+        __mouse_callback(mx, my, [event deltaX], [event deltaY]);
+      break;
+    case 1: // WARPED
+      CGAssociateMouseAndMouseCursorPosition(NO);
+      NSPoint so = [[self window] convertRectToScreen:(NSRect){ [self convertPoint:NSMakePoint([self bounds].origin.x + [self bounds].size.width / 2.f,
+                                                                                               [self bounds].origin.y + [self bounds].size.height / 2.f)
+                                                                            toView:nil], { 0, 0 }}].origin;
+      NSPoint np = (NSPoint){ so.x, ([[self window] screen].frame.origin.y + [[self window] screen].frame.size.height) - so.y };
+      CGWarpMouseCursorPosition(np);
+      CGAssociateMouseAndMouseCursorPosition(YES);
+      
+      printf("%f %f - %f %f - %f %f - %s\n", lmx, lmy, np.x, np.y, [event deltaX], [event deltaY], NSStringFromPoint(np).UTF8String);
+      break;
+    case 2: // LOCKED
+      break;
+  }
   
-  CGWarpMouseCursorPosition((NSPoint){ mx, my });
-  
-//  mx = CLAMP((int)(floorf([event locationInWindow].x - 1) + [event deltaX]), 0, win_w);
-//  my = CLAMP((int)(floorf(win_h - 1 - [event locationInWindow].y) + [event deltaY]), 0, win_h);
 //
 //  switch (__cursor_state) {
 //    case 1: {
@@ -3800,7 +3842,6 @@ int screen(const char* t, surface_t* s, int* w, int* h, short flags) {
   NSPoint mp = [NSEvent mouseLocation];
   lmx = mx = mp.x;
   lmy = my = mp.y;
-  CGAssociateMouseAndMouseCursorPosition(NO);
 
   [NSApp activateIgnoringOtherApps:YES];
   [pool drain];
