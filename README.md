@@ -52,7 +52,12 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
 ### Important
 
 - Joystick/Gamepad input
+  - OSX: <IOKit/hid/IOHIDLib.h>
+  - Windows: XInput/DirectInput
+  - Linux: /dev/input/js0 (?)
 - Port new stuff to Windows/Linux
+- Optimise OSX cursor warping
+- Fix OSX cursor lock to window
 
 ### Less important
 

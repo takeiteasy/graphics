@@ -162,7 +162,7 @@ int main(int argc, const char* argv[]) {
   resize_callback(on_resize);
   error_callback(on_error);
   
-  cursor(WARPED, CURSOR_HAND);
+  cursor(LOCKED, CURSOR_HAND);
 
   surface_t s[10];
   surface(&s[0], 50, 50);

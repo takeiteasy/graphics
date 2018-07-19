@@ -3097,7 +3097,8 @@ static int border_off = 22;
 @end
 
 static NSCursor *__custom_cursor = nil, *__cursor = nil;
-
+static int __cursor_state = 0;
+  
 void cursor(CURSORFLAGS flags, CURSORTYPE type) {
   if (flags & NO_CHANGE)
     goto SKIP_CURSOR_FLAGS;
@@ -3114,13 +3115,14 @@ void cursor(CURSORFLAGS flags, CURSORTYPE type) {
       flags |= ~WARPED;
     if (flags & LOCKED)
       flags |= ~LOCKED;
+    __cursor_state = 0;
   }
   if (flags & WARPED) {
-    
+    __cursor_state = 1;
+    [[app contentView] mouseMoved:nil]; // Force warp
   }
-  if (flags & LOCKED) {
-    
-  }
+  if (flags & LOCKED)
+    __cursor_state = 2;
   
 SKIP_CURSOR_FLAGS:
   if (type == CURSOR_NO_CHANGE)
@@ -3354,8 +3356,33 @@ extern surface_t* buffer;
 }
 
 -(void)mouseMoved:(NSEvent*)event {
-  mx = (int)floor([event locationInWindow].x - 1);
-  my = (int)floor(win_h - 1 - [event locationInWindow].y);
+  mx = CLAMP((int)(floorf([event locationInWindow].x - 1) + [event deltaX]), 0, win_w);
+  my = CLAMP((int)(floorf(win_h - 1 - [event locationInWindow].y) + [event deltaY]), 0, win_h);
+  
+  switch (__cursor_state) {
+    case 1: {
+      NSPoint so = [[self window] convertRectToScreen:(NSRect){ [self convertPoint:NSMakePoint([self bounds].origin.x + [self bounds].size.width / 2.f,
+                                                                                               [self bounds].origin.y + [self bounds].size.height / 2.f)
+                                                                            toView:nil], { 0, 0 }}].origin;
+      CGWarpMouseCursorPosition((NSPoint){ so.x, ([[self window] screen].frame.origin.y + [[self window] screen].frame.size.height) - so.y });
+      break;
+    }
+    case 2: {
+       if (mx <= 0 || my <= 0 || mx >= win_w || my >= win_h) {
+        NSPoint so = [[self window] convertRectToScreen:(NSRect){ [self convertPoint:NSMakePoint([self bounds].origin.x,
+                                                                                                 [self bounds].origin.y + [self bounds].size.height)
+                                                                              toView:nil], { 0, 0 }}].origin;
+         CGWarpMouseCursorPosition((NSPoint){
+           so.x + mx,
+           (([[self window] screen].frame.origin.y + [[self window] screen].frame.size.height) - so.y) + my
+         });
+      }
+      break;
+    }
+    case 0:
+    default:
+      break;
+  }
 }
 
 -(void)rightMouseDragged:(NSEvent*)event {
