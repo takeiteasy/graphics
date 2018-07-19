@@ -57,7 +57,7 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
   - Linux: /dev/input/js0 (?)
 - Port new stuff to Windows/Linux
 - Optimise OSX cursor warping
-- Fix OSX cursor lock to window
+- [Fix OSX cursor lock to window](https://stackoverflow.com/a/40922095)
 
 ### Less important
 

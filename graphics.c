@@ -3098,6 +3098,7 @@ static int border_off = 22;
 
 static NSCursor *__custom_cursor = nil, *__cursor = nil;
 static int __cursor_state = 0;
+static int lmx = 0, lmy = 0, wdx = 0, wdy = 0, ws = 0;
   
 void cursor(CURSORFLAGS flags, CURSORTYPE type) {
   if (flags & NO_CHANGE)
@@ -3356,33 +3357,40 @@ extern surface_t* buffer;
 }
 
 -(void)mouseMoved:(NSEvent*)event {
-  mx = CLAMP((int)(floorf([event locationInWindow].x - 1) + [event deltaX]), 0, win_w);
-  my = CLAMP((int)(floorf(win_h - 1 - [event locationInWindow].y) + [event deltaY]), 0, win_h);
+  mx  = CLAMP(mx + ([event deltaX] - wdx), 0, [[self window] screen].frame.size.width);
+  my  = CLAMP(my + ([event deltaY] - wdy), 0, [[self window] screen].frame.size.height);
+  wdx = [event deltaX];
+  wdy = [event deltaY];
   
-  switch (__cursor_state) {
-    case 1: {
-      NSPoint so = [[self window] convertRectToScreen:(NSRect){ [self convertPoint:NSMakePoint([self bounds].origin.x + [self bounds].size.width / 2.f,
-                                                                                               [self bounds].origin.y + [self bounds].size.height / 2.f)
-                                                                            toView:nil], { 0, 0 }}].origin;
-      CGWarpMouseCursorPosition((NSPoint){ so.x, ([[self window] screen].frame.origin.y + [[self window] screen].frame.size.height) - so.y });
-      break;
-    }
-    case 2: {
-       if (mx <= 0 || my <= 0 || mx >= win_w || my >= win_h) {
-        NSPoint so = [[self window] convertRectToScreen:(NSRect){ [self convertPoint:NSMakePoint([self bounds].origin.x,
-                                                                                                 [self bounds].origin.y + [self bounds].size.height)
-                                                                              toView:nil], { 0, 0 }}].origin;
-         CGWarpMouseCursorPosition((NSPoint){
-           so.x + mx,
-           (([[self window] screen].frame.origin.y + [[self window] screen].frame.size.height) - so.y) + my
-         });
-      }
-      break;
-    }
-    case 0:
-    default:
-      break;
-  }
+  CGWarpMouseCursorPosition((NSPoint){ mx, my });
+  
+//  mx = CLAMP((int)(floorf([event locationInWindow].x - 1) + [event deltaX]), 0, win_w);
+//  my = CLAMP((int)(floorf(win_h - 1 - [event locationInWindow].y) + [event deltaY]), 0, win_h);
+//
+//  switch (__cursor_state) {
+//    case 1: {
+//      NSPoint so = [[self window] convertRectToScreen:(NSRect){ [self convertPoint:NSMakePoint([self bounds].origin.x + [self bounds].size.width / 2.f,
+//                                                                                               [self bounds].origin.y + [self bounds].size.height / 2.f)
+//                                                                            toView:nil], { 0, 0 }}].origin;
+//      CGWarpMouseCursorPosition((NSPoint){ so.x, ([[self window] screen].frame.origin.y + [[self window] screen].frame.size.height) - so.y });
+//      break;
+//    }
+//    case 2: {
+//       if (mx <= 0 || my <= 0 || mx >= win_w || my >= win_h) {
+//        NSPoint so = [[self window] convertRectToScreen:(NSRect){ [self convertPoint:NSMakePoint([self bounds].origin.x,
+//                                                                                                 [self bounds].origin.y + [self bounds].size.height)
+//                                                                              toView:nil], { 0, 0 }}].origin;
+//         CGWarpMouseCursorPosition((NSPoint){
+//           so.x + mx,
+//           (([[self window] screen].frame.origin.y + [[self window] screen].frame.size.height) - so.y) + my
+//         });
+//      }
+//      break;
+//    }
+//    case 0:
+//    default:
+//      break;
+//  }
 }
 
 -(void)rightMouseDragged:(NSEvent*)event {
@@ -3788,6 +3796,11 @@ int screen(const char* t, surface_t* s, int* w, int* h, short flags) {
     [[app standardWindowButton:NSWindowCloseButton] setHidden:YES];
     [[app standardWindowButton:NSWindowMiniaturizeButton] setHidden:YES];
   }
+  
+  NSPoint mp = [NSEvent mouseLocation];
+  lmx = mx = mp.x;
+  lmy = my = mp.y;
+  CGAssociateMouseAndMouseCursorPosition(NO);
 
   [NSApp activateIgnoringOtherApps:YES];
   [pool drain];

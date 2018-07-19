@@ -21,6 +21,7 @@ static int win_w = 575, win_h = 500, mx = 0, my = 0, running = 1;
 
 #define DEBUG_NATIVE_RESIZE 0
 #define SKIP_PRINTF 0
+#define SKIP_RENDING 1
 
 #if SKIP_PRINTF
 #define printf(fmt, ...) (0)
@@ -162,7 +163,7 @@ int main(int argc, const char* argv[]) {
   resize_callback(on_resize);
   error_callback(on_error);
   
-  cursor(LOCKED, CURSOR_HAND);
+//  cursor(LOCKED, CURSOR_HAND);
 
   surface_t s[10];
   surface(&s[0], 50, 50);
@@ -263,6 +264,10 @@ int main(int argc, const char* argv[]) {
     }
     
     long speed = curr_frame_tick - prev_frame_tick;
+    
+#if SKIP_RENDING
+    goto FLUSH;
+#endif
 
 //    cls(&win);
     fill(&win, WHITE);
@@ -325,6 +330,7 @@ int main(int argc, const char* argv[]) {
     if (grey)
       filter(&win, greyscale);
 
+FLUSH:
     flush(&win);
   }
 
