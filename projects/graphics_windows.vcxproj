@@ -93,7 +93,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>GRAPHICS_EXTRA_FONTS;GRAPHICS_EXTRA_COLOURS;GRAPHICS_OPENGL_BACKEND;GRAPHICS_ENABLE_AAa;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GRAPHICS_OPENGL_BACKEND;GRAPHICS_ENABLE_AAa;GRAPHICS_DISABLE_RGBAa;GRAPHICS_ENABLE_STB_IMAGE;GRAPHICS_ENABLE_BDF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>

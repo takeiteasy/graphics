@@ -1,4 +1,4 @@
-#include "graphics.h"
+#include "../graphics.h"
 
 int invert(int x, int y, int c) {
   return RGB(255 - R(c), 255 - G(c), 255 - B(c));
@@ -46,12 +46,6 @@ void on_resize(int w, int h) {
   writelnf(&win, 4, 5, WHITE, -1, "%dx%d\n", w, h);
 }
 
-void on_mouse_moved(int x, int y, float dx, float dy) {
-  mx += dx;
-  my += dy;
-  printf("%d %d, %f %f\n", x, y, dx, dy);
-}
-
 // Define RES_PATH or it will use defaults below
 #if !defined(RES_PATH)
 #if defined(__APPLE__)
@@ -71,6 +65,9 @@ void on_error(ERRPRIO pri, const char* msg, const char* file, const char* func, 
     abort();
 }
 
+#if !defined(M_PI)
+#define M_PI 3.14159265358979323846264338327950288f
+#endif
 #define DEG2RAD(a) ((a) * M_PI / 180.0)
 #define RAD2DEG(a) ((a) * 180.0 / M_PI)
 
@@ -154,25 +151,31 @@ int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
 }
 
 /* TODO next
- - Cursor flags - DONE
- - Set cursor - DONE
- - Cursor warping
- - Cursor locking to view
- - Custom cursor from surface
- - Joystick API
- - Port new things to windows
+ - OSX
+  - Fix delta error from cursor warping
+  - Cursor warping
+  - Cursor locking to view
+ - Windows
+  - Cursor warping
+  - Always on top window flag
+  - True fullscreen
+  - Fix BDF thing
+ - Linux
+  - Update function names
+  - Add window flags
+  - Add cursor handling
+ - All
+  - Set cursor from surface
+  - Joystick API
  - Update TODO list in README
  */
 
 int main(int argc, const char* argv[]) {
   screen("test", &win, &win_w, &win_h, BORDERLESS | RESIZABLE);
   resize_callback(on_resize);
-  mouse_callback(on_mouse_moved);
   error_callback(on_error);
-  
-  cursor(WARPED, CURSOR_HAND);
-  mouse_xy(&mx, &my);
-  
+  cursor(LOCKED, CURSOR_HAND);
+
   surface_t s[10];
   surface(&s[0], 50, 50);
   
@@ -241,7 +244,7 @@ int main(int argc, const char* argv[]) {
               break;
 #else
             case KB_KEY_F4:
-              if (ue.mod & KB_MOD_ALT)
+              if (e.mod & KB_MOD_ALT)
                 running = 0;
               break;
 #endif
@@ -326,6 +329,7 @@ int main(int argc, const char* argv[]) {
     circle(&win, 502, 32, 30, INDIGO, 1);
     circle(&win, 532, 32, 30, VIOLET, 1);
 
+    update_mxy();
     writelnf(&win, 400, 88, BLACK, 0, "mouse pos: (%d, %d)\ntheta: %f", mx, my, theta);
     col = pget(&win, mx, my);
 

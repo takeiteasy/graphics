@@ -2321,6 +2321,13 @@ void delay(long ms) {
 }
 
 #if defined(GRAPHICS_ENABLE_BDF)
+#if defined(_WIN32)
+#define snprintf _snprintf
+#define vsnprintf _vsnprintf
+#define strcasecmp _stricmp
+#define strncasecmp _strnicmp
+#endif
+
 #define BDF_READ_INT(x) \
 p = strtok(NULL, " \t\n\r"); \
 (x) = atoi(p);
@@ -2649,7 +2656,6 @@ static short int keycodes[512];
 static short int scancodes[KB_KEY_LAST + 1];
 static surface_t* buffer;
 static void (*__resize_callback)(int, int) = NULL;
-static void (*__mouse_callback)(int, int, float, float) = NULL;
 static int mx = 0, my = 0, win_w, win_h;
 
 void mouse_xy(int* x, int* y) {
@@ -2671,11 +2677,6 @@ void window_wh(int* w, int* h) {
 void resize_callback(void (*cb)(int, int)) {
   if (cb)
     __resize_callback = cb;
-}
-
-void mouse_callback(void (*cb)(int, int, float, float)) {
-  if (cb)
-    __mouse_callback = cb;
 }
 
 #if defined(GRAPHICS_ENABLE_OPENGL)
@@ -3926,7 +3927,7 @@ void release() {
 #elif defined(_WIN32)
 static WNDCLASS wnd;
 static HWND hwnd;
-static int closed = 0;
+static int __closed = 0;
 static HDC hdc = 0;
 #if defined(GRAPHICS_ENABLE_OPENGL)
 static PIXELFORMATDESCRIPTOR pfd;
@@ -3935,10 +3936,11 @@ static PAINTSTRUCT ps;
 #else
 static BITMAPINFO* bmpinfo;
 #endif
-static user_event_t* tmp_ue;
+static event_t* tmp_e;
 static int event_fired = 0;
 static int adjusted_win_w, adjusted_win_h;
 static int ifuckinghatethewin32api = 0; // Should always be 1 because I do
+static BOOL is_active = FALSE;
 
 static int translate_mod() {
   int mods = 0;
@@ -3982,11 +3984,17 @@ static int translate_key(WPARAM wParam, LPARAM lParam) {
   return keycodes[HIWORD(lParam) & 0x1FF];
 }
 
+static HCURSOR cursors[14];
+static CURSORTYPE c_cursor = CURSOR_ARROW;
+static int cursor_state = 0;
+static RECT clip_rect = { 0 };
+static long adjust_flags = WS_POPUP | WS_SYSMENU | WS_CAPTION;
+
 void set_adjusted_win_wh(int w, int h) {
   RECT rect = { 0 };
   rect.right = w;
   rect.bottom = h;
-  AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
+  AdjustWindowRect(&rect, adjust_flags, 0);
   adjusted_win_w = rect.right - rect.left;
   adjusted_win_h = rect.bottom - rect.top;
 }
@@ -4007,7 +4015,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
         ValidateRect(hWnd, NULL);
 #endif
       } else
-        tmp_ue = NULL;
+        tmp_e = NULL;
       break;
     case WM_SIZE:
       if (!ifuckinghatethewin32api)
@@ -4015,7 +4023,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       RECT rect = { 0 };
       rect.right = LOWORD(lParam);
       rect.bottom = HIWORD(lParam);
-      AdjustWindowRect(&rect, WS_POPUP | WS_SYSMENU | WS_CAPTION, 0);
+      AdjustWindowRect(&rect, adjust_flags, 0);
       win_w = rect.right + rect.left;
       win_h = rect.bottom - rect.top;
 
@@ -4028,9 +4036,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 #endif
       break;
     case WM_CLOSE:
-      closed = 1;
-      if (tmp_ue)
-        tmp_ue->type = WINDOW_CLOSED;
+      __closed = 1;
+      if (tmp_e)
+        tmp_e->type = WINDOW_CLOSED;
       break;
     case WM_CHAR:
     case WM_SYSCHAR:
@@ -4038,9 +4046,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       const int plain = (message != WM_SYSCHAR);
       if (message == WM_UNICHAR && wParam == UNICODE_NOCHAR)
         return FALSE;
-      tmp_ue->type = KEYBOARD_KEY_UP;
-      tmp_ue->mod = translate_mod();
-      tmp_ue->sym = (unsigned int)wParam;
+      tmp_e->type = KEYBOARD_KEY_UP;
+      tmp_e->mod = translate_mod();
+      tmp_e->sym = (unsigned int)wParam;
       break;
     }
     case WM_KEYDOWN:
@@ -4053,22 +4061,22 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       const int mods = translate_mod();
 
       if (key == KB_KEY_UNKNOWN) {
-        tmp_ue = NULL;
+        tmp_e = NULL;
         return FALSE;
       }
 
       if (action == KEYBOARD_KEY_UP && wParam == VK_SHIFT) {
-        tmp_ue->type = action;
-        tmp_ue->mod = mods;
-        tmp_ue->sym = KB_KEY_LEFT_SHIFT;
+        tmp_e->type = action;
+        tmp_e->mod = mods;
+        tmp_e->sym = KB_KEY_LEFT_SHIFT;
       } else if (wParam == VK_SNAPSHOT) {
-        tmp_ue->type = KEYBOARD_KEY_UP;
-        tmp_ue->mod = mods;
-        tmp_ue->sym = key;
+        tmp_e->type = KEYBOARD_KEY_UP;
+        tmp_e->mod = mods;
+        tmp_e->sym = key;
       } else {
-        tmp_ue->type = action;
-        tmp_ue->mod = mods;
-        tmp_ue->sym = key;
+        tmp_e->type = action;
+        tmp_e->mod = mods;
+        tmp_e->sym = key;
       }
       break;
     }
@@ -4102,22 +4110,45 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
             action = MOUSE_BTN_DOWN;
       }
 
-      tmp_ue->type = action;
-      tmp_ue->btn = button;
-      tmp_ue->mod = translate_mod();
-      tmp_ue->data1 = mx;
-      tmp_ue->data2 = my;
+      tmp_e->type = action;
+      tmp_e->btn = button;
+      tmp_e->mod = translate_mod();
+      tmp_e->data1 = mx;
+      tmp_e->data2 = my;
       break;
     }
     case WM_MOUSEWHEEL:
     case WM_MOUSEHWHEEL:
-      tmp_ue->type = SCROLL_WHEEL;
-      tmp_ue->data1 = -((SHORT)HIWORD(wParam) / (double)WHEEL_DELTA);
-      tmp_ue->data2 = (SHORT)HIWORD(wParam) / (double)WHEEL_DELTA;
+      tmp_e->type = SCROLL_WHEEL;
+      tmp_e->data1 = -((SHORT)HIWORD(wParam) / (double)WHEEL_DELTA);
+      tmp_e->data2 = (SHORT)HIWORD(wParam) / (double)WHEEL_DELTA;
       break;
     case WM_MOUSEMOVE:
-      mx = GET_X_LPARAM(lParam);
-      my = GET_Y_LPARAM(lParam);
+      switch (cursor_state) {
+        default:
+        case 0:
+          mx = GET_X_LPARAM(lParam);
+          my = GET_Y_LPARAM(lParam);
+          break;
+        case 1:
+          // TODO later
+          break;
+        case 2: {
+          mx = GET_X_LPARAM(lParam);
+          my = GET_Y_LPARAM(lParam);
+          if (is_active) {
+            GetWindowRect(hwnd, &clip_rect);
+            ClipCursor(&clip_rect);
+          }
+          break;
+        }
+      }
+      break;
+    case WM_SETCURSOR:
+      SetCursor((cursors[c_cursor] ? cursors[c_cursor] : cursors[1]));
+      break;
+    case WM_ACTIVATE:
+      is_active = (LOWORD(wParam) == WA_ACTIVE);
       break;
     default:
       res = DefWindowProc(hWnd, message, wParam, lParam);
@@ -4125,9 +4156,42 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
   return res;
 }
 
-int screen(const char* t, int w, int h) {
-  win_w = w;
-  win_h = h;
+void cursor(CURSORFLAGS flags, CURSORTYPE flag) {
+  if (flags & NO_CHANGE)
+    goto SKIP_CURSOR_FLAGS;
+
+  if (flags == DEFAULT)
+    flags = SHOWN | UNLOCKED;
+
+  if (flags & HIDDEN)
+    ShowCursor(FALSE);
+  if (flags & SHOWN)
+    ShowCursor(TRUE);
+  if (flags & UNLOCKED) {
+    if (flags & WARPED)
+      flags |= ~WARPED;
+    if (flags & LOCKED)
+      flags |= ~LOCKED;
+    cursor_state = 0;
+  }
+  if (flags & WARPED)
+    cursor_state = 1;
+  if (flags & LOCKED)
+    cursor_state = 2;
+  
+SKIP_CURSOR_FLAGS:
+  c_cursor = (cursors[flag] ? flag : CURSOR_ARROW);
+}
+
+void custom_cursor(surface_t* s) {
+  // TODO later
+}
+
+int screen(const char* title, surface_t* s, int* w, int* h, short flags) {
+  if (!w || !h) {
+    error_handle(PRIO_NORM, "screen() failed: W/H params NULL");
+    return 0;
+  }
 
   memset(keycodes, -1, sizeof(keycodes));
   memset(scancodes, -1, sizeof(scancodes));
@@ -4254,12 +4318,46 @@ int screen(const char* t, int w, int h) {
   keycodes[0x037] = KB_KEY_KP_MULTIPLY;
   keycodes[0x04A] = KB_KEY_KP_SUBTRACT;
 
+  cursors[CURSOR_NO_CHANGE] = NULL;
+  cursors[CURSOR_ARROW] = LoadCursor(NULL, IDC_ARROW);
+  cursors[CURSOR_IBEAM] = LoadCursor(NULL, IDC_IBEAM);
+  cursors[CURSOR_WAIT] = LoadCursor(NULL, IDC_WAIT);
+  cursors[CURSOR_CROSSHAIR] = LoadCursor(NULL, IDC_CROSS);
+  cursors[CURSOR_WAITARROW] = cursors[CURSOR_WAIT];
+  cursors[CURSOR_SIZENWSE] = LoadCursor(NULL, IDC_SIZENWSE);
+  cursors[CURSOR_SIZENESW] = LoadCursor(NULL, IDC_SIZENESW);
+  cursors[CURSOR_SIZEWE] = LoadCursor(NULL, IDC_SIZEWE);
+  cursors[CURSOR_SIZENS] = LoadCursor(NULL, IDC_SIZENS);
+  cursors[CURSOR_SIZEALL] = LoadCursor(NULL, IDC_SIZEALL);
+  cursors[CURSOR_NO] = LoadCursor(NULL, IDC_NO);
+  cursors[CURSOR_HAND] = LoadCursor(NULL, IDC_HAND);
+  cursors[CURSOR_CUSTOM] = NULL;
+
   for (int sc = 0; sc < 256; sc++) {
     if (keycodes[sc] > 0)
       scancodes[keycodes[sc]] = sc;
   }
 
-  set_adjusted_win_wh(w, h);
+  long _flags = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
+  _flags |= (flags & RESIZABLE ? WS_THICKFRAME : 0);
+  if (flags & BORDERLESS) {
+    _flags &= ~(WS_OVERLAPPED | WS_CAPTION);
+    _flags |= WS_POPUP;
+    adjust_flags = WS_POPUP;
+  }
+  if (flags & FULLSCREEN_DESKTOP) {
+    *w = win_w = GetSystemMetrics(SM_CXSCREEN);
+    *h = win_h = GetSystemMetrics(SM_CYSCREEN);
+  } else {
+    win_w = *w;
+    win_h = *h;
+  }
+
+  set_adjusted_win_wh(*w, *h);
+
+  if (s)
+    if (!surface(s, *w, *h))
+      return 0;
 
 #if defined(GRAPHICS_ENABLE_OPENGL)
   static HINSTANCE hinst = 0;
@@ -4274,7 +4372,7 @@ int screen(const char* t, int w, int h) {
     wnd.hCursor = LoadCursor(NULL, IDC_ARROW);
     wnd.hbrBackground = NULL;
     wnd.lpszMenuName = NULL;
-    wnd.lpszClassName = t;
+    wnd.lpszClassName = title;
 
     if (!RegisterClass(&wnd)) {
       release();
@@ -4283,7 +4381,7 @@ int screen(const char* t, int w, int h) {
     }
   }
 
-  if (!(hwnd = CreateWindow(t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
+  if (!(hwnd = CreateWindow(t, t, _flags, GetSystemMetrics(SM_CXSCREEN) / 2 - adjusted_win_w / 2, GetSystemMetrics(SM_CYSCREEN) / 2 - adjusted_win_h / 2, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
     release();
     error_handle("CreateWindow() failed: %s", GetLastError());
     return 0;
@@ -4315,23 +4413,23 @@ int screen(const char* t, int w, int h) {
   hrc = wglCreateContext(hdc);
   wglMakeCurrent(hdc, hrc);
 
-  if (!init_gl(w, h))
+  if (!init_gl(*w, *h))
     return 0;
 #else
   wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
   wnd.lpfnWndProc = WndProc;
   wnd.hCursor = LoadCursor(0, IDC_ARROW);
-  wnd.lpszClassName = t;
+  wnd.lpszClassName = title;
 
   if (!RegisterClass(&wnd)) {
     release();
-    error_handle("RegisterClass() failed: %s", GetLastError());
+    error_handle(PRIO_HIGH, "RegisterClass() failed: %s", GetLastError());
     return 0;
   }
 
-  if (!(hwnd = CreateWindowEx(0, t, t, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, adjusted_win_w, adjusted_win_h, 0, 0, 0, 0))) {
+  if (!(hwnd = CreateWindowEx(0, title, title, _flags, GetSystemMetrics(SM_CXSCREEN) / 2 - adjusted_win_w / 2 , GetSystemMetrics(SM_CYSCREEN) / 2 - adjusted_win_h / 2, adjusted_win_w, adjusted_win_h, 0, 0, 0, 0))) {
     release();
-    error_handle("CreateWindowEx() failed: %s", GetLastError());
+    error_handle(PRIO_HIGH, "CreateWindowEx() failed: %s", GetLastError());
     return 0;
   }
 
@@ -4340,11 +4438,11 @@ int screen(const char* t, int w, int h) {
   bmpinfo->bmiHeader.biPlanes = 1;
   bmpinfo->bmiHeader.biBitCount = 32;
   bmpinfo->bmiHeader.biCompression = BI_BITFIELDS;
-  bmpinfo->bmiHeader.biWidth = w;
-  bmpinfo->bmiHeader.biHeight = -h;
-  bmpinfo->bmiColors[0].rgbRed = 0xff;
-  bmpinfo->bmiColors[1].rgbGreen = 0xff;
-  bmpinfo->bmiColors[2].rgbBlue = 0xff;
+  bmpinfo->bmiHeader.biWidth = *w;
+  bmpinfo->bmiHeader.biHeight = -(*h);
+  bmpinfo->bmiColors[0].rgbRed = 0xFF;
+  bmpinfo->bmiColors[1].rgbGreen = 0xFF;
+  bmpinfo->bmiColors[2].rgbBlue = 0xFF;
 
   hdc = GetDC(hwnd);
 #endif
@@ -4354,26 +4452,26 @@ int screen(const char* t, int w, int h) {
   return 1;
 }
 
-int should_close() {
-  return closed;
+int closed() {
+  return __closed;
 }
 
-int poll_events(user_event_t* ue) {
-  if (!ue)
+int poll(event_t* e) {
+  if (!e)
     return 0;
-  memset(ue, 0, sizeof(user_event_t));
-  tmp_ue = ue;
+  memset(e, 0, sizeof(event_t));
+  tmp_e = e;
 
   MSG msg;
   if (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
     TranslateMessage(&msg);
     DispatchMessage(&msg);
-    return !!tmp_ue;
+    return !!tmp_e;
   }
   return 0;
 }
 
-void render(surface_t* s) {
+void flush(surface_t* s) {
   if (s && s->buf)
     buffer = s;
   InvalidateRect(hwnd, NULL, TRUE);
@@ -4385,6 +4483,10 @@ void release() {
   free_gl();
   wglMakeCurrent(NULL, NULL);
 #endif
+
+  for (int i = 0; i < 14; ++i)
+    if (cursors[i])
+      DestroyCursor(cursors[i]);
   ReleaseDC(hwnd, hdc);
   DestroyWindow(hwnd);
 }
@@ -4875,7 +4977,7 @@ int should_close() {
   return closed;
 }
 
-int poll_events(user_event_t* ue) {
+int poll_events(event_t* ue) {
   if (!ue || !XPending(display))
     return 0;
 

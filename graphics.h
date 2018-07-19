@@ -285,7 +285,6 @@ extern "C" {
   void mouse_xy(int* x, int* y);
   void window_wh(int* w, int* h);
   void resize_callback(void (*cb)(int, int));
-  void mouse_callback(void (*cb)(int, int, float, float));
   
   typedef enum {
     MOUSE_BTN_0, // No mouse button
