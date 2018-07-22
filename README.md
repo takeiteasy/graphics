@@ -79,6 +79,7 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 - More extras (gif load/save, FreeType fonts, C++ OOP wrapper)
 - Optional OpenCL for processing stuff
 - Pixel shader support
+- Merge text rendering functions to reduce redundancy
 
 
 ## License

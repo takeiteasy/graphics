@@ -1483,6 +1483,91 @@ int save_bmp(surface_t* s, const char* path) {
   return 1;
 }
 
+#if !defined(GRAPHICS_DISABLE_TEXT) || defined(GRAPHICS_ENABLE_BDF)
+int read_color(const char* str, int* col, int* len) {
+  const char* c = str;
+  if (*c != '(')
+    return 0;
+  int _len = 0;
+  while (c) {
+    _len++;
+    if (*c == ')' || _len > 17)
+      break;
+    c++;
+  }
+  if (_len > 17)
+    return 0;
+  *len = _len + 1;
+  if (!col)
+    return 1; // Skip colour parsing
+
+  c = str + 1;
+  char rgba[4][4] = {
+    "0",
+    "0",
+    "0",
+    "255"
+  };
+  int n = 0;
+  for (int i = 0, j = 0, k = 0; i < (_len - 2); ++i) {
+    if (*c == ',') {
+      k++;
+      n++;
+      j = 0;
+    }
+    else if (isdigit(*c) != -1) {
+      rgba[k][j++] = *c;
+    }
+    else
+      return 0;
+    c++;
+  }
+
+  *col = RGBA(atoi(rgba[0]), atoi(rgba[1]), atoi(rgba[2]), atoi(rgba[3]));
+  return 1;
+}
+
+static inline void str_size(const char* str, int* w, int* h) {
+  const char* s = (const char*)str;
+  int n = 0, m = 0, l = 1, c, len;
+  while (s != NULL && *s != '\0') {
+    c = *s;
+    if (c >= 0 && c <= 127) {
+      switch (c) {
+      case '\f':
+      case '\b':
+        if (read_color(s, NULL, &len)) {
+          s += len;
+          continue;
+        }
+        else
+          s++;
+        break;
+      case '\n':
+        if (n > m)
+          m = n;
+        n = 0;
+        l++;
+      default:
+        s++;
+        break;
+      }
+    }
+    else if ((c & 0xE0) == 0xC0)
+      s += 2;
+    else if ((c & 0xF0) == 0xE0)
+      s += 3;
+    else if ((c & 0xF8) == 0xF0)
+      s += 4;
+    else
+      return;
+    n++;
+  }
+  *w = MAX(n, m);
+  *h = l;
+}
+#endif
+
 #if !defined(GRAPHICS_DISABLE_TEXT)
 static char font[540][8] = {
   // Latin 0 - 94
@@ -2108,66 +2193,24 @@ int character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
   }
   
   int uc = letter_index(u), i, j;
-  for (i = 0; i < 8; ++i) {
+  for (i = 0; i < 8; ++i)
     for (j = 0; j < 8; ++j) {
-      if (font[uc][i] & 1 << j) {
+      if (font[uc][i] & 1 << j)
         __pset(s, x + j, y + i, fg);
-      } else {
+      else {
         if (bg == -1)
           continue;
         __pset(s, x + j, y + i, bg);
       }
     }
-  }
   
   return l;
-}
-
-int read_color(const char* str, int* col, int* len) {
-  const char* c = str;
-  if (*c != '(')
-    return 0;
-  int _len = 0;
-  while (c) {
-    _len++;
-    if (*c == ')' || _len > 17)
-      break;
-    c++;
-  }
-  if (_len > 17)
-    return 0;
-  *len = _len + 1;
-  if (!col)
-    return 1; // Skip colour parsing
-  
-  c = str + 1;
-  char rgba[4][4] = {
-    "0",
-    "0",
-    "0",
-    "255"
-  };
-  int n = 0;
-  for (int i = 0, j = 0, k = 0; i < (_len - 2); ++i) {
-    if (*c == ',') {
-      k++;
-      n++;
-      j = 0;
-    } else if (isdigit(*c) != -1) {
-      rgba[k][j++] = *c;
-    } else
-      return 0;
-    c++;
-  }
-  
-  *col = RGBA(atoi(rgba[0]), atoi(rgba[1]), atoi(rgba[2]), atoi(rgba[3]));
-  return 1;
 }
 
 void writeln(surface_t* s, int x, int y, int fg, int bg, const char* str) {
   const char* c = str;
   int u = x, v = y, col, len;
-  while (c && *c != '\0') {
+  while (c && *c != '\0')
     switch (*c) {
       case '\n':
         v += LINE_HEIGHT;
@@ -2193,7 +2236,6 @@ void writeln(surface_t* s, int x, int y, int fg, int bg, const char* str) {
         u += 8;
         break;
     }
-  }
 }
 
 void writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...) {
@@ -2215,45 +2257,6 @@ void writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...) 
   
   writeln(s, x, y, fg, bg, buffer);
   free(buffer);
-}
-
-static inline void str_size(const char* str, int* w, int* h) {
-  const char* s = (const char*)str;
-  int n = 0, m = 0, l = 1, c, len;
-  while (s != NULL && *s != '\0') {
-    c = *s;
-    if (c >= 0 && c <= 127) {
-      switch (c) {
-        case '\f':
-        case '\b':
-          if (read_color(s, NULL, &len)) {
-            s += len;
-            continue;
-          } else
-            s++;
-          break;
-        case '\n':
-          if (n > m)
-            m = n;
-          n = 0;
-          l++;
-        default:
-          s++;
-          break;
-      }
-    }
-    else if ((c & 0xE0) == 0xC0)
-      s += 2;
-    else if ((c & 0xF0) == 0xE0)
-      s += 3;
-    else if ((c & 0xF8) == 0xF0)
-      s += 4;
-    else
-      return;
-    n++;
-  }
-  *w = MAX(n, m);
-  *h = l;
 }
 
 void string(surface_t* out, int fg, int bg, const char* str) {
@@ -2280,7 +2283,9 @@ void stringf(surface_t* out, int fg, int bg, const char* fmt, ...) {
     vsnprintf(buffer, buffer_size, fmt, argptr);
     va_end(argptr);
   }
+
   string(out, fg, bg, buffer);
+  free(buffer);
 }
 #endif
 
@@ -2533,17 +2538,86 @@ int bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, 
 
 void bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* str) {
   const char* c = (const char*)str;
-  int u = x, v = y;
+  int u = x, v = y, col, len;
   while (c != NULL && *c != '\0') {
-    if (*c == '\n') {
-      v += f->fontbb.h + 2;
-      u  = x;
-      c += 1;
-    } else {
-      c += bdf_character(s, f, c, u, v, fg, bg);
-      u += 8;
+    switch (*c) {
+      case '\n':
+        v += f->fontbb.h + 2;
+        u = x;
+        c++;
+        break;
+      case '\f':
+        if (read_color(c + 1, &col, &len)) {
+          fg = col;
+          c += len;
+        }
+        else
+          c++;
+        break;
+      case '\b':
+        if (read_color(c + 1, &col, &len)) {
+          bg = col;
+          c += len;
+        }
+        else
+          c++;
+        break;
+      default:
+        c += bdf_character(s, f, c, u, v, fg, bg);
+        u += 8;
+        break;
     }
   }
+}
+
+void bdf_writelnf(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...) {
+  char *buffer = NULL;
+  int buffer_size = 0;
+
+  va_list argptr;
+  va_start(argptr, fmt);
+  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
+  va_end(argptr);
+
+  if (length + 1 > buffer_size) {
+    buffer_size = length + 1;
+    buffer = realloc(buffer, buffer_size);
+    va_start(argptr, fmt);
+    vsnprintf(buffer, buffer_size, fmt, argptr);
+    va_end(argptr);
+  }
+
+  bdf_writeln(s, f, x, y, fg, bg, buffer);
+  free(buffer);
+}
+
+void bdf_string(surface_t* out, bdf_t* f, int fg, int bg, const char* str) {
+  int w, h;
+  str_size(str, &w, &h);
+  surface(out, w * 8, h * LINE_HEIGHT);
+  fill(out, (bg == -1 ? 0 : bg));
+  bdf_writeln(out, f, 0, 0, fg, bg, str);
+}
+
+void bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, ...) {
+  char *buffer = NULL;
+  int buffer_size = 0;
+
+  va_list argptr;
+  va_start(argptr, fmt);
+  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
+  va_end(argptr);
+
+  if (length + 1 > buffer_size) {
+    buffer_size = length + 1;
+    buffer = realloc(buffer, buffer_size);
+    va_start(argptr, fmt);
+    vsnprintf(buffer, buffer_size, fmt, argptr);
+    va_end(argptr);
+  }
+
+  bdf_string(out, f, fg, bg, buffer);
+  free(buffer);
 }
 #endif
 
@@ -2706,6 +2780,7 @@ void resize_callback(void (*cb)(int, int)) {
 #define GL_VERTEX_SHADER                  0x8B31
 #define GL_INFO_LOG_LENGTH                0x8B84
 #define GL_BGRA                           0x80E1
+#define GL_UNSIGNED_INT_8_8_8_8_REV       0x8367
 
 typedef char GLchar;
 typedef ptrdiff_t GLintptr;
@@ -2713,6 +2788,8 @@ typedef ptrdiff_t GLsizeiptr;
 
 #include <gl/GL.h>
 #include <gl/GLU.h>
+
+#pragma comment(lib, "opengl32.lib")
 #endif
 
 #if defined(_WIN32) || defined(__linux__)
@@ -2803,7 +2880,7 @@ int init_gl(int w, int h) {
   typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
   if (!dll) {
     release();
-    error_handle("LoadLibraryA() failed: opengl32.dll not found");
+    error_handle(PRIO_LOW, "LoadLibraryA() failed: opengl32.dll not found");
     return 0;
   }
   wglGetProcAddressproc* wglGetProcAddress = (wglGetProcAddressproc*)GetProcAddress(dll, "wglGetProcAddress");
@@ -2811,7 +2888,7 @@ int init_gl(int w, int h) {
 #define GLE(ret, name, ...) \
   gl##name = (name##proc*)wglGetProcAddress("gl" #name); \
   if (!gl##name) { \
-    error_handle("wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
+    error_handle(PRIO_LOW, "wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
     gl3_available -= 1; \
   }
   GL_LIST
@@ -4398,14 +4475,14 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
 
     if (!RegisterClass(&wnd)) {
       release();
-      error_handle("RegisterClass() failed: %s", GetLastError());
+      error_handle(PRIO_HIGH, "RegisterClass() failed: %s", GetLastError());
       return 0;
     }
   }
 
-  if (!(hwnd = CreateWindow(t, t, _flags, cx, cy, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
+  if (!(hwnd = CreateWindow(title, title, _flags, cx, cy, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
     release();
-    error_handle("CreateWindow() failed: %s", GetLastError());
+    error_handle(PRIO_HIGH, "CreateWindow() failed: %s", GetLastError());
     return 0;
   }
   hdc = GetDC(hwnd);
@@ -4420,13 +4497,13 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
   int pf = ChoosePixelFormat(hdc, &pfd);
   if (pf == 0) {
     release();
-    error_handle("ChoosePixelFormat() failed: %s", GetLastError());
+    error_handle(PRIO_HIGH, "ChoosePixelFormat() failed: %s", GetLastError());
     return 0;
   }
 
   if (SetPixelFormat(hdc, pf, &pfd) == FALSE) {
     release();
-    error_handle("SetPixelFormat() failed: %s", GetLastError());
+    error_handle(PRIO_HIGH, "SetPixelFormat() failed: %s", GetLastError());
     return 0;
   }
 
