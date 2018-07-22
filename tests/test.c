@@ -153,32 +153,31 @@ int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
 /* TODO next
  - OSX
   - Fix delta error from cursor warping
-  - Cursor warping
   - Cursor locking to view
  - Windows
-  - Cursor warping
-  - Always on top window flag
-  - True fullscreen
-  - Fix BDF thing
+  - Fix unicode text
  - Linux
   - Update function names
   - Add window flags
   - Add cursor handling
  - All
-  - Set cursor from surface
+  - Load cursor from surface
   - Joystick API
  - Update TODO list in README
  */
 
 int main(int argc, const char* argv[]) {
-  screen("test", &win, &win_w, &win_h, BORDERLESS | RESIZABLE);
+  screen("test", &win, win_w, win_h, DEFAULT);
   resize_callback(on_resize);
   error_callback(on_error);
-  cursor(LOCKED, CURSOR_HAND);
+  // cursor(LOCKED | HIDDEN | CURSOR_HAND);
 
   surface_t s[10];
-  surface(&s[0], 50, 50);
+  for (int i = 0; i < 10; ++i)
+    s[i].buf = NULL;
   
+  surface(&s[0], 50, 50);
+
   image(&s[1], RES("test_alpha.png"));
   
   bmp(&s[6], RES("lena.bmp"));

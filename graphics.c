@@ -280,7 +280,7 @@ int copy(surface_t* in, surface_t* out) {
 }
 
 void filter(surface_t* s, int (*fn)(int x, int y, int col)) {
-  if (!s)
+  if (!s || !s->buf)
     return;
   
   int x, y;
@@ -3091,10 +3091,10 @@ static int border_off = 22;
       0x0F, 0xA3, 0x9C, 0xB4, 0xDA, 0x8B, 0xB3, 0x3E, 0x05, 0x00, 0x3B
     };
     
-    NSData *cursorData = [NSData dataWithBytesNoCopy:&cursorBytes[0]
+    NSData* cursorData = [NSData dataWithBytesNoCopy:&cursorBytes[0]
                                               length:sizeof(cursorBytes)
                                         freeWhenDone:NO];
-    NSImage *cursorImage = [[[NSImage alloc] initWithData:cursorData] autorelease];
+    NSImage* cursorImage = [[[NSImage alloc] initWithData:cursorData] autorelease];
     invisibleCursor = [[NSCursor alloc] initWithImage:cursorImage
                                               hotSpot:NSZeroPoint];
   }
@@ -3984,10 +3984,9 @@ static int translate_key(WPARAM wParam, LPARAM lParam) {
   return keycodes[HIWORD(lParam) & 0x1FF];
 }
 
-static HCURSOR cursors[14];
-static CURSORTYPE c_cursor = CURSOR_ARROW;
-static int cursor_state = 0;
-static RECT clip_rect = { 0 };
+static HCURSOR __cursor = NULL, __custom_cursor = NULL;
+static int __cursor_state = 0;
+static RECT __rc = { 0 };
 static long adjust_flags = WS_POPUP | WS_SYSMENU | WS_CAPTION;
 
 void set_adjusted_win_wh(int w, int h) {
@@ -4124,28 +4123,19 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       tmp_e->data2 = (SHORT)HIWORD(wParam) / (double)WHEEL_DELTA;
       break;
     case WM_MOUSEMOVE:
-      switch (cursor_state) {
-        default:
-        case 0:
-          mx = GET_X_LPARAM(lParam);
-          my = GET_Y_LPARAM(lParam);
-          break;
-        case 1:
-          // TODO later
-          break;
-        case 2: {
-          mx = GET_X_LPARAM(lParam);
-          my = GET_Y_LPARAM(lParam);
-          if (is_active) {
-            GetWindowRect(hwnd, &clip_rect);
-            ClipCursor(&clip_rect);
-          }
-          break;
-        }
+      mx = GET_X_LPARAM(lParam);
+      my = GET_Y_LPARAM(lParam);
+      if (__cursor_state && is_active) {
+        GetWindowRect(hwnd, &__rc);
+        __rc.left += 3;
+        __rc.right -= 3;
+        __rc.top += 3;
+        __rc.bottom -= 3;
+        ClipCursor(&__rc);
       }
       break;
     case WM_SETCURSOR:
-      SetCursor((cursors[c_cursor] ? cursors[c_cursor] : cursors[1]));
+      SetCursor(__cursor);
       break;
     case WM_ACTIVATE:
       is_active = (LOWORD(wParam) == WA_ACTIVE);
@@ -4156,38 +4146,69 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
   return res;
 }
 
-void cursor(CURSORFLAGS flags, CURSORTYPE flag) {
-  if (flags & NO_CHANGE)
-    goto SKIP_CURSOR_FLAGS;
-
+void cursor(CURSORFLAGS flags) {
   if (flags == DEFAULT)
     flags = SHOWN | UNLOCKED;
 
-  if (flags & HIDDEN)
+  if (flags & HIDDEN && flags & ~SHOWN)
     ShowCursor(FALSE);
   if (flags & SHOWN)
     ShowCursor(TRUE);
-  if (flags & UNLOCKED) {
-    if (flags & WARPED)
-      flags |= ~WARPED;
-    if (flags & LOCKED)
-      flags |= ~LOCKED;
-    cursor_state = 0;
+  __cursor_state = flags & LOCKED ? flags & UNLOCKED ? !__cursor_state : 1 : 0;
+
+  if (flags & 0xFFFFF0) {
+    LPCSTR c = NULL;
+    switch (flags & ~0x00000F) {
+      default:
+      case CURSOR_ARROW:
+        c = IDC_ARROW;
+        break;
+      case CURSOR_IBEAM:
+        c = IDC_IBEAM;
+        break;
+      case CURSOR_WAIT:
+      case CURSOR_WAITARROW:
+        c = IDC_WAIT;
+        break;
+      case CURSOR_SIZENWSE:
+        c = IDC_SIZENWSE;
+        break;
+      case CURSOR_SIZENESW:
+        c = IDC_SIZENESW;
+        break;
+      case CURSOR_SIZEWE:
+        c = IDC_SIZEWE;
+        break;
+      case CURSOR_SIZENS:
+        c = IDC_SIZENS;
+        break;
+      case CURSOR_SIZEALL:
+        c = IDC_SIZEALL;
+        break;
+      case CURSOR_NO:
+        c = IDC_NO;
+        break;
+      case CURSOR_HAND:
+        c = IDC_HAND;
+        break;
+      case CURSOR_CUSTOM:
+        if (!__custom_cursor) {
+          error_handle(PRIO_LOW, "cursor() failed: No custom cursor loaded");
+          return;
+        }
+    }
+
+    if (__cursor && __cursor != __custom_cursor)
+      DestroyCursor(__cursor);
+    __cursor = (c ? LoadCursor(NULL, c) : __custom_cursor);
   }
-  if (flags & WARPED)
-    cursor_state = 1;
-  if (flags & LOCKED)
-    cursor_state = 2;
-  
-SKIP_CURSOR_FLAGS:
-  c_cursor = (cursors[flag] ? flag : CURSOR_ARROW);
 }
 
 void custom_cursor(surface_t* s) {
   // TODO later
 }
 
-int screen(const char* title, surface_t* s, int* w, int* h, short flags) {
+int screen(const char* title, surface_t* s, int w, int h, short flags) {
   if (!w || !h) {
     error_handle(PRIO_NORM, "screen() failed: W/H params NULL");
     return 0;
@@ -4318,27 +4339,25 @@ int screen(const char* title, surface_t* s, int* w, int* h, short flags) {
   keycodes[0x037] = KB_KEY_KP_MULTIPLY;
   keycodes[0x04A] = KB_KEY_KP_SUBTRACT;
 
-  cursors[CURSOR_NO_CHANGE] = NULL;
-  cursors[CURSOR_ARROW] = LoadCursor(NULL, IDC_ARROW);
-  cursors[CURSOR_IBEAM] = LoadCursor(NULL, IDC_IBEAM);
-  cursors[CURSOR_WAIT] = LoadCursor(NULL, IDC_WAIT);
-  cursors[CURSOR_CROSSHAIR] = LoadCursor(NULL, IDC_CROSS);
-  cursors[CURSOR_WAITARROW] = cursors[CURSOR_WAIT];
-  cursors[CURSOR_SIZENWSE] = LoadCursor(NULL, IDC_SIZENWSE);
-  cursors[CURSOR_SIZENESW] = LoadCursor(NULL, IDC_SIZENESW);
-  cursors[CURSOR_SIZEWE] = LoadCursor(NULL, IDC_SIZEWE);
-  cursors[CURSOR_SIZENS] = LoadCursor(NULL, IDC_SIZENS);
-  cursors[CURSOR_SIZEALL] = LoadCursor(NULL, IDC_SIZEALL);
-  cursors[CURSOR_NO] = LoadCursor(NULL, IDC_NO);
-  cursors[CURSOR_HAND] = LoadCursor(NULL, IDC_HAND);
-  cursors[CURSOR_CUSTOM] = NULL;
-
-  for (int sc = 0; sc < 256; sc++) {
+  for (int sc = 0; sc < 256; sc++)
     if (keycodes[sc] > 0)
       scancodes[keycodes[sc]] = sc;
-  }
 
   long _flags = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
+  if (flags & FULLSCREEN) {
+    flags |= (BORDERLESS | FULLSCREEN_DESKTOP);
+
+    DEVMODE settings;
+    EnumDisplaySettings(0, 0, &settings);
+    settings.dmPelsWidth = GetSystemMetrics(SM_CXSCREEN);
+    settings.dmPelsHeight = GetSystemMetrics(SM_CYSCREEN);
+    settings.dmBitsPerPel = 32;
+    settings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+    if (ChangeDisplaySettings(&settings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL) {
+      __cursor_state = 1;
+      error_handle(PRIO_LOW, "screen() failed: Failed to go to fullscreen mode: Defaulting to fullscreen desktop");
+    }
+  }
   _flags |= (flags & RESIZABLE ? WS_THICKFRAME : 0);
   if (flags & BORDERLESS) {
     _flags &= ~(WS_OVERLAPPED | WS_CAPTION);
@@ -4346,18 +4365,21 @@ int screen(const char* title, surface_t* s, int* w, int* h, short flags) {
     adjust_flags = WS_POPUP;
   }
   if (flags & FULLSCREEN_DESKTOP) {
-    *w = win_w = GetSystemMetrics(SM_CXSCREEN);
-    *h = win_h = GetSystemMetrics(SM_CYSCREEN);
+    w = win_w = GetSystemMetrics(SM_CXSCREEN);
+    h = win_h = GetSystemMetrics(SM_CYSCREEN);
   } else {
-    win_w = *w;
-    win_h = *h;
+    win_w = w;
+    win_h = h;
   }
 
-  set_adjusted_win_wh(*w, *h);
+  set_adjusted_win_wh(w, h);
 
   if (s)
-    if (!surface(s, *w, *h))
+    if (!surface(s, w, h))
       return 0;
+
+  int cx = GetSystemMetrics(SM_CXSCREEN) / 2 - adjusted_win_w / 2,
+      cy = GetSystemMetrics(SM_CYSCREEN) / 2 - adjusted_win_h / 2;
 
 #if defined(GRAPHICS_ENABLE_OPENGL)
   static HINSTANCE hinst = 0;
@@ -4381,7 +4403,7 @@ int screen(const char* title, surface_t* s, int* w, int* h, short flags) {
     }
   }
 
-  if (!(hwnd = CreateWindow(t, t, _flags, GetSystemMetrics(SM_CXSCREEN) / 2 - adjusted_win_w / 2, GetSystemMetrics(SM_CYSCREEN) / 2 - adjusted_win_h / 2, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
+  if (!(hwnd = CreateWindow(t, t, _flags, cx, cy, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
     release();
     error_handle("CreateWindow() failed: %s", GetLastError());
     return 0;
@@ -4413,7 +4435,7 @@ int screen(const char* title, surface_t* s, int* w, int* h, short flags) {
   hrc = wglCreateContext(hdc);
   wglMakeCurrent(hdc, hrc);
 
-  if (!init_gl(*w, *h))
+  if (!init_gl(w, h))
     return 0;
 #else
   wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
@@ -4427,7 +4449,7 @@ int screen(const char* title, surface_t* s, int* w, int* h, short flags) {
     return 0;
   }
 
-  if (!(hwnd = CreateWindowEx(0, title, title, _flags, GetSystemMetrics(SM_CXSCREEN) / 2 - adjusted_win_w / 2 , GetSystemMetrics(SM_CYSCREEN) / 2 - adjusted_win_h / 2, adjusted_win_w, adjusted_win_h, 0, 0, 0, 0))) {
+  if (!(hwnd = CreateWindowEx(0, title, title, _flags, cx, cy, adjusted_win_w, adjusted_win_h, 0, 0, 0, 0))) {
     release();
     error_handle(PRIO_HIGH, "CreateWindowEx() failed: %s", GetLastError());
     return 0;
@@ -4438,8 +4460,8 @@ int screen(const char* title, surface_t* s, int* w, int* h, short flags) {
   bmpinfo->bmiHeader.biPlanes = 1;
   bmpinfo->bmiHeader.biBitCount = 32;
   bmpinfo->bmiHeader.biCompression = BI_BITFIELDS;
-  bmpinfo->bmiHeader.biWidth = *w;
-  bmpinfo->bmiHeader.biHeight = -(*h);
+  bmpinfo->bmiHeader.biWidth = w;
+  bmpinfo->bmiHeader.biHeight = -h;
   bmpinfo->bmiColors[0].rgbRed = 0xFF;
   bmpinfo->bmiColors[1].rgbGreen = 0xFF;
   bmpinfo->bmiColors[2].rgbBlue = 0xFF;
@@ -4448,7 +4470,15 @@ int screen(const char* title, surface_t* s, int* w, int* h, short flags) {
 #endif
 
   ShowWindow(hwnd, SW_NORMAL);
+
+  if (flags & ALWAYS_ON_TOP)
+    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
+  SetFocus(hwnd);
+
+  __cursor = LoadCursor(NULL, IDC_ARROW);
   ifuckinghatethewin32api = 1;
+
   return 1;
 }
 
@@ -4484,9 +4514,10 @@ void release() {
   wglMakeCurrent(NULL, NULL);
 #endif
 
-  for (int i = 0; i < 14; ++i)
-    if (cursors[i])
-      DestroyCursor(cursors[i]);
+  if (__cursor)
+    DestroyCursor(__cursor);
+  if (__custom_cursor)
+    DestroyCursor(__custom_cursor);
   ReleaseDC(hwnd, hdc);
   DestroyWindow(hwnd);
 }

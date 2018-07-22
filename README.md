@@ -25,12 +25,9 @@ No external libraries are used unless you want to use the alternate backends (en
 
 On OSX you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for Metal. Also, if you're using XCode you'll also have to disable modules in the build settings, becuase modules imports curses with stdio for some reason.
 
-On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're using the OpenGL backend include ```-ld -lGL```.
+On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're using the OpenGL backend include ```-ld -lGL```. **NOTE**: X11 can't automatically strech stuff being rendered like ```StretchDIBits``` and ```CGContextDrawImage``` can - so resizing the window is disabled (_until I can find a solution_) unless you're using the OpenGL backend.
 
-I've never even bothered trying to build stuff on Windows outside of Visual Studio, so I can't help you there.
-
-**NOTE**: X11 can't automatically strech stuff being rendered like ```StretchDIBits``` and ```CGContextDrawImage``` can - so resizing the window is disabled (_until I can find a solution_) unless you're using the OpenGL backend.
-
+On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line options or unicode decoding won't work properly. I don't know why, but it doesn't.
 
 ## Screenshots
 
@@ -55,7 +52,7 @@ I've never even bothered trying to build stuff on Windows outside of Visual Stud
   - OSX: <IOKit/hid/IOHIDLib.h>
   - Windows: XInput/DirectInput
   - Linux: /dev/input/js0 (?)
-- Port new stuff to Windows/Linux
+- Port new stuff to Linux
 - Optimise OSX cursor warping
 - [Fix OSX cursor lock to window](https://stackoverflow.com/a/40922095)
 

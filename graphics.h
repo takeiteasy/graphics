@@ -456,33 +456,27 @@ extern "C" {
   } event_t;
   
   typedef enum {
-    DEFAULT = 0x00,
-    HIDDEN = 0x01,
-    SHOWN = 0x02,
-    LOCKED = 0x04,
-    UNLOCKED = 0x08,
-    WARPED = 0x10,
-    NO_CHANGE = 0x20
+    DEFAULT = 0x0000,
+    HIDDEN = 0x0001,
+    SHOWN = 0x0002,
+    LOCKED = 0x0004,
+    UNLOCKED = 0x0008,
+    CURSOR_ARROW = 0x000010,     // Arrow
+    CURSOR_IBEAM = 0x000020,     // I-beam
+    CURSOR_WAIT = 0x000040,      // Wait
+    CURSOR_CROSSHAIR = 0x000080, // Crosshair
+    CURSOR_WAITARROW = 0x000100, // Small wait cursor (or Wait if not available)
+    CURSOR_SIZENWSE = 0x000200,  // Double arrow pointing northwest and southeast
+    CURSOR_SIZENESW = 0x000400,  // Double arrow pointing northeast and southwest
+    CURSOR_SIZEWE = 0x000800,    // Double arrow pointing west and east
+    CURSOR_SIZENS = 0x001000,    // Double arrow pointing north and south
+    CURSOR_SIZEALL = 0x002000,   // Four pointed arrow pointing north, south, east, and west
+    CURSOR_NO = 0x004000,        // Slashed circle or crossbones
+    CURSOR_HAND = 0x008000,      // Hand
+    CURSOR_CUSTOM = 0x100000     // Use your own
   } CURSORFLAGS;
   
-  typedef enum {
-    CURSOR_NO_CHANGE,
-    CURSOR_ARROW,     // Arrow
-    CURSOR_IBEAM,     // I-beam
-    CURSOR_WAIT,      // Wait
-    CURSOR_CROSSHAIR, // Crosshair
-    CURSOR_WAITARROW, // Small wait cursor (or Wait if not available)
-    CURSOR_SIZENWSE,  // Double arrow pointing northwest and southeast
-    CURSOR_SIZENESW,  // Double arrow pointing northeast and southwest
-    CURSOR_SIZEWE,    // Double arrow pointing west and east
-    CURSOR_SIZENS,    // Double arrow pointing north and south
-    CURSOR_SIZEALL,   // Four pointed arrow pointing north, south, east, and west
-    CURSOR_NO,        // Slashed circle or crossbones
-    CURSOR_HAND,      // Hand
-    CURSOR_CUSTOM     // Use your own
-  } CURSORTYPE;
-  
-  void cursor(CURSORFLAGS flags, CURSORTYPE flag);
+  void cursor(CURSORFLAGS flags);
   void custom_cursor(surface_t* s);
   
   typedef enum {
@@ -493,7 +487,7 @@ extern "C" {
     ALWAYS_ON_TOP = 0x10,
   } WINDOWFLAGS;
   
-  int screen(const char* title, surface_t* s, int* w, int* h, short flags);
+  int screen(const char* title, surface_t* s, int w, int h, short flags);
   int closed(void);
   int poll(event_t* e);
   void flush(surface_t* s);
