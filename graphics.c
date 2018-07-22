@@ -9,13 +9,13 @@
 # define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#if defined(GRAPHICS_ENABLE_METAL)
-# if defined(__APPLE__)
-#   if defined(GRAPHICS_ENABLE_OPENGL)
-#     undef GRAPHICS_ENABLE_OPENGL
-#   endif
-# else
-#   error Metal is only supported on OSX
+#if defined(__APPLE__)
+# if defined(GRAPHICS_ENABLE_METAL) && defined(GRAPHICS_ENABLE_OPENGL)
+#   undef GRAPHICS_ENABLE_OPENGL
+# endif
+#elif defined(_WIN32)
+# if defined(GRAPHICS_ENABLE_DX9) && defined(GRAPHICS_ENABLE_OPENGL)
+#   undef GRAPHICS_ENABLE_OPENGL
 # endif
 #endif
 
@@ -4010,6 +4010,13 @@ static HDC hdc = 0;
 static PIXELFORMATDESCRIPTOR pfd;
 static HGLRC hrc;
 static PAINTSTRUCT ps;
+#elif defined(GRAPHICS_ENABLE_DX9)
+#define COBJMACROS
+#include <d3d9.h>
+#pragma comment (lib, "d3d9.lib")
+
+static LPDIRECT3D9 d3d;
+static LPDIRECT3DDEVICE9 d3ddev;
 #else
 static BITMAPINFO* bmpinfo;
 #endif
@@ -4084,6 +4091,11 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
         draw_gl();
         BeginPaint(hwnd, &ps);
         EndPaint(hwnd, &ps);
+#elif defined(GRAPHICS_ENABLE_DX9)
+        IDirect3DDevice9_Clear(d3ddev, 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(255, 0, 0), 1.0f, 0);
+        IDirect3DDevice9_BeginScene(d3ddev);
+        IDirect3DDevice9_EndScene(d3ddev);
+        IDirect3DDevice9_Present(d3ddev, NULL, NULL, NULL, NULL);
 #else
         bmpinfo->bmiHeader.biWidth = buffer->w;
         bmpinfo->bmiHeader.biHeight = -buffer->h;
@@ -4458,35 +4470,29 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
   int cx = GetSystemMetrics(SM_CXSCREEN) / 2 - adjusted_win_w / 2,
       cy = GetSystemMetrics(SM_CYSCREEN) / 2 - adjusted_win_h / 2;
 
+  HINSTANCE hinst = GetModuleHandle(NULL);
 #if defined(GRAPHICS_ENABLE_OPENGL)
-  static HINSTANCE hinst = 0;
-  if (!hinst) {
-    hinst = GetModuleHandle(NULL);
-    wnd.style = CS_OWNDC;
-    wnd.lpfnWndProc = (WNDPROC)WndProc;
-    wnd.cbClsExtra = 0;
-    wnd.cbWndExtra = 0;
-    wnd.hInstance = hinst;
-    wnd.hIcon = LoadIcon(NULL, IDI_WINLOGO);
-    wnd.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wnd.hbrBackground = NULL;
-    wnd.lpszMenuName = NULL;
-    wnd.lpszClassName = title;
+  wnd.style = CS_OWNDC;
+#else
+  wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
+#endif
+  wnd.lpfnWndProc = (WNDPROC)WndProc;
+  wnd.lpszClassName = title;
+  wnd.hInstance = hinst;
 
-    if (!RegisterClass(&wnd)) {
-      release();
-      error_handle(PRIO_HIGH, "RegisterClass() failed: %s", GetLastError());
-      return 0;
-    }
+  if (!RegisterClass(&wnd)) {
+    release();
+    error_handle(PRIO_HIGH, "RegisterClass() failed: %s", GetLastError());
+    return 0;
   }
 
   if (!(hwnd = CreateWindow(title, title, _flags, cx, cy, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
     release();
-    error_handle(PRIO_HIGH, "CreateWindow() failed: %s", GetLastError());
+    error_handle(PRIO_HIGH, "CreateWindowEx() failed: %s", GetLastError());
     return 0;
   }
-  hdc = GetDC(hwnd);
 
+#if defined(GRAPHICS_ENABLE_OPENGL)
   memset(&pfd, 0, sizeof(pfd));
   pfd.nSize = sizeof(pfd);
   pfd.nVersion = 1;
@@ -4514,24 +4520,17 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
 
   if (!init_gl(w, h))
     return 0;
+#elif defined(GRAPHICS_ENABLE_DX9)
+  d3d = Direct3DCreate9(D3D_SDK_VERSION);
+
+  D3DPRESENT_PARAMETERS d3dpp;
+  ZeroMemory(&d3dpp, sizeof(d3dpp));
+  d3dpp.Windowed = TRUE;
+  d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+  d3dpp.hDeviceWindow = hwnd;
+
+  IDirect3D9_CreateDevice(d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &d3ddev);
 #else
-  wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
-  wnd.lpfnWndProc = WndProc;
-  wnd.hCursor = LoadCursor(0, IDC_ARROW);
-  wnd.lpszClassName = title;
-
-  if (!RegisterClass(&wnd)) {
-    release();
-    error_handle(PRIO_HIGH, "RegisterClass() failed: %s", GetLastError());
-    return 0;
-  }
-
-  if (!(hwnd = CreateWindowEx(0, title, title, _flags, cx, cy, adjusted_win_w, adjusted_win_h, 0, 0, 0, 0))) {
-    release();
-    error_handle(PRIO_HIGH, "CreateWindowEx() failed: %s", GetLastError());
-    return 0;
-  }
-
   bmpinfo = (BITMAPINFO*)calloc(1, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
   bmpinfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
   bmpinfo->bmiHeader.biPlanes = 1;
@@ -4589,6 +4588,11 @@ void release() {
 #if defined(GRAPHICS_ENABLE_OPENGL)
   free_gl();
   wglMakeCurrent(NULL, NULL);
+#elif defined(GRAPHICS_ENABLE_DX9)
+  IDirect3DDevice9_Release(d3ddev);
+  IDirect3D9_Release(d3d);
+#else
+  FREE_SAFE(bmpinfo);
 #endif
 
   if (__cursor)

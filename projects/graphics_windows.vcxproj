@@ -93,7 +93,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>GRAPHICS_ENABLE_OPENGL;GRAPHICS_ENABLE_AAa;GRAPHICS_DISABLE_RGBAa;GRAPHICS_ENABLE_STB_IMAGE;GRAPHICS_ENABLE_BDF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GRAPHICS_ENABLE_OPENGLa;GRAPHICS_ENABLE_DX9;GRAPHICS_ENABLE_AAa;GRAPHICS_DISABLE_RGBAa;GRAPHICS_ENABLE_STB_IMAGE;GRAPHICS_ENABLE_BDF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
