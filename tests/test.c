@@ -152,10 +152,7 @@ int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
 
 /* TODO next
  - OSX
-  - Fix delta error from cursor warping
-  - Cursor locking to view
- - Windows
-  - Fix unicode text
+  - Fix delta error from cursor warping + cursor locking to view
  - Linux
   - Update function names
   - Add window flags
@@ -163,6 +160,7 @@ int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
  - All
   - Load cursor from surface
   - Joystick API
+  - Mouse delta values
  - Update TODO list in README
  */
 
@@ -170,7 +168,7 @@ int main(int argc, const char* argv[]) {
   screen("test", &win, win_w, win_h, DEFAULT);
   resize_callback(on_resize);
   error_callback(on_error);
-  // cursor(LOCKED | HIDDEN | CURSOR_HAND);
+  cursor(LOCKED | CURSOR_HAND);
 
   surface_t s[10];
   for (int i = 0; i < 10; ++i)
@@ -207,7 +205,7 @@ int main(int argc, const char* argv[]) {
 
   rect_t cutr  = { 125, 120, 50, 50 };
   stringf(&s[3], RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", cutr.x, cutr.y, cutr.w, cutr.h);
-  
+
   surface(&s[9], 50, 50);
   fill(&s[9], BLACK);
   writeln(&s[9], 13, 20, LIME, BLACK, "WOW");
@@ -217,7 +215,7 @@ int main(int argc, const char* argv[]) {
   rect(&s[5], 50, 50, 50, 50, RGBA(0, 255, 0, 128), 1);
   rect(&s[5], 50, 0,  50, 50, RGBA(0, 0, 255, 128), 1);
   rect(&s[5], 0,  50, 50, 50, RGBA(255, 255, 0, 128), 1);
-  
+
   float theta = 1.f;
   int col = 0, grey = 0;
   long sine_i = 0;

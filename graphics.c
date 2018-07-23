@@ -3189,99 +3189,75 @@ NSPoint cursor_pos_abs() {
   return (NSPoint){ p.x, [app screen].frame.size.height - p.y };
 }
 
-//NSPoint cursor_pos_rel() {
-//  const NSPoint p = cursor_pos_abs();
-//  const NSPoint so = [app convertRectToScreen:(NSRect){ [[app contentView] convertPoint:NSMakePoint([[app contentView] bounds].origin.x,
-//                                                                                                    [[app contentView] bounds].origin.y + [[app contentView] bounds].size.height)
-//                                                                                 toView:nil], { 0, 0 }}].origin;
-//  return (CGPoint){ p.x - so.x, p.y - so.y };
-//}
-
-void cursor(CURSORFLAGS flags, CURSORTYPE type) {
+void cursor(CURSORFLAGS flags) {
   if (!app) {
     error_handle(PRIO_LOW, "cursor() failed: Called before screen is set up");
     return;
   }
   
-  if (flags & NO_CHANGE)
-    goto SKIP_CURSOR_FLAGS;
-  
   if (flags == DEFAULT)
     flags = SHOWN | UNLOCKED;
   
-  if (flags & HIDDEN)
+  if (flags & HIDDEN && flags & ~SHOWN)
     [NSCursor hide];
   if (flags & SHOWN)
     [NSCursor unhide];
-  if (flags & UNLOCKED) {
-    if (flags & WARPED)
-      flags |= ~WARPED;
-    if (flags & LOCKED)
-      flags |= ~LOCKED;
-    __cursor_state = 0;
+  __cursor_state = flags & LOCKED ? flags & UNLOCKED ? !__cursor_state : 1 : 0;
+  
+  if (flags & 0xFFFFF0) {
+    NSCursor* tmp = NULL;
+    switch (flags & ~0x00000F) {
+      case CURSOR_ARROW:
+      case CURSOR_WAIT:
+      case CURSOR_WAITARROW:
+        tmp = [NSCursor arrowCursor];
+        break;
+      case CURSOR_IBEAM:
+        tmp = [NSCursor IBeamCursor];
+        break;
+      case CURSOR_CROSSHAIR:
+        tmp = [NSCursor crosshairCursor];
+        break;
+      case CURSOR_SIZENWSE:
+      case CURSOR_SIZENESW:
+        tmp = [NSCursor closedHandCursor];
+        break;
+      case CURSOR_SIZEWE:
+        tmp = [NSCursor resizeLeftRightCursor];
+        break;
+      case CURSOR_SIZENS:
+        tmp = [NSCursor resizeUpDownCursor];
+        break;
+      case CURSOR_SIZEALL:
+        tmp = [NSCursor closedHandCursor];
+        break;
+      case CURSOR_NO:
+        tmp = [NSCursor operationNotAllowedCursor];
+        break;
+      case CURSOR_HAND:
+        tmp = [NSCursor pointingHandCursor];
+        break;
+      case CURSOR_CUSTOM:
+        if (__custom_cursor)
+          tmp = __custom_cursor;
+        break;
+      default:
+        tmp = [NSCursor invisibleCursor];
+        break;
+    }
+    
+    if (!tmp)
+      return;
+    
+    if (__cursor && __cursor != __custom_cursor)
+      [__cursor release];
+    
+    __cursor = tmp;
+    [__cursor retain];
+    
+    if (app && [app contentView])
+      [[app contentView] resetCursorRects];
   }
-  if (flags & WARPED) {
-    __cursor_state = 1;
-    const NSPoint p = cursor_pos_abs();
-    mx = lmx = p.x;
-    my = lmy = p.y;
-    printf("%d %d\n", mx, my);
-    [[app contentView] mouseMoved:nil]; // Force warp
-  }
-  if (flags & LOCKED)
-    __cursor_state = 2;
-  
-SKIP_CURSOR_FLAGS:
-  if (type == CURSOR_NO_CHANGE)
-    return;
-  
-  if (__cursor)
-    [__cursor release];
-  
-  switch (type) {
-    case CURSOR_ARROW:
-    case CURSOR_WAIT:
-    case CURSOR_WAITARROW:
-      __cursor = [NSCursor arrowCursor];
-      break;
-    case CURSOR_IBEAM:
-      __cursor = [NSCursor IBeamCursor];
-      break;
-    case CURSOR_CROSSHAIR:
-      __cursor = [NSCursor crosshairCursor];
-      break;
-    case CURSOR_SIZENWSE:
-    case CURSOR_SIZENESW:
-      __cursor = [NSCursor closedHandCursor];
-      break;
-    case CURSOR_SIZEWE:
-      __cursor = [NSCursor resizeLeftRightCursor];
-      break;
-    case CURSOR_SIZENS:
-      __cursor = [NSCursor resizeUpDownCursor];
-      break;
-    case CURSOR_SIZEALL:
-      __cursor = [NSCursor closedHandCursor];
-      break;
-    case CURSOR_NO:
-      __cursor = [NSCursor operationNotAllowedCursor];
-      break;
-    case CURSOR_HAND:
-      __cursor = [NSCursor pointingHandCursor];
-      break;
-    case CURSOR_CUSTOM:
-      if (__custom_cursor)
-        __cursor = __custom_cursor;
-      break;
-    default:
-      __cursor = [NSCursor invisibleCursor];
-      break;
-  }
-  
-  [__cursor retain];
-  
-  if (app && [app contentView])
-    [[app contentView] resetCursorRects];
 }
 
 static inline NSImage* create_cocoa_image(surface_t* s) {
@@ -3445,6 +3421,7 @@ extern surface_t* buffer;
 }
 
 -(void)cursorUpdate:(NSEvent*)event {
+  (void)event;
   if (__cursor)
     [__cursor set];
 }
@@ -3463,54 +3440,23 @@ extern surface_t* buffer;
 }
 
 -(void)mouseMoved:(NSEvent*)event {
-  switch (__cursor_state) {
-    default:
-    case 0:
-      mx = CLAMP((int)(floorf([event locationInWindow].x - 1) + [event deltaX]), 0, win_w);
-      my = CLAMP((int)(floorf(win_h - 1 - [event locationInWindow].y) + [event deltaY]), 0, win_h);
-      if (__mouse_callback)
-        __mouse_callback(mx, my, [event deltaX], [event deltaY]);
-      break;
-    case 1: // WARPED
-      CGAssociateMouseAndMouseCursorPosition(NO);
-      NSPoint so = [[self window] convertRectToScreen:(NSRect){ [self convertPoint:NSMakePoint([self bounds].origin.x + [self bounds].size.width / 2.f,
-                                                                                               [self bounds].origin.y + [self bounds].size.height / 2.f)
+  if (__cursor_state) {
+    mx = CLAMP((int)(floorf([event locationInWindow].x - 1) + [event deltaX]), 0, win_w);
+    my = CLAMP((int)(floorf(win_h - 1 - [event locationInWindow].y) + [event deltaY]), 0, win_h);
+    
+    if (mx <= 0 || my <= 0 || mx >= win_w || my >= win_h) {
+      NSPoint so = [[self window] convertRectToScreen:(NSRect){ [self convertPoint:NSMakePoint([self bounds].origin.x,
+                                                                                               [self bounds].origin.y + [self bounds].size.height)
                                                                             toView:nil], { 0, 0 }}].origin;
-      NSPoint np = (NSPoint){ so.x, ([[self window] screen].frame.origin.y + [[self window] screen].frame.size.height) - so.y };
-      CGWarpMouseCursorPosition(np);
-      CGAssociateMouseAndMouseCursorPosition(YES);
-      
-      printf("%f %f - %f %f - %f %f - %s\n", lmx, lmy, np.x, np.y, [event deltaX], [event deltaY], NSStringFromPoint(np).UTF8String);
-      break;
-    case 2: // LOCKED
-      break;
+       CGWarpMouseCursorPosition((NSPoint){
+         so.x + mx,
+         (([[self window] screen].frame.origin.y + [[self window] screen].frame.size.height) - so.y) + my
+       });
+    }
+  } else {
+    mx = CLAMP((int)(floorf([event locationInWindow].x - 1) + [event deltaX]), 0, win_w);
+    my = CLAMP((int)(floorf(win_h - 1 - [event locationInWindow].y) + [event deltaY]), 0, win_h);
   }
-  
-//
-//  switch (__cursor_state) {
-//    case 1: {
-//      NSPoint so = [[self window] convertRectToScreen:(NSRect){ [self convertPoint:NSMakePoint([self bounds].origin.x + [self bounds].size.width / 2.f,
-//                                                                                               [self bounds].origin.y + [self bounds].size.height / 2.f)
-//                                                                            toView:nil], { 0, 0 }}].origin;
-//      CGWarpMouseCursorPosition((NSPoint){ so.x, ([[self window] screen].frame.origin.y + [[self window] screen].frame.size.height) - so.y });
-//      break;
-//    }
-//    case 2: {
-//       if (mx <= 0 || my <= 0 || mx >= win_w || my >= win_h) {
-//        NSPoint so = [[self window] convertRectToScreen:(NSRect){ [self convertPoint:NSMakePoint([self bounds].origin.x,
-//                                                                                                 [self bounds].origin.y + [self bounds].size.height)
-//                                                                              toView:nil], { 0, 0 }}].origin;
-//         CGWarpMouseCursorPosition((NSPoint){
-//           so.x + mx,
-//           (([[self window] screen].frame.origin.y + [[self window] screen].frame.size.height) - so.y) + my
-//         });
-//      }
-//      break;
-//    }
-//    case 0:
-//    default:
-//      break;
-//  }
 }
 
 -(void)rightMouseDragged:(NSEvent*)event {
@@ -3568,11 +3514,10 @@ extern surface_t* buffer;
     [re endEncoding];
     
     [cmd_buf presentDrawable:[self currentDrawable]];
-    
-    [_texture release];
-    [td release];
   }
   
+  [_texture release];
+  [td release];
   [cmd_buf commit];
 #else
   CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
@@ -3724,12 +3669,7 @@ extern surface_t* buffer;
 }
 @end
 
-int screen(const char* t, surface_t* s, int* w, int* h, short flags) {
-  if (!w || !h) {
-    error_handle(PRIO_NORM, "screen() failed: W/H params NULL");
-    return 0;
-  }
-
+int screen(const char* t, surface_t* s, int w, int h, short flags) {
   memset(keycodes,  -1, sizeof(keycodes));
   memset(scancodes, -1, sizeof(scancodes));
 
@@ -3857,19 +3797,21 @@ int screen(const char* t, surface_t* s, int* w, int* h, short flags) {
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
   
   NSWindowStyleMask _flags = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
+  if (flags & FULLSCREEN)
+    flags |= (BORDERLESS | RESIZABLE | FULLSCREEN_DESKTOP);
   _flags |= (flags & RESIZABLE ? NSWindowStyleMaskResizable : 0);
-  if (flags & BORDERLESS || flags & FULLSCREEN) {
+  if (flags & BORDERLESS) {
     border_off = 0;
     _flags |= NSWindowStyleMaskBorderless;
   } else
     _flags |= NSWindowStyleMaskTitled;
-  if (flags & FULLSCREEN_DESKTOP || flags & FULLSCREEN) {
+  if (flags & FULLSCREEN_DESKTOP) {
     NSRect f = [[NSScreen mainScreen] frame];
-    *w = win_w = f.size.width;
-    *h = win_h = f.size.height - border_off;
+    w = win_w = f.size.width;
+    h = win_h = f.size.height - border_off;
   } else {
-    win_w = *w;
-    win_h = *h;
+    win_w = w;
+    win_h = h;
   }
   
   if (!border_off && flags & ~FULLSCREEN) {
@@ -3878,10 +3820,10 @@ int screen(const char* t, surface_t* s, int* w, int* h, short flags) {
   }
   
   if (s)
-    if (!surface(s, *w, *h))
+    if (!surface(s, w, h))
       return 0;
 
-  app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, *w, *h + border_off)
+  app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h + border_off)
                                      styleMask:_flags
                                        backing:NSBackingStoreBuffered
                                          defer:NO];
@@ -3899,6 +3841,15 @@ int screen(const char* t, surface_t* s, int* w, int* h, short flags) {
     release();
     error_handle(PRIO_HIGH, "[AppDelegate alloc] failed");
     [NSApp terminate:nil];
+  }
+  
+  if (flags & FULLSCREEN) {
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7
+    [app toggleFullScreen:nil];
+    [[NSApplication sharedApplication] setPresentationOptions:NSApplicationPresentationFullScreen];
+#else
+    error_handle(PRIO_LOW, "screen() failed: Fullscreen flag is only supported on OSX v10.7 and above");
+#endif
   }
 
   [app setDelegate:app_del];
@@ -4017,6 +3968,8 @@ static PAINTSTRUCT ps;
 
 static LPDIRECT3D9 d3d;
 static LPDIRECT3DDEVICE9 d3ddev;
+
+#warning DirectX implementation not ready
 #else
 static BITMAPINFO* bmpinfo;
 #endif
@@ -4541,10 +4494,9 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
   bmpinfo->bmiColors[0].rgbRed = 0xFF;
   bmpinfo->bmiColors[1].rgbGreen = 0xFF;
   bmpinfo->bmiColors[2].rgbBlue = 0xFF;
-
-  hdc = GetDC(hwnd);
 #endif
-
+  
+  hdc = GetDC(hwnd);
   ShowWindow(hwnd, SW_NORMAL);
 
   if (flags & ALWAYS_ON_TOP)
