@@ -15,6 +15,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -207,14 +208,14 @@ extern "C" {
   } point_t;
   
   typedef enum {
-    PRIO_HIGH = 0x0001,
-    PRIO_NORM = 0x0002,
-    PRIO_LOW  = 0x0004
+    PRIO_HIGH,
+    PRIO_NORM,
+    PRIO_LOW
   } ERRPRIO;
   
   void error_callback(void (*cb)(ERRPRIO, const char*, const char*, const char*, int));
   
-  int surface(surface_t* s, unsigned int w, unsigned int h);
+  bool surface(surface_t* s, unsigned int w, unsigned int h);
   void destroy(surface_t*);
   void fill(surface_t* s, int col);
   void flood(surface_t* s, int x, int y, int col);
@@ -222,11 +223,11 @@ extern "C" {
   void pset(surface_t* s, int x, int y, int col);
   void psetb(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
-  int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
-  int reset(surface_t* s, int nw, int nh);
-  int copy(surface_t* in, surface_t* out);
+  bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
+  bool reset(surface_t* s, int nw, int nh);
+  bool copy(surface_t* in, surface_t* out);
   void filter(surface_t* s, int (*fn)(int x, int y, int col));
-  int resize(surface_t* in, int nw, int nh, surface_t* out);
+  bool resize(surface_t* in, int nw, int nh, surface_t* out);
   
   void vline(surface_t* s, int x, int y0, int y1, int col);
   void hline(surface_t* s, int y, int x0, int x1, int col);
@@ -241,8 +242,8 @@ extern "C" {
   void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
   void rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
   
-  int bmp(surface_t* s, const char* path);
-  int save_bmp(surface_t* s, const char* path);
+  bool bmp(surface_t* s, const char* path);
+  bool save_bmp(surface_t* s, const char* path);
   
 #if !defined(GRAPHICS_DISABLE_TEXT)
   void ascii(surface_t* s, char ch, int x, int y, int fg, int bg);
@@ -271,14 +272,14 @@ extern "C" {
   } bdf_t;
   
   void bdf_destroy(bdf_t* f);
-  int bdf(bdf_t* out, const char* path);
+  bool bdf(bdf_t* out, const char* path);
   int bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, int bg);
   void bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* str);
 #endif
   
 #if defined(GRAPHICS_ENABLE_STB_IMAGE)
-  int image(surface_t* out, const char* path);
-  int save_image(surface_t* in, const char* path);
+  bool image(surface_t* out, const char* path);
+  bool save_image(surface_t* in, const char* path);
 #endif
   
 #if !defined(GRAPHICS_DISABLE_WINDOW)
@@ -467,29 +468,27 @@ extern "C" {
     MOUSEBTN btn;
     int data1, data2;
   } event_t;
+
+#define DEFAULT 0
   
   typedef enum {
-    DEFAULT = 0x0000,
-    HIDDEN = 0x0001,
-    SHOWN = 0x0002,
-    LOCKED = 0x0004,
-    UNLOCKED = 0x0008,
-    CURSOR_ARROW = 0x000010,     // Arrow
-    CURSOR_IBEAM = 0x000020,     // I-beam
-    CURSOR_WAIT = 0x000040,      // Wait
-    CURSOR_CROSSHAIR = 0x000080, // Crosshair
-    CURSOR_WAITARROW = 0x000100, // Small wait cursor (or Wait if not available)
-    CURSOR_SIZENWSE = 0x000200,  // Double arrow pointing northwest and southeast
-    CURSOR_SIZENESW = 0x000400,  // Double arrow pointing northeast and southwest
-    CURSOR_SIZEWE = 0x000800,    // Double arrow pointing west and east
-    CURSOR_SIZENS = 0x001000,    // Double arrow pointing north and south
-    CURSOR_SIZEALL = 0x002000,   // Four pointed arrow pointing north, south, east, and west
-    CURSOR_NO = 0x004000,        // Slashed circle or crossbones
-    CURSOR_HAND = 0x008000,      // Hand
-    CURSOR_CUSTOM = 0x100000     // Use your own
-  } CURSORFLAGS;
+    CURSOR_NO_CHANGE,
+    CURSOR_ARROW,     // Arrow
+    CURSOR_IBEAM,     // I-beam
+    CURSOR_WAIT,      // Wait
+    CURSOR_CROSSHAIR, // Crosshair
+    CURSOR_WAITARROW, // Small wait cursor (or Wait if not available)
+    CURSOR_SIZENWSE,  // Double arrow pointing northwest and southeast
+    CURSOR_SIZENESW,  // Double arrow pointing northeast and southwest
+    CURSOR_SIZEWE,    // Double arrow pointing west and east
+    CURSOR_SIZENS,    // Double arrow pointing north and south
+    CURSOR_SIZEALL,   // Four pointed arrow pointing north, south, east, and west
+    CURSOR_NO,        // Slashed circle or crossbones
+    CURSOR_HAND,      // Hand
+    CURSOR_CUSTOM     // Use your own
+  } CURSORS;
   
-  void cursor(CURSORFLAGS flags);
+  void cursor(bool shown, bool locked, CURSORS cursor);
   void custom_cursor(surface_t* s);
   
   typedef enum {
@@ -500,9 +499,9 @@ extern "C" {
     ALWAYS_ON_TOP = 0x10,
   } WINDOWFLAGS;
   
-  int screen(const char* title, surface_t* s, int w, int h, short flags);
-  int closed(void);
-  int poll(event_t* e);
+  bool screen(const char* title, surface_t* s, int w, int h, short flags);
+  bool closed(void);
+  bool poll(event_t* e);
   void flush(surface_t* s);
   void release(void);
 #endif

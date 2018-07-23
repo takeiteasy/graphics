@@ -88,18 +88,18 @@ void error_handle(ERRPRIO pri, const char* msg, ...) {
 #define todo(x) message(__FILE__LINE__" TODO " __FUNCTION__ "() -> " #x)
 #define fixme(x) message(__FILE__LINE__" FIXME " __FUNCTION__ "() -> " #x)
 
-int surface(surface_t* s, unsigned int w, unsigned int h) {
+bool surface(surface_t* s, unsigned int w, unsigned int h) {
   s->w = w;
   s->h = h;
   size_t sz = w * h * sizeof(unsigned int) + 1;
   s->buf = malloc(sz);
   if (!s->buf) {
     error_handle(PRIO_HIGH, "malloc() failed");
-    return 0;
+    return false;
   }
   memset(s->buf, 0, sz);
 
-  return 1;
+  return true;
 }
 
 void destroy(surface_t* s) {
@@ -214,7 +214,7 @@ int pget(surface_t* s, int x, int y) {
   return (x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
 }
 
-int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
+bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   int offset_x = 0, offset_y = 0,
       from_x = 0, from_y = 0,
       width = src->w, height = src->h;
@@ -247,7 +247,7 @@ int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
     height += (dst->h - to_y);
 
   if (offset_x > dst->w || offset_y > dst->h || to_x < 0 || to_y < 0)
-    return 0;
+    return false;
 
   int x, y, c;
   for (x = 0; x < width; ++x)
@@ -259,26 +259,26 @@ int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
 #endif
       __pset(dst, offset_x + x, offset_y + y, c);
     }
-  return 1;
+  return true;
 }
 
-int reset(surface_t* s, int nw, int nh) {
+bool reset(surface_t* s, int nw, int nh) {
   size_t sz = nw * nh * sizeof(unsigned int) + 1;
   int* tmp = realloc(s->buf, sz);
   if (!tmp) {
     error_handle(PRIO_HIGH, "realloc() failed");
-    return 0;
+    return false;
   }
   s->buf = tmp;
   s->w = nw;
   s->h = nh;
   memset(s->buf, 0, sz);
-  return 1;
+  return true;
 }
 
-int copy(surface_t* in, surface_t* out) {
+bool copy(surface_t* in, surface_t* out) {
   if (!surface(out, in->w, in->h))
-    return 0;
+    return false;
   memcpy(out->buf, in->buf, in->w * in->h * sizeof(unsigned int) + 1);
   return !!out->buf;
 }
@@ -293,9 +293,9 @@ void filter(surface_t* s, int (*fn)(int x, int y, int col)) {
       pset(s, x, y, fn(x, y, XYGET(s, x, y)));
 }
 
-int resize(surface_t* in, int nw, int nh, surface_t* out) {
+bool resize(surface_t* in, int nw, int nh, surface_t* out) {
   if (!surface(out, nw, nh))
-    return 0;
+    return false;
   
   int x_ratio = (int)((in->w << 16) / nw) + 1;
   int y_ratio = (int)((in->h << 16) / nh) + 1;
@@ -311,7 +311,7 @@ int resize(surface_t* in, int nw, int nh, surface_t* out) {
       rat += x_ratio;
     }
   }
-  return 1;
+  return true;
 }
 
 void vline(surface_t* s, int x, int y0, int y1, int col) {
@@ -1328,11 +1328,11 @@ off += s;
 
 #define BMP_SET(c) (s->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
 
-int bmp(surface_t* s, const char* path) {
+bool bmp(surface_t* s, const char* path) {
   FILE* fp = fopen(path, "rb");
   if (!fp) {
     error_handle(PRIO_NORM, "fopen() failed: %s", path);
-    return 0;
+    return false;
   }
   
   fseek(fp, 0, SEEK_END);
@@ -1342,7 +1342,7 @@ int bmp(surface_t* s, const char* path) {
   unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
   if (!data) {
     error_handle(PRIO_HIGH, "calloc() failed");
-    return 0;
+    return false;
   }
   fread(data, 1, length, fp);
   fclose(fp);
@@ -1357,7 +1357,7 @@ int bmp(surface_t* s, const char* path) {
   
   if (header.type != 0x4D42) {
     error_handle(PRIO_NORM, "bmp() failed: invalid BMP signiture '%d'", header.type);
-    return 0;
+    return false;
   }
   
 #pragma TODO(Add support for OS/2 bitmaps)
@@ -1369,7 +1369,7 @@ int bmp(surface_t* s, const char* path) {
     color_map = (unsigned char*)malloc(color_map_size * sizeof(unsigned char));
     if (!color_map) {
       error_handle(PRIO_HIGH, "malloc() failed");
-      return 0;
+      return false;
     }
     BMP_GET(color_map, data, color_map_size);
   }
@@ -1377,7 +1377,7 @@ int bmp(surface_t* s, const char* path) {
   if (!surface(s, info.width, info.height)) {
     FREE_SAFE(color_map);
     error_handle(PRIO_HIGH, "malloc() failed");
-    return 0;
+    return false;
   }
   
   off = header.offset;
@@ -1406,7 +1406,7 @@ int bmp(surface_t* s, const char* path) {
         default:
           error_handle(PRIO_NORM, "bmp() failed. Unsupported BPP: %d", info.bits);
           destroy(s);
-          break;
+          return false;
       }
       break;
     case 1: // RLE8
@@ -1415,19 +1415,19 @@ int bmp(surface_t* s, const char* path) {
 #pragma TODO(Add RLE support);
       error_handle(PRIO_NORM, "bmp() failed. Unsupported compression: %d", info.compression);
       destroy(s);
-      break;
+      return false;
   }
   
   FREE_SAFE(color_map);
-  return 1;
+  return true;
 }
 
-int save_bmp(surface_t* s, const char* path) {
+bool save_bmp(surface_t* s, const char* path) {
   const int filesize = 54 + 3 * s->w * s->h;
   unsigned char* img = (unsigned char *)malloc(3 * s->w * s->h);
   if (!img) {
     error_handle(PRIO_HIGH, "malloc() failed");
-    return 0;
+    return false;
   }
   memset(img, 0, 3 * s->w * s->h);
   
@@ -1472,7 +1472,7 @@ int save_bmp(surface_t* s, const char* path) {
   if (!fp) {
     error_handle(PRIO_NORM, "fopen() failed: %s", path);
     free(img);
-    return 0;
+    return false;
   }
   
   fwrite(header, 1, 14, fp);
@@ -1484,7 +1484,7 @@ int save_bmp(surface_t* s, const char* path) {
   
   free(img);
   fclose(fp);
-  return 1;
+  return true;
 }
 
 #if !defined(GRAPHICS_DISABLE_TEXT) || defined(GRAPHICS_ENABLE_BDF)
@@ -2369,11 +2369,11 @@ static inline int htoi(const char* p) {
   return (*p <= '9' ? *p - '0' : (*p <= 'F' ? *p - 'A' + 10 : *p - 'a' + 10));
 }
 
-int bdf(bdf_t* out, const char* path) {
+bool bdf(bdf_t* out, const char* path) {
   FILE* fp = fopen(path, "r");
   if (!fp) {
     error_handle(PRIO_NORM, "fopen() failed: %s", path);
-    return 0;
+    return false;
   }
   
   char *s, *p, buf[BUFSIZ];
@@ -2396,24 +2396,24 @@ int bdf(bdf_t* out, const char* path) {
   
   if (out->fontbb.w <= 0 || out->fontbb.h <= 0) {
     error_handle(PRIO_NORM, "bdf() failed: No character size given for %s", path);
-    return 0;
+    return false;
   }
   
   if (out->n_chars <= 0) {
     error_handle(PRIO_NORM, "bdf() failed: Unknown number of characters for %s", path);
-    return 0;
+    return false;
   }
   
   out->encoding_table = malloc(out->n_chars * sizeof(unsigned int));
   if (!out->encoding_table) {
     error_handle(PRIO_HIGH, "malloc() failed");
-    return 0;
+    return false;
   }
   out->chars = malloc(out->n_chars * sizeof(bdf_char_t));
   if (!out->chars) {
     free(out->encoding_table);
     error_handle(PRIO_HIGH, "malloc() failed");
-    return 0;
+    return false;
   }
   
   int encoding = 0, width = -1, scanline = -1, i, j, n = 0;
@@ -2436,12 +2436,12 @@ int bdf(bdf_t* out, const char* path) {
       if (n == out->n_chars) {
         bdf_destroy(out);
         error_handle(PRIO_NORM, "bdf() failed: More bitmaps than characters for %s", path);
-        return 0;
+        return false;
       }
       if (width == -1) {
         bdf_destroy(out);
         error_handle(PRIO_NORM, "bdf() failed: Unknown character with for %s", path);
-        return 0;
+        return false;
       }
       
       if (out->chars[n].bb.x < 0) {
@@ -2455,7 +2455,7 @@ int bdf(bdf_t* out, const char* path) {
       if (!out->chars[n].bitmap) {
         bdf_destroy(out);
         error_handle(PRIO_HIGH, "malloc() failed");
-        return 0;
+        return false;
       }
       out->chars[n].width = width;
       out->encoding_table[n] = encoding;
@@ -2506,7 +2506,7 @@ int bdf(bdf_t* out, const char* path) {
   }
   
   fclose(fp);
-  return 1;
+  return true;
 }
 
 int bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, int bg) {
@@ -2634,17 +2634,17 @@ void bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, ...)
 #endif
 #include "3rdparty/stb_image_write.h"
 
-int image(surface_t* out, const char* path) {
+bool image(surface_t* out, const char* path) {
   int w, h, c, x, y;
   unsigned char* data = stbi_load(path, &w, &h, &c, 0);
   if (!data) {
     error_handle(PRIO_NORM, "stbi_load() failed: %s", stbi_failure_reason());
-    return 0;
+    return false;
   }
   
   if (!surface(out, w, h)) {
     stbi_image_free(data);
-    return 0;
+    return false;
   }
   
   unsigned char* p = NULL;
@@ -2660,7 +2660,7 @@ int image(surface_t* out, const char* path) {
   }
   
   stbi_image_free(data);
-  return 1;
+  return true;
 }
 
 static inline const char* extension(const char* path) {
@@ -2668,10 +2668,10 @@ static inline const char* extension(const char* path) {
   return (!dot || dot == path ? NULL : dot + 1);
 }
 
-int save_image(surface_t* in, const char* path) {
+bool save_image(surface_t* in, const char* path) {
   if (!in || !path) {
     error_handle(PRIO_NORM, "save_image() failed: Invalid parameters");
-    return 1;
+    return false;
   }
   
 #if !defined(GRAPHICS_DISABLE_RGBA)
@@ -2683,7 +2683,7 @@ int save_image(surface_t* in, const char* path) {
   unsigned char* data = malloc(in->w * in->h * NC * sizeof(unsigned char));
   if (!data) {
     error_handle(PRIO_NORM, "save_image() failed: Out of memory");
-    return 1;
+    return false;
   }
   
   unsigned char* p = NULL;
@@ -2723,9 +2723,9 @@ TRY_AGAIN_BRO:
   
   if (!res) {
     error_handle(PRIO_NORM, "save_image() failed: stbi_write() failed");
-    return 0;
+    return false;
   }
-  return 1;
+  return true;
 }
 #endif
 
@@ -2881,16 +2881,16 @@ GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
 }
 
 static GLuint vao, shader, texture;
-static int gl3_available = 0;
+static bool gl3_available = false;
 
-int init_gl(int w, int h) {
+bool init_gl(int w, int h) {
 #if defined(_WIN32)
   HINSTANCE dll = LoadLibraryA("opengl32.dll");
   typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
   if (!dll) {
     release();
     error_handle(PRIO_LOW, "LoadLibraryA() failed: opengl32.dll not found");
-    return 0;
+    return false;
   }
   wglGetProcAddressproc* wglGetProcAddress = (wglGetProcAddressproc*)GetProcAddress(dll, "wglGetProcAddress");
 
@@ -2907,7 +2907,7 @@ int init_gl(int w, int h) {
   if (!libGL) {
     release();
     error_handle("dlopen() failed: libGL.so couldn't be loaded");
-    return 0;
+    return false;
   }
 
 #define GLE(ret, name, ...) \
@@ -3007,7 +3007,7 @@ int init_gl(int w, int h) {
 
   glGenTextures(1, &texture);
 
-  return 1;
+  return true;
 }
 
 void draw_gl() {
@@ -3967,7 +3967,7 @@ void release() {
 #elif defined(_WIN32)
 static WNDCLASS wnd;
 static HWND hwnd;
-static int __closed = 0;
+static bool __closed = false;
 static HDC hdc = 0;
 #if defined(GRAPHICS_ENABLE_OPENGL)
 static PIXELFORMATDESCRIPTOR pfd;
@@ -3991,7 +3991,7 @@ static int adjusted_win_w, adjusted_win_h;
 static int ifuckinghatethewin32api = 0; // Should always be 1 because I do
 static BOOL is_active = FALSE;
 static HCURSOR __cursor = NULL, __custom_cursor = NULL;
-static int __cursor_state = 0;
+static BOOL cursor_locked = FALSE;
 static RECT __rc = { 0 };
 static long adjust_flags = WS_POPUP | WS_SYSMENU | WS_CAPTION;
 
@@ -4547,7 +4547,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
     case WM_MOUSEMOVE:
       mx = GET_X_LPARAM(lParam);
       my = GET_Y_LPARAM(lParam);
-      if (__cursor_state && is_active) {
+      if (cursor_locked && is_active) {
         GetWindowRect(hwnd, &__rc);
         __rc.left += 3;
         __rc.right -= 3;
@@ -4568,69 +4568,63 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
   return res;
 }
 
-void cursor(CURSORFLAGS flags) {
-  if (flags == DEFAULT)
-    flags = SHOWN | UNLOCKED;
+void cursor(bool shown, bool locked, CURSORS cursor) {
+  ShowCursor((BOOL)shown);
+  cursor_locked = (BOOL)locked;
 
-  if (flags & HIDDEN && flags & ~SHOWN)
-    ShowCursor(FALSE);
-  if (flags & SHOWN)
-    ShowCursor(TRUE);
-  __cursor_state = flags & LOCKED ? flags & UNLOCKED ? !__cursor_state : 1 : 0;
-
-  if (flags & 0xFFFFF0) {
-    LPCSTR c = NULL;
-    switch (flags & ~0x00000F) {
-      default:
-      case CURSOR_ARROW:
-        c = IDC_ARROW;
-        break;
-      case CURSOR_IBEAM:
-        c = IDC_IBEAM;
-        break;
-      case CURSOR_WAIT:
-      case CURSOR_WAITARROW:
-        c = IDC_WAIT;
-        break;
-      case CURSOR_SIZENWSE:
-        c = IDC_SIZENWSE;
-        break;
-      case CURSOR_SIZENESW:
-        c = IDC_SIZENESW;
-        break;
-      case CURSOR_SIZEWE:
-        c = IDC_SIZEWE;
-        break;
-      case CURSOR_SIZENS:
-        c = IDC_SIZENS;
-        break;
-      case CURSOR_SIZEALL:
-        c = IDC_SIZEALL;
-        break;
-      case CURSOR_NO:
-        c = IDC_NO;
-        break;
-      case CURSOR_HAND:
-        c = IDC_HAND;
-        break;
-      case CURSOR_CUSTOM:
-        if (!__custom_cursor) {
-          error_handle(PRIO_LOW, "cursor() failed: No custom cursor loaded");
-          return;
-        }
-    }
-
-    if (__cursor && __cursor != __custom_cursor)
-      DestroyCursor(__cursor);
-    __cursor = (c ? LoadCursor(NULL, c) : __custom_cursor);
+  LPCSTR c = NULL;
+  switch (cursor) {
+    default:
+    case CURSOR_NO_CHANGE:
+      return;
+    case CURSOR_ARROW:
+      c = IDC_ARROW;
+      break;
+    case CURSOR_IBEAM:
+      c = IDC_IBEAM;
+      break;
+    case CURSOR_WAIT:
+    case CURSOR_WAITARROW:
+      c = IDC_WAIT;
+      break;
+    case CURSOR_SIZENWSE:
+      c = IDC_SIZENWSE;
+      break;
+    case CURSOR_SIZENESW:
+      c = IDC_SIZENESW;
+      break;
+    case CURSOR_SIZEWE:
+      c = IDC_SIZEWE;
+      break;
+    case CURSOR_SIZENS:
+      c = IDC_SIZENS;
+      break;
+    case CURSOR_SIZEALL:
+      c = IDC_SIZEALL;
+      break;
+    case CURSOR_NO:
+      c = IDC_NO;
+      break;
+    case CURSOR_HAND:
+      c = IDC_HAND;
+      break;
+    case CURSOR_CUSTOM:
+      if (!__custom_cursor) {
+        error_handle(PRIO_LOW, "cursor() failed: No custom cursor loaded");
+        return;
+      }
   }
+
+  if (__cursor && __cursor != __custom_cursor)
+    DestroyCursor(__cursor);
+  __cursor = (c ? LoadCursor(NULL, c) : __custom_cursor);
 }
 
 void custom_cursor(surface_t* s) {
   // TODO later
 }
 
-int screen(const char* title, surface_t* s, int w, int h, short flags) {
+bool screen(const char* title, surface_t* s, int w, int h, short flags) {
   memset(keycodes, -1, sizeof(keycodes));
   memset(scancodes, -1, sizeof(scancodes));
 
@@ -4771,7 +4765,7 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
     settings.dmBitsPerPel = 32;
     settings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
     if (ChangeDisplaySettings(&settings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL) {
-      __cursor_state = 1;
+      cursor_locked = 1;
       error_handle(PRIO_LOW, "screen() failed: Failed to go to fullscreen mode: Defaulting to fullscreen desktop");
     }
   }
@@ -4793,7 +4787,7 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
 
   if (s)
     if (!surface(s, w, h))
-      return 0;
+      return false;
 
   int cx = GetSystemMetrics(SM_CXSCREEN) / 2 - adjusted_win_w / 2,
       cy = GetSystemMetrics(SM_CYSCREEN) / 2 - adjusted_win_h / 2;
@@ -4811,13 +4805,13 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
   if (!RegisterClass(&wnd)) {
     release();
     error_handle(PRIO_HIGH, "RegisterClass() failed: %s", GetLastError());
-    return 0;
+    return false;
   }
 
   if (!(hwnd = CreateWindow(title, title, _flags, cx, cy, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
     release();
     error_handle(PRIO_HIGH, "CreateWindowEx() failed: %s", GetLastError());
-    return 0;
+    return false;
   }
 
   hdc = GetDC(hwnd);
@@ -4834,13 +4828,13 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
   if (pf == 0) {
     release();
     error_handle(PRIO_HIGH, "ChoosePixelFormat() failed: %s", GetLastError());
-    return 0;
+    return false;
   }
 
   if (SetPixelFormat(hdc, pf, &pfd) == FALSE) {
     release();
     error_handle(PRIO_HIGH, "SetPixelFormat() failed: %s", GetLastError());
-    return 0;
+    return false;
   }
 
   DescribePixelFormat(hdc, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
@@ -4849,7 +4843,7 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
   wglMakeCurrent(hdc, hrc);
 
   if (!init_gl(w, h))
-    return 0;
+    return false;
 #elif defined(GRAPHICS_ENABLE_DX9)
   d3d = Direct3DCreate9(D3D_SDK_VERSION);
 
@@ -4886,25 +4880,25 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
 #if defined(GRAPHICS_ENABLE_JOYSTICKS)
   if (DirectInput8Create(GetModuleHandle(NULL), DIRECTINPUT_VERSION, &IID_IDirectInput8, (VOID**)&did, NULL) != DI_OK) {
     error_handle(PRIO_LOW, "DirectInput8Create() failed: %s", GetLastError());
-    return 1;
+    return true;
   }
 
   if (IDirectInput_EnumDevices(did, DI8DEVCLASS_GAMECTRL, enum_devices_cb, NULL, DIEDFL_ALLDEVICES) != DI_OK) {
     error_handle(PRIO_LOW, "IDirectInput_EnumDevices() failed: %s", GetLastError());
-    return 1;
+    return true;
   }
 #endif
 
-  return 1;
+  return true;
 }
 
-int closed() {
+bool closed() {
   return __closed;
 }
 
-int poll(event_t* e) {
+bool poll(event_t* e) {
   if (!e)
-    return 0;
+    return false;
   memset(e, 0, sizeof(event_t));
   tmp_e = e;
 
@@ -4914,7 +4908,7 @@ int poll(event_t* e) {
     DispatchMessage(&msg);
     return !!tmp_e;
   }
-  return 0;
+  return false;
 }
 
 void flush(surface_t* s) {
