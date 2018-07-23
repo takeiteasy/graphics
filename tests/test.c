@@ -168,7 +168,7 @@ int main(int argc, const char* argv[]) {
   screen("test", &win, win_w, win_h, DEFAULT);
   resize_callback(on_resize);
   error_callback(on_error);
-  cursor(LOCKED | CURSOR_HAND);
+  // cursor(LOCKED | CURSOR_HAND);
 
   surface_t s[10];
   for (int i = 0; i < 10; ++i)

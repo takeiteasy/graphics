@@ -1,9 +1,6 @@
 a.out
-libgraphics.a
-libgraphics.dylib
 Debug/
 .vs/
 x64/
 bin/
 obj/
-extra/3rdparty/

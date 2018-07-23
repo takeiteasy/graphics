@@ -21,6 +21,10 @@
 
 #include "graphics.h"
 
+#if defined(_MSC_VER)
+# define strdup _strdup
+#endif
+
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
@@ -2732,6 +2736,11 @@ static surface_t* buffer;
 static void (*__resize_callback)(int, int) = NULL;
 static int mx = 0, my = 0, win_w, win_h;
 
+#if defined(GRAPHICS_ENABLE_JOYSTICKS)
+static joystick_t** devices = NULL;
+static unsigned int n_devices = 0;
+#endif
+
 void mouse_xy(int* x, int* y) {
   if (!x || !y)
     return;
@@ -3029,10 +3038,13 @@ void draw_gl() {
 }
 
 void free_gl() {
-  glDeleteTextures(1, &texture);
-  if (gl3_available == 0) {
-    glDeleteProgram(shader);
-    glDeleteVertexArrays(1, &vao);
+  if (texture)
+    glDeleteTextures(1, &texture);
+  if (!gl3_available) {
+    if (shader)
+      glDeleteProgram(shader);
+    if (vao)
+      glDeleteVertexArrays(1, &vao);
   }
 }
 #endif
@@ -3969,7 +3981,7 @@ static PAINTSTRUCT ps;
 static LPDIRECT3D9 d3d;
 static LPDIRECT3DDEVICE9 d3ddev;
 
-#warning DirectX implementation not ready
+#pragma message("WARNING: DirectX implementation not ready")
 #else
 static BITMAPINFO* bmpinfo;
 #endif
@@ -3978,6 +3990,379 @@ static int event_fired = 0;
 static int adjusted_win_w, adjusted_win_h;
 static int ifuckinghatethewin32api = 0; // Should always be 1 because I do
 static BOOL is_active = FALSE;
+static HCURSOR __cursor = NULL, __custom_cursor = NULL;
+static int __cursor_state = 0;
+static RECT __rc = { 0 };
+static long adjust_flags = WS_POPUP | WS_SYSMENU | WS_CAPTION;
+
+#if defined(GRAPHICS_ENABLE_JOYSTICKS)
+#if !defined(STRICT)
+# define STRICT 
+#endif
+#define DIRECTINPUT_VERSION 0x0800 
+#define _CRT_SECURE_NO_DEPRECATE 
+#if !defined(_WIN32_DCOM)
+# define _WIN32_DCOM 
+#endif
+#if !defined(COBJMACROS)
+#define COBJMACROS
+#endif
+#include <dinput.h>
+#include <dinputd.h>
+#pragma comment(lib, "dinput8.lib")
+#pragma comment(lib, "dxguid.lib")
+
+typedef struct {
+  DWORD offset;
+  BOOL is_pov;
+  BOOL is_pov_2nd_axis;
+} di_axis_info_t;
+
+typedef struct {
+  BOOL is_xinput;
+
+  // DInput only
+  GUID guid;
+  IDirectInputDevice8* di8dev;
+  BOOL buffered;
+  unsigned int slider_c, pov_c;
+  di_axis_info_t* axis_info;
+  DWORD* button_offsets;
+
+  // XInput only
+  unsigned int player_index;
+} joystick_private_t;
+
+static LPDIRECTINPUT8 did;
+
+#if !defined(DIDFT_OPTIONAL)
+# define DIDFT_OPTIONAL 0x80000000
+#endif
+
+#define INPUT_QUEUE_SIZE 32
+
+DIOBJECTDATAFORMAT dfDIJoystick2[] = {
+  { &GUID_XAxis, DIJOFS_X, DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_YAxis, DIJOFS_Y, DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_ZAxis, DIJOFS_Z, DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_RxAxis, DIJOFS_RX, DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_RyAxis, DIJOFS_RY, DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_RzAxis, DIJOFS_RZ, DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_Slider, DIJOFS_SLIDER(0), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_Slider, DIJOFS_SLIDER(1), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_POV, DIJOFS_POV(0), DIDFT_OPTIONAL | DIDFT_POV | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_POV, DIJOFS_POV(1), DIDFT_OPTIONAL | DIDFT_POV | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_POV, DIJOFS_POV(2), DIDFT_OPTIONAL | DIDFT_POV | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_POV, DIJOFS_POV(3), DIDFT_OPTIONAL | DIDFT_POV | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(0), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(1), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(2), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(3), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(4), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(5), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(6), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(7), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(8), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(9), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(10), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(11), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(12), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(13), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(14), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(15), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(16), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(17), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(18), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(19), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(20), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(21), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(22), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(23), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(24), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(25), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(26), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(27), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(28), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(29), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(30), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(31), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(32), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(33), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(34), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(35), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(36), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(37), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(38), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(39), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(40), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(41), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(42), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(43), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(44), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(45), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(46), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(47), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(48), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(49), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(50), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(51), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(52), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(53), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(54), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(55), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(56), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(57), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(58), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(59), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(60), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(61), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(62), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(63), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(64), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(65), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(66), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(67), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(68), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(69), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(70), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(71), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(72), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(73), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(74), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(75), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(76), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(77), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(78), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(79), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(80), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(81), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(82), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(83), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(84), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(85), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(86), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(87), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(88), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(89), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(90), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(91), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(92), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(93), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(94), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(95), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(96), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(97), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(98), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(99), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(100), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(101), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(102), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(103), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(104), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(105), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(106), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(107), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(108), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(109), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(110), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(111), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(112), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(113), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(114), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(115), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(116), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(117), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(118), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(119), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(120), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(121), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(122), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(123), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(124), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(125), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(126), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { NULL, DIJOFS_BUTTON(127), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_XAxis, FIELD_OFFSET(DIJOYSTATE2, lVX), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_YAxis, FIELD_OFFSET(DIJOYSTATE2, lVY), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_ZAxis, FIELD_OFFSET(DIJOYSTATE2, lVZ), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_RxAxis, FIELD_OFFSET(DIJOYSTATE2, lVRx), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_RyAxis, FIELD_OFFSET(DIJOYSTATE2, lVRy), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_RzAxis, FIELD_OFFSET(DIJOYSTATE2, lVRz), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_Slider, FIELD_OFFSET(DIJOYSTATE2, rglVSlider[0]), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_Slider, FIELD_OFFSET(DIJOYSTATE2, rglVSlider[1]), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_XAxis, FIELD_OFFSET(DIJOYSTATE2, lAX), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_YAxis, FIELD_OFFSET(DIJOYSTATE2, lAY), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_ZAxis, FIELD_OFFSET(DIJOYSTATE2, lAZ), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_RxAxis, FIELD_OFFSET(DIJOYSTATE2, lARx), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_RyAxis, FIELD_OFFSET(DIJOYSTATE2, lARy), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_RzAxis, FIELD_OFFSET(DIJOYSTATE2, lARz), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_Slider, FIELD_OFFSET(DIJOYSTATE2, rglASlider[0]), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_Slider, FIELD_OFFSET(DIJOYSTATE2, rglASlider[1]), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_XAxis, FIELD_OFFSET(DIJOYSTATE2, lFX), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_YAxis, FIELD_OFFSET(DIJOYSTATE2, lFY), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_ZAxis, FIELD_OFFSET(DIJOYSTATE2, lFZ), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_RxAxis, FIELD_OFFSET(DIJOYSTATE2, lFRx), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_RyAxis, FIELD_OFFSET(DIJOYSTATE2, lFRy), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_RzAxis, FIELD_OFFSET(DIJOYSTATE2, lFRz), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_Slider, FIELD_OFFSET(DIJOYSTATE2, rglFSlider[0]), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+  { &GUID_Slider, FIELD_OFFSET(DIJOYSTATE2, rglFSlider[1]), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
+};
+
+const DIDATAFORMAT c_dfDIJoystick2 = {
+  sizeof(DIDATAFORMAT),
+  sizeof(DIOBJECTDATAFORMAT),
+  DIDF_ABSAXIS,
+  sizeof(DIJOYSTATE2),
+  sizeof(dfDIJoystick2) / sizeof(dfDIJoystick2[0]),
+  dfDIJoystick2
+};
+
+static BOOL CALLBACK count_axes_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID context) {
+  joystick_t* device = (joystick_t*)context; 
+  device->n_axes++;
+  if (instance->dwType & DIDFT_POV)
+    device->n_axes++;
+  return DIENUM_CONTINUE;
+}
+
+static BOOL CALLBACK count_buttons_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID context) {
+  joystick_t* device = (joystick_t*)context;
+  device->n_buttons++;
+  return DIENUM_CONTINUE;
+}
+
+#define AXIS_MIN -32768
+#define AXIS_MAX 32767
+
+static BOOL CALLBACK enum_axes_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID context) {
+  joystick_t* device = (joystick_t*)context;
+  joystick_private_t* private = (joystick_private_t*)device->__private;
+
+  DWORD offset;
+  device->n_axes++;
+  if (instance->dwType & DIDFT_POV) {
+    offset = DIJOFS_POV(private->pov_c);
+    private->axis_info[device->n_axes - 1].offset = offset;
+    private->axis_info[device->n_axes - 1].is_pov = TRUE;
+    device->n_axes++;
+    private->axis_info[device->n_axes - 1].offset = offset;
+    private->axis_info[device->n_axes - 1].is_pov = TRUE;
+    private->pov_c++;
+  } else {
+    if (!memcmp(&instance->guidType, &GUID_XAxis, sizeof(instance->guidType)))
+      offset = DIJOFS_X;
+    else if (!memcmp(&instance->guidType, &GUID_YAxis, sizeof(instance->guidType)))
+      offset = DIJOFS_Y;
+    else if (!memcmp(&instance->guidType, &GUID_ZAxis, sizeof(instance->guidType)))
+      offset = DIJOFS_Z;
+    else if (!memcmp(&instance->guidType, &GUID_RxAxis, sizeof(instance->guidType)))
+      offset = DIJOFS_RX;
+    else if (!memcmp(&instance->guidType, &GUID_RyAxis, sizeof(instance->guidType)))
+      offset = DIJOFS_RY;
+    else if (!memcmp(&instance->guidType, &GUID_RzAxis, sizeof(instance->guidType)))
+      offset = DIJOFS_RZ;
+    else if (!memcmp(&instance->guidType, &GUID_Slider, sizeof(instance->guidType)))
+      offset = DIJOFS_SLIDER(private->slider_c++);
+    else
+      offset = -1;
+
+    private->axis_info[device->n_axes - 1].offset = offset;
+    private->axis_info[device->n_axes - 1].is_pov = FALSE;
+
+    DIPROPRANGE range;
+    range.diph.dwSize = sizeof(range);
+    range.diph.dwHeaderSize = sizeof(range.diph);
+    range.diph.dwObj = instance->dwType;
+    range.diph.dwHow = DIPH_BYID;
+    range.lMin = AXIS_MIN;
+    range.lMax = AXIS_MAX;
+
+    if (IDirectInputDevice8_SetProperty(private->di8dev, DIPROP_RANGE, &range.diph) != DI_OK)
+      error_handle(PRIO_LOW, "IDirectInputDevice8_SetProperty() failed: %s", GetLastError());
+
+    DIPROPDWORD dead_zone;
+    dead_zone.diph.dwSize = sizeof(dead_zone);
+    dead_zone.diph.dwHeaderSize = sizeof(dead_zone.diph);
+    dead_zone.diph.dwObj = instance->dwType;
+    dead_zone.diph.dwHow = DIPH_BYID;
+    dead_zone.dwData = 0;
+
+    if (IDirectInputDevice8_SetProperty(private->di8dev, DIPROP_DEADZONE, &dead_zone.diph) != DI_OK)
+      error_handle(PRIO_LOW, "IDirectInputDevice8_SetProperty() failed: %s", GetLastError());
+  }
+  return DIENUM_CONTINUE;
+}
+
+static BOOL CALLBACK enum_buttons_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID context) {
+  joystick_t* device = (joystick_t*)context;
+  joystick_private_t* private = (joystick_private_t*)device->__private;
+  private->button_offsets[device->n_buttons] = DIJOFS_BUTTON(device->n_buttons);
+  device->n_buttons++;
+  return DIENUM_CONTINUE;
+}
+
+static BOOL CALLBACK enum_devices_cb(const DIDEVICEINSTANCE* instance, LPVOID context) {
+  IDirectInputDevice* didev;
+  IDirectInputDevice8* di8dev;
+
+  if (IDirectInput8_CreateDevice(did, &instance->guidInstance, &didev, NULL) != DI_OK)
+    error_handle(PRIO_LOW, "IDirectInput8_CreateDevice() failed: %s", GetLastError());
+  if (IDirectInputDevice8_QueryInterface(didev, &IID_IDirectInputDevice8, (LPVOID *)&di8dev) != DI_OK)
+    error_handle(PRIO_LOW, "IDirectInputDevice8_QueryInterface() failed: %s", GetLastError());
+  IDirectInputDevice8_Release(didev);
+
+  if (IDirectInputDevice8_SetCooperativeLevel(di8dev, GetActiveWindow(), DISCL_NONEXCLUSIVE | DISCL_BACKGROUND) != DI_OK)
+    error_handle(PRIO_LOW, "IDirectInputDevice8_SetCooperativeLevel() failed: %s", GetLastError());
+  if (IDirectInputDevice8_SetDataFormat(di8dev, &c_dfDIJoystick2) != DI_OK)
+    error_handle(PRIO_LOW, "IDirectInputDevice8_SetDataFormat() failed: %s", GetLastError());
+
+  BOOL buffered = TRUE;
+  DIPROPDWORD bufsize_prop;
+  bufsize_prop.diph.dwSize = sizeof(DIPROPDWORD);
+  bufsize_prop.diph.dwHeaderSize = sizeof(DIPROPHEADER);
+  bufsize_prop.diph.dwObj = 0;
+  bufsize_prop.diph.dwHow = DIPH_DEVICE;
+  bufsize_prop.dwData = INPUT_QUEUE_SIZE;
+  HRESULT hr = IDirectInputDevice8_SetProperty(di8dev, DIPROP_BUFFERSIZE, &bufsize_prop.diph);
+  if (hr == DI_POLLEDDEVICE)
+    buffered = FALSE;
+  else if (hr != DI_OK)
+    error_handle(PRIO_LOW, "IDirectInputDevice8_SetProperty() failed: %s", GetLastError());
+
+  joystick_private_t* private = malloc(sizeof(joystick_private_t));
+  private->guid = instance->guidInstance;
+  private->is_xinput = FALSE;
+  private->di8dev = di8dev;
+  private->buffered = buffered;
+  private->slider_c = 0;
+  private->pov_c = 0;
+  private->button_offsets = NULL;
+
+  joystick_t* device = malloc(sizeof(joystick_t));
+  device->__private = (void*)private;
+  device->device_id = 0;
+  device->description = strdup(instance->tszProductName);
+  device->vendor_id = instance->guidProduct.Data1 & 0xFFFF;
+  device->product_id = instance->guidProduct.Data1 >> 16 & 0xFFFF;
+  device->n_axes = 0;
+  IDirectInputDevice_EnumObjects(di8dev, count_axes_cb, (void*)device, DIDFT_AXIS | DIDFT_POV);
+  device->axes = malloc(sizeof(float) * device->n_axes);
+  private->axis_info = malloc(sizeof(di_axis_info_t) * device->n_axes);
+  device->n_buttons = 0;
+  IDirectInputDevice_EnumObjects(di8dev, count_buttons_cb, (void*)device, DIDFT_BUTTON);
+  device->buttons = malloc(sizeof(int) * device->n_buttons);
+  private->button_offsets = malloc(sizeof(DWORD) * device->n_buttons);
+  device->n_axes = 0;
+  IDirectInputDevice_EnumObjects(di8dev, enum_axes_cb, (void*)device, DIDFT_AXIS | DIDFT_POV);
+  device->n_buttons = 0;
+  IDirectInputDevice_EnumObjects(di8dev, enum_buttons_cb, (void*)device, DIDFT_BUTTON);
+
+  devices = realloc(devices, sizeof(joystick_t*) * (n_devices + 1));
+  devices[n_devices++] = device;
+
+  return DIENUM_CONTINUE;
+}
+#endif
 
 static int translate_mod() {
   int mods = 0;
@@ -4020,11 +4405,6 @@ static int translate_key(WPARAM wParam, LPARAM lParam) {
 
   return keycodes[HIWORD(lParam) & 0x1FF];
 }
-
-static HCURSOR __cursor = NULL, __custom_cursor = NULL;
-static int __cursor_state = 0;
-static RECT __rc = { 0 };
-static long adjust_flags = WS_POPUP | WS_SYSMENU | WS_CAPTION;
 
 void set_adjusted_win_wh(int w, int h) {
   RECT rect = { 0 };
@@ -4251,11 +4631,6 @@ void custom_cursor(surface_t* s) {
 }
 
 int screen(const char* title, surface_t* s, int w, int h, short flags) {
-  if (!w || !h) {
-    error_handle(PRIO_NORM, "screen() failed: W/H params NULL");
-    return 0;
-  }
-
   memset(keycodes, -1, sizeof(keycodes));
   memset(scancodes, -1, sizeof(scancodes));
 
@@ -4402,7 +4777,7 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
   }
   _flags |= (flags & RESIZABLE ? WS_THICKFRAME : 0);
   if (flags & BORDERLESS) {
-    _flags &= ~(WS_OVERLAPPED | WS_CAPTION);
+    _flags |= ~(WS_OVERLAPPED | WS_CAPTION);
     _flags |= WS_POPUP;
     adjust_flags = WS_POPUP;
   }
@@ -4444,6 +4819,8 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
     error_handle(PRIO_HIGH, "CreateWindowEx() failed: %s", GetLastError());
     return 0;
   }
+
+  hdc = GetDC(hwnd);
 
 #if defined(GRAPHICS_ENABLE_OPENGL)
   memset(&pfd, 0, sizeof(pfd));
@@ -4496,7 +4873,6 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
   bmpinfo->bmiColors[2].rgbBlue = 0xFF;
 #endif
   
-  hdc = GetDC(hwnd);
   ShowWindow(hwnd, SW_NORMAL);
 
   if (flags & ALWAYS_ON_TOP)
@@ -4506,6 +4882,18 @@ int screen(const char* title, surface_t* s, int w, int h, short flags) {
 
   __cursor = LoadCursor(NULL, IDC_ARROW);
   ifuckinghatethewin32api = 1;
+
+#if defined(GRAPHICS_ENABLE_JOYSTICKS)
+  if (DirectInput8Create(GetModuleHandle(NULL), DIRECTINPUT_VERSION, &IID_IDirectInput8, (VOID**)&did, NULL) != DI_OK) {
+    error_handle(PRIO_LOW, "DirectInput8Create() failed: %s", GetLastError());
+    return 1;
+  }
+
+  if (IDirectInput_EnumDevices(did, DI8DEVCLASS_GAMECTRL, enum_devices_cb, NULL, DIEDFL_ALLDEVICES) != DI_OK) {
+    error_handle(PRIO_LOW, "IDirectInput_EnumDevices() failed: %s", GetLastError());
+    return 1;
+  }
+#endif
 
   return 1;
 }
@@ -4545,6 +4933,23 @@ void release() {
   IDirect3D9_Release(d3d);
 #else
   FREE_SAFE(bmpinfo);
+#endif
+
+#if defined(GRAPHICS_ENABLE_JOYSTICKS)
+  for (int i = 0; i < n_devices; ++i) {
+    joystick_private_t* private = (joystick_private_t*)devices[i]->__private;
+    if (!private->is_xinput) {
+      IDirectInputDevice8_Release(private->di8dev);
+      FREE_SAFE(private->axis_info);
+      FREE_SAFE(private->button_offsets);
+      FREE_SAFE(devices[i]->description);
+    }
+    FREE_SAFE(private);
+    FREE_SAFE(devices[i]->axes);
+    FREE_SAFE(devices[i]->buttons);
+    FREE_SAFE(devices[i]);
+  }
+  FREE_SAFE(devices);
 #endif
 
   if (__cursor)

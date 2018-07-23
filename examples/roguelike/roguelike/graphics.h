@@ -8,7 +8,7 @@
 
 #ifndef graphics_h
 #define graphics_h
-#if defined(__cplusplus)
+#ifdef __cplusplus
 extern "C" {
 #endif
   
@@ -18,7 +18,6 @@ extern "C" {
 #include <string.h>
 #include <math.h>
 #include <time.h>
-#include <ctype.h>
 #if defined(_WIN32)
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -34,38 +33,10 @@ extern "C" {
 #include <X11/XKBlib.h>
 #include <X11/keysym.h>
 #endif
-
-#if !defined(GRAPHICS_DISABLE_RGBA)
-#define RGBA(r, g, b, a) ((((unsigned int)(a)) << 24) | (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b))
-#define RGB(r, g, b) (RGBA((r), (g), (b), 255))
-#else
-#define RGB(r, g, b) ((((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b))
-#define RGBA(r, g, b, a) (RGB(r, g, b))
-#endif
-#define R(v) ((v >> 16) & 0xFF)
-#define G(v) ((v >>  8) & 0xFF)
-#define B(v) ( v        & 0xFF)
-#define A(v) ((v >> 24) & 0xFF)
-#define RCHAN(a, b) (((a) & ~0x00FF0000) | ((b) << 16))
-#define GCHAN(a, b) (((a) & ~0x0000FF00) | ((b) << 8))
-#define BCHAN(a, b) (((a) & ~0x000000FF) |  (b))
-#define ACHAN(a, b) (((a) & ~0xFF000000) | ((b) << 24))
-
-#define BLACK RGB(0, 0, 0)
-#define BLUE RGB(0, 0, 255)
-#define CYAN (0, 255, 255)
-#define GRAY RGB(128, 128, 128)
-#define GREEN RGB(0, 128, 0)
-#define LIME RGB(0, 255, 0)
-#define MAGENTA RGB(255, 0, 255)
-#define MAROON RGB(128, 0, 0)
-#define NAVY RGB(0, 0, 128)
-#define PURPLE RGB(128, 0, 128)
-#define RED RGB(255, 0, 0)
-#define TEAL RGB(0, 128, 128)
-#define WHITE RGB(255, 255, 255)
-#define YELLOW RGB(255, 255, 0)
   
+#define RGB(r, g, b) (((unsigned int)r) << 16) | (((unsigned int)g) << 8) | b
+  
+#if defined(GRAPHICS_EXTRA_COLOURS) && !defined(GRAPHICS_LEAN_AND_MEAN)
 #define ALICE_BLUE RGB(240, 248, 255)
 #define ANTIQUE_WHITE RGB(250, 235, 215)
 #define AQUA RGB(0, 255, 255)
@@ -126,7 +97,7 @@ extern "C" {
 #define LIGHT_BLUE RGB(173, 216, 230)
 #define LIGHT_CORAL RGB(240, 128, 128)
 #define LIGHT_CYAN RGB(224, 255, 255)
-#define LIGHT_GOLDEN ROD YELLOW RGB(250, 250, 210)
+#define LIGHT_GOLDEN RGB(250, 250, 210)
 #define LIGHT_GRAY RGB(211, 211, 211)
 #define LIGHT_GREEN RGB(144, 238, 144)
 #define LIGHT_PINK RGB(255, 182, 193)
@@ -189,13 +160,27 @@ extern "C" {
 #define WHEAT RGB(245, 222, 179)
 #define WHITE_SMOKE RGB(245, 245, 245)
 #define YELLOW_GREEN RGB(154, 205, 50)
-  
-#if !defined(GRAPHICS_DISABLE_CHROMA_KEY) && !defined(BLIT_CHROMA_KEY)
-#define BLIT_CHROMA_KEY LIME
 #endif
   
+#define BLACK RGB(0, 0, 0)
+#define BLUE RGB(0, 0, 255)
+#define CYAN RGB(0, 255, 255)
+#define GRAY RGB(128, 128, 128)
+#define GREEN RGB(0, 128, 0)
+#define LIME RGB(0, 255, 0)
+#define MAGENTA RGB(255, 0, 255)
+#define MAROON RGB(128, 0, 0)
+#define NAVY RGB(0, 0, 128)
+#define OLIVE RGB(128, 128, 0)
+#define PURPLE RGB(128, 0, 128)
+#define RED RGB(255, 0, 0)
+#define SILVER RGB(192, 192, 192)
+#define TEAL RGB(0, 128, 128)
+#define WHITE RGB(255, 255, 255)
+#define YELLOW RGB(255, 255, 0)
+  
   typedef struct {
-    int *buf, w, h;
+    int* buf, w, h;
   } surface_t;
   
   typedef struct {
@@ -206,97 +191,50 @@ extern "C" {
     int x, y;
   } point_t;
   
-  typedef enum {
-    PRIO_HIGH = 0x0001,
-    PRIO_NORM = 0x0002,
-    PRIO_LOW  = 0x0004
-  } ERRPRIO;
-  
-  void error_callback(void (*cb)(ERRPRIO, const char*, const char*, const char*, int));
-  
   int surface(surface_t* s, unsigned int w, unsigned int h);
   void destroy(surface_t*);
   void fill(surface_t* s, int col);
-  void flood(surface_t* s, int x, int y, int col);
-  void cls(surface_t* s);
-  void pset(surface_t* s, int x, int y, int col);
-  void psetb(surface_t* s, int x, int y, int col);
+  int pset(surface_t* s, int x, int y, int col);
   int pget(surface_t* s, int x, int y);
-  int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
-  int reset(surface_t* s, int nw, int nh);
-  int copy(surface_t* in, surface_t* out);
-  void filter(surface_t* s, int (*fn)(int x, int y, int col));
-  int resize(surface_t* in, int nw, int nh, surface_t* out);
-  
-  void vline(surface_t* s, int x, int y0, int y1, int col);
-  void hline(surface_t* s, int y, int x0, int x1, int col);
+  int blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect, float opacity, int chroma);
+  void yline(surface_t* s, int x, int y0, int y1, int col);
+  void xline(surface_t* s, int y, int x0, int x1, int col);
   void line(surface_t* s, int x0, int y0, int x1, int y1, int col);
-  void circle(surface_t* s, int xc, int yc, int r, int col, int fill);
-  void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill);
-  void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col);
-  void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill);
-  void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col);
-  void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col);
-  void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col);
-  void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
-  void rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
-  
-  int bmp(surface_t* s, const char* path);
-  int save_bmp(surface_t* s, const char* path);
-  
-#if !defined(GRAPHICS_DISABLE_TEXT)
-  void ascii(surface_t* s, char ch, int x, int y, int fg, int bg);
-  int character(surface_t* s, const char* ch, int x, int y, int fg, int bg);
-  void writeln(surface_t* s, int x, int y, int fg, int bg, const char* str);
-  void writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...);
-  void string(surface_t* out, int fg, int bg, const char* str);
-  void stringf(surface_t* out, int fg, int bg, const char* fmt, ...);
-#endif
-  
+  int tga(surface_t* s, const char* path);
+  void letter(surface_t* s, unsigned char ch, unsigned int x, unsigned int y, int col);
+  void print(surface_t* s, unsigned int x, unsigned int y, int col, const char* str);
+  void print_f(surface_t* s, unsigned int x, unsigned int y, int col, const char* fmt, ...);
+  int string(surface_t* s, int col, int bg, const char* str);
+  int string_f(surface_t* s, int col, int bg, const char* fmt, ...);
+  void rgb(int c, int* r, int* g, int* b);
+  int alpha(int c1, int c2, float i);
   long ticks(void);
   void delay(long ms);
+  int reset(surface_t* s, int nw, int nh);
+  void resize_callback(void(*cb)(int, int));
   
-#if defined(GRAPHICS_ENABLE_BDF)
-  typedef struct {
-    unsigned int width;
-    unsigned char* bitmap;
-    rect_t bb;
-  } bdf_char_t;
-  
-  typedef struct {
-    rect_t fontbb;
-    unsigned int* encoding_table;
-    bdf_char_t* chars;
-    int n_chars;
-  } bdf_t;
-  
-  void bdf_destroy(bdf_t* f);
-  int bdf(bdf_t* out, const char* path);
-  int bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, int bg);
-  void bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* str);
+#if !defined(GRAPHICS_LEAN_AND_MEAN)
+  void circle(surface_t* s, int xc, int yc, int r, int col, int fill);
+  void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill);
+  void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill);
+  void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col);
+  void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col);
+  void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col);
+  void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col);
+  void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
+  void rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
+  int bmp(surface_t* s, const char* path);
+  int save_bmp(surface_t* s, const char* path);
+#if defined(GRAPHICS_EXTRA_FONTS)
+  void letter_block(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
+  void letter_box(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
+  void letter_extra(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
+  void letter_greek(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
+  void letter_hiragana(surface_t* s, int ch, unsigned int x, unsigned int y, int col);
 #endif
-  
-#if defined(GRAPHICS_ENABLE_STB_IMAGE)
-  int image(surface_t* out, const char* path);
-  int save_image(surface_t* in, const char* path);
-#endif
-  
-#if !defined(GRAPHICS_DISABLE_WINDOW)
-  void mouse_xy(int* x, int* y);
-  void window_wh(int* w, int* h);
-  void resize_callback(void (*cb)(int, int));
-
-#if defined(GRAPHICS_ENABLE_JOYSTICKS)
-  typedef struct {
-    const char* description;
-    int device_id, vendor_id, product_id;
-
-    unsigned int n_axes, n_buttons;
-    float* axes;
-    int* buttons;
-
-    void* __private;
-  } joystick_t;
+  int copy(surface_t* in, surface_t* out);
+  void iterate(surface_t* s, int(*fn)(int x, int y, int col));
+  int resize(surface_t* in, int nw, int nh, surface_t* out);
 #endif
   
   typedef enum {
@@ -309,7 +247,7 @@ extern "C" {
     MOUSE_BTN_6,
     MOUSE_BTN_7,
     MOUSE_BTN_8
-  } MOUSEBTN;
+  } mousebtn_t;
   
 #define MOUSE_LAST   MOUSE_BTN_8
 #define MOUSE_LEFT   MOUSE_BTN_0
@@ -437,7 +375,7 @@ extern "C" {
     KB_KEY_RIGHT_ALT = 346,
     KB_KEY_RIGHT_SUPER = 347,
     KB_KEY_MENU = 348
-  } KEYSYM;
+  } keysym_t;
   
 #define KB_KEY_UNKNOWN -1
 #define KB_KEY_LAST KB_KEY_MENU
@@ -449,7 +387,7 @@ extern "C" {
     KB_MOD_SUPER = 0x0008,
     KB_MOD_CAPS_LOCK = 0x0010,
     KB_MOD_NUM_LOCK = 0x0020
-  } KEYMOD;
+  } keymod_t;
   
   typedef enum {
     MOUSE_BTN_DOWN,
@@ -458,56 +396,25 @@ extern "C" {
     KEYBOARD_KEY_UP,
     SCROLL_WHEEL,
     WINDOW_CLOSED
-  } EVENTYPE;
+  } user_event_type_t;
   
   typedef struct {
-    EVENTYPE type;
-    KEYSYM sym;
-    KEYMOD mod;
-    MOUSEBTN btn;
+    user_event_type_t type;
+    keysym_t sym;
+    keymod_t mod;
+    mousebtn_t btn;
     int data1, data2;
-  } event_t;
+  } user_event_t;
   
-  typedef enum {
-    DEFAULT = 0x0000,
-    HIDDEN = 0x0001,
-    SHOWN = 0x0002,
-    LOCKED = 0x0004,
-    UNLOCKED = 0x0008,
-    CURSOR_ARROW = 0x000010,     // Arrow
-    CURSOR_IBEAM = 0x000020,     // I-beam
-    CURSOR_WAIT = 0x000040,      // Wait
-    CURSOR_CROSSHAIR = 0x000080, // Crosshair
-    CURSOR_WAITARROW = 0x000100, // Small wait cursor (or Wait if not available)
-    CURSOR_SIZENWSE = 0x000200,  // Double arrow pointing northwest and southeast
-    CURSOR_SIZENESW = 0x000400,  // Double arrow pointing northeast and southwest
-    CURSOR_SIZEWE = 0x000800,    // Double arrow pointing west and east
-    CURSOR_SIZENS = 0x001000,    // Double arrow pointing north and south
-    CURSOR_SIZEALL = 0x002000,   // Four pointed arrow pointing north, south, east, and west
-    CURSOR_NO = 0x004000,        // Slashed circle or crossbones
-    CURSOR_HAND = 0x008000,      // Hand
-    CURSOR_CUSTOM = 0x100000     // Use your own
-  } CURSORFLAGS;
-  
-  void cursor(CURSORFLAGS flags);
-  void custom_cursor(surface_t* s);
-  
-  typedef enum {
-    RESIZABLE = 0x01,
-    FULLSCREEN = 0x02,
-    FULLSCREEN_DESKTOP = 0x04,
-    BORDERLESS = 0x08,
-    ALWAYS_ON_TOP = 0x10,
-  } WINDOWFLAGS;
-  
-  int screen(const char* title, surface_t* s, int w, int h, short flags);
-  int closed(void);
-  int poll(event_t* e);
-  void flush(surface_t* s);
+  int screen(const char* title, int w, int h);
+  int should_close(void);
+  int poll_events(user_event_t* e);
+  void render(surface_t* s);
   void release(void);
-#endif
+  const char* get_last_error(void);
+  void get_mouse_pos(int* x, int* y);
   
-#if defined(__cplusplus)
+#ifdef __cplusplus
 }
 #endif
 #endif /* graphics_h */
