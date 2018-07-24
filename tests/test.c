@@ -168,14 +168,17 @@ void on_joystick_axis(joystick_t* d, int axis, float v, float lv, long time) {
 
 /* TODO next
  - OSX
+  - Joystick API
   - Fix delta error from cursor warping + cursor locking to view
  - Linux
+  - Joystick API
   - Update function names
   - Add window flags
   - Add cursor handling
+ - Windows
+  - Fix crash when disconnecting joystick
  - All
   - Load cursor from surface
-  - Joystick API
   - Mouse delta values
  - Update TODO list in README
  */
@@ -187,7 +190,7 @@ int main(int argc, const char* argv[]) {
   cursor(SHOWN, UNLOCKED, CURSOR_HAND);
 
   joystick_callbacks(on_joystick_connect, on_joystick_disconnect, on_joystick_btn, on_joystick_axis);
-  joystick_scan();
+  joystick_init(true);
 
   surface_t s[10];
   for (int i = 0; i < 10; ++i)

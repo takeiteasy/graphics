@@ -215,7 +215,7 @@ extern "C" {
     PRIO_LOW
   } ERRPRIO;
   
-  void sgl_error_callback(void (*cb)(ERRPRIO, const char*, const char*, const char*, int));
+  void sgl_error_callback(void(*cb)(ERRPRIO, const char*, const char*, const char*, int));
   
   bool sgl_surface(surface_t* s, unsigned int w, unsigned int h);
   void sgl_destroy(surface_t*);
@@ -228,7 +228,7 @@ extern "C" {
   bool sgl_blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
   bool sgl_reset(surface_t* s, int nw, int nh);
   bool sgl_copy(surface_t* in, surface_t* out);
-  void sgl_filter(surface_t* s, int (*fn)(int x, int y, int col));
+  void sgl_filter(surface_t* s, int(*fn)(int x, int y, int col));
   bool sgl_resize(surface_t* in, int nw, int nh, surface_t* out);
   
   void sgl_vline(surface_t* s, int x, int y0, int y1, int col);
@@ -347,7 +347,7 @@ extern "C" {
 #if !defined(GRAPHICS_DISABLE_WINDOW)
   void sgl_mouse_xy(int* x, int* y);
   void sgl_window_size(int* w, int* h);
-  void sgl_resize_callback(void (*cb)(int, int));
+  void sgl_resize_callback(void(*cb)(int, int));
 
 #if defined(GRAPHICS_ENABLE_JOYSTICKS)
   typedef struct __joystick_t {
@@ -358,24 +358,24 @@ extern "C" {
     float* axes;
     int* buttons;
 
+    struct __joystick_t* next;
+
     void* __private;
   } joystick_t;
-  
-#if !defined(MAX_JOYSTICKS)
-#define MAX_JOYSTICKS 4
-#endif
 
-  void sgl_joystick_scan(void);
+  void sgl_joystick_callbacks(void(*connect_cb)(joystick_t*, int),
+    void(*remove_cb)(joystick_t*, int),
+    void(*btn_cb)(joystick_t*, int, bool, long),
+    void(*axis_cb)(joystick_t*, int, float, float, long));
+  joystick_t* sgl_joystick(int id);
+  bool sgl_joystick_init(bool scan_too);
+  bool sgl_joystick_scan(void);
   void sgl_joystick_release(void);
-  void sgl_joystick_remove(int at);
-  void sgl_joystick_callbacks(void (*connect_cb)(joystick_t*, int),
-                              void (*remove_cb)(joystick_t*, int),
-                              void (*btn_cb)(joystick_t*, int, bool, long),
-                              void (*axis_cb)(joystick_t*, int, float, float, long));
+  void sgl_joystick_remove(int id);
   void sgl_joystick_poll(void);
-  joystick_t* sgl_joystick(int at);
 
 #if !defined(GRAPHICS_DISABLE_SHORT_NAMES)
+#define joystick_init sgl_joystick_init
 #define joystick_scan sgl_joystick_scan
 #define joystick_release sgl_joystick_release
 #define joystick_remove sgl_joystick_remove

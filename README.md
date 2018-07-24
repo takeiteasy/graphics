@@ -67,7 +67,6 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 - 1 & 4 bpp, RLE compressed and OS/2 BMP support (Just because)
 - Message box support
 - Window icon support
-- Colour escapes for BDF extension
 
 ### Maybe
 
