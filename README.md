@@ -1,4 +1,4 @@
-# graphics.h
+# sgl
 
 Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb), [SDL 1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/).
 

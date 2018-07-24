@@ -37,7 +37,7 @@ if ((x)) {  \
 
 static void (*__error_callback)(ERRPRIO, const char*, const char*, const char*, int) = NULL;
 
-void error_callback(void (*cb)(ERRPRIO, const char*, const char*, const char*, int)) {
+void sgl_error_callback(void (*cb)(ERRPRIO, const char*, const char*, const char*, int)) {
   __error_callback = cb;
 }
 
@@ -87,7 +87,7 @@ void error_handle(ERRPRIO pri, const char* msg, ...) {
 #define todo(x) message(__FILE__LINE__" TODO " __FUNCTION__ "() -> " #x)
 #define fixme(x) message(__FILE__LINE__" FIXME " __FUNCTION__ "() -> " #x)
 
-bool surface(surface_t* s, unsigned int w, unsigned int h) {
+bool sgl_surface(surface_t* s, unsigned int w, unsigned int h) {
   s->w = w;
   s->h = h;
   size_t sz = w * h * sizeof(unsigned int) + 1;
@@ -101,7 +101,7 @@ bool surface(surface_t* s, unsigned int w, unsigned int h) {
   return true;
 }
 
-void destroy(surface_t* s) {
+void sgl_destroy(surface_t* s) {
   if (s) {
     FREE_SAFE(s->buf);
     s->w = 0;
@@ -109,7 +109,7 @@ void destroy(surface_t* s) {
   }
 }
 
-void fill(surface_t* s, int col) {
+void sgl_fill(surface_t* s, int col) {
   for (int i = 0; i < s->w * s->h; ++i)
     s->buf[i] = col;
 }
@@ -161,17 +161,17 @@ static inline void __flood(surface_t* s, int x, int y, int new, int old) {
   }
 }
 
-void flood(surface_t* s, int x, int y, int col) {
+void sgl_flood(surface_t* s, int x, int y, int col) {
   if (!s || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
   __flood(s, x, y, col, XYGET(s, x, y));
 }
 
-void cls(surface_t* s) {
+void sgl_cls(surface_t* s) {
   memset(s->buf, 0, s->w * s->h * sizeof(int));
 }
 
-void pset(surface_t* s, int x, int y, int c)  {
+void sgl_pset(surface_t* s, int x, int y, int c)  {
   if (x >= 0 && y >= 0 && x < s->w && y < s->h)
     s->buf[y * s->w + x] = c;
 }
@@ -179,7 +179,7 @@ void pset(surface_t* s, int x, int y, int c)  {
 #if !defined(GRAPHICS_DISABLE_RGBA)
 #define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
 
-void psetb(surface_t* s, int x, int y, int c) {
+void sgl_psetb(surface_t* s, int x, int y, int c) {
   int a = A(c);
   if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
@@ -192,28 +192,28 @@ void psetb(surface_t* s, int x, int y, int c) {
                                    a + (b * (255 - a) / 255));
 }
 
-static void(*__pset)(surface_t*, int, int, int) = psetb;
+static void(*__pset)(surface_t*, int, int, int) = sgl_psetb;
 #else
-void psetb(surface_t* s, int x, int y, int c) {
+void sgl_psetb(surface_t* s, int x, int y, int c) {
   int a = A(c);
   if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
   
   int b = XYGET(s, x, y);
   float i = (float)a / 255.f;
-  pset(s, x, y, (i >= 1.f || i <= 0.f) ? c : RGB((int)roundf(R(c) * (1 - i) + R(b) * i),
+  sgl_pset(s, x, y, (i >= 1.f || i <= 0.f) ? c : RGB((int)roundf(R(c) * (1 - i) + R(b) * i),
                                                  (int)roundf(G(c) * (1 - i) + G(b) * i),
                                                  (int)roundf(B(c) * (1 - i) + B(b) * i)));
 }
 
-static void(*__pset)(surface_t*, int, int, int) = pset;
+static void(*__pset)(surface_t*, int, int, int) = sgl_pset;
 #endif
 
-int pget(surface_t* s, int x, int y) {
+int sgl_pget(surface_t* s, int x, int y) {
   return (x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
 }
 
-bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
+bool sgl_blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   int offset_x = 0, offset_y = 0,
       from_x = 0, from_y = 0,
       width = src->w, height = src->h;
@@ -261,7 +261,7 @@ bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   return true;
 }
 
-bool reset(surface_t* s, int nw, int nh) {
+bool sgl_reset(surface_t* s, int nw, int nh) {
   size_t sz = nw * nh * sizeof(unsigned int) + 1;
   int* tmp = realloc(s->buf, sz);
   if (!tmp) {
@@ -275,25 +275,25 @@ bool reset(surface_t* s, int nw, int nh) {
   return true;
 }
 
-bool copy(surface_t* in, surface_t* out) {
-  if (!surface(out, in->w, in->h))
+bool sgl_copy(surface_t* in, surface_t* out) {
+  if (!sgl_surface(out, in->w, in->h))
     return false;
   memcpy(out->buf, in->buf, in->w * in->h * sizeof(unsigned int) + 1);
   return !!out->buf;
 }
 
-void filter(surface_t* s, int (*fn)(int x, int y, int col)) {
+void sgl_filter(surface_t* s, int (*fn)(int x, int y, int col)) {
   if (!s || !s->buf)
     return;
   
   int x, y;
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
-      pset(s, x, y, fn(x, y, XYGET(s, x, y)));
+      sgl_pset(s, x, y, fn(x, y, XYGET(s, x, y)));
 }
 
-bool resize(surface_t* in, int nw, int nh, surface_t* out) {
-  if (!surface(out, nw, nh))
+bool sgl_resize(surface_t* in, int nw, int nh, surface_t* out) {
+  if (!sgl_surface(out, nw, nh))
     return false;
   
   int x_ratio = (int)((in->w << 16) / nw) + 1;
@@ -313,7 +313,7 @@ bool resize(surface_t* in, int nw, int nh, surface_t* out) {
   return true;
 }
 
-void vline(surface_t* s, int x, int y0, int y1, int col) {
+void sgl_vline(surface_t* s, int x, int y0, int y1, int col) {
   if (y1 < y0) {
     y0 += y1;
     y1  = y0 - y1;
@@ -332,7 +332,7 @@ void vline(surface_t* s, int x, int y0, int y1, int col) {
     __pset(s, x, y, col);
 }
 
-void hline(surface_t* s, int y, int x0, int x1, int col) {
+void sgl_hline(surface_t* s, int y, int x0, int x1, int col) {
   if (x1 < x0) {
     x0 += x1;
     x1  = x0 - x1;
@@ -351,7 +351,7 @@ void hline(surface_t* s, int y, int x0, int x1, int col) {
     __pset(s, x, y, col);
 }
 
-void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
+void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
 #if !defined(GRAPHICS_DISABLE_RGBA)
   int a = A(col);
   if (!a)
@@ -361,9 +361,9 @@ void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
 #endif
   
   if (x0 == x1)
-    vline(s, x0, y0, y1, col);
+    sgl_vline(s, x0, y0, y1, col);
   if (y0 == y1)
-    hline(s, y0, x0, x1, col);
+    sgl_hline(s, y0, x0, x1, col);
 
   int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
 #if defined(GRAPHICS_ENABLE_AA)
@@ -377,7 +377,7 @@ void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
 
   for (;;) {
 #if defined(GRAPHICS_ENABLE_AA)
-    psetb(s, x0, y0, ACHAN(col, a - (a * abs(err - dx + dy) / ed)));
+    sgl_psetb(s, x0, y0, ACHAN(col, a - (a * abs(err - dx + dy) / ed)));
     e2 = err;
     x2 = x0;
 
@@ -385,7 +385,7 @@ void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
       if (x0 == x1)
         break;
       if (e2 + dy < ed)
-        psetb(s, x0, y0 + sy, ACHAN(col, a - (a * (e2 + dy) / ed)));
+        sgl_psetb(s, x0, y0 + sy, ACHAN(col, a - (a * (e2 + dy) / ed)));
       err -= dy;
       x0 += sx;
     }
@@ -394,7 +394,7 @@ void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
       if (y0 == y1)
         break;
       if (dx - e2 < ed)
-        psetb(s, x2 + sx, y0, ACHAN(col, a - (a * (dx - e2) / ed)));
+        sgl_psetb(s, x2 + sx, y0, ACHAN(col, a - (a * (dx - e2) / ed)));
       err += dx;
       y0 += sy;
     }
@@ -419,7 +419,7 @@ void line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
   }
 }
 
-void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
+void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
 #if !defined(GRAPHICS_DISABLE_RGBA)
   int a = A(col);
   if (!a)
@@ -440,14 +440,14 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
   do {
 #if defined(GRAPHICS_ENABLE_AA)
     i = ACHAN(col, 255 - (255 * abs(err - 2 * (x + y) - 2) / r));
-    psetb(s, xc - x, yc + y, i);
-    psetb(s, xc - y, yc - x, i);
-    psetb(s, xc + x, yc - y, i);
-    psetb(s, xc + y, yc + x, i);
+    sgl_psetb(s, xc - x, yc + y, i);
+    sgl_psetb(s, xc - y, yc - x, i);
+    sgl_psetb(s, xc + x, yc - y, i);
+    sgl_psetb(s, xc + y, yc + x, i);
     
     if (fill) {
-      hline(s, yc - y, xc - x - 1, xc + x + 1, col);
-      hline(s, yc + y, xc - x - 1, xc + x + 1, col);
+      sgl_hline(s, yc - y, xc - x - 1, xc + x + 1, col);
+      sgl_hline(s, yc + y, xc - x - 1, xc + x + 1, col);
     }
     
     e2 = err;
@@ -456,10 +456,10 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
       i = 255 * (err - 2 * x - 1) / r;
       if (i < 256) {
         i = ACHAN(col, 255 - i);
-        psetb(s, xc - x, yc + y + 1, i);
-        psetb(s, xc - y - 1, yc - x, i);
-        psetb(s, xc + x, yc - y - 1, i);
-        psetb(s, xc + y + 1, yc + x, i);
+        sgl_psetb(s, xc - x, yc + y + 1, i);
+        sgl_psetb(s, xc - y - 1, yc - x, i);
+        sgl_psetb(s, xc + x, yc - y - 1, i);
+        sgl_psetb(s, xc + y + 1, yc + x, i);
       }
       err += ++x * 2 + 1;
     }
@@ -468,10 +468,10 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
       i = 255 * (2 * y + 3 - e2) / r;
       if (i < 256) {
         i = ACHAN(col, 255 - i);
-        psetb(s, xc - x2 - 1, yc + y, i);
-        psetb(s, xc - y, yc - x2 - 1, i);
-        psetb(s, xc + x2 + 1, yc - y, i);
-        psetb(s, xc + y, yc + x2 + 1, i);
+        sgl_psetb(s, xc - x2 - 1, yc + y, i);
+        sgl_psetb(s, xc - y, yc - x2 - 1, i);
+        sgl_psetb(s, xc + x2 + 1, yc - y, i);
+        sgl_psetb(s, xc + y, yc + x2 + 1, i);
       }
       err += ++y * 2 + 1;
     }
@@ -482,8 +482,8 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
     __pset(s, xc + y, yc + x, col);
     
     if (fill) {
-      hline(s, yc - y, xc - x, xc + x, col);
-      hline(s, yc + y, xc - x, xc + x, col);
+      sgl_hline(s, yc - y, xc - x, xc + x, col);
+      sgl_hline(s, yc + y, xc - x, xc + x, col);
     }
     
     r = err;
@@ -495,7 +495,7 @@ void circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
   } while (x < 0);
 }
 
-void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
+void sgl_ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
 #if defined(GRAPHICS_ENABLE_AA)
 #pragma TODO(Add AA option);
 #endif
@@ -505,14 +505,14 @@ void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
   long dy = x * x, err = dx + dy;
   
   do {
-    psetb(s, xc - x, yc + y, col);
-    psetb(s, xc + x, yc + y, col);
-    psetb(s, xc + x, yc - y, col);
-    psetb(s, xc - x, yc - y, col);
+    sgl_psetb(s, xc - x, yc + y, col);
+    sgl_psetb(s, xc + x, yc + y, col);
+    sgl_psetb(s, xc + x, yc - y, col);
+    sgl_psetb(s, xc - x, yc - y, col);
     
     if (fill) {
-      hline(s, yc - y, xc - x, xc + x, col);
-      hline(s, yc + y, xc - x, xc + x, col);
+      sgl_hline(s, yc - y, xc - x, xc + x, col);
+      sgl_hline(s, yc + y, xc - x, xc + x, col);
     }
     
     e2 = 2 * err;
@@ -527,7 +527,7 @@ void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
   } while (x <= 0);
 }
 
-void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill) {
+void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill) {
 #pragma FIXME(This is borked without AA)
 #pragma FIXME(Arithmic error when too big with AA)
   
@@ -539,7 +539,7 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
   int f, ed, i;
   
   if (a == 0 || b == 0)
-    line(s, x0, y0, x1, y1, col);
+    sgl_line(s, x0, y0, x1, y1, col);
 #else
   long e2;
 #endif
@@ -567,14 +567,14 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
       ed = 255 / (ed + 2 * ed * i * i / (4 * ed * ed + i * i)); // Fix overflow
     
     i = ACHAN(col, 255 - (ed * (int)fabsf(err + dx - dy)));
-    psetb(s, x0, y0, i);
-    psetb(s, x0, y1, i);
-    psetb(s, x1, y0, i);
-    psetb(s, x1, y1, i);
+    sgl_psetb(s, x0, y0, i);
+    sgl_psetb(s, x0, y1, i);
+    sgl_psetb(s, x1, y0, i);
+    sgl_psetb(s, x1, y1, i);
     
     if (fill) {
-      hline(s, y0, x0 + 1, x1 - 1, col);
-      hline(s, y1, x0 + 1, x1 - 1, col);
+      sgl_hline(s, y0, x0 + 1, x1 - 1, col);
+      sgl_hline(s, y1, x0 + 1, x1 - 1, col);
     }
     
     if ((f = 2 * err + dy >= 0)) {
@@ -584,10 +584,10 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
       i = ed * (err + dx);
       if (i < 255) {
         i = ACHAN(col, 255 - i);
-        psetb(s, x0, y0 + 1, i);
-        psetb(s, x0, y1 - 1, i);
-        psetb(s, x1, y0 + 1, i);
-        psetb(s, x1, y1 - 1, i);
+        sgl_psetb(s, x0, y0 + 1, i);
+        sgl_psetb(s, x0, y1 - 1, i);
+        sgl_psetb(s, x1, y0 + 1, i);
+        sgl_psetb(s, x1, y1 - 1, i);
       }
     }
     
@@ -595,10 +595,10 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
       i = ed * (dy - err);
       if (i < 255) {
         i = ACHAN(col, 255 - i);
-        psetb(s, x0 + 1, y0, i);
-        psetb(s, x1 - 1, y0, i);
-        psetb(s, x0 + 1, y1, i);
-        psetb(s, x1 - 1, y1, i);
+        sgl_psetb(s, x0 + 1, y0, i);
+        sgl_psetb(s, x1 - 1, y0, i);
+        sgl_psetb(s, x0 + 1, y1, i);
+        sgl_psetb(s, x1 - 1, y1, i);
       }
       
       y0++;
@@ -615,10 +615,10 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
   if (--x0 == x1++)
     while (y0 - y1 < b) {
       i = ACHAN(col, 255 - (255 * 4 * (int)fabsf(err + dx) / (int)b1));
-      psetb(s, x0, ++y0, i);
-      psetb(s, x1, y0, i);
-      psetb(s, x0, --y1, i);
-      psetb(s, x1, y1, i);
+      sgl_psetb(s, x0, ++y0, i);
+      sgl_psetb(s, x1, y0, i);
+      sgl_psetb(s, x0, --y1, i);
+      sgl_psetb(s, x1, y1, i);
       err += dy += a;
     }
 #else
@@ -629,8 +629,8 @@ void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fil
     __pset(s, x1, y1, col);
     
     if (fill) {
-      hline(s, y0, x0, x1, col);
-      hline(s, y1, x0, x1, col);
+      sgl_hline(s, y0, x0, x1, col);
+      sgl_hline(s, y1, x0, x1, col);
     }
     
     e2 = 2 * err;
@@ -692,7 +692,7 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
       cur = fminf(dx + xy, -xy - dy);
       ed = fmaxf(dx + xy, -xy - dy);
       ed += 2 * ed * cur * cur / (4 * ed * ed + cur * cur);
-      psetb(s, x0, y0, ACHAN(col, 255 - (int)(255 * fabsf(err - dx - dy - xy) / ed)));
+      sgl_psetb(s, x0, y0, ACHAN(col, 255 - (int)(255 * fabsf(err - dx - dy - xy) / ed)));
       if (x0 == x2 || y0 == y2)
         break;
       
@@ -701,7 +701,7 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
       y1 = 2 * err + dy < 0;
       if (2 * err + dx > 0) {
         if (err - dy < ed)
-          psetb(s, x0, y0 + sy, ACHAN(col, 255 - (int)(255 * fabsf(err - dy) / ed)));
+          sgl_psetb(s, x0, y0 + sy, ACHAN(col, 255 - (int)(255 * fabsf(err - dy) / ed)));
         x0 += sx;
         dx -= xy;
         err += dy += yy;
@@ -709,7 +709,7 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
       
       if (y1) {
         if (cur < ed)
-          psetb(s, x1 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(cur) / ed)));
+          sgl_psetb(s, x1 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(cur) / ed)));
         y0 += sy;
         dy -= xy;
         err += dx += xx;
@@ -736,10 +736,10 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
 #endif
 }
 
-line(s, x0, y0, x2, y2, col);
+sgl_line(s, x0, y0, x2, y2, col);
 }
 
-void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
+void sgl_bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
   int x = x0 - x1, y = y0 - y1;
   float t = x0 - 2 * x1 + x2, r;
   
@@ -842,20 +842,20 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
         ed += 2 * ed * cur * cur / (4.f * ed * ed + cur * cur);
         x1 = 255 * fabsf(err - dx - dy + xy) / ed;
         if (x1 < 256)
-          psetb(s, x0, y0, ACHAN(col, 255 - x1));
+          sgl_psetb(s, x0, y0, ACHAN(col, 255 - x1));
         
         if ((f = 2 * err + dy < 0)) {
           if (y0 == y2)
             return;
           if (dx - err < ed)
-            psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(dx - err) / ed)));
+            sgl_psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(dx - err) / ed)));
         }
         
         if (2 * err + dx > 0) {
           if (x0 == x2)
             return;
           if (err - dy < ed)
-            psetb(s, x0, y0 + sy, ACHAN(col, 255 - (int)(255 * fabsf(err - dy) / ed)));
+            sgl_psetb(s, x0, y0 + sy, ACHAN(col, 255 - (int)(255 * fabsf(err - dy) / ed)));
           x0 += sx;
           dx += xy;
           err += dy += yy;
@@ -888,10 +888,10 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
     } while (dy < dx);
 #endif
   }
-  line(s, x0, y0, x2, y2, col);
+  sgl_line(s, x0, y0, x2, y2, col);
 }
 
-void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
+void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
   int x = x0 - 2 * x1 + x2, y = y0 - 2 * y1 + y2;
   float xx = x0 - x1, yy = y0 - y1, ww, t, q;
   
@@ -958,12 +958,12 @@ void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y
   bezier_seg_rational(s, x0, y0, x1, y1, x2, y2, w*w, col);
 }
 
-void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col) {
+void sgl_ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col) {
 #pragma TODO(Add fill option);
   int xd = x1 - x0, yd = y1 - y0;
   float w = xd * (long)yd;
   if (zd == 0)
-    ellipse_rect(s, x0, y0, x1, y1, col, 0);
+    sgl_ellipse_rect(s, x0, y0, x1, y1, col, 0);
   if (w != 0.f)
     w = (w - zd) / (w + w);
   
@@ -976,7 +976,7 @@ void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd,
   bezier_seg_rational(s, x1, y1 - yd, x1, y0, x0 + xd, y0, w, col);
 }
 
-void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col) {
+void sgl_ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col) {
 #pragma TODO(Add fill option);
   float xd = (long)a * a, yd = (long)b * b;
   float q = sinf(angle), zd = (xd - yd) * q;
@@ -985,7 +985,7 @@ void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int 
   a = xd + .5f;
   b = yd + .5f;
   zd = zd * a * b / (xd * yd);
-  ellipse_rect_rotated(s, x - a, y - b, x + a, y + b, (long)(4 * zd * cosf(angle)), col);
+  sgl_ellipse_rect_rotated(s, x - a, y - b, x + a, y + b, (long)(4 * zd * cosf(angle)), col);
 }
 
 static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, float x2, float y2, int x3, int y3, int col) {
@@ -1059,7 +1059,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
       ed = f * (ed + 2 * ed * y1 * y1 / (4 * ed * ed + y1 * y1));
       y1 = 255 * fabsf(ex - (f - fx + 1) * dx - (f - fy + 1) * dy + f * xy) / ed;
       if (y1 < 256)
-        psetb(s, x0, y0, ACHAN(col, 255 - (int)y1));
+        sgl_psetb(s, x0, y0, ACHAN(col, 255 - (int)y1));
       px = fabsf(ex - (f - fx + 1) * dx + (fy - 1) * dy);
       py = fabsf(ex + (fx - 1) * dx - (f - fy + 1) * dy);
       y2 = y0;
@@ -1089,14 +1089,14 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
       
       if (2 * fy <= f) {
         if (py < ed)
-          psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
+          sgl_psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
         y0 += sy;
         fy += f;
       }
       
       if (2 * fx <= f) {
         if (px < ed)
-          psetb(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
+          sgl_psetb(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
         x0 += sx;
         fx += f;
       }
@@ -1106,13 +1106,13 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
   exit:
     if (2 * ex < dy && 2 * fy <= f + 2) {
       if (py < ed)
-        psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
+        sgl_psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
       y0 += sy;
     }
     
     if (2 * ex > dx && 2 * fx <= f + 2) {
       if (px < ed)
-        psetb(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
+        sgl_psetb(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
       x0 += sx;
     }
     
@@ -1179,10 +1179,10 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
 #endif
   } while (leg--);
   
-  line(s, x0, y0, x3, y3, col);
+  sgl_line(s, x0, y0, x3, y3, col);
 }
 
-void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col) {
+void sgl_bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col) {
   int n = 0, i = 0;
   long xc = x0 + x1 - x2 - x3, xa = xc - 4 * (x1 - x2);
   long xb = x0 - x1 - x2 + x3, xd = xb + 4 * (x1 + x2);
@@ -1255,7 +1255,7 @@ void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, 
   }
 }
 
-void rect(surface_t* s, int x, int y, int w, int h, int col, int fill) {
+void sgl_rect(surface_t* s, int x, int y, int w, int h, int col, int fill) {
   if (x < 0) {
     w += x;
     x  = 0;
@@ -1277,12 +1277,12 @@ void rect(surface_t* s, int x, int y, int w, int h, int col, int fill) {
   
   if (fill) {
     for (; y < h; ++y)
-      hline(s, y, x, w, col);
+      sgl_hline(s, y, x, w, col);
   } else {
-    hline(s, y, x, w, col);
-    hline(s, h, x, w, col);
-    vline(s, x, y, h, col);
-    vline(s, w, y, h, col);
+    sgl_hline(s, y, x, w, col);
+    sgl_hline(s, h, x, w, col);
+    sgl_vline(s, x, y, h, col);
+    sgl_vline(s, w, y, h, col);
   }
 }
 
@@ -1327,7 +1327,7 @@ off += s;
 
 #define BMP_SET(c) (s->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
 
-bool bmp(surface_t* s, const char* path) {
+bool sgl_bmp(surface_t* s, const char* path) {
   FILE* fp = fopen(path, "rb");
   if (!fp) {
     error_handle(PRIO_NORM, "fopen() failed: %s", path);
@@ -1373,7 +1373,7 @@ bool bmp(surface_t* s, const char* path) {
     BMP_GET(color_map, data, color_map_size);
   }
   
-  if (!surface(s, info.width, info.height)) {
+  if (!sgl_surface(s, info.width, info.height)) {
     FREE_SAFE(color_map);
     error_handle(PRIO_HIGH, "malloc() failed");
     return false;
@@ -1389,7 +1389,7 @@ bool bmp(surface_t* s, const char* path) {
         case 4:
 #pragma TODO(Add 1 & 4 bpp support);
           error_handle(PRIO_NORM, "bmp() failed. Unsupported BPP: %d", info.bits);
-          destroy(s);
+          sgl_destroy(s);
           break;
         case 8:
           for (i = (sz - 1); i != -1; --i, ++off) {
@@ -1404,7 +1404,7 @@ bool bmp(surface_t* s, const char* path) {
           break;
         default:
           error_handle(PRIO_NORM, "bmp() failed. Unsupported BPP: %d", info.bits);
-          destroy(s);
+          sgl_destroy(s);
           return false;
       }
       break;
@@ -1413,7 +1413,7 @@ bool bmp(surface_t* s, const char* path) {
     default:
 #pragma TODO(Add RLE support);
       error_handle(PRIO_NORM, "bmp() failed. Unsupported compression: %d", info.compression);
-      destroy(s);
+      sgl_destroy(s);
       return false;
   }
   
@@ -1421,7 +1421,7 @@ bool bmp(surface_t* s, const char* path) {
   return true;
 }
 
-bool save_bmp(surface_t* s, const char* path) {
+bool sgl_save_bmp(surface_t* s, const char* path) {
   const int filesize = 54 + 3 * s->w * s->h;
   unsigned char* img = (unsigned char *)malloc(3 * s->w * s->h);
   if (!img) {
@@ -2168,7 +2168,7 @@ static inline int letter_index(int c) {
   return 0;
 }
 
-void ascii(surface_t* s, char ch, int x, int y, int fg, int bg) {
+void sgl_ascii(surface_t* s, char ch, int x, int y, int fg, int bg) {
   int c = letter_index((int)ch), i, j;
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 8; ++j) {
@@ -2183,7 +2183,7 @@ void ascii(surface_t* s, char ch, int x, int y, int fg, int bg) {
   }
 }
 
-int character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
+int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
   const char* c = (const char*)ch;
   int u = *c, l = 1;
   if ((u & 0xC0) == 0xC0) {
@@ -2210,7 +2210,7 @@ int character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
   return l;
 }
 
-void writeln(surface_t* s, int x, int y, int fg, int bg, const char* str) {
+void sgl_writeln(surface_t* s, int x, int y, int fg, int bg, const char* str) {
   const char* c = str;
   int u = x, v = y, col, len;
   while (c && *c != '\0')
@@ -2235,13 +2235,13 @@ void writeln(surface_t* s, int x, int y, int fg, int bg, const char* str) {
           c++;
         break;
       default:
-        c += character(s, c, u, v, fg, bg);
+        c += sgl_character(s, c, u, v, fg, bg);
         u += 8;
         break;
     }
 }
 
-void writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...) {
+void sgl_writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
   
@@ -2258,19 +2258,19 @@ void writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...) 
     va_end(argptr);
   }
   
-  writeln(s, x, y, fg, bg, buffer);
+  sgl_writeln(s, x, y, fg, bg, buffer);
   free(buffer);
 }
 
-void string(surface_t* out, int fg, int bg, const char* str) {
+void sgl_string(surface_t* out, int fg, int bg, const char* str) {
   int w, h;
   str_size(str, &w, &h);
-  surface(out, w * 8, h * LINE_HEIGHT);
-  fill(out, (bg == -1 ? 0 : bg));
-  writeln(out, 0, 0, fg, bg, str);
+  sgl_surface(out, w * 8, h * LINE_HEIGHT);
+  sgl_fill(out, (bg == -1 ? 0 : bg));
+  sgl_writeln(out, 0, 0, fg, bg, str);
 }
 
-void stringf(surface_t* out, int fg, int bg, const char* fmt, ...) {
+void sgl_stringf(surface_t* out, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
   
@@ -2287,14 +2287,14 @@ void stringf(surface_t* out, int fg, int bg, const char* fmt, ...) {
     va_end(argptr);
   }
 
-  string(out, fg, bg, buffer);
+  sgl_string(out, fg, bg, buffer);
   free(buffer);
 }
 #endif
 
 static int ticks_started = 0;
 
-long ticks() {
+long sgl_ticks() {
 #if defined(_WIN32)
   static LARGE_INTEGER ticks_start;
   if (!ticks_started) {
@@ -2320,7 +2320,7 @@ long ticks() {
 #endif
 }
 
-void delay(long ms) {
+void sgl_delay(long ms) {
 #if defined(_WIN32)
   Sleep((DWORD)ms);
 #else
@@ -2344,7 +2344,7 @@ p = strtok(NULL, " \t\n\r"); \
 //p = strtok(NULL, "\t\n\r"); \
 //strcpy((x), p);
 
-void bdf_destroy(bdf_t* f) {
+void sgl_bdf_destroy(bdf_t* f) {
   if (f) {
     for (int i = 0; i < f->n_chars; ++i)
       if (f->chars[i].bitmap) {
@@ -2368,7 +2368,7 @@ static inline int htoi(const char* p) {
   return (*p <= '9' ? *p - '0' : (*p <= 'F' ? *p - 'A' + 10 : *p - 'a' + 10));
 }
 
-bool bdf(bdf_t* out, const char* path) {
+bool sgl_bdf(bdf_t* out, const char* path) {
   FILE* fp = fopen(path, "r");
   if (!fp) {
     error_handle(PRIO_NORM, "fopen() failed: %s", path);
@@ -2433,12 +2433,12 @@ bool bdf(bdf_t* out, const char* path) {
       BDF_READ_INT(out->chars[n].bb.y);
     } else if (!strcasecmp(s, "BITMAP")) {
       if (n == out->n_chars) {
-        bdf_destroy(out);
+        sgl_bdf_destroy(out);
         error_handle(PRIO_NORM, "bdf() failed: More bitmaps than characters for %s", path);
         return false;
       }
       if (width == -1) {
-        bdf_destroy(out);
+        sgl_bdf_destroy(out);
         error_handle(PRIO_NORM, "bdf() failed: Unknown character with for %s", path);
         return false;
       }
@@ -2452,7 +2452,7 @@ bool bdf(bdf_t* out, const char* path) {
       
       out->chars[n].bitmap = malloc(((out->fontbb.w + 7) / 8) * out->fontbb.h * sizeof(unsigned char));
       if (!out->chars[n].bitmap) {
-        bdf_destroy(out);
+        sgl_bdf_destroy(out);
         error_handle(PRIO_HIGH, "malloc() failed");
         return false;
       }
@@ -2508,7 +2508,7 @@ bool bdf(bdf_t* out, const char* path) {
   return true;
 }
 
-int bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, int bg) {
+int sgl_bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, int bg) {
   const char* c = (const char*)ch;
   int u = *c, l = 1, i, j, n = 0;
   if ((u & 0xC0) == 0xC0) {
@@ -2539,7 +2539,7 @@ int bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, 
   return l;
 }
 
-void bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* str) {
+void sgl_bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* str) {
   const char* c = (const char*)str;
   int u = x, v = y, col, len;
   while (c != NULL && *c != '\0') {
@@ -2566,14 +2566,14 @@ void bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const cha
           c++;
         break;
       default:
-        c += bdf_character(s, f, c, u, v, fg, bg);
+        c += sgl_bdf_character(s, f, c, u, v, fg, bg);
         u += 8;
         break;
     }
   }
 }
 
-void bdf_writelnf(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...) {
+void sgl_bdf_writelnf(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
 
@@ -2590,19 +2590,19 @@ void bdf_writelnf(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const ch
     va_end(argptr);
   }
 
-  bdf_writeln(s, f, x, y, fg, bg, buffer);
+  sgl_bdf_writeln(s, f, x, y, fg, bg, buffer);
   free(buffer);
 }
 
-void bdf_string(surface_t* out, bdf_t* f, int fg, int bg, const char* str) {
+void sgl_bdf_string(surface_t* out, bdf_t* f, int fg, int bg, const char* str) {
   int w, h;
   str_size(str, &w, &h);
-  surface(out, w * 8, h * LINE_HEIGHT);
-  fill(out, (bg == -1 ? 0 : bg));
-  bdf_writeln(out, f, 0, 0, fg, bg, str);
+  sgl_surface(out, w * 8, h * LINE_HEIGHT);
+  sgl_fill(out, (bg == -1 ? 0 : bg));
+  sgl_bdf_writeln(out, f, 0, 0, fg, bg, str);
 }
 
-void bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, ...) {
+void sgl_bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
 
@@ -2619,7 +2619,7 @@ void bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, ...)
     va_end(argptr);
   }
 
-  bdf_string(out, f, fg, bg, buffer);
+  sgl_bdf_string(out, f, fg, bg, buffer);
   free(buffer);
 }
 #endif
@@ -2633,7 +2633,7 @@ void bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, ...)
 #endif
 #include "3rdparty/stb_image_write.h"
 
-bool image(surface_t* out, const char* path) {
+bool sgl_image(surface_t* out, const char* path) {
   int w, h, c, x, y;
   unsigned char* data = stbi_load(path, &w, &h, &c, 0);
   if (!data) {
@@ -2641,7 +2641,7 @@ bool image(surface_t* out, const char* path) {
     return false;
   }
   
-  if (!surface(out, w, h)) {
+  if (!sgl_surface(out, w, h)) {
     stbi_image_free(data);
     return false;
   }
@@ -2667,7 +2667,7 @@ static inline const char* extension(const char* path) {
   return (!dot || dot == path ? NULL : dot + 1);
 }
 
-bool save_image(surface_t* in, const char* path) {
+bool sgl_save_image(surface_t* in, const char* path) {
   if (!in || !path) {
     error_handle(PRIO_NORM, "save_image() failed: Invalid parameters");
     return false;
@@ -2742,19 +2742,19 @@ static void (*__joystick_connect_cb)(joystick_t*, int) = NULL;
 static void (*__joystick_btn_cb)(joystick_t*, int, bool, long) = NULL;
 static void (*__joystick_axis_cb)(joystick_t*, int, float, float, long) = NULL;
 
-void joystick_callbacks(void(*connect_cb)(joystick_t*, int), void(*remove_cb)(joystick_t*, int), void(*btn_cb)(joystick_t*, int, bool, long), void(*axis_cb)(joystick_t*, int, float, float, long)) {
+void sgl_joystick_callbacks(void(*connect_cb)(joystick_t*, int), void(*remove_cb)(joystick_t*, int), void(*btn_cb)(joystick_t*, int, bool, long), void(*axis_cb)(joystick_t*, int, float, float, long)) {
   __joystick_connect_cb = connect_cb;
   __joystick_removed_cb = remove_cb;
   __joystick_btn_cb = btn_cb;
   __joystick_axis_cb = axis_cb;
 }
 
-joystick_t* joystick(int at) {
+joystick_t* sgl_joystick(int at) {
   return (at < 0 || at >= MAX_JOYSTICKS || !joy_devices[at] ? NULL : joy_devices[at]);
 }
 #endif
 
-void mouse_xy(int* x, int* y) {
+void sgl_mouse_xy(int* x, int* y) {
   if (!x || !y)
     return;
   
@@ -2762,7 +2762,7 @@ void mouse_xy(int* x, int* y) {
   *y = my;
 }
 
-void window_size(int* w, int* h) {
+void sgl_window_size(int* w, int* h) {
   if (!w || !h)
     return;
   
@@ -2770,7 +2770,7 @@ void window_size(int* w, int* h) {
   *h = win_h;
 }
 
-void resize_callback(void (*cb)(int, int)) {
+void sgl_resize_callback(void (*cb)(int, int)) {
   __resize_callback = cb;
 }
 
@@ -2900,7 +2900,7 @@ bool init_gl(int w, int h) {
   HINSTANCE dll = LoadLibraryA("opengl32.dll");
   typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
   if (!dll) {
-    release();
+    sgl_release();
     error_handle(PRIO_LOW, "LoadLibraryA() failed: opengl32.dll not found");
     return false;
   }
@@ -2917,7 +2917,7 @@ bool init_gl(int w, int h) {
 #elif defined(__linux__)
   void* libGL = dlopen("libGL.so", RTLD_LAZY);
   if (!libGL) {
-    release();
+    sgl_release();
     error_handle("dlopen() failed: libGL.so couldn't be loaded");
     return false;
   }
@@ -3213,7 +3213,7 @@ NSPoint cursor_pos_abs() {
   return (NSPoint){ p.x, [app screen].frame.size.height - p.y };
 }
 
-void cursor(CURSORFLAGS flags) {
+void sgl_cursor(CURSORFLAGS flags) {
   if (!app) {
     error_handle(PRIO_LOW, "cursor() failed: Called before screen is set up");
     return;
@@ -3274,7 +3274,7 @@ void cursor(CURSORFLAGS flags) {
       return;
     
     if (__cursor && __cursor != __custom_cursor)
-      [__cursor release];
+      [__cursor sgl_release];
     
     __cursor = tmp;
     [__cursor retain];
@@ -3293,13 +3293,13 @@ static inline NSImage* create_cocoa_image(surface_t* s) {
   return nsi;
 }
 
-void custom_cursor(surface_t* s) {
+void sgl_custom_cursor(surface_t* s) {
   NSImage* nsi = create_cocoa_image(s);
   if (!nsi)
     return;
   
   if (__custom_cursor)
-    [__custom_cursor release];
+    [__custom_cursor sgl_release];
   
   __custom_cursor = [[NSCursor alloc] initWithImage:nsi
                                             hotSpot:NSMakePoint(0, 0)];
@@ -3391,7 +3391,7 @@ extern surface_t* buffer;
                                      options:nil
                                        error:&err];
     if (err || !_library) {
-      release();
+      sgl_release();
       error_handle(PRIO_HIGH, "[device newLibraryWithSource] failed: %s", [[err localizedDescription] UTF8String]);
       return nil;
     }
@@ -3408,7 +3408,7 @@ extern surface_t* buffer;
     _pipeline = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor
                                                         error:&err];
     if (err || !_pipeline) {
-      release();
+      sgl_release();
       error_handle(PRIO_HIGH, "[device newRenderPipelineStateWithDescriptor] failed: %s", [[err localizedDescription] UTF8String]);
       return nil;
     }
@@ -3427,7 +3427,7 @@ extern surface_t* buffer;
 -(void)updateTrackingAreas {
   if (track != nil) {
     [self removeTrackingArea:track];
-    [track release];
+    [track sgl_release];
   }
 
   track = [[NSTrackingArea alloc] initWithRect:[self visibleRect]
@@ -3441,7 +3441,7 @@ extern surface_t* buffer;
 
 -(void)resetCursorRects {
   [super resetCursorRects];
-  [self addCursorRect:[self visibleRect] cursor:(__custom_cursor ? __custom_cursor : [NSCursor arrowCursor])];
+  [self addCursorRect:[self visibleRect] sgl_cursor:(__custom_cursor ? __custom_cursor : [NSCursor arrowCursor])];
 }
 
 -(void)cursorUpdate:(NSEvent*)event {
@@ -3540,8 +3540,8 @@ extern surface_t* buffer;
     [cmd_buf presentDrawable:[self currentDrawable]];
   }
   
-  [_texture release];
-  [td release];
+  [_texture sgl_release];
+  [td sgl_release];
   [cmd_buf commit];
 #else
   CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
@@ -3563,13 +3563,13 @@ extern surface_t* buffer;
 #if defined(GRAPHICS_ENABLE_OPENGL)
   free_gl();
 #elif defined(GRAPHICS_ENABLE_METAL)
-  [_device release];
-  [_pipeline release];
-  [_cmd_queue release];
-  [_library release];
-  [_vertices release];
+  [_device sgl_release];
+  [_pipeline sgl_release];
+  [_cmd_queue sgl_release];
+  [_library sgl_release];
+  [_vertices sgl_release];
 #endif
-  [track release];
+  [track sgl_release];
   [super dealloc];
 }
 @end
@@ -3693,7 +3693,7 @@ extern surface_t* buffer;
 }
 @end
 
-int screen(const char* t, surface_t* s, int w, int h, short flags) {
+int sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
   memset(keycodes,  -1, sizeof(keycodes));
   memset(scancodes, -1, sizeof(scancodes));
 
@@ -3844,7 +3844,7 @@ int screen(const char* t, surface_t* s, int w, int h, short flags) {
   }
   
   if (s)
-    if (!surface(s, w, h))
+    if (!sgl_surface(s, w, h))
       return 0;
 
   app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h + border_off)
@@ -3852,7 +3852,7 @@ int screen(const char* t, surface_t* s, int w, int h, short flags) {
                                        backing:NSBackingStoreBuffered
                                          defer:NO];
   if (!app) {
-    release();
+    sgl_release();
     error_handle(PRIO_HIGH, "[osx_app_t initWithContentRect] failed");
     return 0;
   }
@@ -3862,7 +3862,7 @@ int screen(const char* t, surface_t* s, int w, int h, short flags) {
 
   id app_del = [AppDelegate alloc];
   if (!app_del) {
-    release();
+    sgl_release();
     error_handle(PRIO_HIGH, "[AppDelegate alloc] failed");
     [NSApp terminate:nil];
   }
@@ -3902,11 +3902,11 @@ int screen(const char* t, surface_t* s, int w, int h, short flags) {
   return 1;
 }
 
-int closed() {
+int sgl_closed() {
   return app->closed;
 }
 
-int poll(event_t* ue) {
+int sgl_poll(event_t* ue) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   NSEvent* e = [NSApp nextEventMatchingMask:NSEventMaskAny
                                   untilDate:[NSDate distantPast]
@@ -3956,24 +3956,24 @@ int poll(event_t* ue) {
 
 SEND_ANYWAY:
   [NSApp sendEvent:e];
-  [pool release];
+  [pool sgl_release];
   return ret;
 }
 
-void flush(surface_t* s) {
+void sgl_flush(surface_t* s) {
   if (s && s->buf)
     buffer = s;
   [[app contentView] setNeedsDisplay:YES];
 }
 
-void release() {
+void sgl_release() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   if (app)
     [app close];
   if (__cursor)
-    [__cursor release];
+    [__cursor sgl_release];
   if (__custom_cursor)
-    [__custom_cursor release];
+    [__custom_cursor sgl_release];
   [pool drain];
 }
 #elif defined(_WIN32)
@@ -4063,7 +4063,7 @@ void release_joystick(joystick_t** d) {
   FREE_SAFE(_d);
 }
 
-void joystick_remove(int at) {
+void sgl_joystick_remove(int at) {
   if (at < 0 || at >= MAX_JOYSTICKS || !joy_devices[at])
     return;
   if (__joystick_removed_cb)
@@ -4418,7 +4418,7 @@ static BOOL CALLBACK enum_devices_cb(const DIDEVICEINSTANCE* instance, LPVOID co
   return DIENUM_CONTINUE;
 }
 
-void joystick_scan() {
+void sgl_joystick_scan() {
   joy_index = 0;
 
   if (DirectInput8Create(GetModuleHandle(NULL), DIRECTINPUT_VERSION, &IID_IDirectInput8, (VOID**)&did, NULL) != DI_OK) {
@@ -4432,7 +4432,7 @@ void joystick_scan() {
   }
 }
 
-void joystick_release() {
+void sgl_joystick_release() {
   for (int i = 0; i < MAX_JOYSTICKS; ++i)
     if (joy_devices[i]) {
       release_joystick(&joy_devices[i]);
@@ -4483,7 +4483,7 @@ static void update_axis_pov(joystick_t* device, unsigned int index, DWORD iv, lo
   update_axis_float(device, index + 1, y, time);
 }
 
-void joystick_poll() {
+void sgl_joystick_poll() {
   joystick_t* device = NULL;
   joystick_private_t* private = NULL;
   HRESULT result;
@@ -4514,7 +4514,7 @@ void joystick_poll() {
           result = IDirectInputDevice8_GetDeviceData(private->di8dev, sizeof(DIDEVICEOBJECTDATA), events, &event_c, 0);
         }
         if (result != DI_OK) {
-          joystick_release(&device);
+          sgl_joystick_release(&device);
           joy_devices[i] = NULL;
           continue;
         }
@@ -4544,54 +4544,54 @@ void joystick_poll() {
         }
 
         if (result != DI_OK) {
-          joystick_release(&device);
+          sgl_joystick_release(&device);
           joy_devices[i] = NULL;
           continue;
         }
 
         for (int b = 0; i < device->n_buttons; ++b)
-          update_btn(device, b, !!state.rgbButtons[b], ticks());
+          update_btn(device, b, !!state.rgbButtons[b], sgl_ticks());
 
         for (int a = 0; a < device->n_axes; ++a) {
           switch (private->axis_info[a].offset) {
             case DIJOFS_X:
-              UPDATE_AXIS_IVAL(device, a, state.lX, ticks());
+              UPDATE_AXIS_IVAL(device, a, state.lX, sgl_ticks());
               break;
             case DIJOFS_Y:
-              UPDATE_AXIS_IVAL(device, a, state.lY, ticks());
+              UPDATE_AXIS_IVAL(device, a, state.lY, sgl_ticks());
               break;
             case DIJOFS_Z:
-              UPDATE_AXIS_IVAL(device, a, state.lZ, ticks());
+              UPDATE_AXIS_IVAL(device, a, state.lZ, sgl_ticks());
               break;
             case DIJOFS_RX:
-              UPDATE_AXIS_IVAL(device, a, state.lRx, ticks());
+              UPDATE_AXIS_IVAL(device, a, state.lRx, sgl_ticks());
               break;
             case DIJOFS_RY:
-              UPDATE_AXIS_IVAL(device, a, state.lRy, ticks());
+              UPDATE_AXIS_IVAL(device, a, state.lRy, sgl_ticks());
               break;
             case DIJOFS_RZ:
-              UPDATE_AXIS_IVAL(device, a, state.lRz, ticks());
+              UPDATE_AXIS_IVAL(device, a, state.lRz, sgl_ticks());
               break;
             case DIJOFS_SLIDER(0):
-              UPDATE_AXIS_IVAL(device, a, state.rglSlider[0], ticks());
+              UPDATE_AXIS_IVAL(device, a, state.rglSlider[0], sgl_ticks());
               break;
             case DIJOFS_SLIDER(1):
-              UPDATE_AXIS_IVAL(device, a, state.rglSlider[1], ticks());
+              UPDATE_AXIS_IVAL(device, a, state.rglSlider[1], sgl_ticks());
               break;
             case DIJOFS_POV(0):
-              update_axis_pov(device, a, state.rgdwPOV[0], ticks());
+              update_axis_pov(device, a, state.rgdwPOV[0], sgl_ticks());
               a++;
               break;
             case DIJOFS_POV(1):
-              update_axis_pov(device, a, state.rgdwPOV[1], ticks());
+              update_axis_pov(device, a, state.rgdwPOV[1], sgl_ticks());
               a++;
               break;
             case DIJOFS_POV(2):
-              update_axis_pov(device, a, state.rgdwPOV[2], ticks());
+              update_axis_pov(device, a, state.rgdwPOV[2], sgl_ticks());
               a++;
               break;
             case DIJOFS_POV(3):
-              update_axis_pov(device, a, state.rgdwPOV[3], ticks());
+              update_axis_pov(device, a, state.rgdwPOV[3], sgl_ticks());
               a++;
               break;
           }
@@ -4807,7 +4807,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
   return res;
 }
 
-void cursor(bool shown, bool locked, CURSORS cursor) {
+void sgl_cursor(bool shown, bool locked, CURSORS cursor) {
   ShowCursor((BOOL)shown);
   cursor_locked = (BOOL)locked;
 
@@ -4859,11 +4859,11 @@ void cursor(bool shown, bool locked, CURSORS cursor) {
   __cursor = (c ? LoadCursor(NULL, c) : __custom_cursor);
 }
 
-void custom_cursor(surface_t* s) {
+void sgl_custom_cursor(surface_t* s) {
   // TODO later
 }
 
-bool screen(const char* title, surface_t* s, int w, int h, short flags) {
+bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
   memset(keycodes, -1, sizeof(keycodes));
 
   keycodes[0x00B] = KB_KEY_0;
@@ -5020,7 +5020,7 @@ bool screen(const char* title, surface_t* s, int w, int h, short flags) {
   set_adjusted_win_wh(w, h);
 
   if (s)
-    if (!surface(s, w, h))
+    if (!sgl_surface(s, w, h))
       return false;
 
   int cx = GetSystemMetrics(SM_CXSCREEN) / 2 - adjusted_win_w / 2,
@@ -5037,13 +5037,13 @@ bool screen(const char* title, surface_t* s, int w, int h, short flags) {
   wnd.hInstance = hinst;
 
   if (!RegisterClass(&wnd)) {
-    release();
+    sgl_release();
     error_handle(PRIO_HIGH, "RegisterClass() failed: %s", GetLastError());
     return false;
   }
 
   if (!(hwnd = CreateWindow(title, title, _flags, cx, cy, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
-    release();
+    sgl_release();
     error_handle(PRIO_HIGH, "CreateWindowEx() failed: %s", GetLastError());
     return false;
   }
@@ -5060,13 +5060,13 @@ bool screen(const char* title, surface_t* s, int w, int h, short flags) {
 
   int pf = ChoosePixelFormat(hdc, &pfd);
   if (pf == 0) {
-    release();
+    sgl_release();
     error_handle(PRIO_HIGH, "ChoosePixelFormat() failed: %s", GetLastError());
     return false;
   }
 
   if (SetPixelFormat(hdc, pf, &pfd) == FALSE) {
-    release();
+    sgl_release();
     error_handle(PRIO_HIGH, "SetPixelFormat() failed: %s", GetLastError());
     return false;
   }
@@ -5114,11 +5114,11 @@ bool screen(const char* title, surface_t* s, int w, int h, short flags) {
   return true;
 }
 
-bool closed() {
+bool sgl_closed() {
   return __closed;
 }
 
-bool poll(event_t* e) {
+bool sgl_poll(event_t* e) {
   if (!e)
     return false;
   memset(e, 0, sizeof(event_t));
@@ -5133,14 +5133,14 @@ bool poll(event_t* e) {
   return false;
 }
 
-void flush(surface_t* s) {
+void sgl_flush(surface_t* s) {
   if (s && s->buf)
     buffer = s;
   InvalidateRect(hwnd, NULL, TRUE);
   SendMessage(hwnd, WM_PAINT, 0, 0);
 }
 
-void release() {
+void sgl_release() {
 #if defined(GRAPHICS_ENABLE_OPENGL)
   free_gl();
   wglMakeCurrent(NULL, NULL);
@@ -5393,13 +5393,13 @@ static int translate_mod(int state) {
   return mods;
 }
 
-int screen(const char* title, int w, int h) {
+int sgl_screen(const char* title, int w, int h) {
   win_w = w;
   win_h = h;
 
   display = XOpenDisplay(0);
   if (!display) {
-    release();
+    sgl_release();
     error_handle("XOpenDisplay(0) failed!");
     return 0;
   }
@@ -5499,7 +5499,7 @@ int screen(const char* title, int w, int h) {
   int fb_count;
   GLXFBConfig* fbc = glXChooseFBConfig(display, DefaultScreen(display), visual_attribs, &fb_count);
   if (!fbc) {
-    release();
+    sgl_release();
     error_handle("glXChooseFBConfig() failed: Failed to retreive framebuffer config");
     return 0;
   }
@@ -5529,7 +5529,7 @@ int screen(const char* title, int w, int h) {
 
   XVisualInfo* vi = glXGetVisualFromFBConfig(display, fbc_best);
   if (vi == 0) {
-    release();
+    sgl_release();
     error_handle("glXGetVisualFromFBConfig() failed: Could not create correct visual window");
     return 0;
   }
@@ -5561,7 +5561,7 @@ int screen(const char* title, int w, int h) {
   XFree(formats);
 
   if (c_depth != 32) {
-    release();
+    sgl_release();
     error_handle("Invalid display depth: %d", c_depth);
     return 0;
   }
@@ -5582,7 +5582,7 @@ int screen(const char* title, int w, int h) {
 #endif
 
   if (!win) {
-    release();
+    sgl_release();
     error_handle("XCreateWindow() failed!");
     return 0;
   }
@@ -5627,7 +5627,7 @@ int screen(const char* title, int w, int h) {
   XSync(display, False);
 
   if (!ctx) {
-    release();
+    sgl_release();
     error_handle("glXCreateContextAttribsARB() failed: Couldn't create OpenGL context");
     return 0;
   }
@@ -5748,7 +5748,7 @@ void render(surface_t* s) {
 #endif
 }
 
-void release() {
+void sgl_release() {
 #if defined(GRAPHICS_ENABLE_OPENGL)
   glXMakeCurrent(display, 0, 0);
   glXDestroyContext(display, ctx);

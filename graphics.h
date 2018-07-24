@@ -52,6 +52,7 @@ extern "C" {
 #define BCHAN(a, b) (((a) & ~0x000000FF) |  (b))
 #define ACHAN(a, b) (((a) & ~0xFF000000) | ((b) << 24))
 
+#if !defined(GRAPHICS_DISABLE_DEFAULT_COLORS)
 #define BLACK RGB(0, 0, 0)
 #define BLUE RGB(0, 0, 255)
 #define CYAN (0, 255, 255)
@@ -190,7 +191,8 @@ extern "C" {
 #define WHEAT RGB(245, 222, 179)
 #define WHITE_SMOKE RGB(245, 245, 245)
 #define YELLOW_GREEN RGB(154, 205, 50)
-  
+#endif
+
 #if !defined(GRAPHICS_DISABLE_CHROMA_KEY) && !defined(BLIT_CHROMA_KEY)
 #define BLIT_CHROMA_KEY LIME
 #endif
@@ -213,49 +215,91 @@ extern "C" {
     PRIO_LOW
   } ERRPRIO;
   
-  void error_callback(void (*cb)(ERRPRIO, const char*, const char*, const char*, int));
+  void sgl_error_callback(void (*cb)(ERRPRIO, const char*, const char*, const char*, int));
   
-  bool surface(surface_t* s, unsigned int w, unsigned int h);
-  void destroy(surface_t*);
-  void fill(surface_t* s, int col);
-  void flood(surface_t* s, int x, int y, int col);
-  void cls(surface_t* s);
-  void pset(surface_t* s, int x, int y, int col);
-  void psetb(surface_t* s, int x, int y, int col);
-  int pget(surface_t* s, int x, int y);
-  bool blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
-  bool reset(surface_t* s, int nw, int nh);
-  bool copy(surface_t* in, surface_t* out);
-  void filter(surface_t* s, int (*fn)(int x, int y, int col));
-  bool resize(surface_t* in, int nw, int nh, surface_t* out);
+  bool sgl_surface(surface_t* s, unsigned int w, unsigned int h);
+  void sgl_destroy(surface_t*);
+  void sgl_fill(surface_t* s, int col);
+  void sgl_flood(surface_t* s, int x, int y, int col);
+  void sgl_cls(surface_t* s);
+  void sgl_pset(surface_t* s, int x, int y, int col);
+  void sgl_psetb(surface_t* s, int x, int y, int col);
+  int sgl_pget(surface_t* s, int x, int y);
+  bool sgl_blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
+  bool sgl_reset(surface_t* s, int nw, int nh);
+  bool sgl_copy(surface_t* in, surface_t* out);
+  void sgl_filter(surface_t* s, int (*fn)(int x, int y, int col));
+  bool sgl_resize(surface_t* in, int nw, int nh, surface_t* out);
   
-  void vline(surface_t* s, int x, int y0, int y1, int col);
-  void hline(surface_t* s, int y, int x0, int x1, int col);
-  void line(surface_t* s, int x0, int y0, int x1, int y1, int col);
-  void circle(surface_t* s, int xc, int yc, int r, int col, int fill);
-  void ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill);
-  void ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col);
-  void ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill);
-  void ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col);
-  void bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col);
-  void bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col);
-  void bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
-  void rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
+  void sgl_vline(surface_t* s, int x, int y0, int y1, int col);
+  void sgl_hline(surface_t* s, int y, int x0, int x1, int col);
+  void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col);
+  void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill);
+  void sgl_ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill);
+  void sgl_ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col);
+  void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill);
+  void sgl_ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col);
+  void sgl_bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col);
+  void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col);
+  void sgl_bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
+  void sgl_rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
   
-  bool bmp(surface_t* s, const char* path);
-  bool save_bmp(surface_t* s, const char* path);
+  bool sgl_bmp(surface_t* s, const char* path);
+  bool sgl_save_bmp(surface_t* s, const char* path);
   
 #if !defined(GRAPHICS_DISABLE_TEXT)
-  void ascii(surface_t* s, char ch, int x, int y, int fg, int bg);
-  int character(surface_t* s, const char* ch, int x, int y, int fg, int bg);
-  void writeln(surface_t* s, int x, int y, int fg, int bg, const char* str);
-  void writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...);
-  void string(surface_t* out, int fg, int bg, const char* str);
-  void stringf(surface_t* out, int fg, int bg, const char* fmt, ...);
+  void sgl_ascii(surface_t* s, char ch, int x, int y, int fg, int bg);
+  int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg);
+  void sgl_writeln(surface_t* s, int x, int y, int fg, int bg, const char* str);
+  void sgl_writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...);
+  void sgl_string(surface_t* out, int fg, int bg, const char* str);
+  void sgl_stringf(surface_t* out, int fg, int bg, const char* fmt, ...);
 #endif
   
-  long ticks(void);
-  void delay(long ms);
+  long sgl_ticks(void);
+  void sgl_delay(long ms);
+
+#if !defined(GRAPHICS_DISABLE_SHORT_NAMES)
+#define error_callback sgl_error_callback
+#define surface sgl_surface
+#define destroy sgl_destroy
+#define fill sgl_fill
+#define flood sgl_flood
+#define cls sgl_cls
+#define pset sgl_pset
+#define psetb sgl_psetb
+#define pget sgl_pget
+#define blit sgl_blit
+#define reset sgl_reset
+#define copy sgl_copy
+#define filter sgl_filter
+#define resize sgl_resize
+
+#define vline sgl_vline
+#define hline sgl_hline
+#define line sgl_line
+#define circle sgl_circle
+#define ellipse sgl_ellipse
+#define ellipse_rotated sgl_ellipse_rotated
+#define ellipse_rect_rotated sgl_ellipse_rect_rotated
+#define bezier sgl_bezier
+#define bezier_rational sgl_bezier_rational
+#define bezier_cubic sgl_bezier_cubic
+#define rect sgl_rect
+
+#define bmp sgl_bmp
+#define save_bmp sgl_save_bmp
+
+#define ascii sgl_ascii
+#define character sgl_character
+#define writeln sgl_writeln
+#define writelnf sgl_writelnf
+#define string sgl_string
+#define stringf sgl_stringf
+
+#define ticks sgl_ticks
+#define delay sgl_delay
+#endif
   
 #if defined(GRAPHICS_ENABLE_BDF)
   typedef struct {
@@ -271,21 +315,39 @@ extern "C" {
     int n_chars;
   } bdf_t;
   
-  void bdf_destroy(bdf_t* f);
-  bool bdf(bdf_t* out, const char* path);
-  int bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, int bg);
-  void bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* str);
+  void sgl_bdf_destroy(bdf_t* f);
+  bool sgl_bdf(bdf_t* out, const char* path);
+  int sgl_bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, int bg);
+  void sgl_bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* str);
+  void sgl_bdf_writelnf(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...);
+  void sgl_bdf_string(surface_t* out, bdf_t* f, int fg, int bg, const char* str);
+  void sgl_bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, ...);
+
+#if !defined(GRAPHICS_DISABLE_SHORT_NAMES)
+#define bdf_destroy sgl_bdf_destroy
+#define bdf sgl_bdf
+#define bdf_character sgl_bdf_character
+#define bdf_writeln sgl_bdf_writeln
+#define bdf_writelnf sgl_bdf_writelnf
+#define bdf_string sgl_bdf_string
+#define bdf_stringf sgl_bdf_stringf
+#endif
 #endif
   
 #if defined(GRAPHICS_ENABLE_STB_IMAGE)
-  bool image(surface_t* out, const char* path);
-  bool save_image(surface_t* in, const char* path);
+  bool sgl_image(surface_t* out, const char* path);
+  bool sgl_save_image(surface_t* in, const char* path);
+
+#if !defined(GRAPHICS_DISABLE_SHORT_NAMES)
+#define image sgl_image
+#define save_image sgl_save_image
+#endif
 #endif
   
 #if !defined(GRAPHICS_DISABLE_WINDOW)
-  void mouse_xy(int* x, int* y);
-  void window_size(int* w, int* h);
-  void resize_callback(void (*cb)(int, int));
+  void sgl_mouse_xy(int* x, int* y);
+  void sgl_window_size(int* w, int* h);
+  void sgl_resize_callback(void (*cb)(int, int));
 
 #if defined(GRAPHICS_ENABLE_JOYSTICKS)
   typedef struct __joystick_t {
@@ -303,12 +365,24 @@ extern "C" {
 #define MAX_JOYSTICKS 4
 #endif
 
-  void joystick_scan(void);
-  void joystick_release(void);
-  void joystick_remove(int at);
-  void joystick_callbacks(void(*connect_cb)(joystick_t*, int), void(*remove_cb)(joystick_t*, int), void(*btn_cb)(joystick_t*, int, bool, long), void (*axis_cb)(joystick_t*, int, float, float, long));
-  void joystick_poll(void);
-  joystick_t* joystick(int at);
+  void sgl_joystick_scan(void);
+  void sgl_joystick_release(void);
+  void sgl_joystick_remove(int at);
+  void sgl_joystick_callbacks(void (*connect_cb)(joystick_t*, int),
+                              void (*remove_cb)(joystick_t*, int),
+                              void (*btn_cb)(joystick_t*, int, bool, long),
+                              void (*axis_cb)(joystick_t*, int, float, float, long));
+  void sgl_joystick_poll(void);
+  joystick_t* sgl_joystick(int at);
+
+#if !defined(GRAPHICS_DISABLE_SHORT_NAMES)
+#define joystick_scan sgl_joystick_scan
+#define joystick_release sgl_joystick_release
+#define joystick_remove sgl_joystick_remove
+#define joystick_callbacks sgl_joystick_callbacks
+#define joystick_poll sgl_joystick_poll
+#define joystick sgl_joystick
+#endif
 #endif
   
   typedef enum {
@@ -504,8 +578,8 @@ extern "C" {
 #define LOCKED true
 #define UNLOCKED false
   
-  void cursor(bool shown, bool locked, CURSORS cursor);
-  void custom_cursor(surface_t* s);
+  void sgl_cursor(bool shown, bool locked, CURSORS cursor);
+  void sgl_custom_cursor(surface_t* s);
   
   typedef enum {
     RESIZABLE = 0x01,
@@ -515,11 +589,24 @@ extern "C" {
     ALWAYS_ON_TOP = 0x10,
   } WINDOWFLAGS;
   
-  bool screen(const char* title, surface_t* s, int w, int h, short flags);
-  bool closed(void);
-  bool poll(event_t* e);
-  void flush(surface_t* s);
-  void release(void);
+  bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags);
+  bool sgl_closed(void);
+  bool sgl_poll(event_t* e);
+  void sgl_flush(surface_t* s);
+  void sgl_release(void);
+
+#if !defined(GRAPHICS_DISABLE_SHORT_NAMES)
+#define mouse_xy sgl_mouse_xy
+#define window_size sgl_window_size
+#define resize_callback sgl_resize_callback
+#define cursor sgl_cursor
+#define custom_cursor sgl_custom_cursor
+#define screen sgl_screen
+#define closed sgl_closed
+#define poll sgl_poll
+#define flush sgl_flush
+#define release sgl_release
+#endif
 #endif
   
 #if defined(__cplusplus)
