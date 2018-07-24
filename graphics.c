@@ -38,8 +38,7 @@ if ((x)) {  \
 static void (*__error_callback)(ERRPRIO, const char*, const char*, const char*, int) = NULL;
 
 void error_callback(void (*cb)(ERRPRIO, const char*, const char*, const char*, int)) {
-  if (cb)
-    __error_callback = cb;
+  __error_callback = cb;
 }
 
 static inline const char* errprio_str(ERRPRIO pri) {
@@ -2731,14 +2730,28 @@ TRY_AGAIN_BRO:
 
 #if !defined(GRAPHICS_DISABLE_WINDOW)
 static short int keycodes[512];
-static short int scancodes[KB_KEY_LAST + 1];
 static surface_t* buffer;
 static void (*__resize_callback)(int, int) = NULL;
 static int mx = 0, my = 0, win_w, win_h;
 
 #if defined(GRAPHICS_ENABLE_JOYSTICKS)
-static joystick_t** devices = NULL;
-static unsigned int n_devices = 0;
+static joystick_t* joy_devices[MAX_JOYSTICKS];
+static int joy_index = 0;
+static void (*__joystick_removed_cb)(joystick_t*, int) = NULL;
+static void (*__joystick_connect_cb)(joystick_t*, int) = NULL;
+static void (*__joystick_btn_cb)(joystick_t*, int, bool, long) = NULL;
+static void (*__joystick_axis_cb)(joystick_t*, int, float, float, long) = NULL;
+
+void joystick_callbacks(void(*connect_cb)(joystick_t*, int), void(*remove_cb)(joystick_t*, int), void(*btn_cb)(joystick_t*, int, bool, long), void(*axis_cb)(joystick_t*, int, float, float, long)) {
+  __joystick_connect_cb = connect_cb;
+  __joystick_removed_cb = remove_cb;
+  __joystick_btn_cb = btn_cb;
+  __joystick_axis_cb = axis_cb;
+}
+
+joystick_t* joystick(int at) {
+  return (at < 0 || at >= MAX_JOYSTICKS || !joy_devices[at] ? NULL : joy_devices[at]);
+}
 #endif
 
 void mouse_xy(int* x, int* y) {
@@ -2749,7 +2762,7 @@ void mouse_xy(int* x, int* y) {
   *y = my;
 }
 
-void window_wh(int* w, int* h) {
+void window_size(int* w, int* h) {
   if (!w || !h)
     return;
   
@@ -2758,8 +2771,7 @@ void window_wh(int* w, int* h) {
 }
 
 void resize_callback(void (*cb)(int, int)) {
-  if (cb)
-    __resize_callback = cb;
+  __resize_callback = cb;
 }
 
 #if defined(GRAPHICS_ENABLE_OPENGL)
@@ -4035,6 +4047,31 @@ typedef struct {
 
 static LPDIRECTINPUT8 did;
 
+void release_joystick(joystick_t** d) {
+  joystick_t* _d = *d;
+  joystick_private_t* _p = _d->__private;
+
+  if (!_p->is_xinput) {
+    IDirectInputDevice8_Release(_p->di8dev);
+    FREE_SAFE(_p->axis_info);
+    FREE_SAFE(_p->button_offsets);
+    FREE_SAFE((void*)_d->description);
+  }
+  FREE_SAFE(_p);
+  FREE_SAFE(_d->axes);
+  FREE_SAFE(_d->buttons);
+  FREE_SAFE(_d);
+}
+
+void joystick_remove(int at) {
+  if (at < 0 || at >= MAX_JOYSTICKS || !joy_devices[at])
+    return;
+  if (__joystick_removed_cb)
+    __joystick_removed_cb(joy_devices[at], at);
+  release_joystick(&joy_devices[at]);
+  joy_devices[at] = NULL;
+}
+
 #if !defined(DIDFT_OPTIONAL)
 # define DIDFT_OPTIONAL 0x80000000
 #endif
@@ -4302,6 +4339,23 @@ static BOOL CALLBACK enum_buttons_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID 
 }
 
 static BOOL CALLBACK enum_devices_cb(const DIDEVICEINSTANCE* instance, LPVOID context) {
+  if (joy_index >= MAX_JOYSTICKS)
+    return DIENUM_CONTINUE;
+  bool index_found = false;
+  for (int i = 0; i < MAX_JOYSTICKS; ++i) {
+    if (!joy_devices[i] && !index_found) {
+      index_found = true;
+      joy_index = i;
+    } else if (joy_devices[i]) {
+      if (!strcmp(instance->tszProductName, joy_devices[i]->description))
+        return DIENUM_CONTINUE;
+    }
+  }
+  if (!index_found) {
+    joy_index = MAX_JOYSTICKS;
+    return DIENUM_CONTINUE;
+  }
+
   IDirectInputDevice* didev;
   IDirectInputDevice8* di8dev;
 
@@ -4357,10 +4411,194 @@ static BOOL CALLBACK enum_devices_cb(const DIDEVICEINSTANCE* instance, LPVOID co
   device->n_buttons = 0;
   IDirectInputDevice_EnumObjects(di8dev, enum_buttons_cb, (void*)device, DIDFT_BUTTON);
 
-  devices = realloc(devices, sizeof(joystick_t*) * (n_devices + 1));
-  devices[n_devices++] = device;
+  if (__joystick_connect_cb)
+    __joystick_connect_cb(device, joy_index);
+  joy_devices[joy_index++] = device;
 
   return DIENUM_CONTINUE;
+}
+
+void joystick_scan() {
+  joy_index = 0;
+
+  if (DirectInput8Create(GetModuleHandle(NULL), DIRECTINPUT_VERSION, &IID_IDirectInput8, (VOID**)&did, NULL) != DI_OK) {
+    error_handle(PRIO_LOW, "DirectInput8Create() failed: %s", GetLastError());
+    return;
+  }
+
+  if (IDirectInput_EnumDevices(did, DI8DEVCLASS_GAMECTRL, enum_devices_cb, NULL, DIEDFL_ALLDEVICES) != DI_OK) {
+    error_handle(PRIO_LOW, "IDirectInput_EnumDevices() failed: %s", GetLastError());
+    return;
+  }
+}
+
+void joystick_release() {
+  for (int i = 0; i < MAX_JOYSTICKS; ++i)
+    if (joy_devices[i]) {
+      release_joystick(&joy_devices[i]);
+      joy_devices[i] = NULL;
+    }
+}
+
+static void update_btn(joystick_t* device, unsigned int index, bool down, long time) {
+  device->buttons[index] = down;
+  if (__joystick_btn_cb)
+    __joystick_btn_cb(device, index, down, time);
+}
+
+static void update_axis_float(joystick_t* device, unsigned int index, float val, long time) {
+  float last_val = device->axes[index];
+  device->axes[index] = val;
+  if (__joystick_axis_cb)
+    __joystick_axis_cb(device, index, val, last_val, time);
+}
+
+#define UPDATE_AXIS_IVAL(d, i, iv, t) (update_axis_float((d), (i), ((iv) - AXIS_MIN) / (float)(AXIS_MAX - AXIS_MIN) * 2.0f - 1.0f, (t)))
+
+#define POV_UP 0
+#define POV_RIGHT 9000
+#define POV_DOWN 18000
+#define POV_LEFT 27000
+
+static void update_axis_pov(joystick_t* device, unsigned int index, DWORD iv, long time) {
+  float x = 0.0f, y = 0.0f;
+  if (LOWORD(iv) == 0xFFFF)
+    x = y = 0.0f;
+  else {
+    if (iv > POV_UP && iv < POV_DOWN)
+      x = 1.0f;
+    else if (iv > POV_DOWN)
+      x = -1.0f;
+    else
+      x = 0.0f;
+
+    if (iv > POV_LEFT || iv < POV_RIGHT)
+      y = -1.0f;
+    else if (iv > POV_RIGHT && iv < POV_LEFT)
+      y = 1.0f;
+    else
+      y = 0.0f;
+  }
+  update_axis_float(device, index, x, time);
+  update_axis_float(device, index + 1, y, time);
+}
+
+void joystick_poll() {
+  joystick_t* device = NULL;
+  joystick_private_t* private = NULL;
+  HRESULT result;
+
+  for (int i = 0; i < MAX_JOYSTICKS; ++i) {
+    if (!joy_devices[i])
+      continue;
+
+    device = joy_devices[i];
+    private = device->__private;
+
+    if (private->is_xinput) {
+#pragma TODO(Add XInput support)
+    } else {
+      result = IDirectInputDevice8_Poll(private->di8dev);
+      if (result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) {
+        IDirectInputDevice8_Acquire(private->di8dev);
+        IDirectInputDevice8_Poll(private->di8dev);
+      }
+
+      if (private->buffered) {
+        DWORD event_c = INPUT_QUEUE_SIZE;
+        DIDEVICEOBJECTDATA events[INPUT_QUEUE_SIZE];
+
+        result = IDirectInputDevice8_GetDeviceData(private->di8dev, sizeof(DIDEVICEOBJECTDATA), events, &event_c, 0);
+        if (result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) {
+          IDirectInputDevice8_Acquire(private->di8dev);
+          result = IDirectInputDevice8_GetDeviceData(private->di8dev, sizeof(DIDEVICEOBJECTDATA), events, &event_c, 0);
+        }
+        if (result != DI_OK) {
+          joystick_release(&device);
+          joy_devices[i] = NULL;
+          continue;
+        }
+
+        int e, b, a;
+        for (e = 0; e < event_c; ++e) {
+          for (b = 0; b < device->n_buttons; ++b)
+            if (events[e].dwOfs == private->button_offsets[b])
+              update_btn(device, b, !!events[e].dwData, events[e].dwTimeStamp / 1000);
+          for (a = 0; a < device->n_axes; ++a) {
+            if (events[e].dwOfs == private->axis_info[a].offset) {
+              if (private->axis_info[a].is_pov) {
+                update_axis_pov(device, a, events[e].dwData, events[e].dwTimeStamp / 1000);
+                a++;
+              } else
+                UPDATE_AXIS_IVAL(device, a, events[e].dwData, events[e].dwTimeStamp / 1000);
+            }
+          }
+        }
+      } else {
+        DIJOYSTATE2 state;
+
+        result = IDirectInputDevice8_GetDeviceState(private->di8dev, sizeof(DIJOYSTATE2), &state);
+        if (result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) {
+          IDirectInputDevice8_Acquire(private->di8dev);
+          result = IDirectInputDevice8_GetDeviceState(private->di8dev, sizeof(DIJOYSTATE2), &state);
+        }
+
+        if (result != DI_OK) {
+          joystick_release(&device);
+          joy_devices[i] = NULL;
+          continue;
+        }
+
+        for (int b = 0; i < device->n_buttons; ++b)
+          update_btn(device, b, !!state.rgbButtons[b], ticks());
+
+        for (int a = 0; a < device->n_axes; ++a) {
+          switch (private->axis_info[a].offset) {
+            case DIJOFS_X:
+              UPDATE_AXIS_IVAL(device, a, state.lX, ticks());
+              break;
+            case DIJOFS_Y:
+              UPDATE_AXIS_IVAL(device, a, state.lY, ticks());
+              break;
+            case DIJOFS_Z:
+              UPDATE_AXIS_IVAL(device, a, state.lZ, ticks());
+              break;
+            case DIJOFS_RX:
+              UPDATE_AXIS_IVAL(device, a, state.lRx, ticks());
+              break;
+            case DIJOFS_RY:
+              UPDATE_AXIS_IVAL(device, a, state.lRy, ticks());
+              break;
+            case DIJOFS_RZ:
+              UPDATE_AXIS_IVAL(device, a, state.lRz, ticks());
+              break;
+            case DIJOFS_SLIDER(0):
+              UPDATE_AXIS_IVAL(device, a, state.rglSlider[0], ticks());
+              break;
+            case DIJOFS_SLIDER(1):
+              UPDATE_AXIS_IVAL(device, a, state.rglSlider[1], ticks());
+              break;
+            case DIJOFS_POV(0):
+              update_axis_pov(device, a, state.rgdwPOV[0], ticks());
+              a++;
+              break;
+            case DIJOFS_POV(1):
+              update_axis_pov(device, a, state.rgdwPOV[1], ticks());
+              a++;
+              break;
+            case DIJOFS_POV(2):
+              update_axis_pov(device, a, state.rgdwPOV[2], ticks());
+              a++;
+              break;
+            case DIJOFS_POV(3):
+              update_axis_pov(device, a, state.rgdwPOV[3], ticks());
+              a++;
+              break;
+          }
+        }
+      }
+    }
+  }
 }
 #endif
 
@@ -4561,6 +4799,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       break;
     case WM_ACTIVATE:
       is_active = (LOWORD(wParam) == WA_ACTIVE);
+      printf("%d\n", is_active);
       break;
     default:
       res = DefWindowProc(hWnd, message, wParam, lParam);
@@ -4626,7 +4865,6 @@ void custom_cursor(surface_t* s) {
 
 bool screen(const char* title, surface_t* s, int w, int h, short flags) {
   memset(keycodes, -1, sizeof(keycodes));
-  memset(scancodes, -1, sizeof(scancodes));
 
   keycodes[0x00B] = KB_KEY_0;
   keycodes[0x002] = KB_KEY_1;
@@ -4749,10 +4987,6 @@ bool screen(const char* title, surface_t* s, int w, int h, short flags) {
   keycodes[0x11C] = KB_KEY_KP_ENTER;
   keycodes[0x037] = KB_KEY_KP_MULTIPLY;
   keycodes[0x04A] = KB_KEY_KP_SUBTRACT;
-
-  for (int sc = 0; sc < 256; sc++)
-    if (keycodes[sc] > 0)
-      scancodes[keycodes[sc]] = sc;
 
   long _flags = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
   if (flags & FULLSCREEN) {
@@ -4877,18 +5111,6 @@ bool screen(const char* title, surface_t* s, int w, int h, short flags) {
   __cursor = LoadCursor(NULL, IDC_ARROW);
   ifuckinghatethewin32api = 1;
 
-#if defined(GRAPHICS_ENABLE_JOYSTICKS)
-  if (DirectInput8Create(GetModuleHandle(NULL), DIRECTINPUT_VERSION, &IID_IDirectInput8, (VOID**)&did, NULL) != DI_OK) {
-    error_handle(PRIO_LOW, "DirectInput8Create() failed: %s", GetLastError());
-    return true;
-  }
-
-  if (IDirectInput_EnumDevices(did, DI8DEVCLASS_GAMECTRL, enum_devices_cb, NULL, DIEDFL_ALLDEVICES) != DI_OK) {
-    error_handle(PRIO_LOW, "IDirectInput_EnumDevices() failed: %s", GetLastError());
-    return true;
-  }
-#endif
-
   return true;
 }
 
@@ -4927,23 +5149,6 @@ void release() {
   IDirect3D9_Release(d3d);
 #else
   FREE_SAFE(bmpinfo);
-#endif
-
-#if defined(GRAPHICS_ENABLE_JOYSTICKS)
-  for (int i = 0; i < n_devices; ++i) {
-    joystick_private_t* private = (joystick_private_t*)devices[i]->__private;
-    if (!private->is_xinput) {
-      IDirectInputDevice8_Release(private->di8dev);
-      FREE_SAFE(private->axis_info);
-      FREE_SAFE(private->button_offsets);
-      FREE_SAFE(devices[i]->description);
-    }
-    FREE_SAFE(private);
-    FREE_SAFE(devices[i]->axes);
-    FREE_SAFE(devices[i]->buttons);
-    FREE_SAFE(devices[i]);
-  }
-  FREE_SAFE(devices);
 #endif
 
   if (__cursor)

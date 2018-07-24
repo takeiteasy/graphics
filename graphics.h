@@ -284,11 +284,11 @@ extern "C" {
   
 #if !defined(GRAPHICS_DISABLE_WINDOW)
   void mouse_xy(int* x, int* y);
-  void window_wh(int* w, int* h);
+  void window_size(int* w, int* h);
   void resize_callback(void (*cb)(int, int));
 
 #if defined(GRAPHICS_ENABLE_JOYSTICKS)
-  typedef struct {
+  typedef struct __joystick_t {
     const char* description;
     int device_id, vendor_id, product_id;
 
@@ -298,6 +298,17 @@ extern "C" {
 
     void* __private;
   } joystick_t;
+  
+#if !defined(MAX_JOYSTICKS)
+#define MAX_JOYSTICKS 4
+#endif
+
+  void joystick_scan(void);
+  void joystick_release(void);
+  void joystick_remove(int at);
+  void joystick_callbacks(void(*connect_cb)(joystick_t*, int), void(*remove_cb)(joystick_t*, int), void(*btn_cb)(joystick_t*, int, bool, long), void (*axis_cb)(joystick_t*, int, float, float, long));
+  void joystick_poll(void);
+  joystick_t* joystick(int at);
 #endif
   
   typedef enum {
@@ -487,6 +498,11 @@ extern "C" {
     CURSOR_HAND,      // Hand
     CURSOR_CUSTOM     // Use your own
   } CURSORS;
+
+#define SHOWN true
+#define HIDDEN false
+#define LOCKED true
+#define UNLOCKED false
   
   void cursor(bool shown, bool locked, CURSORS cursor);
   void custom_cursor(surface_t* s);

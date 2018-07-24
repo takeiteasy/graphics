@@ -150,6 +150,22 @@ int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
   return 1;
 }
 
+void on_joystick_connect(joystick_t* d, int i) {
+  printf("%s connected\n", d->description);
+}
+
+void on_joystick_disconnect(joystick_t* d, int i) {
+  printf("%s disconnected\n", d->description);
+}
+
+void on_joystick_btn(joystick_t* d, int btn, bool down, long time) {
+  printf("%s: bnt %d: %d\n", d->description, btn, down);
+}
+
+void on_joystick_axis(joystick_t* d, int axis, float v, float lv, long time) {
+  printf("%s: axis: %d: %f %f\n", d->description, axis, v, lv);
+}
+
 /* TODO next
  - OSX
   - Fix delta error from cursor warping + cursor locking to view
@@ -168,7 +184,10 @@ int main(int argc, const char* argv[]) {
   screen("test", &win, win_w, win_h, DEFAULT);
   resize_callback(on_resize);
   error_callback(on_error);
-  cursor(true, false, CURSOR_ARROW);
+  cursor(SHOWN, UNLOCKED, CURSOR_HAND);
+
+  joystick_callbacks(on_joystick_connect, on_joystick_disconnect, on_joystick_btn, on_joystick_axis);
+  joystick_scan();
 
   surface_t s[10];
   for (int i = 0; i < 10; ++i)
@@ -225,6 +244,8 @@ int main(int argc, const char* argv[]) {
   while (!closed() && running) {
     prev_frame_tick = curr_frame_tick;
     curr_frame_tick = ticks();
+
+    joystick_poll();
 
     while (poll(&e)) {
       switch (e.type) {
@@ -342,6 +363,7 @@ FLUSH:
     flush(&win);
   }
 
+  joystick_release();
   bdf_destroy(&tewi);
   destroy(&win);
   for (int i = 0; i < (int)(sizeof(s) / sizeof(s[0])); ++i)
