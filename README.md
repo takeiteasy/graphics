@@ -50,11 +50,7 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 ### Important
 
 - Joystick/Gamepad input
-  - OSX: <IOKit/hid/IOHIDLib.h>
-  - Windows: XInput/DirectInput
-  - Linux: /dev/input/js0 (?)
 - Port new stuff to Linux
-- Optimise OSX cursor warping
 - [Fix OSX cursor lock to window](https://stackoverflow.com/a/40922095)
 
 ### Less important

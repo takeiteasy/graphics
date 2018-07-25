@@ -4034,9 +4034,8 @@ static LPDIRECT3DDEVICE9 d3ddev;
 static BITMAPINFO* bmpinfo;
 #endif
 static event_t* tmp_e;
-static int event_fired = 0;
 static int adjusted_win_w, adjusted_win_h;
-static int ifuckinghatethewin32api = 0; // Should always be 1 because I do
+static bool ifuckinghatethewin32api = false; // Should always be true because I do
 static BOOL is_active = FALSE;
 static HCURSOR __cursor = NULL, __custom_cursor = NULL;
 static BOOL cursor_locked = FALSE;
@@ -5616,7 +5615,7 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
   SetFocus(hwnd);
 
   __cursor = LoadCursor(NULL, IDC_ARROW);
-  ifuckinghatethewin32api = 1;
+  ifuckinghatethewin32api = true;
 
   return true;
 }
