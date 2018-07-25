@@ -19,7 +19,7 @@ int rnd(int x, int y, int c) {
 static surface_t win;
 static int win_w = 575, win_h = 500, mx = 0, my = 0, running = 1;
 
-#define DEBUG_NATIVE_RESIZE 0
+#define SKIP_RESIZE 0
 #define SKIP_PRINTF 0
 #define SKIP_RENDING 0
 
@@ -29,16 +29,36 @@ static int win_w = 575, win_h = 500, mx = 0, my = 0, running = 1;
 
 void update_mxy() {
   mouse_xy(&mx, &my);
-#if DEBUG_NATIVE_RESIZE
+#if SKIP_RESIZE
   mx = (int)((mx / win_w) * win.w);
   my = (int)((my / win_h) * win.h);
 #endif
 }
 
+void on_keyboard(KEYSYM sym, KEYMOD mod, bool down) {
+
+}
+
+void on_mouse_btn(MOUSEBTN btn, KEYMOD mod, bool down) {
+
+}
+
+void on_mouse_move(int x, int y, int dx, int dy) {
+
+}
+
+void on_closed() {
+  running = 0;
+}
+
+void on_focus(bool focused) {
+  printf("%s\n", (focused ? "FOCUSED" : "UNFOCUSED"));
+}
+
 void on_resize(int w, int h) {
   win_w = w;
   win_h = h;
-#if !DEBUG_NATIVE_RESIZE
+#if !SKIP_RESIZE
   reset(&win, w, h);
 #else
   cls(&win);
@@ -84,9 +104,10 @@ void on_joystick_axis(joystick_t* d, int axis, float v, float lv, long time) {
 #endif
 
 int main(int argc, const char* argv[]) {
-  screen("test", &win, win_w, win_h, DEFAULT);
-  resize_callback(on_resize);
   error_callback(on_error);
+
+  screen("test", &win, win_w, win_h, DEFAULT);
+  screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_closed, on_focus, on_resize);
   cursor(SHOWN, UNLOCKED, CURSOR_HAND);
 
 #if defined(SGL_ENABLE_JOYSTICKS)
@@ -150,7 +171,7 @@ int main(int argc, const char* argv[]) {
   event_t e;
   long prev_frame_tick;
   long curr_frame_tick = ticks();
-  while (!closed() && running) {
+  while (running) {
     prev_frame_tick = curr_frame_tick;
     curr_frame_tick = ticks();
 

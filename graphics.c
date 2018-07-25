@@ -57,6 +57,10 @@ if ((x)) {  \
   (x) = NULL; \
 }
 
+#define CALL(x, ...) \
+if ((x)) \
+  (x)(__VA_ARGS__);
+
 static void(*__error_callback)(ERRPRIO, const char*, const char*, const char*, int) = NULL;
 
 void sgl_error_callback(void (*cb)(ERRPRIO, const char*, const char*, const char*, int)) {
@@ -138,7 +142,7 @@ void sgl_fill(surface_t* s, int col) {
 
 #define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
 
-static inline void __flood(surface_t* s, int x, int y, int new, int old) {
+static inline void flood_fn(surface_t* s, int x, int y, int new, int old) {
   if (new == old || XYGET(s, x, y) != old)
     return;
   
@@ -157,28 +161,28 @@ static inline void __flood(surface_t* s, int x, int y, int new, int old) {
   x1 = x;
   while (x1 < s->w && XYGET(s, x1, y) == new) {
     if(y > 0 && XYGET(s, x1, y - 1) == old)
-      __flood(s, x1, y - 1, new, old);
+      flood_fn(s, x1, y - 1, new, old);
     x1++;
   }
   
   x1 = x - 1;
   while(x1 >= 0 && XYGET(s, x1, y) == new) {
     if(y > 0 && XYGET(s, x1, y - 1) == old)
-      __flood(s, x1, y - 1, new, old);
+      flood_fn(s, x1, y - 1, new, old);
     x1--;
   }
   
   x1 = x;
   while(x1 < s->w && XYGET(s, x1, y) == new) {
     if(y < s->h - 1 && XYGET(s, x1, y + 1) == old)
-      __flood(s, x1, y + 1, new, old);
+      flood_fn(s, x1, y + 1, new, old);
     x1++;
   }
   
   x1 = x - 1;
   while(x1 >= 0 && XYGET(s, x1, y) == new) {
     if(y < s->h - 1 && XYGET(s, x1, y + 1) == old)
-      __flood(s, x1, y + 1, new, old);
+      flood_fn(s, x1, y + 1, new, old);
     x1--;
   }
 }
@@ -186,7 +190,7 @@ static inline void __flood(surface_t* s, int x, int y, int new, int old) {
 void sgl_flood(surface_t* s, int x, int y, int col) {
   if (!s || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
-  __flood(s, x, y, col, XYGET(s, x, y));
+  flood_fn(s, x, y, col, XYGET(s, x, y));
 }
 
 void sgl_cls(surface_t* s) {
@@ -214,7 +218,7 @@ void sgl_psetb(surface_t* s, int x, int y, int c) {
                                    a + (b * (255 - a) / 255));
 }
 
-static void(*__pset)(surface_t*, int, int, int) = sgl_psetb;
+static void(*pset_fn)(surface_t*, int, int, int) = sgl_psetb;
 #else
 void sgl_psetb(surface_t* s, int x, int y, int c) {
   int a = A(c);
@@ -228,7 +232,7 @@ void sgl_psetb(surface_t* s, int x, int y, int c) {
                                                  (int)roundf(B(c) * (1 - i) + B(b) * i)));
 }
 
-static void(*__pset)(surface_t*, int, int, int) = sgl_pset;
+static void(*pset_fn)(surface_t*, int, int, int) = sgl_pset;
 #endif
 
 int sgl_pget(surface_t* s, int x, int y) {
@@ -278,7 +282,7 @@ bool sgl_blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
       if (c == BLIT_CHROMA_KEY)
         continue;
 #endif
-      __pset(dst, offset_x + x, offset_y + y, c);
+      pset_fn(dst, offset_x + x, offset_y + y, c);
     }
   return true;
 }
@@ -369,7 +373,7 @@ bool sgl_rotate(surface_t* in, float angle, surface_t* out) {
       sy = ((y + mm[0][1]) * c - (x + mm[0][0]) * s);
       if (sx < 0 || sx >= in->w || sy < 0 || sy >= in->h)
         continue;
-      __pset(out, x, y, pget(in, sx, sy));
+      pset_fn(out, x, y, pget(in, sx, sy));
     }
   return true;
 }
@@ -390,7 +394,7 @@ void sgl_vline(surface_t* s, int x, int y0, int y1, int col) {
     y1 = s->h - 1;
 
   for(int y = y0; y <= y1; y++)
-    __pset(s, x, y, col);
+    pset_fn(s, x, y, col);
 }
 
 void sgl_hline(surface_t* s, int y, int x0, int x1, int col) {
@@ -409,7 +413,7 @@ void sgl_hline(surface_t* s, int y, int x0, int x1, int col) {
     x1 = s->w - 1;
 
   for(int x = x0; x <= x1; x++)
-    __pset(s, x, y, col);
+    pset_fn(s, x, y, col);
 }
 
 void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
@@ -460,7 +464,7 @@ void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
       y0 += sy;
     }
 #else
-    __pset(s, x0, y0, col);
+    pset_fn(s, x0, y0, col);
     e2 = 2 * err;
 
     if (e2 >= dy) {
@@ -537,10 +541,10 @@ void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
       err += ++y * 2 + 1;
     }
 #else
-    __pset(s, xc - x, yc + y, col);
-    __pset(s, xc - y, yc - x, col);
-    __pset(s, xc + x, yc - y, col);
-    __pset(s, xc + y, yc + x, col);
+    pset_fn(s, xc - x, yc + y, col);
+    pset_fn(s, xc - y, yc - x, col);
+    pset_fn(s, xc + x, yc - y, col);
+    pset_fn(s, xc + y, yc + x, col);
     
     if (fill) {
       sgl_hline(s, yc - y, xc - x, xc + x, col);
@@ -684,10 +688,10 @@ void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int
     }
 #else
   do {
-    __pset(s, x1, y0, col);
-    __pset(s, x0, y0, col);
-    __pset(s, x0, y1, col);
-    __pset(s, x1, y1, col);
+    pset_fn(s, x1, y0, col);
+    pset_fn(s, x0, y0, col);
+    pset_fn(s, x0, y1, col);
+    pset_fn(s, x1, y1, col);
     
     if (fill) {
       sgl_hline(s, y0, x0, x1, col);
@@ -777,7 +781,7 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
       }
     } while (dy < dx);
 #else
-    __pset(s, x0, y0, col);
+    pset_fn(s, x0, y0, col);
     if (x0 == x2 && y0 == y2)
       return;
     
@@ -929,7 +933,7 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
         }
       } while (dy < dx);
 #else
-      __pset(s, x0, y0, col);
+      pset_fn(s, x0, y0, col);
       if (x0 == x2 && y0 == y2)
         return;
       
@@ -1190,7 +1194,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
     x1 = x2;
 #else
     for (pxy = &xy, fx = fy = f; x0 != x3 && y0 != y3;) {
-      __pset(s, x0, y0, col);
+      pset_fn(s, x0, y0, col);
       do {
         if (dx > *pxy || dy < *pxy)
           goto exit;
@@ -2235,11 +2239,11 @@ void sgl_ascii(surface_t* s, char ch, int x, int y, int fg, int bg) {
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 8; ++j) {
       if (font[c][i] & 1 << j) {
-        __pset(s, x + j, y + i, fg);
+        pset_fn(s, x + j, y + i, fg);
       } else {
         if (bg == -1)
           continue;
-        __pset(s, x + j, y + i, bg);
+        pset_fn(s, x + j, y + i, bg);
       }
     }
   }
@@ -2261,11 +2265,11 @@ int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
   for (i = 0; i < 8; ++i)
     for (j = 0; j < 8; ++j) {
       if (font[uc][i] & 1 << j)
-        __pset(s, x + j, y + i, fg);
+        pset_fn(s, x + j, y + i, fg);
       else {
         if (bg == -1)
           continue;
-        __pset(s, x + j, y + i, bg);
+        pset_fn(s, x + j, y + i, bg);
       }
     }
   
@@ -2594,7 +2598,7 @@ int sgl_bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int 
       cc = (yy < yoffset || yy > yoffset + f->chars[n].bb.h ? 0 : f->chars[n].bitmap[(yy - yoffset) * ((f->fontbb.w + 7) / 8) + xx / 8]);
       
       for (i = 128, j = 0; i; i /= 2, ++j)
-        __pset(s, x + j, y + yy, (cc & i ? fg : bg));
+        pset_fn(s, x + j, y + yy, (cc & i ? fg : bg));
     }
   }
   
@@ -2802,7 +2806,6 @@ TRY_AGAIN_BRO:
 #if !defined(SGL_DISABLE_WINDOW)
 static short int keycodes[512];
 static surface_t* buffer;
-static void(*__resize_callback)(int, int) = NULL;
 static int mx = 0, my = 0, win_w, win_h;
 
 #if defined(SGL_ENABLE_JOYSTICKS)
@@ -2812,16 +2815,16 @@ static struct {
 } joy_devices;
 static int next_device_id = 0;
 
-static void(*__joystick_removed_cb)(joystick_t*, int) = NULL;
-static void(*__joystick_connect_cb)(joystick_t*, int) = NULL;
-static void(*__joystick_btn_cb)(joystick_t*, int, bool, long) = NULL;
-static void(*__joystick_axis_cb)(joystick_t*, int, float, float, long) = NULL;
+static void(*joy_removed_callback)(joystick_t*, int) = NULL;
+static void(*joy_connect_callback)(joystick_t*, int) = NULL;
+static void(*joy_btn_callback)(joystick_t*, int, bool, long) = NULL;
+static void(*joy_axis_callback)(joystick_t*, int, float, float, long) = NULL;
 
 void sgl_joystick_callbacks(void(*connect_cb)(joystick_t*, int), void(*remove_cb)(joystick_t*, int), void(*btn_cb)(joystick_t*, int, bool, long), void(*axis_cb)(joystick_t*, int, float, float, long)) {
-  __joystick_connect_cb = connect_cb;
-  __joystick_removed_cb = remove_cb;
-  __joystick_btn_cb = btn_cb;
-  __joystick_axis_cb = axis_cb;
+  joy_connect_callback = connect_cb;
+  joy_removed_callback = remove_cb;
+  joy_btn_callback = btn_cb;
+  joy_axis_callback = axis_cb;
 }
 
 joystick_t* sgl_joystick(int id) {
@@ -2838,8 +2841,7 @@ joystick_t* sgl_joystick(int id) {
 }
 
 static inline void add_joystick(joystick_t* d) {
-  if (__joystick_connect_cb)
-    __joystick_connect_cb(d, d->device_id);
+  CALL(joy_connect_callback, d, d->device_id);
 
   joystick_t* current = joy_devices.head;
   if (!current)
@@ -2869,8 +2871,26 @@ void sgl_window_size(int* w, int* h) {
   *h = win_h;
 }
 
-void sgl_resize_callback(void (*cb)(int, int)) {
-  __resize_callback = cb;
+static void(*kb_callback)(KEYSYM, KEYMOD, bool) = NULL;
+static void(*mouse_btn_callback)(MOUSEBTN, KEYMOD, bool) = NULL;
+static void(*mouse_callback)(int, int, int, int) = NULL;
+static void(*closed_callback)(void) = NULL;
+static void(*focus_callback)(bool) = NULL;
+static void(*resize_callback)(int, int) = NULL;
+
+void sgl_screen_callbacks(
+  void(*kb_cb)(KEYSYM, KEYMOD, bool),
+  void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool),
+  void(*mouse_move_cb)(int, int, int, int),
+  void(*closed_cb)(void),
+  void(*focus_cb)(bool),
+  void(*resize_cb)(int, int)) {
+  kb_callback = kb_cb;
+  mouse_btn_callback = mouse_btn_cb;
+  mouse_callback = mouse_move_cb;
+  closed_callback = closed_cb;
+  focus_callback = focus_cb;
+  resize_callback = resize_cb;
 }
 
 #if defined(SGL_ENABLE_OPENGL)
@@ -3303,8 +3323,8 @@ static int border_off = 22;
 }
 @end
 
-static NSCursor *__custom_cursor = nil, *__cursor = nil;
-static int __cursor_state = 0;
+static NSCursor *custom_cursor = nil, *cursor = nil;
+static int cursor_state = 0;
 static CGFloat lmx = 0, lmy = 0, wdx = 0, wdy = 0;
 
 NSPoint cursor_pos_abs() {
@@ -3325,7 +3345,7 @@ void sgl_cursor(CURSORFLAGS flags) {
     [NSCursor hide];
   if (flags & SHOWN)
     [NSCursor unhide];
-  __cursor_state = flags & LOCKED ? flags & UNLOCKED ? !__cursor_state : 1 : 0;
+  cursor_state = flags & LOCKED ? flags & UNLOCKED ? !cursor_state : 1 : 0;
   
   if (flags & 0xFFFFF0) {
     NSCursor* tmp = NULL;
@@ -3361,8 +3381,8 @@ void sgl_cursor(CURSORFLAGS flags) {
         tmp = [NSCursor pointingHandCursor];
         break;
       case CURSOR_CUSTOM:
-        if (__custom_cursor)
-          tmp = __custom_cursor;
+        if (custom_cursor)
+          tmp = custom_cursor;
         break;
       default:
         tmp = [NSCursor invisibleCursor];
@@ -3372,11 +3392,11 @@ void sgl_cursor(CURSORFLAGS flags) {
     if (!tmp)
       return;
     
-    if (__cursor && __cursor != __custom_cursor)
-      [__cursor sgl_release];
+    if (cursor && cursor != custom_cursor)
+      [cursor sgl_release];
     
-    __cursor = tmp;
-    [__cursor retain];
+    cursor = tmp;
+    [cursor retain];
     
     if (app && [app contentView])
       [[app contentView] resetCursorRects];
@@ -3397,16 +3417,16 @@ void sgl_custom_cursor(surface_t* s) {
   if (!nsi)
     return;
   
-  if (__custom_cursor)
-    [__custom_cursor sgl_release];
+  if (custom_cursor)
+    [custom_cursor sgl_release];
   
-  __custom_cursor = [[NSCursor alloc] initWithImage:nsi
+  custom_cursor = [[NSCursor alloc] initWithImage:nsi
                                             hotSpot:NSMakePoint(0, 0)];
-  if (!__custom_cursor) {
-    __custom_cursor = nil;
+  if (!custom_cursor) {
+    custom_cursor = nil;
     return;
   }
-  [__custom_cursor retain];
+  [custom_cursor retain];
 }
 
 @implementation osx_view_t
@@ -3540,13 +3560,13 @@ extern surface_t* buffer;
 
 -(void)resetCursorRects {
   [super resetCursorRects];
-  [self addCursorRect:[self visibleRect] sgl_cursor:(__custom_cursor ? __custom_cursor : [NSCursor arrowCursor])];
+  [self addCursorRect:[self visibleRect] sgl_cursor:(custom_cursor ? custom_cursor : [NSCursor arrowCursor])];
 }
 
 -(void)cursorUpdate:(NSEvent*)event {
   (void)event;
-  if (__cursor)
-    [__cursor set];
+  if (cursor)
+    [cursor set];
 }
 
 -(BOOL)acceptsFirstResponder {
@@ -3564,7 +3584,7 @@ extern surface_t* buffer;
 
 -(void)mouseMoved:(NSEvent*)event {
 #pramga FIXME(CGWarpMouseCursorPosition affects delta values)
-  if (__cursor_state) {
+  if (cursor_state) {
     mx = CLAMP((int)(floorf([event locationInWindow].x - 1) + [event deltaX]), 0, win_w);
     my = CLAMP((int)(floorf(win_h - 1 - [event locationInWindow].y) + [event deltaY]), 0, win_h);
     
@@ -3766,8 +3786,8 @@ extern surface_t* buffer;
   mtk_viewport.x = win_w * scale_f;
   mtk_viewport.y = (win_h * scale_f) + (4 * scale_f);
 #endif
-  if (__resize_callback)
-    __resize_callback(win_w, win_h);
+  if (resize_callback)
+    resize_callback(win_w, win_h);
 }
 
 -(NSView*)contentView {
@@ -4070,16 +4090,15 @@ void sgl_release() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   if (app)
     [app close];
-  if (__cursor)
-    [__cursor sgl_release];
-  if (__custom_cursor)
-    [__custom_cursor sgl_release];
+  if (cursor)
+    [cursor sgl_release];
+  if (custom_cursor)
+    [custom_cursor sgl_release];
   [pool drain];
 }
 #elif defined(_WIN32)
 static WNDCLASS wnd;
 static HWND hwnd;
-static bool __closed = false;
 static HDC hdc = 0;
 #if defined(SGL_ENABLE_OPENGL)
 static PIXELFORMATDESCRIPTOR pfd;
@@ -4099,11 +4118,11 @@ static BITMAPINFO* bmpinfo;
 #endif
 static event_t* tmp_e;
 static int adjusted_win_w, adjusted_win_h;
-static bool ifuckinghatethewin32api = false; // Should always be true because I do
-static BOOL is_active = FALSE;
+static BOOL ifuckinghatethewin32api = FALSE; // Should always be true because I do
+static BOOL is_focused = TRUE;
 static HCURSOR __cursor = NULL, __custom_cursor = NULL;
 static BOOL cursor_locked = FALSE;
-static RECT __rc = { 0 };
+static RECT rc = { 0 };
 static long adjust_flags = WS_POPUP | WS_SYSMENU | WS_CAPTION;
 
 #if defined(SGL_ENABLE_JOYSTICKS)
@@ -4706,8 +4725,7 @@ static void handle_btn_change(joystick_t* device, DWORD lv, DWORD v) {
 
     bool down = !!(v & (1 << b));
     device->buttons[b] = down;
-    if (__joystick_btn_cb)
-      __joystick_btn_cb(device, b, down, ticks());
+    CALL(joy_btn_callback, device, b, down, ticks());
   }
 }
 
@@ -4721,8 +4739,7 @@ static void handle_axis_change(joystick_t* device, int index, DWORD iv) {
   float lv = device->axes[index];
   device->axes[index] = v;
 
-  if (__joystick_axis_cb)
-    __joystick_axis_cb(device, index, v, lv, ticks());
+  CALL(joy_axis_callback, device, index, v, lv, ticks());
 }
 
 static void pov_to_xy(DWORD pov, int* x, int* y) {
@@ -4756,27 +4773,23 @@ static void handle_pov_change(joystick_t* device, DWORD lv, DWORD v) {
 
   if (nx != lx) {
     device->axes[private->povXAxisIndex] = nx;
-    if (__joystick_axis_cb)
-      __joystick_axis_cb(device, private->povXAxisIndex, nx, lx, ticks());
+    CALL(joy_axis_callback, device, private->povXAxisIndex, nx, lx, ticks());
   }
   if (ny != ly) {
     device->axes[private->povYAxisIndex] = ny;
-    if (__joystick_axis_cb)
-      __joystick_axis_cb(device, private->povYAxisIndex, ny, ly, ticks());
+    CALL(joy_axis_callback, device, private->povYAxisIndex, ny, ly, ticks());
   }
 }
 #else
 static void update_btn(joystick_t* device, unsigned int index, bool down, long time) {
   device->buttons[index] = down;
-  if (__joystick_btn_cb)
-    __joystick_btn_cb(device, index, down, time);
+  CALL(joy_btn_callback, device, index, down, time);
 }
 
 static void update_axis_float(joystick_t* device, unsigned int index, float val, long time) {
   float last_val = device->axes[index];
   device->axes[index] = val;
-  if (__joystick_axis_cb)
-    __joystick_axis_cb(device, index, val, last_val, time);
+  CALL(joy_axis_callback, device, index, val, last_val, time);
 }
 
 #define UPDATE_AXIS_IVAL(d, i, iv, t) (update_axis_float((d), (i), ((iv) - AXIS_MIN) / (float)(AXIS_MAX - AXIS_MIN) * 2.0f - 1.0f, (t)))
@@ -4964,7 +4977,7 @@ void sgl_joystick_release() {
   joy_devices.size = 0;
 }
 
-void sgl_joystick_remove(int id) {
+bool sgl_joystick_remove(int id) {
   joystick_t* current = joy_devices.head;
   joystick_t* previous = current;
   while (current) {
@@ -4972,12 +4985,14 @@ void sgl_joystick_remove(int id) {
       previous->next = current->next;
       if (current == joy_devices.head)
         joy_devices.head = current->next;
+      CALL(joy_removed_callback, current, current->device_id);
       release_joystick(&current);
-      return;
+      return true;
     }
     previous = current;
     current = current->next;
   }
+  return false;
 }
 
 void sgl_joystick_poll() {
@@ -5256,8 +5271,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       win_w = rect.right + rect.left;
       win_h = rect.bottom - rect.top;
 
-      if (__resize_callback)
-        __resize_callback(win_w, win_h);
+      CALL(resize_callback, win_w, win_h);
 
 #if defined(SGL_ENABLE_OPENGL)
       glViewport(rect.left, rect.top, rect.right, win_h);
@@ -5265,7 +5279,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
 #endif
       break;
     case WM_CLOSE:
-      __closed = 1;
+      CALL(closed_callback);
       if (tmp_e)
         tmp_e->type = WINDOW_CLOSED;
       break;
@@ -5355,21 +5369,25 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
     case WM_MOUSEMOVE:
       mx = GET_X_LPARAM(lParam);
       my = GET_Y_LPARAM(lParam);
-      if (cursor_locked && is_active) {
-        GetWindowRect(hwnd, &__rc);
-        __rc.left += 3;
-        __rc.right -= 3;
-        __rc.top += 3;
-        __rc.bottom -= 3;
-        ClipCursor(&__rc);
+      if (cursor_locked && is_focused) {
+        GetWindowRect(hwnd, &rc);
+        rc.left += 3;
+        rc.right -= 3;
+        rc.top += 3;
+        rc.bottom -= 3;
+        ClipCursor(&rc);
       }
       break;
     case WM_SETCURSOR:
       SetCursor(__cursor);
       break;
-    case WM_ACTIVATE:
-      is_active = (LOWORD(wParam) == WA_ACTIVE);
-      printf("%d\n", is_active);
+    case WM_SETFOCUS:
+      is_focused = TRUE;
+      CALL(focus_callback, is_focused);
+      break;
+    case WM_KILLFOCUS:
+      is_focused = FALSE;
+      CALL(focus_callback, is_focused);
       break;
     default:
       res = DefWindowProc(hWnd, message, wParam, lParam);
@@ -5377,12 +5395,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
   return res;
 }
 
-void sgl_cursor(bool shown, bool locked, CURSORS cursor) {
+void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
   ShowCursor((BOOL)shown);
   cursor_locked = (BOOL)locked;
 
   LPCSTR c = NULL;
-  switch (cursor) {
+  switch (type) {
     default:
     case CURSOR_NO_CHANGE:
       return;
@@ -5679,13 +5697,9 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
   SetFocus(hwnd);
 
   __cursor = LoadCursor(NULL, IDC_ARROW);
-  ifuckinghatethewin32api = true;
+  ifuckinghatethewin32api = TRUE; // because I do
 
   return true;
-}
-
-bool sgl_closed() {
-  return __closed;
 }
 
 bool sgl_poll(event_t* e) {

@@ -355,7 +355,6 @@ extern "C" {
 #if !defined(SGL_DISABLE_WINDOW)
   void sgl_mouse_xy(int* x, int* y);
   void sgl_window_size(int* w, int* h);
-  void sgl_resize_callback(void(*cb)(int, int));
 
 #if defined(SGL_ENABLE_JOYSTICKS)
   typedef struct __joystick_t {
@@ -371,10 +370,11 @@ extern "C" {
     void* __private;
   } joystick_t;
 
-  void sgl_joystick_callbacks(void(*connect_cb)(joystick_t*, int),
-                              void(*remove_cb)(joystick_t*, int),
-                              void(*btn_cb)(joystick_t*, int, bool, long),
-                              void(*axis_cb)(joystick_t*, int, float, float, long));
+  void sgl_joystick_callbacks(
+    void(*connect_cb)(joystick_t*, int),
+    void(*remove_cb)(joystick_t*, int),
+    void(*btn_cb)(joystick_t*, int, bool, long),
+    void(*axis_cb)(joystick_t*, int, float, float, long));
   joystick_t* sgl_joystick(int id);
   bool sgl_joystick_init(bool scan_too);
   bool sgl_joystick_scan(void);
@@ -562,6 +562,14 @@ extern "C" {
     int data1, data2;
   } event_t;
 
+  void sgl_screen_callbacks(
+    void(*kb_cb)(KEYSYM, KEYMOD, bool),
+    void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool),
+    void(*mouse_move_cb)(int, int, int, int),
+    void(*closed_cb)(void),
+    void(*active_cb)(bool),
+    void(*resize_cb)(int, int));
+
 #define DEFAULT 0
   
   typedef enum {
@@ -579,14 +587,14 @@ extern "C" {
     CURSOR_NO,        // Slashed circle or crossbones
     CURSOR_HAND,      // Hand
     CURSOR_CUSTOM     // Use your own
-  } CURSORS;
+  } CURSORTYPE;
 
 #define SHOWN true
 #define HIDDEN false
 #define LOCKED true
 #define UNLOCKED false
   
-  void sgl_cursor(bool shown, bool locked, CURSORS cursor);
+  void sgl_cursor(bool shown, bool locked, CURSORTYPE cursor);
   void sgl_custom_cursor(surface_t* s);
   
   typedef enum {
@@ -598,7 +606,6 @@ extern "C" {
   } WINDOWFLAGS;
   
   bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags);
-  bool sgl_closed(void);
   bool sgl_poll(event_t* e);
   void sgl_flush(surface_t* s);
   void sgl_release(void);
@@ -606,11 +613,10 @@ extern "C" {
 #if !defined(SGL_DISABLE_SHORT_NAMES)
 #define mouse_xy sgl_mouse_xy
 #define window_size sgl_window_size
-#define resize_callback sgl_resize_callback
+#define screen_callbacks sgl_screen_callbacks
 #define cursor sgl_cursor
 #define custom_cursor sgl_custom_cursor
 #define screen sgl_screen
-#define closed sgl_closed
 #define poll sgl_poll
 #define flush sgl_flush
 #define release sgl_release
