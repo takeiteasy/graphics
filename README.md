@@ -13,6 +13,7 @@ Designed to be a drop-in and use sort of deal with little hassle. I don't know i
 - BMP loading (Uncompressed 8, 24 & 32 bpp) (1 & 4 bpp, RLE compression and OS/2 not supported yet)
 - Save surfaces to BMP file
 - Text rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
+- Joystick handling (adapted from [ThemsAllTook/libstem_gamepad](https://github.com/ThemsAllTook/libstem_gamepad))
 - Optional OpenGL & Metal backends (Just for rendering to screen)
 - Optional extras (AA primitives, BDF font loader, image loader using [stb_image](https://github.com/nothings/stb))
 

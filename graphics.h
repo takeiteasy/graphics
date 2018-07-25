@@ -15,7 +15,13 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#if _MSC_VER <= 1600
+#define bool int
+#define true 1
+#define false 0
+#else
 #include <stdbool.h>
+#endif
 #include <string.h>
 #include <math.h>
 #include <time.h>
@@ -36,7 +42,7 @@ extern "C" {
 #include <X11/keysym.h>
 #endif
 
-#if !defined(GRAPHICS_DISABLE_RGBA)
+#if !defined(SGL_DISABLE_RGBA)
 #define RGBA(r, g, b, a) ((((unsigned int)(a)) << 24) | (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b))
 #define RGB(r, g, b) (RGBA((r), (g), (b), 255))
 #else
@@ -52,7 +58,7 @@ extern "C" {
 #define BCHAN(a, b) (((a) & ~0x000000FF) |  (b))
 #define ACHAN(a, b) (((a) & ~0xFF000000) | ((b) << 24))
 
-#if !defined(GRAPHICS_DISABLE_DEFAULT_COLORS)
+#if !defined(SGL_DISABLE_DEFAULT_COLORS)
 #define BLACK RGB(0, 0, 0)
 #define BLUE RGB(0, 0, 255)
 #define CYAN (0, 255, 255)
@@ -193,7 +199,7 @@ extern "C" {
 #define YELLOW_GREEN RGB(154, 205, 50)
 #endif
 
-#if !defined(GRAPHICS_DISABLE_CHROMA_KEY) && !defined(BLIT_CHROMA_KEY)
+#if !defined(SGL_DISABLE_CHROMA_KEY) && !defined(BLIT_CHROMA_KEY)
 #define BLIT_CHROMA_KEY LIME
 #endif
   
@@ -247,7 +253,7 @@ extern "C" {
   bool sgl_bmp(surface_t* s, const char* path);
   bool sgl_save_bmp(surface_t* s, const char* path);
   
-#if !defined(GRAPHICS_DISABLE_TEXT)
+#if !defined(SGL_DISABLE_TEXT)
   void sgl_ascii(surface_t* s, char ch, int x, int y, int fg, int bg);
   int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg);
   void sgl_writeln(surface_t* s, int x, int y, int fg, int bg, const char* str);
@@ -259,7 +265,7 @@ extern "C" {
   long sgl_ticks(void);
   void sgl_delay(long ms);
 
-#if !defined(GRAPHICS_DISABLE_SHORT_NAMES)
+#if !defined(SGL_DISABLE_SHORT_NAMES)
 #define error_callback sgl_error_callback
 #define surface sgl_surface
 #define destroy sgl_destroy
@@ -301,7 +307,7 @@ extern "C" {
 #define delay sgl_delay
 #endif
   
-#if defined(GRAPHICS_ENABLE_BDF)
+#if defined(SGL_ENABLE_BDF)
   typedef struct {
     unsigned int width;
     unsigned char* bitmap;
@@ -323,7 +329,7 @@ extern "C" {
   void sgl_bdf_string(surface_t* out, bdf_t* f, int fg, int bg, const char* str);
   void sgl_bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, ...);
 
-#if !defined(GRAPHICS_DISABLE_SHORT_NAMES)
+#if !defined(SGL_DISABLE_SHORT_NAMES)
 #define bdf_destroy sgl_bdf_destroy
 #define bdf sgl_bdf
 #define bdf_character sgl_bdf_character
@@ -334,22 +340,22 @@ extern "C" {
 #endif
 #endif
   
-#if defined(GRAPHICS_ENABLE_STB_IMAGE)
+#if defined(SGL_ENABLE_STB_IMAGE)
   bool sgl_image(surface_t* out, const char* path);
   bool sgl_save_image(surface_t* in, const char* path);
 
-#if !defined(GRAPHICS_DISABLE_SHORT_NAMES)
+#if !defined(SGL_DISABLE_SHORT_NAMES)
 #define image sgl_image
 #define save_image sgl_save_image
 #endif
 #endif
   
-#if !defined(GRAPHICS_DISABLE_WINDOW)
+#if !defined(SGL_DISABLE_WINDOW)
   void sgl_mouse_xy(int* x, int* y);
   void sgl_window_size(int* w, int* h);
   void sgl_resize_callback(void(*cb)(int, int));
 
-#if defined(GRAPHICS_ENABLE_JOYSTICKS)
+#if defined(SGL_ENABLE_JOYSTICKS)
   typedef struct __joystick_t {
     const char* description;
     int device_id, vendor_id, product_id;
@@ -364,9 +370,9 @@ extern "C" {
   } joystick_t;
 
   void sgl_joystick_callbacks(void(*connect_cb)(joystick_t*, int),
-    void(*remove_cb)(joystick_t*, int),
-    void(*btn_cb)(joystick_t*, int, bool, long),
-    void(*axis_cb)(joystick_t*, int, float, float, long));
+                              void(*remove_cb)(joystick_t*, int),
+                              void(*btn_cb)(joystick_t*, int, bool, long),
+                              void(*axis_cb)(joystick_t*, int, float, float, long));
   joystick_t* sgl_joystick(int id);
   bool sgl_joystick_init(bool scan_too);
   bool sgl_joystick_scan(void);
@@ -374,7 +380,7 @@ extern "C" {
   void sgl_joystick_remove(int id);
   void sgl_joystick_poll(void);
 
-#if !defined(GRAPHICS_DISABLE_SHORT_NAMES)
+#if !defined(SGL_DISABLE_SHORT_NAMES)
 #define joystick_init sgl_joystick_init
 #define joystick_scan sgl_joystick_scan
 #define joystick_release sgl_joystick_release
@@ -595,7 +601,7 @@ extern "C" {
   void sgl_flush(surface_t* s);
   void sgl_release(void);
 
-#if !defined(GRAPHICS_DISABLE_SHORT_NAMES)
+#if !defined(SGL_DISABLE_SHORT_NAMES)
 #define mouse_xy sgl_mouse_xy
 #define window_size sgl_window_size
 #define resize_callback sgl_resize_callback

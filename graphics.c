@@ -10,12 +10,12 @@
 #endif
 
 #if defined(__APPLE__)
-# if defined(GRAPHICS_ENABLE_METAL) && defined(GRAPHICS_ENABLE_OPENGL)
-#   undef GRAPHICS_ENABLE_OPENGL
+# if defined(SGL_ENABLE_METAL) && defined(SGL_ENABLE_OPENGL)
+#   undef SGL_ENABLE_OPENGL
 # endif
 #elif defined(_WIN32)
-# if defined(GRAPHICS_ENABLE_DX9) && defined(GRAPHICS_ENABLE_OPENGL)
-#   undef GRAPHICS_ENABLE_OPENGL
+# if defined(SGL_ENABLE_DX9) && defined(SGL_ENABLE_OPENGL)
+#   undef SGL_ENABLE_OPENGL
 # endif
 #endif
 
@@ -176,7 +176,7 @@ void sgl_pset(surface_t* s, int x, int y, int c)  {
     s->buf[y * s->w + x] = c;
 }
 
-#if !defined(GRAPHICS_DISABLE_RGBA)
+#if !defined(SGL_DISABLE_RGBA)
 #define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
 
 void sgl_psetb(surface_t* s, int x, int y, int c) {
@@ -251,7 +251,7 @@ bool sgl_blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   int x, y, c;
   for (x = 0; x < width; ++x)
     for (y = 0; y < height; ++y) {
-#if !defined(GRAPHICS_DISABLE_CHROMA_KEY) && defined(BLIT_CHROMA_KEY)
+#if !defined(SGL_DISABLE_CHROMA_KEY) && defined(BLIT_CHROMA_KEY)
       c = XYGET(src, from_x + x, from_y + y);
       if (c == BLIT_CHROMA_KEY)
         continue;
@@ -352,7 +352,7 @@ void sgl_hline(surface_t* s, int y, int x0, int x1, int col) {
 }
 
 void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
-#if !defined(GRAPHICS_DISABLE_RGBA)
+#if !defined(SGL_DISABLE_RGBA)
   int a = A(col);
   if (!a)
     return;
@@ -366,7 +366,7 @@ void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
     sgl_hline(s, y0, x0, x1, col);
 
   int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
   int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
   int err = dx - dy, e2, x2;
   int ed = dx + dy == 0 ? 1 : sqrtf((float)dx * dx + (float)dy * dy);
@@ -376,7 +376,7 @@ void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
 #endif
 
   for (;;) {
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
     sgl_psetb(s, x0, y0, ACHAN(col, a - (a * abs(err - dx + dy) / ed)));
     e2 = err;
     x2 = x0;
@@ -420,7 +420,7 @@ void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
 }
 
 void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
-#if !defined(GRAPHICS_DISABLE_RGBA)
+#if !defined(SGL_DISABLE_RGBA)
   int a = A(col);
   if (!a)
     return;
@@ -432,13 +432,13 @@ void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
     return;
   
   int x = -r, y = 0, err = 2 - 2 * r;
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
   int i, x2, e2;
   r = 1 - err;
 #endif
   
   do {
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
     i = ACHAN(col, 255 - (255 * abs(err - 2 * (x + y) - 2) / r));
     sgl_psetb(s, xc - x, yc + y, i);
     sgl_psetb(s, xc - y, yc - x, i);
@@ -496,7 +496,7 @@ void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
 }
 
 void sgl_ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
 #pragma TODO(Add AA option);
 #endif
   
@@ -535,7 +535,7 @@ void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int
   float dx = 4 * (a - 1.) * b * b, dy = 4 * (b1 + 1) * a * a;
   float err = b1 * a * a - dx + dy;
   
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
   int f, ed, i;
   
   if (a == 0 || b == 0)
@@ -555,7 +555,7 @@ void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int
   a = 8 * a * a;
   b1 = 8 * b * b;
   
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
   for (;;) {
     i = fminf(dx, dy);
     ed = fmaxf(dx, dy);
@@ -683,12 +683,12 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
     yy += yy;
     err = dx + dy + xy;
     
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
     float ed;
 #endif
     
     do {
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
       cur = fminf(dx + xy, -xy - dy);
       ed = fmaxf(dx + xy, -xy - dy);
       ed += 2 * ed * cur * cur / (4 * ed * ed + cur * cur);
@@ -787,7 +787,7 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
   float dx = x0 - x2, dy = y0 - y2, xx = x0 - x1, yy = y0 - y1;
   float xy = xx * sy + yy * sx, cur = xx * sy - yy * sx, err;
   
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
   float ed;
   int f;
 #endif
@@ -815,7 +815,7 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
     dx = 4.f * w * (x1 - x0) * sy * cur + xx / 2.f + xy;
     dy = 4.f * w * (y0 - y1) * sx * cur + yy / 2.f + xy;
     
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
     if (w < .5f && dy > dx) {
 #else
       if (w < .5f && (dy > xy || dx < xy)) {
@@ -836,7 +836,7 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
       
       err = dx + dy - xy;
       do {
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
         cur = fminf(dx - xy, xy - dy);
         ed = fmaxf(dx - xy, xy - dy);
         ed += 2 * ed * cur * cur / (4.f * ed * ed + cur * cur);
@@ -995,7 +995,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
   float yc = -fabsf(y0 + y1 - y2 - y3), ya = yc - 4 * sy * (y1 - y2), yb = sy * (y0 - y1 - y2 + y3);
   float ab, ac, bc, ba, xx, xy, yy, dx, dy, ex, EP = .01f;
   
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
   float px, py, ed, ip;
 #else
   float* pxy;
@@ -1021,7 +1021,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
     bc *= f;
     ex *= f * f;
     xy = 9 * (ab + ac + bc) / 8;
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
     ip = 4 * ab * bc - ac * ac;
 #endif
     ba = 8 * (xa - ya);
@@ -1052,7 +1052,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
     ex = dx + dy;
     dy += xy;
     
-#if defined(GRAPHICS_ENABLE_AA)
+#if defined(SGL_ENABLE_AA)
     for (fx = fy = f; x0 != x3 && y0 != y3; ) {
       y1 = fminf(fabsf(xy - dx), fabsf(dy - xy));
       ed = fmaxf(fabsf(xy - dx), fabsf(dy - xy));
@@ -1486,7 +1486,7 @@ bool sgl_save_bmp(surface_t* s, const char* path) {
   return true;
 }
 
-#if !defined(GRAPHICS_DISABLE_TEXT) || defined(GRAPHICS_ENABLE_BDF)
+#if !defined(SGL_DISABLE_TEXT) || defined(SGL_ENABLE_BDF)
 int read_color(const char* str, int* col, int* len) {
   const char* c = str;
   if (*c != '(')
@@ -1571,7 +1571,7 @@ static inline void str_size(const char* str, int* w, int* h) {
 }
 #endif
 
-#if !defined(GRAPHICS_DISABLE_TEXT)
+#if !defined(SGL_DISABLE_TEXT)
 static char font[540][8] = {
   // Latin 0 - 94
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+0020 (space)
@@ -2328,7 +2328,7 @@ void sgl_delay(long ms) {
 #endif
 }
 
-#if defined(GRAPHICS_ENABLE_BDF)
+#if defined(SGL_ENABLE_BDF)
 #if defined(_WIN32)
 #define snprintf _snprintf
 #define vsnprintf _vsnprintf
@@ -2624,7 +2624,7 @@ void sgl_bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, 
 }
 #endif
 
-#if defined(GRAPHICS_ENABLE_STB_IMAGE)
+#if defined(SGL_ENABLE_STB_IMAGE)
 #define STB_IMAGE_IMPLEMENTATION
 #if !defined(STB_IMAGE_PATH)
 #include "3rdparty/stb_image.h"
@@ -2658,7 +2658,7 @@ bool sgl_image(surface_t* out, const char* path) {
   for (x = 0; x < w; ++x) {
     for (y = 0; y < h; ++y) {
       p = data + (x + w * y) * c;
-#if !defined(GRAPHICS_DISABLE_RGBA)
+#if !defined(SGL_DISABLE_RGBA)
       out->buf[y * w + x] = RGBA(p[0], p[1], p[2], (c == 4 ? p[3] : 255));
 #else
       out->buf[y * w + x] = (c == 4 && !p[3] ? BLIT_CHROMA_KEY : RGB(p[0], p[1], p[2]));
@@ -2681,7 +2681,7 @@ bool sgl_save_image(surface_t* in, const char* path) {
     return false;
   }
   
-#if !defined(GRAPHICS_DISABLE_RGBA)
+#if !defined(SGL_DISABLE_RGBA)
 #define NC 4
 #else
 #define NC 3
@@ -2702,7 +2702,7 @@ bool sgl_save_image(surface_t* in, const char* path) {
       p[0] = R(c);
       p[1] = G(c);
       p[2] = B(c);
-#if !defined(GRAPHICS_DISABLE_RGBA)
+#if !defined(SGL_DISABLE_RGBA)
       p[3] = A(c);
 #endif
     }
@@ -2736,13 +2736,13 @@ TRY_AGAIN_BRO:
 }
 #endif
 
-#if !defined(GRAPHICS_DISABLE_WINDOW)
+#if !defined(SGL_DISABLE_WINDOW)
 static short int keycodes[512];
 static surface_t* buffer;
 static void(*__resize_callback)(int, int) = NULL;
 static int mx = 0, my = 0, win_w, win_h;
 
-#if defined(GRAPHICS_ENABLE_JOYSTICKS)
+#if defined(SGL_ENABLE_JOYSTICKS)
 static struct {
   int size;
   joystick_t* head;
@@ -2810,7 +2810,7 @@ void sgl_resize_callback(void (*cb)(int, int)) {
   __resize_callback = cb;
 }
 
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
 #if defined(__APPLE__)
 #include <OpenGL/gl3.h>
 #endif
@@ -3099,7 +3099,7 @@ void free_gl() {
 
 #if defined(__APPLE__)
 #include <Cocoa/Cocoa.h>
-#if defined(GRAPHICS_ENABLE_METAL)
+#if defined(SGL_ENABLE_METAL)
 #include <MetalKit/MetalKit.h>
 #include <simd/simd.h>
 
@@ -3173,9 +3173,9 @@ static int translate_key(unsigned int key) {
 }
 @end
 
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
 @interface osx_view_t : NSOpenGLView {
-#elif defined(GRAPHICS_ENABLE_METAL)
+#elif defined(SGL_ENABLE_METAL)
 @interface osx_view_t : MTKView {
   id<MTLDevice> _device;
   id<MTLRenderPipelineState> _pipeline;
@@ -3350,7 +3350,7 @@ void sgl_custom_cursor(surface_t* s) {
 extern surface_t* buffer;
 
 -(id)initWithFrame:(CGRect)r {
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
   NSOpenGLPixelFormatAttribute pixelFormatAttributes[] = {
     NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
     NSOpenGLPFAColorSize, 24,
@@ -3370,7 +3370,7 @@ extern surface_t* buffer;
 
     init_gl(r.size.width, r.size.height);
   }
-#elif defined(GRAPHICS_ENABLE_METAL)
+#elif defined(SGL_ENABLE_METAL)
   _device = MTLCreateSystemDefaultDevice();
   self = [super initWithFrame:r device:_device];
   if (self != nil) {
@@ -3533,11 +3533,11 @@ extern surface_t* buffer;
   if (!buffer || !buffer->buf)
     return;
 
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
   [super drawRect: r];
   draw_gl();
   [[self openGLContext] flushBuffer];
-#elif defined(GRAPHICS_ENABLE_METAL)
+#elif defined(SGL_ENABLE_METAL)
   [super drawRect: r];
   
   MTLTextureDescriptor* td = [[MTLTextureDescriptor alloc] init];
@@ -3596,9 +3596,9 @@ extern surface_t* buffer;
 }
 
 -(void)dealloc {
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
   free_gl();
-#elif defined(GRAPHICS_ENABLE_METAL)
+#elif defined(SGL_ENABLE_METAL)
   [_device sgl_release];
   [_pipeline sgl_release];
   [_cmd_queue sgl_release];
@@ -3696,9 +3696,9 @@ extern surface_t* buffer;
   CGSize size = [app contentRectForFrameRect:[app frame]].size;
   win_w = size.width;
   win_h = size.height - border_off;
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
   glViewport(0, 0, win_w, win_h);
-#elif defined(GRAPHICS_ENABLE_METAL)
+#elif defined(SGL_ENABLE_METAL)
   mtk_viewport.x = win_w * scale_f;
   mtk_viewport.y = (win_h * scale_f) + (4 * scale_f);
 #endif
@@ -4017,11 +4017,11 @@ static WNDCLASS wnd;
 static HWND hwnd;
 static bool __closed = false;
 static HDC hdc = 0;
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
 static PIXELFORMATDESCRIPTOR pfd;
 static HGLRC hrc;
 static PAINTSTRUCT ps;
-#elif defined(GRAPHICS_ENABLE_DX9)
+#elif defined(SGL_ENABLE_DX9)
 #define COBJMACROS 1
 #include <d3d9.h>
 #pragma comment (lib, "d3d9.lib")
@@ -4043,7 +4043,28 @@ static BOOL cursor_locked = FALSE;
 static RECT __rc = { 0 };
 static long adjust_flags = WS_POPUP | WS_SYSMENU | WS_CAPTION;
 
-#if defined(GRAPHICS_ENABLE_JOYSTICKS)
+#if defined(SGL_ENABLE_JOYSTICKS)
+#if defined(SGL_DISABLE_DIRECTINPUT)
+#include <regstr.h>
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
+
+typedef struct {
+  UINT joystick_id;
+  JOYINFOEX last_state;
+  int xAxisIndex;
+  int yAxisIndex;
+  int zAxisIndex;
+  int rAxisIndex;
+  int uAxisIndex;
+  int vAxisIndex;
+  int povXAxisIndex;
+  int povYAxisIndex;
+  UINT(*axis_ranges)[2];
+} joystick_private_t;
+
+#define REG_STRING_MAX 256
+#else
 #if !defined(STRICT)
 #define STRICT 
 #endif
@@ -4071,7 +4092,7 @@ static long adjust_flags = WS_POPUP | WS_SYSMENU | WS_CAPTION;
 
 #define INPUT_QUEUE_SIZE 32
 
-#if !defined(GRAPHICS_DISABLE_XINPUT)
+#if !defined(SGL_DISABLE_XINPUT)
 #if (_WIN32_WINNT >= _WIN32_WINNT_WIN7)
 #include <XInput.h>
 #pragma comment(lib, "xinput.lib")
@@ -4134,7 +4155,7 @@ typedef struct {
 
 static LPDIRECTINPUT8 did;
 
-#if !defined(GRAPHICS_DISABLE_XINPUT)
+#if !defined(SGL_DISABLE_XINPUT)
 static bool xinput_available = true;
 
 DEFINE_GUID(IID_ValveStreamingGamepad, MAKELONG(0x28DE, 0x11FF), 0x0000, 0x0000, 0x00, 0x00, 0x50, 0x49, 0x44, 0x56, 0x49, 0x44);
@@ -4145,14 +4166,14 @@ static PRAWINPUTDEVICELIST raw_dev_list = NULL;
 static UINT raw_dev_list_c = 0;
 
 static bool is_xinput_device(const GUID* pGuidProductFromDirectInput) {
-  static const GUID * s_XInputProductGUID[] = {
+  static const GUID* xinput_product_ids[] = {
     &IID_ValveStreamingGamepad,
     &IID_X360WiredGamepad,   // Microsoft's wired X360 controller for Windows
     &IID_X360WirelessGamepad // Microsoft's wireless X360 controller for Windows
   };
 
-  for (int i = 0; i < sizeof(s_XInputProductGUID) / sizeof(s_XInputProductGUID[0]); ++i)
-    if (!memcmp(pGuidProductFromDirectInput, s_XInputProductGUID[i], sizeof(GUID)))
+  for (int i = 0; i < sizeof(xinput_product_ids) / sizeof(xinput_product_ids[0]); ++i)
+    if (!memcmp(pGuidProductFromDirectInput, xinput_product_ids[i], sizeof(GUID)))
       return true;
 
   if (!raw_dev_list) {
@@ -4175,10 +4196,10 @@ static bool is_xinput_device(const GUID* pGuidProductFromDirectInput) {
     UINT nameSize = sizeof(devName);
     rdi.cbSize = sizeof(rdi);
     if (raw_dev_list[i].dwType == RIM_TYPEHID &&
-        GetRawInputDeviceInfoA(raw_dev_list[i].hDevice, RIDI_DEVICEINFO, &rdi, &rdiSize) != (UINT)-1 &&
-        MAKELONG(rdi.hid.dwVendorId, rdi.hid.dwProductId) == (LONG)pGuidProductFromDirectInput->Data1 &&
-        GetRawInputDeviceInfoA(raw_dev_list[i].hDevice, RIDI_DEVICENAME, devName, &nameSize) != (UINT)-1 &&
-        strstr(devName, "IG_") != NULL)
+      GetRawInputDeviceInfoA(raw_dev_list[i].hDevice, RIDI_DEVICEINFO, &rdi, &rdiSize) != (UINT)-1 &&
+      MAKELONG(rdi.hid.dwVendorId, rdi.hid.dwProductId) == (LONG)pGuidProductFromDirectInput->Data1 &&
+      GetRawInputDeviceInfoA(raw_dev_list[i].hDevice, RIDI_DEVICENAME, devName, &nameSize) != (UINT)-1 &&
+      strstr(devName, "IG_") != NULL)
       return true;
   }
 
@@ -4369,7 +4390,7 @@ const DIDATAFORMAT c_dfDIJoystick2 = {
 #endif
 
 static BOOL CALLBACK count_axes_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID context) {
-  joystick_t* device = (joystick_t*)context; 
+  joystick_t* device = (joystick_t*)context;
   device->n_axes++;
   if (instance->dwType & DIDFT_POV)
     device->n_axes++;
@@ -4399,7 +4420,8 @@ static BOOL CALLBACK enum_axes_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID con
     private->axis_info[device->n_axes - 1].offset = offset;
     private->axis_info[device->n_axes - 1].is_pov = TRUE;
     private->pov_c++;
-  } else {
+  }
+  else {
     if (!memcmp(&instance->guidType, &GUID_XAxis, sizeof(instance->guidType)))
       offset = DIJOFS_X;
     else if (!memcmp(&instance->guidType, &GUID_YAxis, sizeof(instance->guidType)))
@@ -4460,7 +4482,7 @@ static BOOL CALLBACK enum_devices_cb(const DIDEVICEINSTANCE* instance, LPVOID co
     current = current->next;
   }
 
-#if !defined(GRAPHICS_DISABLE_XINPUT)
+#if !defined(SGL_DISABLE_XINPUT)
   if (xinput_available && is_xinput_device(&instance->guidProduct))
     return DIENUM_CONTINUE;
 #endif
@@ -4535,9 +4557,11 @@ static BOOL CALLBACK enum_devices_cb(const DIDEVICEINSTANCE* instance, LPVOID co
 
   return DIENUM_CONTINUE;
 }
+#endif
 
 bool sgl_joystick_init(bool scan_too) {
-#if !defined(GRAPHICS_DISABLE_XINPUT)
+#if !defined(SGL_DISABLE_DIRECTINPUT)
+#if !defined(SGL_DISABLE_XINPUT)
   HMODULE dll_xi = LoadLibrary("XInput1_4.dll");
   if (!dll_xi) {
     dll_xi = LoadLibrary("XInput1_3.dll");
@@ -4564,10 +4588,121 @@ bool sgl_joystick_init(bool scan_too) {
     error_handle(PRIO_LOW, "DirectInput8Create() failed: %s", GetLastError());
     return false;
   }
-
+#endif
   return (scan_too ? sgl_joystick_scan() : true);
 }
 
+#if defined(SGL_DISABLE_DIRECTINPUT)
+static char* get_mm_description(UINT id, JOYCAPS caps) {
+  char sub_key[REG_STRING_MAX];
+  snprintf(sub_key, REG_STRING_MAX, "%s\\%s\\%s", REGSTR_PATH_JOYCONFIG, caps.szRegKey, REGSTR_KEY_JOYCURR);
+  LONG result;
+  HKEY top_key, key;
+  char* description = NULL;
+
+  if ((result = RegOpenKeyEx(top_key = HKEY_LOCAL_MACHINE, sub_key, 0, KEY_READ, &key)) != ERROR_SUCCESS)
+    result = RegOpenKeyEx(top_key = HKEY_CURRENT_USER, sub_key, 0, KEY_READ, &key);
+  if (result == ERROR_SUCCESS) {
+    char value[REG_STRING_MAX];
+    char name[REG_STRING_MAX];
+    snprintf(value, REG_STRING_MAX, "Joystick%d%s", id + 1, REGSTR_VAL_JOYOEMNAME);
+    DWORD name_sz = sizeof(name);
+    result = RegQueryValueEx(key, value, NULL, NULL, (LPBYTE)name, &name_sz);
+    RegCloseKey(key);
+
+    if (result == ERROR_SUCCESS) {
+      snprintf(sub_key, REG_STRING_MAX, "%s\\%s", REGSTR_PATH_JOYOEM, name);
+      result = RegOpenKeyEx(top_key, sub_key, 0, KEY_READ, &key);
+
+      if (result == ERROR_SUCCESS) {
+        name_sz = sizeof(name);
+        result = RegQueryValueEx(key, REGSTR_VAL_JOYOEMNAME, NULL, NULL, NULL, &name_sz);
+
+        if (result == ERROR_SUCCESS) {
+          description = malloc(name_sz);
+          result = RegQueryValueEx(key, REGSTR_VAL_JOYOEMNAME, NULL, NULL, (LPBYTE)description, &name_sz);
+        }
+        RegCloseKey(key);
+
+        if (result == ERROR_SUCCESS)
+          return description;
+        free(description);
+      }
+    }
+  }
+
+  description = malloc(strlen(caps.szPname) + 1);
+  strcpy(description, caps.szPname);
+  return description;
+}
+
+static void handle_btn_change(joystick_t* device, DWORD lv, DWORD v) {
+  for (int b = 0; b < device->n_buttons; ++b) {
+    if (!((lv ^ v) & (1 << b)))
+      continue;
+
+    bool down = !!(v & (1 << b));
+    device->buttons[b] = down;
+    if (__joystick_btn_cb)
+      __joystick_btn_cb(device, b, down, ticks());
+  }
+}
+
+static void handle_axis_change(joystick_t* device, int index, DWORD iv) {
+  if (index < 0 || index >= device->n_axes)
+    return;
+
+  joystick_private_t* private = (joystick_private_t*)device->__private;
+
+  float v  = (iv - private->axis_ranges[index][0]) / (float)(private->axis_ranges[index][1] - private->axis_ranges[index][0]) * 2.0f - 1.0f;
+  float lv = device->axes[index];
+  device->axes[index] = v;
+
+  if (__joystick_axis_cb)
+    __joystick_axis_cb(device, index, v, lv, ticks());
+}
+
+static void pov_to_xy(DWORD pov, int* x, int* y) {
+  if (pov == JOY_POVCENTERED)
+    *x = *y = 0;
+  else {
+    if (pov > JOY_POVFORWARD && pov < JOY_POVBACKWARD)
+      *x = 1;
+    else if (pov > JOY_POVBACKWARD)
+      *x = -1;
+    else
+      *x = 0;
+
+    if (pov > JOY_POVLEFT || pov < JOY_POVRIGHT)
+      *y = -1;
+    else if (pov > JOY_POVRIGHT && pov < JOY_POVLEFT)
+      *y = 1;
+    else
+      *y = 0;
+  }
+}
+
+static void handle_pov_change(joystick_t* device, DWORD lv, DWORD v) {
+  joystick_private_t* private = (joystick_private_t*)device->__private;
+  if (private->povXAxisIndex == -1 || private->povYAxisIndex == -1)
+    return;
+
+  int lx, ly, nx, ny;
+  pov_to_xy(lv, &lx, &ly);
+  pov_to_xy(v, &nx, &ny);
+
+  if (nx != lx) {
+    device->axes[private->povXAxisIndex] = nx;
+    if (__joystick_axis_cb)
+      __joystick_axis_cb(device, private->povXAxisIndex, nx, lx, ticks());
+  }
+  if (ny != ly) {
+    device->axes[private->povYAxisIndex] = ny;
+    if (__joystick_axis_cb)
+      __joystick_axis_cb(device, private->povYAxisIndex, ny, ly, ticks());
+  }
+}
+#else
 static void update_btn(joystick_t* device, unsigned int index, bool down, long time) {
   device->buttons[index] = down;
   if (__joystick_btn_cb)
@@ -4610,8 +4745,81 @@ static void update_axis_pov(joystick_t* device, unsigned int index, DWORD iv, lo
   update_axis_float(device, index, x, time);
   update_axis_float(device, index + 1, y, time);
 }
+#endif
 
 bool sgl_joystick_scan() {
+#if defined(SGL_DISABLE_DIRECTINPUT)
+  unsigned int n_supported = joyGetNumDevs();
+  JOYINFOEX info;
+  JOYCAPS caps;
+
+  for (int i = 0; i < n_supported; ++i) {
+    info.dwSize = sizeof(info);
+    info.dwFlags = JOY_RETURNALL;
+    int id = JOYSTICKID1 + i;
+    if (joyGetPosEx(id, &info) == JOYERR_NOERROR && joyGetDevCaps(id, &caps, sizeof(JOYCAPS)) == JOYERR_NOERROR) {
+      bool is_dupe = false;
+      joystick_t* current = joy_devices.head;
+      while (current) {
+        if (((joystick_private_t*)current->__private)->joystick_id == id) {
+          is_dupe = true;
+          break;
+        }
+        current = current->next;
+      }
+      if (is_dupe)
+        continue;
+
+      joystick_private_t* private = malloc(sizeof(joystick_private_t));
+      private->joystick_id = id;
+      private->last_state = info;
+      private->xAxisIndex = 0;
+      private->yAxisIndex = 1;
+      int a = 2;
+      private->zAxisIndex = (caps.wCaps & JOYCAPS_HASZ) ? a++ : -1;
+      private->rAxisIndex = (caps.wCaps & JOYCAPS_HASR) ? a++ : -1;
+      private->uAxisIndex = (caps.wCaps & JOYCAPS_HASU) ? a++ : -1;
+      private->vAxisIndex = (caps.wCaps & JOYCAPS_HASV) ? a++ : -1;
+      private->axis_ranges = malloc(sizeof(UINT[2]) * a);
+      private->axis_ranges[0][0] = caps.wXmin;
+      private->axis_ranges[0][1] = caps.wXmax;
+      private->axis_ranges[1][0] = caps.wYmin;
+      private->axis_ranges[1][1] = caps.wYmax;
+      if (private->zAxisIndex != -1) {
+        private->axis_ranges[private->zAxisIndex][0] = caps.wZmin;
+        private->axis_ranges[private->zAxisIndex][1] = caps.wZmax;
+      }
+      if (private->rAxisIndex != -1) {
+        private->axis_ranges[private->rAxisIndex][0] = caps.wRmin;
+        private->axis_ranges[private->rAxisIndex][1] = caps.wRmax;
+      }
+      if (private->uAxisIndex != -1) {
+        private->axis_ranges[private->uAxisIndex][0] = caps.wUmin;
+        private->axis_ranges[private->uAxisIndex][1] = caps.wUmax;
+      }
+      if (private->vAxisIndex != -1) {
+        private->axis_ranges[private->vAxisIndex][0] = caps.wVmin;
+        private->axis_ranges[private->vAxisIndex][1] = caps.wVmax;
+      }
+      private->povXAxisIndex = (caps.wCaps & JOYCAPS_HASPOV) ? a++ : -1;
+      private->povYAxisIndex = (caps.wCaps & JOYCAPS_HASPOV) ? a++ : -1;
+
+      joystick_t* device = malloc(sizeof(joystick_t));
+      device->__private = private;
+      device->next = NULL;
+      device->device_id = next_device_id++;
+      device->description = get_mm_description(id, caps);
+      device->vendor_id = caps.wMid;
+      device->product_id = caps.wPid;
+      device->n_axes = caps.wNumAxes + ((caps.wCaps & JOYCAPS_HASPOV) ? 2 : 0);
+      device->n_buttons = caps.wNumButtons;
+      device->axes = malloc(sizeof(float) * device->n_axes);
+      device->buttons = malloc(sizeof(bool) * device->n_buttons);
+
+      add_joystick(device);
+    }
+  }
+#else
   if (!did) {
     error_handle(PRIO_LOW, "IDirectInput_EnumDevices() failed: DirectInput not initiated, call sgl_joystick_init first");
     return false;
@@ -4622,7 +4830,7 @@ bool sgl_joystick_scan() {
     return false;
   }
 
-#if !defined(GRAPHICS_DISABLE_XINPUT)
+#if !defined(SGL_DISABLE_XINPUT)
   DWORD xresult;
   XINPUT_CAPABILITIES capabilities;
   if (xinput_available) {
@@ -4655,6 +4863,7 @@ bool sgl_joystick_scan() {
     }
   }
 #endif
+#endif
 
   return true;
 }
@@ -4663,12 +4872,17 @@ static inline void release_joystick(joystick_t** d) {
   joystick_t* _d = *d;
   joystick_private_t* _p = _d->__private;
 
+#if defined(SGL_DISABLE_DIRECTINPUT)
+  FREE_SAFE(_p->axis_ranges);
+  FREE_SAFE((void*)_d->description);
+#else
   if (!_p->is_xinput) {
     IDirectInputDevice8_Release(_p->di8dev);
     FREE_SAFE(_p->axis_info);
     FREE_SAFE(_p->button_offsets);
     FREE_SAFE((void*)_d->description);
   }
+#endif
   FREE_SAFE(_p);
   FREE_SAFE(_d->axes);
   FREE_SAFE(_d->buttons);
@@ -4707,11 +4921,40 @@ void sgl_joystick_poll() {
   joystick_t* device = joy_devices.head;
   joystick_private_t* private = NULL;
   HRESULT result;
+#if defined(SGL_DISABLE_DIRECTINPUT)
+  JOYINFOEX info;
+#endif
 
   while (device) {
     private = device->__private;
 
-#if !defined(GRAPHICS_DISABLE_XINPUT)
+#if defined(SGL_DISABLE_DIRECTINPUT)
+    info.dwSize = sizeof(info);
+    info.dwFlags = JOY_RETURNALL;
+    result = joyGetPosEx(private->joystick_id, &info);
+    if (result == JOYERR_UNPLUGGED)
+      sgl_joystick_remove(device->device_id);
+    else if (result == JOYERR_NOERROR) {
+      if (info.dwXpos != private->last_state.dwXpos)
+        handle_axis_change(device, private->xAxisIndex, info.dwXpos);
+      if (info.dwYpos != private->last_state.dwYpos)
+        handle_axis_change(device, private->yAxisIndex, info.dwYpos);
+      if (info.dwZpos != private->last_state.dwZpos)
+        handle_axis_change(device, private->zAxisIndex, info.dwZpos);
+      if (info.dwRpos != private->last_state.dwRpos)
+        handle_axis_change(device, private->rAxisIndex, info.dwRpos);
+      if (info.dwUpos != private->last_state.dwUpos)
+        handle_axis_change(device, private->uAxisIndex, info.dwUpos);
+      if (info.dwVpos != private->last_state.dwVpos)
+        handle_axis_change(device, private->vAxisIndex, info.dwVpos);
+      if (info.dwPOV != private->last_state.dwPOV)
+        handle_pov_change(device, private->last_state.dwPOV, info.dwPOV);
+      if (info.dwButtons != private->last_state.dwButtons)
+        handle_btn_change(device, private->last_state.dwButtons, info.dwButtons);
+      private->last_state = info;
+    }
+#else
+#if !defined(SGL_DISABLE_XINPUT)
     if (private->is_xinput) {
       XINPUT_STATE state;
       DWORD xresult;
@@ -4758,6 +5001,7 @@ void sgl_joystick_poll() {
       }
     } else {
 #endif
+#pragma TODO(Fix crash when disconnecting device)
       result = IDirectInputDevice8_Poll(private->di8dev);
       if (result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) {
         IDirectInputDevice8_Acquire(private->di8dev);
@@ -4855,8 +5099,9 @@ void sgl_joystick_poll() {
           }
         }
       }
-#if !defined(GRAPHICS_DISABLE_XINPUT)
+#if !defined(SGL_DISABLE_XINPUT)
     }
+#endif
 #endif
 
     device = device->next;
@@ -4920,11 +5165,11 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
   switch (message) {
     case WM_PAINT:
       if (buffer) {
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
         draw_gl();
         BeginPaint(hwnd, &ps);
         EndPaint(hwnd, &ps);
-#elif defined(GRAPHICS_ENABLE_DX9)
+#elif defined(SGL_ENABLE_DX9)
         IDirect3DDevice9_Clear(d3ddev, 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(255, 0, 0), 1.0f, 0);
         IDirect3DDevice9_BeginScene(d3ddev);
         IDirect3DDevice9_EndScene(d3ddev);
@@ -4951,7 +5196,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       if (__resize_callback)
         __resize_callback(win_w, win_h);
 
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
       glViewport(rect.left, rect.top, rect.right, win_h);
       PostMessage(hWnd, WM_PAINT, 0, 0);
 #endif
@@ -5289,7 +5534,7 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
       cy = GetSystemMetrics(SM_CYSCREEN) / 2 - adjusted_win_h / 2;
 
   HINSTANCE hinst = GetModuleHandle(NULL);
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
   wnd.style = CS_OWNDC;
 #else
   wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
@@ -5312,7 +5557,7 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
 
   hdc = GetDC(hwnd);
 
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
   memset(&pfd, 0, sizeof(pfd));
   pfd.nSize = sizeof(pfd);
   pfd.nVersion = 1;
@@ -5340,7 +5585,7 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
 
   if (!init_gl(w, h))
     return false;
-#elif defined(GRAPHICS_ENABLE_DX9)
+#elif defined(SGL_ENABLE_DX9)
   d3d = Direct3DCreate9(D3D_SDK_VERSION);
 
   D3DPRESENT_PARAMETERS d3dpp;
@@ -5403,10 +5648,10 @@ void sgl_flush(surface_t* s) {
 }
 
 void sgl_release() {
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
   free_gl();
   wglMakeCurrent(NULL, NULL);
-#elif defined(GRAPHICS_ENABLE_DX9)
+#elif defined(SGL_ENABLE_DX9)
   IDirect3DDevice9_Release(d3ddev);
   IDirect3D9_Release(d3d);
 #else
@@ -5426,7 +5671,7 @@ static int closed = 0;
 static surface_t* buffer;
 static Window win;
 static GC gc;
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
 static GLXContext ctx;
 static Colormap cmap;
 #else
@@ -5438,7 +5683,7 @@ static KeySym sym;
 #define Button6 6
 #define Button7 7
 
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
 #define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
 #define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
 typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
@@ -5743,7 +5988,7 @@ int sgl_screen(const char* title, int w, int h) {
 
   int screen = DefaultScreen(display);
 
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
   static int visual_attribs[] = {
     GLX_X_RENDERABLE, True,
     GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
@@ -5856,7 +6101,7 @@ int sgl_screen(const char* title, int w, int h) {
   hints.flags = PPosition;
   hints.x = 0;
   hints.y = 0;
-#if !defined(GRAPHICS_ENABLE_OPENGL)
+#if !defined(SGL_ENABLE_OPENGL)
   hints.flags |= PMinSize | PMaxSize;
   hints.min_width = w;
   hints.max_width = w;
@@ -5871,7 +6116,7 @@ int sgl_screen(const char* title, int w, int h) {
 
   gc = DefaultGC(display, screen);
 
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
   XFree(vi);
 
   glXCreateContextAttribsARBProc glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc)glXGetProcAddressARB((const GLubyte*)"glXCreateContextAttribsARB");
@@ -5977,7 +6222,7 @@ int poll_events(event_t* ue) {
       ue->btn = (event.xbutton.button - 4);
     }
     break;
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
   case ConfigureNotify:
     win_w = event.xconfigure.width;
     win_h = event.xconfigure.height;
@@ -6000,7 +6245,7 @@ int poll_events(event_t* ue) {
 void render(surface_t* s) {
   if (s && s->buf)
     buffer = s;
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
   draw_gl();
   glXSwapBuffers(display, win);
 #else
@@ -6011,7 +6256,7 @@ void render(surface_t* s) {
 }
 
 void sgl_release() {
-#if defined(GRAPHICS_ENABLE_OPENGL)
+#if defined(SGL_ENABLE_OPENGL)
   glXMakeCurrent(display, 0, 0);
   glXDestroyContext(display, ctx);
   XFreeColormap(display, cmap);

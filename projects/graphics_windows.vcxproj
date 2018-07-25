@@ -93,7 +93,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <PreprocessorDefinitions>GRAPHICS_ENABLE_OPENGL;GRAPHICS_ENABLE_DX9a;GRAPHICS_ENABLE_DX11a;GRAPHICS_ENABLE_AAa;GRAPHICS_DISABLE_RGBAa;GRAPHICS_ENABLE_STB_IMAGE;GRAPHICS_ENABLE_BDF;GRAPHICS_ENABLE_JOYSTICKS;GRAPHICS_DISABLE_XINPUT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>SGL_ENABLE_OPENGL;SGL_ENABLE_DX9a;SGL_ENABLE_DX11a;SGL_ENABLE_AAa;SGL_DISABLE_RGBAa;SGL_ENABLE_STB_IMAGE;SGL_ENABLE_BDF;SGL_ENABLE_JOYSTICKS;SGL_DISABLE_XINPUT;SGL_DISABLE_DIRECTINPUT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
