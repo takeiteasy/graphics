@@ -379,7 +379,7 @@ extern "C" {
   bool sgl_joystick_init(bool scan_too);
   bool sgl_joystick_scan(void);
   void sgl_joystick_release(void);
-  void sgl_joystick_remove(int id);
+  bool sgl_joystick_remove(int id);
   void sgl_joystick_poll(void);
 
 #if !defined(SGL_DISABLE_SHORT_NAMES)

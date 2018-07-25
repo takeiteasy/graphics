@@ -266,7 +266,11 @@ int main(int argc, const char* argv[]) {
     blit(&win, &points[3], &s[4], NULL);
 
     rotate(&s[5], theta, &s[7]);
-    blit(&win, &points[5], &s[7], NULL);
+    point_t tmp = {
+      points[5].x - s[7].w / 2 + s[5].w / 2,
+      points[5].y - s[7].h / 2 + s[5].h / 2,
+    };
+    blit(&win, &tmp, &s[7], NULL);
     blit(&win, &points[5], &s[5], NULL);
     theta += (.05f * speed);
     if (theta >= 360.f)
