@@ -369,7 +369,7 @@ bool sgl_rotate(surface_t* in, float angle, surface_t* out) {
       sy = ((y + mm[0][1]) * c - (x + mm[0][0]) * s);
       if (sx < 0 || sx >= in->w || sy < 0 || sy >= in->h)
         continue;
-      psetb(out, x, y, pget(in, sx, sy));
+      __pset(out, x, y, pget(in, sx, sy));
     }
   return true;
 }
@@ -1549,6 +1549,7 @@ bool sgl_save_bmp(surface_t* s, const char* path) {
 
 #if !defined(SGL_DISABLE_TEXT) || defined(SGL_ENABLE_BDF)
 int read_color(const char* str, int* col, int* len) {
+#pragma FIXME(Alpha value wrong?)
   const char* c = str;
   if (*c != '(')
     return 0;
@@ -3562,6 +3563,7 @@ extern surface_t* buffer;
 }
 
 -(void)mouseMoved:(NSEvent*)event {
+#pramga FIXME(CGWarpMouseCursorPosition affects delta values)
   if (__cursor_state) {
     mx = CLAMP((int)(floorf([event locationInWindow].x - 1) + [event deltaX]), 0, win_w);
     my = CLAMP((int)(floorf(win_h - 1 - [event locationInWindow].y) + [event deltaY]), 0, win_h);

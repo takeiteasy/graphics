@@ -46,7 +46,7 @@ void on_resize(int w, int h) {
   writelnf(&win, 4, 5, WHITE, -1, "%dx%d\n", w, h);
 }
 
-// Define RES_PATH or it will use defaults below
+// Define RES_PATH or it will use my paths
 #if !defined(RES_PATH)
 #if defined(__APPLE__)
 #define RES_PATH "/Users/roryb/Documents/git/graphics.h/tests/"
@@ -65,6 +65,7 @@ void on_error(ERRPRIO pri, const char* msg, const char* file, const char* func, 
     abort();
 }
 
+#if defined(SGL_ENABLE_JOYSTICKS)
 void on_joystick_connect(joystick_t* d, int i) {
   printf("%s connected\n", d->description);
 }
@@ -80,23 +81,7 @@ void on_joystick_btn(joystick_t* d, int btn, bool down, long time) {
 void on_joystick_axis(joystick_t* d, int axis, float v, float lv, long time) {
   printf("%s: axis: %d: %f %f\n", d->description, axis, v, lv);
 }
-
-/* TODO next
- - OSX
-  - Joystick API
-  - Fix delta error from cursor warping + cursor locking to view
- - Linux
-  - Joystick API
-  - Update function names
-  - Add window flags
-  - Add cursor handling
- - Windows
-  - Fix crash when disconnecting joystick
- - All
-  - Load cursor from surface
-  - Mouse delta values
- - Update TODO list in README
- */
+#endif
 
 int main(int argc, const char* argv[]) {
   screen("test", &win, win_w, win_h, DEFAULT);
@@ -104,8 +89,10 @@ int main(int argc, const char* argv[]) {
   error_callback(on_error);
   cursor(SHOWN, UNLOCKED, CURSOR_HAND);
 
+#if defined(SGL_ENABLE_JOYSTICKS)
   joystick_callbacks(on_joystick_connect, on_joystick_disconnect, on_joystick_btn, on_joystick_axis);
   joystick_init(true);
+#endif
 
   surface_t s[10];
   for (int i = 0; i < 10; ++i)
@@ -113,15 +100,19 @@ int main(int argc, const char* argv[]) {
   
   surface(&s[0], 50, 50);
 
+#if defined(SGL_ENABLE_STB_IMAGE)
   image(&s[1], RES("test_alpha.png"));
-  
+#endif
+
   bmp(&s[6], RES("lena.bmp"));
   resize(&s[6], s[6].w / 2, s[6].h / 2, &s[2]);
   destroy(&s[6]);
   
+#if defined(SGL_ENABLE_BDF)
   // BDF font from tewi-font: https://github.com/lucy/tewi-font
   bdf_t tewi;
   bdf(&tewi, RES("tewi.bdf"));
+#endif
   
   copy(&s[2], &s[4]);
   filter(&s[4], invert);
@@ -163,7 +154,9 @@ int main(int argc, const char* argv[]) {
     prev_frame_tick = curr_frame_tick;
     curr_frame_tick = ticks();
 
+#if defined(SGL_ENABLE_JOYSTICKS)
     joystick_poll();
+#endif
 
     while (poll(&e)) {
       switch (e.type) {
@@ -224,11 +217,15 @@ int main(int argc, const char* argv[]) {
     for (int y = 32; y < win.h; y += 32)
       hline(&win, y, 0, win.w, GRAY);
 
+#if defined(SGL_ENABLE_STB_IMAGE)
     blit(&win, &points[8], &s[1], NULL);
+#endif
 
     writeln(&win, 10, 10, RED, -1, "Hello World");
     writeln(&win, 10, 22, MAROON, -1, "こんにちは");
+#if defined(SGL_ENABLE_BDF)
     bdf_writeln(&win, &tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ bdf!");
+#endif
     writeln(&win, 10, 48, RED, BLACK, "\f(255,0,0)\b(0,0,0)test\f(0,255,0)\b(0,0,0)test");
 
     int last_x = 0, last_y = 200;
@@ -283,8 +280,12 @@ FLUSH:
     flush(&win);
   }
 
+#if defined(SGL_ENABLE_JOYSTICKS)
   joystick_release();
+#endif
+#if defined(SGL_ENABLE_BDF)
   bdf_destroy(&tewi);
+#endif
   destroy(&win);
   for (int i = 0; i < (int)(sizeof(s) / sizeof(s[0])); ++i)
     destroy(&s[i]);
