@@ -2,7 +2,7 @@
 
 Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb), [SDL 1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/).
 
-Designed to be a drop-in and use sort of deal with little hassle. I don't know if anyone will really find a use for this besides me. But it's very fun to work on. It's not explicitly a game development library, just a rendering library. It's most likely less efficient, slower, more buggy and has less features, support, compatibility and portability than SDL - Just so you know, if you didn't already guess.
+Designed to be a drop-in and use with little hassle sort of deal. I don't know if anyone will really find a use for this besides me. But it's very fun to work on. It's not explicitly a game development library, just a rendering library. It's most likely less efficient, slower, more buggy and has less features, support, compatibility and portability than SDL - Just so you know, if you didn't already guess.
 
 
 ## Features
@@ -59,23 +59,24 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 - Test different scaling functions
 - Add fill option for ```ellipse_rotated()``` and other functions
 - Add line width option
-- Wayland window code
 - CMake file for build options
-- 1 & 4 bpp, RLE compressed and OS/2 BMP support (Just because)
+- 1 & 4 bpp, RLE compressed and OS/2 BMP support
 - Message box support
 - Window icon support
+- Merge text rendering functions to reduce redundancy
+- Finish cursor loading from surface
 
 ### Maybe
 
 - Make thread safe (surface locks)
 - Vulkan/DirectX/~~Metal~~ backends
+- Wayland window code
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples/tests
 - More extras (gif load/save, FreeType fonts, C++ OOP wrapper)
 - Optional OpenCL for processing stuff
 - Pixel shader support
-- Merge text rendering functions to reduce redundancy
 
 
 ## License

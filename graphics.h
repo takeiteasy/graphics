@@ -236,6 +236,7 @@ extern "C" {
   bool sgl_copy(surface_t* in, surface_t* out);
   void sgl_filter(surface_t* s, int(*fn)(int x, int y, int col));
   bool sgl_resize(surface_t* in, int nw, int nh, surface_t* out);
+  bool sgl_rotate(surface_t* in, float angle, surface_t* out);
   
   void sgl_vline(surface_t* s, int x, int y0, int y1, int col);
   void sgl_hline(surface_t* s, int y, int x0, int x1, int col);
@@ -280,6 +281,7 @@ extern "C" {
 #define copy sgl_copy
 #define filter sgl_filter
 #define resize sgl_resize
+#define rotate sgl_rotate
 
 #define vline sgl_vline
 #define hline sgl_hline

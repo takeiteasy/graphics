@@ -14,7 +14,17 @@
 #   undef SGL_ENABLE_OPENGL
 # endif
 #elif defined(_WIN32)
-# if defined(SGL_ENABLE_DX9) && defined(SGL_ENABLE_OPENGL)
+# if (defined(SGL_ENABLE_DX9) || defined(SGL_ENABLE_DX11) || defined(SGL_ENABLE_VULKAN)) && defined(SGL_ENABLE_OPENGL)
+#   undef SGL_ENABLE_OPENGL
+# endif
+# if (defined(SGL_ENABLE_DX9) || defined(SGL_ENABLE_DX11)) && defined(SGL_ENABLE_VULKAN)
+#   undef SGL_ENABLE_VULKAN
+# endif
+# if defined(SGL_ENABLE_DX11) && defined(SGL_ENABLE_DX9)
+#   undef SGL_ENABLE_DX9
+# endif
+#else
+# if defined(SGL_ENABLE_VULKAN) && defined(SGL_ENABLE_OPENGL)
 #   undef SGL_ENABLE_OPENGL
 # endif
 #endif
@@ -25,9 +35,21 @@
 #define strdup _strdup
 #endif
 
+#if !defined(MIN)
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+#if !defined(MAX)
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
+#if !defined(CLAMP)
 #define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+#endif
+
+#if !defined(M_PI)
+#define M_PI 3.14159265358979323846264338327950288f
+#endif
+#define DEG2RAD(a) ((a) * M_PI / 180.0)
+#define RAD2DEG(a) ((a) * 180.0 / M_PI)
 
 #define FREE_SAFE(x) \
 if ((x)) {  \
@@ -310,6 +332,45 @@ bool sgl_resize(surface_t* in, int nw, int nh, surface_t* out) {
       rat += x_ratio;
     }
   }
+  return true;
+}
+
+bool sgl_rotate(surface_t* in, float angle, surface_t* out) {
+  float theta = DEG2RAD(angle);
+  float c = cosf(theta), s = sinf(theta);
+  float r[3][2] = {
+    { -in->h * s, in->h * c },
+    {  in->w * c - in->h * s, in->h * c + in->w * s },
+    {  in->w * c, in->w * s }
+  };
+
+  float mm[2][2] = { {
+      MIN(0, MIN(r[0][0], MIN(r[1][0], r[2][0]))),
+      MIN(0, MIN(r[0][1], MIN(r[1][1], r[2][1])))
+    }, {
+      (theta > 1.5708  && theta < 3.14159 ? 0.f : MAX(r[0][0], MAX(r[1][0], r[2][0]))),
+      (theta > 3.14159 && theta < 4.71239 ? 0.f : MAX(r[0][1], MAX(r[1][1], r[2][1])))
+    }
+  };
+
+  int dw = (int)ceil(fabsf(mm[1][0]) - mm[0][0]);
+  int dh = (int)ceil(fabsf(mm[1][1]) - mm[0][1]);
+  if (!sgl_surface(out, dw, dh))
+    return false;
+
+// p'x = cos(theta) * (px - ox) - sin(theta) * (py-oy) + ox
+// p'y = sin(theta) * (px - ox) + cos(theta) * (py-oy) + oy
+// psetb(dst, x + offset_x - dw / 2  + src->w / 2, y + offset_y - dh / 2 + src->h / 2, pget(src, sx, sy));
+
+  int x, y, sx, sy;
+  for (x = 0; x < dw; ++x)
+    for (y = 0; y < dh; ++y) {
+      sx = ((x + mm[0][0]) * c + (y + mm[0][1]) * s);
+      sy = ((y + mm[0][1]) * c - (x + mm[0][0]) * s);
+      if (sx < 0 || sx >= in->w || sy < 0 || sy >= in->h)
+        continue;
+      psetb(out, x, y, pget(in, sx, sy));
+    }
   return true;
 }
 
@@ -2708,6 +2769,7 @@ bool sgl_save_image(surface_t* in, const char* path) {
     }
   }
   
+#pragma TODO(Refactor this horrible mess)
   // Avert your eyes if you don't want to go blind
   int res = 0;
   const char* ext = extension(path);
@@ -5000,7 +5062,7 @@ void sgl_joystick_poll() {
       }
     } else {
 #endif
-#pragma TODO(Fix crash when disconnecting device)
+#pragma FIXME(Crash when disconnecting device)
       result = IDirectInputDevice8_Poll(private->di8dev);
       if (result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) {
         IDirectInputDevice8_Acquire(private->di8dev);

@@ -65,91 +65,6 @@ void on_error(ERRPRIO pri, const char* msg, const char* file, const char* func, 
     abort();
 }
 
-#if !defined(M_PI)
-#define M_PI 3.14159265358979323846264338327950288f
-#endif
-#define DEG2RAD(a) ((a) * M_PI / 180.0)
-#define RAD2DEG(a) ((a) * 180.0 / M_PI)
-
-//  p'x = cos(theta) * (px - ox) - sin(theta) * (py-oy) + ox
-//  p'y = sin(theta) * (px - ox) + cos(theta) * (py-oy) + oy
-point_t rotate_point(int x0, int y0, int x1, int y1, float angle) {
-  angle = DEG2RAD(angle);
-  float c = cosf(angle),
-        s = sinf(angle);
-  int   x = x1 - x0,
-        y = y1 - y0;
-  return (point_t) {
-    c * x - s * y + x0,
-    s * x + c * y + y0
-  };
-}
-
-#define min(a, b) (((a) < (b)) ? (a) : (b))
-#define max(a, b) (((a) > (b)) ? (a) : (b))
-
-int blit_rotate_test(surface_t* dst, point_t* p, surface_t* src, float theta) {
-  int offset_x = 0, offset_y = 0,
-      from_x = 0, from_y = 0,
-      width = src->w, height = src->h;
-  
-  if (p) {
-    offset_x = p->x;
-    offset_y = p->y;
-  }
-  
-  if (offset_x < 0) {
-    from_x += abs(offset_x);
-    width -= abs(offset_x);
-    offset_x = 0;
-  }
-  if (offset_y < 0) {
-    from_y += abs(offset_y);
-    height -= abs(offset_y);
-    offset_y = 0;
-  }
-  
-  int to_x = offset_x + width, to_y = offset_y + height;
-  if (to_x > dst->w)
-    width += (dst->w - to_x);
-  if (to_y > dst->h)
-    height += (dst->h - to_y);
-  
-  if (offset_x > dst->w || offset_y > dst->h || to_x < 0 || to_y < 0)
-    return 0;
-  
-  theta = DEG2RAD(theta);
-  float c = cosf(theta), s = sinf(theta);
-  float r[3][2] = {
-    { -src->h * s, src->h * c },
-    { src->w * c - src->h * s, src->h * c + src->w * s },
-    { src->w * c, src->w * s }
-  };
-  
-  float mm[2][2] = { {
-      min(0, min(r[0][0], min(r[1][0], r[2][0]))),
-      min(0, min(r[0][1], min(r[1][1], r[2][1])))
-    }, {
-      (theta > 1.5708  && theta < 3.14159 ? 0.f : max(r[0][0], max(r[1][0], r[2][0]))),
-      (theta > 3.14159 && theta < 4.71239 ? 0.f : max(r[0][1], max(r[1][1], r[2][1])))
-    }
-  };
-  
-  int dw = (int)ceil(fabsf(mm[1][0]) - mm[0][0]);
-  int dh = (int)ceil(fabsf(mm[1][1]) - mm[0][1]);
-  int x, y, sx, sy;
-  for (x = 0; x < dw; ++x)
-    for (y = 0; y < dh; ++y) {
-      sx = ((x + mm[0][0]) * c + (y + mm[0][1]) * s);
-      sy = ((y + mm[0][1]) * c - (x + mm[0][0]) * s);
-      if (sx < 0 || sx >= src->w || sy < 0 || sy >= src->h)
-        continue;
-      psetb(dst, x + offset_x - dw / 2  + src->w / 2, y + offset_y - dh / 2 + src->h / 2, pget(src, sx, sy));
-    }
-
-  return 1;
-}
-
 void on_joystick_connect(joystick_t* d, int i) {
   printf("%s connected\n", d->description);
 }
@@ -332,11 +247,13 @@ int main(int argc, const char* argv[]) {
     blit(&win, &points[1], &s[2], NULL);
     blit(&win, &points[3], &s[4], NULL);
 
-    blit_rotate_test(&win, &points[5], &s[5], theta);
+    rotate(&s[5], theta, &s[7]);
+    blit(&win, &points[5], &s[7], NULL);
     blit(&win, &points[5], &s[5], NULL);
     theta += (.05f * speed);
     if (theta >= 360.f)
       theta = 0.f;
+    destroy(&s[7]);
 
     filter(&s[0], rnd);
     blit(&s[0], NULL, &s[9], NULL);
