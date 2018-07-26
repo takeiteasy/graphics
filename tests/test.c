@@ -30,6 +30,7 @@ static bool grey = false;
 
 void on_keyboard(KEYSYM sym, KEYMOD mod, bool down) {
   if (down) {
+    printf("kb: key %d is down\n", sym);
     switch (sym) {
 #if defined(__APPLE__)
       case KB_KEY_Q:
@@ -46,10 +47,9 @@ void on_keyboard(KEYSYM sym, KEYMOD mod, bool down) {
       case KB_KEY_SPACE:
         grey = true;
         break;
-      default:
-        break;
     }
   } else {
+    printf("kb: key %d is up\n", sym);
     switch (sym) {
       case KB_KEY_SPACE:
         grey = false;
@@ -59,8 +59,6 @@ void on_keyboard(KEYSYM sym, KEYMOD mod, bool down) {
         break;
       case KB_KEY_F2:
         save_image(&win, "test.png", PNG);
-        break;
-      default:
         break;
     }
   }

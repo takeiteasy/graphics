@@ -5257,17 +5257,10 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
     case WM_CLOSE:
       __closed = true;
       break;
-    case WM_CHAR:
-    case WM_SYSCHAR:
-    case WM_UNICHAR:
-      if (message == WM_UNICHAR && wParam == UNICODE_NOCHAR)
-        return FALSE;
-      CALL(kb_callback, (unsigned int)wParam, translate_mod(), false);
-      break;
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
     case WM_KEYUP:
-    case WM_SYSKEYUP:;
+    case WM_SYSKEYUP: {
       int kb_key = translate_key(wParam, lParam);
       bool kb_action = !((lParam >> 31) & 1);
       int kb_mods = translate_mod();
@@ -5282,14 +5275,19 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
         CALL(kb_callback, kb_key, kb_mods, kb_action);
       }
       break;
-    case WM_LBUTTONDOWN:
-    case WM_RBUTTONDOWN:
-    case WM_MBUTTONDOWN:
-    case WM_XBUTTONDOWN:
+    }
     case WM_LBUTTONUP:
     case WM_RBUTTONUP:
     case WM_MBUTTONUP:
-    case WM_XBUTTONUP:;
+    case WM_XBUTTONUP:
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONDBLCLK:
+    case WM_RBUTTONDOWN:
+    case WM_RBUTTONDBLCLK:
+    case WM_MBUTTONDOWN:
+    case WM_MBUTTONDBLCLK:
+    case WM_XBUTTONDOWN:
+    case WM_XBUTTONDBLCLK: {
       int m_button, m_action = 0;
       switch (message) {
         case WM_LBUTTONDOWN:
@@ -5301,10 +5299,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
           m_action = 1;
         case WM_RBUTTONUP:
           m_button = MOUSE_BTN_2;
+          break;
         case WM_MBUTTONDOWN:
           m_action = 1;
         case WM_MBUTTONUP:
           m_button = MOUSE_BTN_3;
+          break;
         default:
           m_button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? MOUSE_BTN_5 : MOUSE_BTN_6);
           if (message == WM_XBUTTONDOWN)
@@ -5312,6 +5312,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       }
       CALL(mouse_btn_callback, (MOUSEBTN)m_button, translate_mod(), m_action);
       break;
+    }
     case WM_MOUSEWHEEL:
     case WM_MOUSEHWHEEL:
       CALL(scroll_callback, translate_mod(), -((SHORT)HIWORD(wParam) / (float)WHEEL_DELTA), (SHORT)HIWORD(wParam) / (float)WHEEL_DELTA);
