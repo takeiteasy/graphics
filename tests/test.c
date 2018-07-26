@@ -57,9 +57,11 @@ void on_keyboard(KEYSYM sym, KEYMOD mod, bool down) {
       case KB_KEY_F1:
         save_bmp(&win, "test.bmp");
         break;
+#if defined(SGL_ENABLE_STB_IMAGE)
       case KB_KEY_F2:
         save_image(&win, "test.png", PNG);
         break;
+#endif
     }
   }
 }
@@ -144,7 +146,7 @@ int main(int argc, const char* argv[]) {
   surface_t s[10];
   for (int i = 0; i < 10; ++i)
     s[i].buf = NULL;
-  
+
   surface(&s[0], 50, 50);
 
 #if defined(SGL_ENABLE_STB_IMAGE)
@@ -154,16 +156,16 @@ int main(int argc, const char* argv[]) {
   bmp(&s[6], RES("lena.bmp"));
   resize(&s[6], s[6].w / 2, s[6].h / 2, &s[2]);
   destroy(&s[6]);
-  
+
 #if defined(SGL_ENABLE_BDF)
   // BDF font from tewi-font: https://github.com/lucy/tewi-font
   bdf_t tewi;
   bdf(&tewi, RES("tewi.bdf"));
 #endif
-  
+
   copy(&s[2], &s[4]);
   filter(&s[4], invert);
-  
+
   point_t points[9] = {
     { 10,  150 },
     { 5,   227 },
@@ -204,14 +206,14 @@ int main(int argc, const char* argv[]) {
 #endif
     poll();
     long speed = curr_frame_tick - prev_frame_tick;
-    
+
 #if SKIP_RENDING
     goto FLUSH;
 #endif
 
 //    cls(&win);
     fill(&win, WHITE);
-    
+
     for (int x = 32; x < win.w; x += 32)
       vline(&win, x, 0, win.h, GRAY);
     for (int y = 32; y < win.h; y += 32)
@@ -273,7 +275,7 @@ int main(int argc, const char* argv[]) {
 
     line(&win, 0, 0, mx, my, col);
     circle(&win, mx, my, 30, col, 0);
-    
+
     blit(&win, NULL, &s[8], NULL);
 
     if (grey)
