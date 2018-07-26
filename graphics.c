@@ -20,7 +20,7 @@
 # if (defined(SGL_ENABLE_DX9) || defined(SGL_ENABLE_DX11)) && defined(SGL_ENABLE_VULKAN)
 #   undef SGL_ENABLE_VULKAN
 # endif
-# if defined(SGL_ENABLE_DX11) && defined(SGL_ENABLE_DX9)
+# if defined(SGL_ENABLE_DX9) && defined(SGL_ENABLE_DX11)
 #   undef SGL_ENABLE_DX9
 # endif
 #else
@@ -2736,12 +2736,7 @@ bool sgl_image(surface_t* out, const char* path) {
   return true;
 }
 
-static inline const char* extension(const char* path) {
-  const char* dot = strrchr(path, '.');
-  return (!dot || dot == path ? NULL : dot + 1);
-}
-
-bool sgl_save_image(surface_t* in, const char* path) {
+bool sgl_save_image(surface_t* in, const char* path, SAVETYPE type) {
   if (!in || !path) {
     error_handle(PRIO_NORM, "save_image() failed: Invalid parameters");
     return false;
@@ -2773,26 +2768,23 @@ bool sgl_save_image(surface_t* in, const char* path) {
 #endif
     }
   }
-  
-#pragma TODO(Refactor this horrible mess)
-  // Avert your eyes if you don't want to go blind
+
   int res = 0;
-  const char* ext = extension(path);
-TRY_AGAIN_BRO:
-  if (!ext || !strcmp(ext, "png"))
+  switch (type) {
+  default:
+  case PNG:
     res = stbi_write_png(path, in->w, in->h, NC, data, 0);
-  else if (!strcmp(ext, "tga"))
+    break;
+  case TGA:
     res = stbi_write_tga(path, in->w, in->h, NC, data);
-  else if (!strcmp(ext, "bmp"))
+    break;
+  case BMP:
     res = stbi_write_bmp(path, in->w, in->h, NC, data);
-  else if (!strcmp(ext, "jpg") || !strcmp(ext, "jpeg"))
-    stbi_write_jpg(path, in->w, in->h, NC, data, 85);
-  else {
-    ext = "png";
-    goto TRY_AGAIN_BRO;
+    break;
+  case JPG:
+    res = stbi_write_jpg(path, in->w, in->h, NC, data, 85);
+    break;
   }
-  free(data);
-  
 #undef NC
   
   if (!res) {
@@ -2807,6 +2799,7 @@ TRY_AGAIN_BRO:
 static short int keycodes[512];
 static surface_t* buffer;
 static int mx = 0, my = 0, win_w, win_h;
+static bool __closed = false;
 
 #if defined(SGL_ENABLE_JOYSTICKS)
 static struct {
@@ -2853,28 +2846,16 @@ static inline void add_joystick(joystick_t* d) {
   }
   joy_devices.size++;
 }
+
+#if defined(SGL_ENABLE_FORCE_MM)
+#define SGL_DISABLE_DIRECTINPUT
 #endif
-
-void sgl_mouse_xy(int* x, int* y) {
-  if (!x || !y)
-    return;
-  
-  *x = mx;
-  *y = my;
-}
-
-void sgl_window_size(int* w, int* h) {
-  if (!w || !h)
-    return;
-  
-  *w = win_w;
-  *h = win_h;
-}
+#endif
 
 static void(*kb_callback)(KEYSYM, KEYMOD, bool) = NULL;
 static void(*mouse_btn_callback)(MOUSEBTN, KEYMOD, bool) = NULL;
-static void(*mouse_callback)(int, int, int, int) = NULL;
-static void(*closed_callback)(void) = NULL;
+static void(*mouse_move_callback)(int, int, int, int) = NULL;
+static void(*scroll_callback)(KEYMOD, float, float) = NULL;
 static void(*focus_callback)(bool) = NULL;
 static void(*resize_callback)(int, int) = NULL;
 
@@ -2882,13 +2863,13 @@ void sgl_screen_callbacks(
   void(*kb_cb)(KEYSYM, KEYMOD, bool),
   void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool),
   void(*mouse_move_cb)(int, int, int, int),
-  void(*closed_cb)(void),
+  void(*scroll_cb)(KEYMOD, float, float),
   void(*focus_cb)(bool),
   void(*resize_cb)(int, int)) {
   kb_callback = kb_cb;
   mouse_btn_callback = mouse_btn_cb;
-  mouse_callback = mouse_move_cb;
-  closed_callback = closed_cb;
+  mouse_move_callback = mouse_move_cb;
+  scroll_callback = scroll_cb;
   focus_callback = focus_cb;
   resize_callback = resize_cb;
 }
@@ -4116,7 +4097,6 @@ static LPDIRECT3DDEVICE9 d3ddev;
 #else
 static BITMAPINFO* bmpinfo;
 #endif
-static event_t* tmp_e;
 static int adjusted_win_w, adjusted_win_h;
 static BOOL ifuckinghatethewin32api = FALSE; // Should always be true because I do
 static BOOL is_focused = TRUE;
@@ -5039,7 +5019,6 @@ void sgl_joystick_poll() {
 
       if (XInputGetStateEx_proc != NULL) {
         XINPUT_STATE_EX state_ex;
-
         xresult = XInputGetStateEx_proc(private->player_index, &state_ex);
         state.Gamepad.wButtons = state_ex.Gamepad.wButtons;
         state.Gamepad.sThumbLX = state_ex.Gamepad.sThumbLX;
@@ -5258,8 +5237,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
         StretchDIBits(hdc, 0, 0, win_w, win_h, 0, 0, buffer->w, buffer->h, buffer->buf, bmpinfo, DIB_RGB_COLORS, SRCCOPY);
         ValidateRect(hWnd, NULL);
 #endif
-      } else
-        tmp_e = NULL;
+      }
       break;
     case WM_SIZE:
       if (!ifuckinghatethewin32api)
@@ -5270,59 +5248,40 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       AdjustWindowRect(&rect, adjust_flags, 0);
       win_w = rect.right + rect.left;
       win_h = rect.bottom - rect.top;
-
       CALL(resize_callback, win_w, win_h);
-
 #if defined(SGL_ENABLE_OPENGL)
       glViewport(rect.left, rect.top, rect.right, win_h);
       PostMessage(hWnd, WM_PAINT, 0, 0);
 #endif
       break;
     case WM_CLOSE:
-      CALL(closed_callback);
-      if (tmp_e)
-        tmp_e->type = WINDOW_CLOSED;
+      __closed = true;
       break;
     case WM_CHAR:
     case WM_SYSCHAR:
-    case WM_UNICHAR: {
-      const int plain = (message != WM_SYSCHAR);
+    case WM_UNICHAR:
       if (message == WM_UNICHAR && wParam == UNICODE_NOCHAR)
         return FALSE;
-      tmp_e->type = KEYBOARD_KEY_UP;
-      tmp_e->mod = translate_mod();
-      tmp_e->sym = (unsigned int)wParam;
+      CALL(kb_callback, (unsigned int)wParam, translate_mod(), false);
       break;
-    }
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
     case WM_KEYUP:
-    case WM_SYSKEYUP: {
-      const int key = translate_key(wParam, lParam);
-      const int scancode = (lParam >> 16) & 0x1ff;
-      const int action = ((lParam >> 31) & 1) ? KEYBOARD_KEY_UP : KEYBOARD_KEY_DOWN;
-      const int mods = translate_mod();
+    case WM_SYSKEYUP:;
+      int kb_key = translate_key(wParam, lParam);
+      bool kb_action = !((lParam >> 31) & 1);
+      int kb_mods = translate_mod();
 
-      if (key == KB_KEY_UNKNOWN) {
-        tmp_e = NULL;
+      if (kb_key == KB_KEY_UNKNOWN)
         return FALSE;
-      }
-
-      if (action == KEYBOARD_KEY_UP && wParam == VK_SHIFT) {
-        tmp_e->type = action;
-        tmp_e->mod = mods;
-        tmp_e->sym = KB_KEY_LEFT_SHIFT;
+      if (!kb_action && wParam == VK_SHIFT) {
+        CALL(kb_callback, KB_KEY_LEFT_SHIFT, kb_mods, kb_action);
       } else if (wParam == VK_SNAPSHOT) {
-        tmp_e->type = KEYBOARD_KEY_UP;
-        tmp_e->mod = mods;
-        tmp_e->sym = key;
+        CALL(kb_callback, kb_key, kb_mods, false);
       } else {
-        tmp_e->type = action;
-        tmp_e->mod = mods;
-        tmp_e->sym = key;
+        CALL(kb_callback, kb_key, kb_mods, kb_action);
       }
       break;
-    }
     case WM_LBUTTONDOWN:
     case WM_RBUTTONDOWN:
     case WM_MBUTTONDOWN:
@@ -5330,45 +5289,35 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
     case WM_LBUTTONUP:
     case WM_RBUTTONUP:
     case WM_MBUTTONUP:
-    case WM_XBUTTONUP: {
-      int button, action = MOUSE_BTN_UP;
-
+    case WM_XBUTTONUP:;
+      int m_button, m_action = 0;
       switch (message) {
         case WM_LBUTTONDOWN:
-          action = MOUSE_BTN_DOWN;
+          m_action = 1;
         case WM_LBUTTONUP:
-          button = MOUSE_BTN_1;
+          m_button = MOUSE_BTN_1;
           break;
         case WM_RBUTTONDOWN:
-          action = MOUSE_BTN_DOWN;
+          m_action = 1;
         case WM_RBUTTONUP:
-          button = MOUSE_BTN_2;
+          m_button = MOUSE_BTN_2;
         case WM_MBUTTONDOWN:
-          action = MOUSE_BTN_DOWN;
+          m_action = 1;
         case WM_MBUTTONUP:
-          button = MOUSE_BTN_3;
+          m_button = MOUSE_BTN_3;
         default:
-          button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? MOUSE_BTN_5 : MOUSE_BTN_6);
+          m_button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? MOUSE_BTN_5 : MOUSE_BTN_6);
           if (message == WM_XBUTTONDOWN)
-            action = MOUSE_BTN_DOWN;
+            m_action = 1;
       }
-
-      tmp_e->type = action;
-      tmp_e->btn = button;
-      tmp_e->mod = translate_mod();
-      tmp_e->data1 = mx;
-      tmp_e->data2 = my;
+      CALL(mouse_btn_callback, (MOUSEBTN)m_button, translate_mod(), m_action);
       break;
-    }
     case WM_MOUSEWHEEL:
     case WM_MOUSEHWHEEL:
-      tmp_e->type = SCROLL_WHEEL;
-      tmp_e->data1 = -((SHORT)HIWORD(wParam) / (double)WHEEL_DELTA);
-      tmp_e->data2 = (SHORT)HIWORD(wParam) / (double)WHEEL_DELTA;
+      CALL(scroll_callback, translate_mod(), -((SHORT)HIWORD(wParam) / (float)WHEEL_DELTA), (SHORT)HIWORD(wParam) / (float)WHEEL_DELTA);
       break;
     case WM_MOUSEMOVE:
-      mx = GET_X_LPARAM(lParam);
-      my = GET_Y_LPARAM(lParam);
+      CALL(mouse_move_callback, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), 0, 0);
       if (cursor_locked && is_focused) {
         GetWindowRect(hwnd, &rc);
         rc.left += 3;
@@ -5702,19 +5651,12 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
   return true;
 }
 
-bool sgl_poll(event_t* e) {
-  if (!e)
-    return false;
-  memset(e, 0, sizeof(event_t));
-  tmp_e = e;
-
+void sgl_poll() {
   MSG msg;
   if (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
     TranslateMessage(&msg);
     DispatchMessage(&msg);
-    return !!tmp_e;
   }
-  return false;
 }
 
 void sgl_flush(surface_t* s) {
@@ -5741,6 +5683,10 @@ void sgl_release() {
     DestroyCursor(__custom_cursor);
   ReleaseDC(hwnd, hdc);
   DestroyWindow(hwnd);
+}
+
+bool sgl_closed() {
+  return __closed;
 }
 #else
 static Display* display;

@@ -18,6 +18,7 @@ int rnd(int x, int y, int c) {
 
 static surface_t win;
 static int win_w = 575, win_h = 500, mx = 0, my = 0, running = 1;
+static bool grey = false;
 
 #define SKIP_RESIZE 0
 #define SKIP_PRINTF 0
@@ -27,28 +28,55 @@ static int win_w = 575, win_h = 500, mx = 0, my = 0, running = 1;
 #define printf(fmt, ...) (0)
 #endif
 
-void update_mxy() {
-  mouse_xy(&mx, &my);
-#if SKIP_RESIZE
-  mx = (int)((mx / win_w) * win.w);
-  my = (int)((my / win_h) * win.h);
-#endif
-}
-
 void on_keyboard(KEYSYM sym, KEYMOD mod, bool down) {
-
+  if (down) {
+    switch (sym) {
+#if defined(__APPLE__)
+      case KB_KEY_Q:
+      case KB_KEY_W:
+        if (mod & KB_MOD_SUPER)
+          running = 0;
+        break;
+  #else
+      case KB_KEY_F4:
+        if (mod & KB_MOD_ALT)
+          running = 0;
+        break;
+#endif
+      case KB_KEY_SPACE:
+        grey = true;
+        break;
+      default:
+        break;
+    }
+  } else {
+    switch (sym) {
+      case KB_KEY_SPACE:
+        grey = false;
+        break;
+      case KB_KEY_F1:
+        save_bmp(&win, "test.bmp");
+        break;
+      case KB_KEY_F2:
+        save_image(&win, "test.png", PNG);
+        break;
+      default:
+        break;
+    }
+  }
 }
 
 void on_mouse_btn(MOUSEBTN btn, KEYMOD mod, bool down) {
-
+  printf("%mouse btn: %d is %s\n", (int)btn, (down ? "down" : "up"));
 }
 
 void on_mouse_move(int x, int y, int dx, int dy) {
-
+  mx = x;
+  my = y;
 }
 
-void on_closed() {
-  running = 0;
+void on_scroll(KEYMOD mod, float dx, float dy) {
+  printf("scroll: %f %f\n", dx, dy);
 }
 
 void on_focus(bool focused) {
@@ -87,19 +115,19 @@ void on_error(ERRPRIO pri, const char* msg, const char* file, const char* func, 
 
 #if defined(SGL_ENABLE_JOYSTICKS)
 void on_joystick_connect(joystick_t* d, int i) {
-  printf("%s connected\n", d->description);
+  printf("%s:%d connected\n", d->description, i);
 }
 
 void on_joystick_disconnect(joystick_t* d, int i) {
-  printf("%s disconnected\n", d->description);
+  printf("%s:%d disconnected\n", d->description, i);
 }
 
 void on_joystick_btn(joystick_t* d, int btn, bool down, long time) {
-  printf("%s: bnt %d: %d\n", d->description, btn, down);
+  printf("%s:%d bnt %d: %d\n", d->description, d->device_id, btn, down);
 }
 
 void on_joystick_axis(joystick_t* d, int axis, float v, float lv, long time) {
-  printf("%s: axis: %d: %f %f\n", d->description, axis, v, lv);
+  printf("%s:%d axis: %d: %f %f\n", d->description, d->device_id, axis, v, lv);
 }
 #endif
 
@@ -107,7 +135,7 @@ int main(int argc, const char* argv[]) {
   error_callback(on_error);
 
   screen("test", &win, win_w, win_h, DEFAULT);
-  screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_closed, on_focus, on_resize);
+  screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize);
   cursor(SHOWN, UNLOCKED, CURSOR_HAND);
 
 #if defined(SGL_ENABLE_JOYSTICKS)
@@ -166,64 +194,17 @@ int main(int argc, const char* argv[]) {
   rect(&s[5], 0,  50, 50, 50, RGBA(255, 255, 0, 128), 1);
 
   float theta = 1.f;
-  int col = 0, grey = 0;
+  int col = 0;
   long sine_i = 0;
-  event_t e;
   long prev_frame_tick;
   long curr_frame_tick = ticks();
-  while (running) {
+  while (!closed() && running) {
     prev_frame_tick = curr_frame_tick;
     curr_frame_tick = ticks();
-
 #if defined(SGL_ENABLE_JOYSTICKS)
     joystick_poll();
 #endif
-
-    while (poll(&e)) {
-      switch (e.type) {
-        case WINDOW_CLOSED:
-          running = 0;
-          break;
-        case KEYBOARD_KEY_DOWN:
-          switch (e.sym) {
-#if defined(__APPLE__)
-            case KB_KEY_Q:
-            case KB_KEY_W:
-              if (e.mod & KB_MOD_SUPER)
-                running = 0;
-              break;
-#else
-            case KB_KEY_F4:
-              if (e.mod & KB_MOD_ALT)
-                running = 0;
-              break;
-#endif
-            case KB_KEY_SPACE:
-              grey = 1;
-              break;
-            default:
-              break;
-          }
-          break;
-        case KEYBOARD_KEY_UP:
-          switch (e.sym) {
-            case KB_KEY_SPACE:
-              grey = 0;
-              break;
-            case KB_KEY_F1:
-              save_bmp(&win, "test.bmp");
-              break;
-            case KB_KEY_F2:
-              save_image(&win, "test.png");
-              break;
-            default:
-              break;
-          }
-        default:
-          break;
-      }
-    }
-    
+    poll();
     long speed = curr_frame_tick - prev_frame_tick;
     
 #if SKIP_RENDING
@@ -289,7 +270,6 @@ int main(int argc, const char* argv[]) {
     circle(&win, 502, 32, 30, INDIGO, 1);
     circle(&win, 532, 32, 30, VIOLET, 1);
 
-    update_mxy();
     writelnf(&win, 400, 88, BLACK, 0, "mouse pos: (%d, %d)\ntheta: %f", mx, my, theta);
     col = pget(&win, mx, my);
 

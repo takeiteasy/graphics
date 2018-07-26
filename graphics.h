@@ -343,8 +343,14 @@ extern "C" {
 #endif
   
 #if defined(SGL_ENABLE_STB_IMAGE)
+  typedef enum {
+    PNG,
+    TGA,
+    BMP,
+    JPG
+  } SAVETYPE;
   bool sgl_image(surface_t* out, const char* path);
-  bool sgl_save_image(surface_t* in, const char* path);
+  bool sgl_save_image(surface_t* in, const char* path, SAVETYPE type);
 
 #if !defined(SGL_DISABLE_SHORT_NAMES)
 #define image sgl_image
@@ -353,9 +359,6 @@ extern "C" {
 #endif
   
 #if !defined(SGL_DISABLE_WINDOW)
-  void sgl_mouse_xy(int* x, int* y);
-  void sgl_window_size(int* w, int* h);
-
 #if defined(SGL_ENABLE_JOYSTICKS)
   typedef struct __joystick_t {
     const char* description;
@@ -544,29 +547,11 @@ extern "C" {
     KB_MOD_CAPS_LOCK = 0x0010,
     KB_MOD_NUM_LOCK = 0x0020
   } KEYMOD;
-  
-  typedef enum {
-    MOUSE_BTN_DOWN,
-    MOUSE_BTN_UP,
-    KEYBOARD_KEY_DOWN,
-    KEYBOARD_KEY_UP,
-    SCROLL_WHEEL,
-    WINDOW_CLOSED
-  } EVENTYPE;
-  
-  typedef struct {
-    EVENTYPE type;
-    KEYSYM sym;
-    KEYMOD mod;
-    MOUSEBTN btn;
-    int data1, data2;
-  } event_t;
 
   void sgl_screen_callbacks(
     void(*kb_cb)(KEYSYM, KEYMOD, bool),
-    void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool),
+    void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool, int, int),
     void(*mouse_move_cb)(int, int, int, int),
-    void(*closed_cb)(void),
     void(*active_cb)(bool),
     void(*resize_cb)(int, int));
 
@@ -606,13 +591,12 @@ extern "C" {
   } WINDOWFLAGS;
   
   bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags);
-  bool sgl_poll(event_t* e);
+  void sgl_poll(void);
   void sgl_flush(surface_t* s);
   void sgl_release(void);
+  bool sgl_closed(void);
 
 #if !defined(SGL_DISABLE_SHORT_NAMES)
-#define mouse_xy sgl_mouse_xy
-#define window_size sgl_window_size
 #define screen_callbacks sgl_screen_callbacks
 #define cursor sgl_cursor
 #define custom_cursor sgl_custom_cursor
@@ -620,6 +604,7 @@ extern "C" {
 #define poll sgl_poll
 #define flush sgl_flush
 #define release sgl_release
+#define closed sgl_closed
 #endif
 #endif
   
