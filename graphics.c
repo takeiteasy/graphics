@@ -5324,7 +5324,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
         rc.left += 3;
         rc.right -= 3;
         rc.top += 3;
-        rc.bottom -= 3;
+        rc.bottom -= 4;
         ClipCursor(&rc);
       }
       break;

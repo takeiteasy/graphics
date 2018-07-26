@@ -68,6 +68,8 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 
 ### Maybe
 
+- Set cursor position function
+- Keyboard scancodes
 - Make thread safe (surface locks)
 - Vulkan/DirectX/~~Metal~~ backends
 - Wayland window code

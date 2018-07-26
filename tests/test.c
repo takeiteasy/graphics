@@ -134,7 +134,7 @@ int main(int argc, const char* argv[]) {
 
   screen("test", &win, win_w, win_h, DEFAULT);
   screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize);
-  cursor(SHOWN, UNLOCKED, CURSOR_HAND);
+  cursor(SHOWN, LOCKED, CURSOR_HAND);
 
 #if defined(SGL_ENABLE_JOYSTICKS)
   joystick_callbacks(on_joystick_connect, on_joystick_disconnect, on_joystick_btn, on_joystick_axis);
