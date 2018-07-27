@@ -6455,6 +6455,19 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
   XkbFreeKeyboard(desc, 0, True);
 
   int __screen = DefaultScreen(display);
+  int s_width = DisplayWidth(display, __screen);
+  int s_height = DisplayHeight(display, __screen);
+
+  if (flags & FULLSCREEN)
+    flags |= (FULLSCREEN_DESKTOP | BORDERLESS | ~RESIZABLE);
+
+  if (flags & FULLSCREEN_DESKTOP) {
+    w = s_width;
+    h = s_height;
+  }
+
+  int px = s_width / 2 - w / 2;
+  int py = s_height / 2 - h / 2;
 
 #if defined(SGL_ENABLE_OPENGL)
   static int visual_attribs[] = {
@@ -6510,17 +6523,18 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
   }
 
 #if defined(screen)
-#pragma push_macro("screen")
+#pragma push_macro("screen") // I'm not a smart man
 #undef screen
 #endif
   XSetWindowAttributes swa;
+  swa.override_redirect = True;
   swa.colormap = cmap = XCreateColormap(display, RootWindow(display, vi->screen), vi->visual, AllocNone);
   swa.background_pixmap = None;
   swa.border_pixel = 0;
   swa.event_mask = StructureNotifyMask;
 
   win = XCreateWindow(display, RootWindow(display, vi->screen),
-                      0, 0, w, h, 0, vi->depth,
+                      px, py, w, h, 0, vi->depth,
                       InputOutput, vi->visual,
                       CWBorderPixel | CWColormap | CWEventMask, &swa);
 #if defined(screen)
@@ -6548,19 +6562,17 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
     return false;
   }
 
-  int s_width = DisplayWidth(display, __screen);
-  int s_height = DisplayHeight(display, __screen);
-
-  XSetWindowAttributes win_attrib;
-  win_attrib.border_pixel = BlackPixel(display, __screen);
-  win_attrib.background_pixel = BlackPixel(display, __screen);
-  win_attrib.backing_store = NotUseful;
+  XSetWindowAttributes swa;
+  swa.override_redirect = True;
+  swa.border_pixel = BlackPixel(display, __screen);
+  swa.background_pixel = BlackPixel(display, __screen);
+  swa.backing_store = NotUseful;
 
   win = XCreateWindow(display, default_root_win,
-                      (s_width - w) / 2, (s_height - h) / 2, w, h, 0, depth,
+                      px, py, w, h, 0, depth,
                       InputOutput, visual,
                       CWBackPixel | CWBorderPixel | CWBackingStore,
-                      &win_attrib);
+                      &swa);
 #endif
 
   if (!win) {
@@ -6575,6 +6587,31 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
 
   XSelectInput(display, win, StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask);
   XStoreName(display, win, title);
+
+  if (flags & BORDERLESS) {
+    struct StyleHints {
+      unsigned long   flags;
+      unsigned long   functions;
+      unsigned long   decorations;
+      long            inputMode;
+      unsigned long   status;
+    } sh = {
+      .flags = 2,
+      .decorations = 0
+    };
+    Atom sh_p = XInternAtom(display, "_MOTIF_WM_HINTS", True);
+    XChangeProperty(display, win, sh_p, sh_p, 32, PropModeReplace, (unsigned char*)&sh, 5);
+  }
+
+  if (flags & ALWAYS_ON_TOP) {
+    Atom sa_p = XInternAtom(display, "_NET_WM_STATE_ABOVE", False);
+    XChangeProperty(display, win, XInternAtom(display, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *)&sa_p, 1);
+  }
+
+  if (flags & FULLSCREEN) {
+    Atom sf_p = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", True);
+    XChangeProperty(display, win, XInternAtom(display, "_NET_WM_STATE", True), XA_ATOM, 32, PropModeReplace, (unsigned char*)&sf_p, 1);
+  }
 
   XSizeHints hints;
   hints.flags = PPosition;
