@@ -11,11 +11,11 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
-  
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#if _MSC_VER <= 1600
+#if defined(_MSC_VER) && _MSC_VER <= 1600
 #define bool int
 #define true 1
 #define false 0
@@ -40,6 +40,7 @@ extern "C" {
 #include <X11/Xutil.h>
 #include <X11/XKBlib.h>
 #include <X11/keysym.h>
+#include <X11/cursorfont.h>
 #endif
 
 #if !defined(SGL_DISABLE_RGBA)
@@ -73,7 +74,7 @@ extern "C" {
 #define TEAL RGB(0, 128, 128)
 #define WHITE RGB(255, 255, 255)
 #define YELLOW RGB(255, 255, 0)
-  
+
 #define ALICE_BLUE RGB(240, 248, 255)
 #define ANTIQUE_WHITE RGB(250, 235, 215)
 #define AQUA RGB(0, 255, 255)
@@ -202,27 +203,27 @@ extern "C" {
 #if !defined(SGL_DISABLE_CHROMA_KEY) && !defined(BLIT_CHROMA_KEY)
 #define BLIT_CHROMA_KEY LIME
 #endif
-  
+
   typedef struct {
     int *buf, w, h;
   } surface_t;
-  
+
   typedef struct {
     int x, y, w, h;
   } rect_t;
-  
+
   typedef struct {
     int x, y;
   } point_t;
-  
+
   typedef enum {
     PRIO_HIGH,
     PRIO_NORM,
     PRIO_LOW
   } ERRPRIO;
-  
+
   void sgl_error_callback(void(*cb)(ERRPRIO, const char*, const char*, const char*, int));
-  
+
   bool sgl_surface(surface_t* s, unsigned int w, unsigned int h);
   void sgl_destroy(surface_t*);
   void sgl_fill(surface_t* s, int col);
@@ -237,7 +238,7 @@ extern "C" {
   void sgl_filter(surface_t* s, int(*fn)(int x, int y, int col));
   bool sgl_resize(surface_t* in, int nw, int nh, surface_t* out);
   bool sgl_rotate(surface_t* in, float angle, surface_t* out);
-  
+
   void sgl_vline(surface_t* s, int x, int y0, int y1, int col);
   void sgl_hline(surface_t* s, int y, int x0, int x1, int col);
   void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col);
@@ -250,10 +251,10 @@ extern "C" {
   void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col);
   void sgl_bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
   void sgl_rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
-  
+
   bool sgl_bmp(surface_t* s, const char* path);
   bool sgl_save_bmp(surface_t* s, const char* path);
-  
+
 #if !defined(SGL_DISABLE_TEXT)
   void sgl_ascii(surface_t* s, char ch, int x, int y, int fg, int bg);
   int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg);
@@ -262,7 +263,7 @@ extern "C" {
   void sgl_string(surface_t* out, int fg, int bg, const char* str);
   void sgl_stringf(surface_t* out, int fg, int bg, const char* fmt, ...);
 #endif
-  
+
   long sgl_ticks(void);
   void sgl_delay(long ms);
 
@@ -308,21 +309,21 @@ extern "C" {
 #define ticks sgl_ticks
 #define delay sgl_delay
 #endif
-  
+
 #if defined(SGL_ENABLE_BDF)
   typedef struct {
     unsigned int width;
     unsigned char* bitmap;
     rect_t bb;
   } bdf_char_t;
-  
+
   typedef struct {
     rect_t fontbb;
     unsigned int* encoding_table;
     bdf_char_t* chars;
     int n_chars;
   } bdf_t;
-  
+
   void sgl_bdf_destroy(bdf_t* f);
   bool sgl_bdf(bdf_t* out, const char* path);
   int sgl_bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, int bg);
@@ -341,7 +342,7 @@ extern "C" {
 #define bdf_stringf sgl_bdf_stringf
 #endif
 #endif
-  
+
 #if defined(SGL_ENABLE_STB_IMAGE)
   typedef enum {
     PNG,
@@ -357,7 +358,7 @@ extern "C" {
 #define save_image sgl_save_image
 #endif
 #endif
-  
+
 #if !defined(SGL_DISABLE_WINDOW)
 #if defined(SGL_ENABLE_JOYSTICKS)
   typedef struct __joystick_t {
@@ -386,16 +387,16 @@ extern "C" {
   void sgl_joystick_poll(void);
 
 #if !defined(SGL_DISABLE_SHORT_NAMES)
+#define joystick sgl_joystick
 #define joystick_init sgl_joystick_init
 #define joystick_scan sgl_joystick_scan
 #define joystick_release sgl_joystick_release
 #define joystick_remove sgl_joystick_remove
 #define joystick_callbacks sgl_joystick_callbacks
 #define joystick_poll sgl_joystick_poll
-#define joystick sgl_joystick
 #endif
 #endif
-  
+
   typedef enum {
     MOUSE_BTN_0, // No mouse button
     MOUSE_BTN_1,
@@ -407,12 +408,12 @@ extern "C" {
     MOUSE_BTN_7,
     MOUSE_BTN_8
   } MOUSEBTN;
-  
+
 #define MOUSE_LAST   MOUSE_BTN_8
 #define MOUSE_LEFT   MOUSE_BTN_0
 #define MOUSE_RIGHT  MOUSE_BTN_1
 #define MOUSE_MIDDLE MOUSE_BTN_2
-  
+
   typedef enum {
     KB_KEY_SPACE = 32,
     KB_KEY_APOSTROPHE = 39,
@@ -535,10 +536,10 @@ extern "C" {
     KB_KEY_RIGHT_SUPER = 347,
     KB_KEY_MENU = 348
   } KEYSYM;
-  
+
 #define KB_KEY_UNKNOWN -1
 #define KB_KEY_LAST KB_KEY_MENU
-  
+
   typedef enum {
     KB_MOD_SHIFT = 0x0001,
     KB_MOD_CONTROL = 0x0002,
@@ -550,13 +551,14 @@ extern "C" {
 
   void sgl_screen_callbacks(
     void(*kb_cb)(KEYSYM, KEYMOD, bool),
-    void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool, int, int),
+    void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool),
     void(*mouse_move_cb)(int, int, int, int),
+    void(*scroll_cb)(KEYMOD, float, float),
     void(*active_cb)(bool),
     void(*resize_cb)(int, int));
 
 #define DEFAULT 0
-  
+
   typedef enum {
     CURSOR_NO_CHANGE,
     CURSOR_ARROW,     // Arrow
@@ -578,10 +580,10 @@ extern "C" {
 #define HIDDEN false
 #define LOCKED true
 #define UNLOCKED false
-  
+
   void sgl_cursor(bool shown, bool locked, CURSORTYPE cursor);
   void sgl_custom_cursor(surface_t* s);
-  
+
   typedef enum {
     RESIZABLE = 0x01,
     FULLSCREEN = 0x02,
@@ -589,7 +591,7 @@ extern "C" {
     BORDERLESS = 0x08,
     ALWAYS_ON_TOP = 0x10,
   } WINDOWFLAGS;
-  
+
   bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags);
   void sgl_poll(void);
   void sgl_flush(surface_t* s);
@@ -607,7 +609,7 @@ extern "C" {
 #define closed sgl_closed
 #endif
 #endif
-  
+
 #if defined(__cplusplus)
 }
 #endif

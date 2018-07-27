@@ -83,15 +83,15 @@ static inline const char* errprio_str(ERRPRIO pri) {
 void error_handle(ERRPRIO pri, const char* msg, ...) {
   va_list args;
   va_start(args, msg);
-  
+
   static char error[1024];
   vsprintf(error, msg, args);
-  
+
   if (__error_callback)
     __error_callback(pri, error, __FILE__, __FUNCTION__, __LINE__);
   else
     fprintf(stderr, "[%s] from %s in %s() at %d -- %s\n", errprio_str(pri), __FILE__, __FUNCTION__, __LINE__, error);
-  
+
   va_end(args);
 }
 
@@ -145,40 +145,40 @@ void sgl_fill(surface_t* s, int col) {
 static inline void flood_fn(surface_t* s, int x, int y, int new, int old) {
   if (new == old || XYGET(s, x, y) != old)
     return;
-  
+
   int x1 = x;
   while (x1 < s->w && XYGET(s, x1, y) == old) {
     XYGET(s, x1, y) = new;
     x1++;
   }
-  
+
   x1 = x - 1;
   while (x1 >= 0 && XYGET(s, x1, y) == old) {
     XYGET(s, x1, y) = new;
     x1--;
   }
-  
+
   x1 = x;
   while (x1 < s->w && XYGET(s, x1, y) == new) {
     if(y > 0 && XYGET(s, x1, y - 1) == old)
       flood_fn(s, x1, y - 1, new, old);
     x1++;
   }
-  
+
   x1 = x - 1;
   while(x1 >= 0 && XYGET(s, x1, y) == new) {
     if(y > 0 && XYGET(s, x1, y - 1) == old)
       flood_fn(s, x1, y - 1, new, old);
     x1--;
   }
-  
+
   x1 = x;
   while(x1 < s->w && XYGET(s, x1, y) == new) {
     if(y < s->h - 1 && XYGET(s, x1, y + 1) == old)
       flood_fn(s, x1, y + 1, new, old);
     x1++;
   }
-  
+
   x1 = x - 1;
   while(x1 >= 0 && XYGET(s, x1, y) == new) {
     if(y < s->h - 1 && XYGET(s, x1, y + 1) == old)
@@ -209,7 +209,7 @@ void sgl_psetb(surface_t* s, int x, int y, int c) {
   int a = A(c);
   if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
-  
+
   int* p = &s->buf[y * s->w + x];
   int b = A(*p);
   *p = (a == 255 || !b) ? c : RGBA(BLEND(R(c), R(*p), a, b),
@@ -224,7 +224,7 @@ void sgl_psetb(surface_t* s, int x, int y, int c) {
   int a = A(c);
   if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
-  
+
   int b = XYGET(s, x, y);
   float i = (float)a / 255.f;
   sgl_pset(s, x, y, (i >= 1.f || i <= 0.f) ? c : RGB((int)roundf(R(c) * (1 - i) + R(b) * i),
@@ -311,7 +311,7 @@ bool sgl_copy(surface_t* in, surface_t* out) {
 void sgl_filter(surface_t* s, int (*fn)(int x, int y, int col)) {
   if (!s || !s->buf)
     return;
-  
+
   int x, y;
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
@@ -321,7 +321,7 @@ void sgl_filter(surface_t* s, int (*fn)(int x, int y, int col)) {
 bool sgl_resize(surface_t* in, int nw, int nh, surface_t* out) {
   if (!sgl_surface(out, nw, nh))
     return false;
-  
+
   int x_ratio = (int)((in->w << 16) / nw) + 1;
   int y_ratio = (int)((in->h << 16) / nh) + 1;
   int x2, y2, i, j;
@@ -424,7 +424,7 @@ void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
 #else
   int a = 255;
 #endif
-  
+
   if (x0 == x1)
     sgl_vline(s, x0, y0, y1, col);
   if (y0 == y1)
@@ -492,16 +492,16 @@ void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
 #else
   int a = 255;
 #endif
-  
+
   if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
     return;
-  
+
   int x = -r, y = 0, err = 2 - 2 * r;
 #if defined(SGL_ENABLE_AA)
   int i, x2, e2;
   r = 1 - err;
 #endif
-  
+
   do {
 #if defined(SGL_ENABLE_AA)
     i = ACHAN(col, 255 - (255 * abs(err - 2 * (x + y) - 2) / r));
@@ -509,12 +509,12 @@ void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
     sgl_psetb(s, xc - y, yc - x, i);
     sgl_psetb(s, xc + x, yc - y, i);
     sgl_psetb(s, xc + y, yc + x, i);
-    
+
     if (fill) {
       sgl_hline(s, yc - y, xc - x - 1, xc + x + 1, col);
       sgl_hline(s, yc + y, xc - x - 1, xc + x + 1, col);
     }
-    
+
     e2 = err;
     x2 = x;
     if (err + y > 0) {
@@ -528,7 +528,7 @@ void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
       }
       err += ++x * 2 + 1;
     }
-    
+
     if (e2 + x2 <= 0) {
       i = 255 * (2 * y + 3 - e2) / r;
       if (i < 256) {
@@ -545,12 +545,12 @@ void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
     pset_fn(s, xc - y, yc - x, col);
     pset_fn(s, xc + x, yc - y, col);
     pset_fn(s, xc + y, yc + x, col);
-    
+
     if (fill) {
       sgl_hline(s, yc - y, xc - x, xc + x, col);
       sgl_hline(s, yc + y, xc - x, xc + x, col);
     }
-    
+
     r = err;
     if (r <= y)
       err += ++y * 2 + 1;
@@ -564,22 +564,22 @@ void sgl_ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill
 #if defined(SGL_ENABLE_AA)
 #pragma TODO(Add AA option);
 #endif
-  
+
   int x = -rx, y = 0;
   long e2 = ry, dx = (1 + 2 * x) * e2 * e2;
   long dy = x * x, err = dx + dy;
-  
+
   do {
     sgl_psetb(s, xc - x, yc + y, col);
     sgl_psetb(s, xc + x, yc + y, col);
     sgl_psetb(s, xc + x, yc - y, col);
     sgl_psetb(s, xc - x, yc - y, col);
-    
+
     if (fill) {
       sgl_hline(s, yc - y, xc - x, xc + x, col);
       sgl_hline(s, yc + y, xc - x, xc + x, col);
     }
-    
+
     e2 = 2 * err;
     if (e2 >= dx) {
       x++;
@@ -595,20 +595,20 @@ void sgl_ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill
 void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill) {
 #pragma FIXME(This is borked without AA)
 #pragma FIXME(Arithmic error when too big with AA)
-  
+
   long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
   float dx = 4 * (a - 1.) * b * b, dy = 4 * (b1 + 1) * a * a;
   float err = b1 * a * a - dx + dy;
-  
+
 #if defined(SGL_ENABLE_AA)
   int f, ed, i;
-  
+
   if (a == 0 || b == 0)
     sgl_line(s, x0, y0, x1, y1, col);
 #else
   long e2;
 #endif
-  
+
   if (x0 > x1) {
     x0 = x1;
     x1 += a;
@@ -619,7 +619,7 @@ void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int
   y1 = y0 - (int)b1;
   a = 8 * a * a;
   b1 = 8 * b * b;
-  
+
 #if defined(SGL_ENABLE_AA)
   for (;;) {
     i = fminf(dx, dy);
@@ -630,22 +630,22 @@ void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int
       ed = 255 * 4. / a;
     else
       ed = 255 / (ed + 2 * ed * i * i / (4 * ed * ed + i * i)); // Fix overflow
-    
+
     i = ACHAN(col, 255 - (ed * (int)fabsf(err + dx - dy)));
     sgl_psetb(s, x0, y0, i);
     sgl_psetb(s, x0, y1, i);
     sgl_psetb(s, x1, y0, i);
     sgl_psetb(s, x1, y1, i);
-    
+
     if (fill) {
       sgl_hline(s, y0, x0 + 1, x1 - 1, col);
       sgl_hline(s, y1, x0 + 1, x1 - 1, col);
     }
-    
+
     if ((f = 2 * err + dy >= 0)) {
       if (x0 >= x1)
         break;
-      
+
       i = ed * (err + dx);
       if (i < 255) {
         i = ACHAN(col, 255 - i);
@@ -655,7 +655,7 @@ void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int
         sgl_psetb(s, x1, y1 - 1, i);
       }
     }
-    
+
     if (2 * err <= dx) {
       i = ed * (dy - err);
       if (i < 255) {
@@ -665,18 +665,18 @@ void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int
         sgl_psetb(s, x0 + 1, y1, i);
         sgl_psetb(s, x1 - 1, y1, i);
       }
-      
+
       y0++;
       y1--;
       err += dy += a;
     }
-    
+
     if (f) {
       x0++; x1--;
       err -= dx -= b1;
     }
   }
-  
+
   if (--x0 == x1++)
     while (y0 - y1 < b) {
       i = ACHAN(col, 255 - (255 * 4 * (int)fabsf(err + dx) / (int)b1));
@@ -692,19 +692,19 @@ void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int
     pset_fn(s, x0, y0, col);
     pset_fn(s, x0, y1, col);
     pset_fn(s, x1, y1, col);
-    
+
     if (fill) {
       sgl_hline(s, y0, x0, x1, col);
       sgl_hline(s, y1, x0, x1, col);
     }
-    
+
     e2 = 2 * err;
     if (e2 <= dy) {
       y0++;
       y1--;
       err += dy += a;
     }
-    
+
     if (e2 >= dx || 2 * err > dy) {
       x0++;
       x1--;
@@ -718,7 +718,7 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
   int sx = x2 - x1, sy = y2 - y1;
   long xx = x0 - x1, yy = y0 - y1, xy;
   float dx, dy, err, cur = xx * sy - yy * sx;
-  
+
   if (sx * (long)sx + sy * (long)sy > xx * xx + yy * yy) {
     x2 = x0;
     x0 = sx + x1;
@@ -726,7 +726,7 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
     y0 = sy + y1;
     cur = -cur;
   }
-  
+
   if (cur != 0.f) {
     xx += sx;
     xx *= sx = x0 < x2 ? 1 : -1;
@@ -741,17 +741,17 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
       xy = -xy;
       cur = -cur;
     }
-    
+
     dx = 4.f * sy * (x1 - x0) * cur + xx - xy;
     dy = 4.f * sx * (y0 - y1) * cur + yy - xy;
     xx += xx;
     yy += yy;
     err = dx + dy + xy;
-    
+
 #if defined(SGL_ENABLE_AA)
     float ed;
 #endif
-    
+
     do {
 #if defined(SGL_ENABLE_AA)
       cur = fminf(dx + xy, -xy - dy);
@@ -760,7 +760,7 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
       sgl_psetb(s, x0, y0, ACHAN(col, 255 - (int)(255 * fabsf(err - dx - dy - xy) / ed)));
       if (x0 == x2 || y0 == y2)
         break;
-      
+
       x1 = x0;
       cur = dx - err;
       y1 = 2 * err + dy < 0;
@@ -771,7 +771,7 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
         dx -= xy;
         err += dy += yy;
       }
-      
+
       if (y1) {
         if (cur < ed)
           sgl_psetb(s, x1 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(cur) / ed)));
@@ -784,14 +784,14 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
     pset_fn(s, x0, y0, col);
     if (x0 == x2 && y0 == y2)
       return;
-    
+
     y1 = 2 * err < dx;
     if (2 * err > dy) {
       x0 += sx;
       dx -= xy;
       err += dy += yy;
     }
-    
+
     if (y1) {
       y0 += sy;
       dy -= xy;
@@ -807,7 +807,7 @@ sgl_line(s, x0, y0, x2, y2, col);
 void sgl_bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
   int x = x0 - x1, y = y0 - y1;
   float t = x0 - 2 * x1 + x2, r;
-  
+
   if ((long)x * (x2 - x1) > 0) {
     if ((long)y * (y2 - y1) > 0)
       if (fabsf((y0 - 2 * y1 + y2) / t * x) > abs(y)) {
@@ -816,7 +816,7 @@ void sgl_bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, in
         y0 = y2;
         y2 = y + y1;
       }
-    
+
     t = (x0 - x1) / t;
     r = (1 - t) * ((1 - t) * y0 + 2.f * t * y1) + t * t*y2;
     t = (x0 * x2 - x1 * x1) * t / (x0 - x1);
@@ -829,7 +829,7 @@ void sgl_bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, in
     y0 = y;
     y1 = floorf(r + .5f);
   }
-  
+
   if ((long)(y0 - y1) * (y2 - y1) > 0) {
     t = y0 - 2 * y1 + y2; t = (y0 - y1) / t;
     r = (1 - t) * ((1 - t) * x0 + 2.f * t * x1) + t * t * x2;
@@ -843,7 +843,7 @@ void sgl_bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, in
     x1 = floorf(r + .5f);
     y0 = y1 = y;
   }
-  
+
   bezier_seg(s, x0, y0, x1, y1, x2, y2, col);
 }
 
@@ -851,12 +851,12 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
   int sx = x2 - x1, sy = y2 - y1;
   float dx = x0 - x2, dy = y0 - y2, xx = x0 - x1, yy = y0 - y1;
   float xy = xx * sy + yy * sx, cur = xx * sy - yy * sx, err;
-  
+
 #if defined(SGL_ENABLE_AA)
   float ed;
   int f;
 #endif
-  
+
   if (cur != .0f && w > .0f) {
     if (sx * (long)sx + sy * (long)sy > xx * xx + yy * yy) {
       x2 = x0;
@@ -870,7 +870,7 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
     sx = x0 < x2 ? 1 : -1;
     sy = y0 < y2 ? 1 : -1;
     xy = -2.f * sx * sy * (2.f * w * xy + dx * dy);
-    
+
     if (cur * sx * sy < .0f) {
       xx = -xx;
       yy = -yy;
@@ -879,7 +879,7 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
     }
     dx = 4.f * w * (x1 - x0) * sy * cur + xx / 2.f + xy;
     dy = 4.f * w * (y0 - y1) * sx * cur + yy / 2.f + xy;
-    
+
 #if defined(SGL_ENABLE_AA)
     if (w < .5f && dy > dx) {
 #else
@@ -898,7 +898,7 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
         bezier_seg_rational(s, sx, sy, dx, dy, x2, y2, cur, col);
         return;
       }
-      
+
       err = dx + dy - xy;
       do {
 #if defined(SGL_ENABLE_AA)
@@ -908,14 +908,14 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
         x1 = 255 * fabsf(err - dx - dy + xy) / ed;
         if (x1 < 256)
           sgl_psetb(s, x0, y0, ACHAN(col, 255 - x1));
-        
+
         if ((f = 2 * err + dy < 0)) {
           if (y0 == y2)
             return;
           if (dx - err < ed)
             sgl_psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * fabsf(dx - err) / ed)));
         }
-        
+
         if (2 * err + dx > 0) {
           if (x0 == x2)
             return;
@@ -925,7 +925,7 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
           dx += xy;
           err += dy += yy;
         }
-        
+
         if (f) {
           y0 += sy;
           dy += xy;
@@ -936,7 +936,7 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
       pset_fn(s, x0, y0, col);
       if (x0 == x2 && y0 == y2)
         return;
-      
+
       x1 = 2 * err > dy;
       y1 = 2 * (err + yy) < -dy;
       if (2 * err < dx || y1) {
@@ -944,7 +944,7 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
         dy += xy;
         err += dx += xx;
       }
-      
+
       if (2 * err > dx || x1) {
         x0 += sx;
         dx += xy;
@@ -959,7 +959,7 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
 void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
   int x = x0 - 2 * x1 + x2, y = y0 - 2 * y1 + y2;
   float xx = x0 - x1, yy = y0 - y1, ww, t, q;
-  
+
   if (xx * (x2 - x1) > 0) {
     if (yy * (y2 - y1) > 0)
       if (fabsf(xx * y) > fabsf(yy * x)) {
@@ -968,7 +968,7 @@ void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, i
         y0 = y2;
         y2 = yy + y1;
       }
-    
+
     if (x0 == x2 || w == 1.f)
       t = (x0 - x1) / (double)x;
     else {
@@ -977,7 +977,7 @@ void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, i
         q = -q;
       t = (2.f * w * (x0 - x1) - x0 + x2 + q) / (2.f * (1.f - w) * (x2 - x0));
     }
-    
+
     q = 1.f / (2.f * t * (1.f - t) * (w - 1.f) + 1.f);
     xx = (t * t * (x0 - 2.f * w * x1 + x2) + 2.f * t * (w * x1 - x0) + x0) * q;
     yy = (t * t * (y0 - 2.f * w * y1 + y2) + 2.f * t * (w * y1 - y0) + y0) * q;
@@ -993,7 +993,7 @@ void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, i
     x0 = x1 = x;
     y0 = y;
   }
-  
+
   if ((y0 - y1) * (long)(y2 - y1) > 0) {
     if (y0 == y2 || w == 1.f)
       t = (y0 - y1) / (y0 - 2.f * y1 + y2);
@@ -1003,7 +1003,7 @@ void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, i
         q = -q;
       t = (2.f * w * (y0 - y1) - y0 + y2 + q) / (2.f * (1.f - w) * (y2 - y0));
     }
-    
+
     q = 1.f / (2.f * t * (1.f - t) * (w - 1.f) + 1.f);
     xx = (t * t * (x0 - 2.f * w * x1 + x2) + 2.f * t * (w * x1 - x0) + x0) * q;
     yy = (t * t * (y0 - 2.f * w * y1 + y2) + 2.f * t * (w * y1 - y0) + y0) * q;
@@ -1019,7 +1019,7 @@ void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, i
     x0 = x;
     y0 = y1 = y;
   }
-  
+
   bezier_seg_rational(s, x0, y0, x1, y1, x2, y2, w*w, col);
 }
 
@@ -1031,10 +1031,10 @@ void sgl_ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long
     sgl_ellipse_rect(s, x0, y0, x1, y1, col, 0);
   if (w != 0.f)
     w = (w - zd) / (w + w);
-  
+
   xd = floorf(xd * w + .5f);
   yd = floorf(yd * w + .5f);
-  
+
   bezier_seg_rational(s, x0, y0 + yd, x0, y0, x0 + xd, y0, 1.f - w, col);
   bezier_seg_rational(s, x0, y0 + yd, x0, y1, x1 - xd, y1, w, col);
   bezier_seg_rational(s, x1, y1 - yd, x1, y1, x1 - xd, y1, 1.f - w, col);
@@ -1059,29 +1059,29 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
   float xc = -fabsf(x0 + x1 - x2 - x3), xa = xc - 4 * sx * (x1 - x2), xb = sx * (x0 - x1 - x2 + x3);
   float yc = -fabsf(y0 + y1 - y2 - y3), ya = yc - 4 * sy * (y1 - y2), yb = sy * (y0 - y1 - y2 + y3);
   float ab, ac, bc, ba, xx, xy, yy, dx, dy, ex, EP = .01f;
-  
+
 #if defined(SGL_ENABLE_AA)
   float px, py, ed, ip;
 #else
   float* pxy;
 #endif
-  
+
   if (xa == 0.f && ya == 0.f) {
     sx = floorf((3 * x1 - x0 + 1) / 2); sy = floorf((3 * y1 - y0 + 1) / 2);
     bezier_seg(s, x0, y0, sx, sy, x3, y3, col);
     return;
   }
-  
+
   x1 = (x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0) + 1;
   x2 = (x2 - x3) * (x2 - x3) + (y2 - y3) * (y2 - y3) + 1;
-  
+
   do {
     ab = xa * yb - xb * ya;
     ac = xa * yc - xc * ya;
     bc = xb * yc - xc * yb;
     ex = ab * (ab + ac - 3 * bc) + ac * ac;
     f = ex > 0 ? 1 : sqrtf(1 + 1024 / x1);
-    
+
     ab *= f; ac *= f;
     bc *= f;
     ex *= f * f;
@@ -1092,14 +1092,14 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
     ba = 8 * (xa - ya);
     dx = 27 * (8 * ab * (yb * yb - ya * yc) + ex * (ya + 2 * yb + yc)) / 64 - ya * ya * (xy - ya);
     dy = 27 * (8 * ab * (xb * xb - xa * xc) - ex * (xa + 2 * xb + xc)) / 64 - xa * xa * (xy + xa);
-    
+
     xx = 3 * (3 * ab * (3 * yb * yb - ya * ya - 2 * ya * yc) - ya * (3 * ac * (ya + yb) + ya * ba)) / 4;
     yy = 3 * (3 * ab * (3 * xb * xb - xa * xa - 2 * xa * xc) - xa * (3 * ac * (xa + xb) + xa * ba)) / 4;
     xy = xa * ya * (6 * ab + 6 * ac - 3 * bc + ba);
     ac = ya * ya;
     ba = xa * xa;
     xy = 3 * (xy + 9 * f * (ba * yb * yc - xb * xc * ac) - 18 * xb * yb * ab) / 8;
-    
+
     if (ex < 0) {
       dx = -dx;
       dy = -dy;
@@ -1116,7 +1116,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
     dx += xy;
     ex = dx + dy;
     dy += xy;
-    
+
 #if defined(SGL_ENABLE_AA)
     for (fx = fy = f; x0 != x3 && y0 != y3; ) {
       y1 = fminf(fabsf(xy - dx), fabsf(dy - xy));
@@ -1132,7 +1132,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
         if (ip >= -EP)
           if (dx + xx > xy || dy + yy < xy)
             goto exit;
-        
+
         y1 = 2 * ex + dx;
         if (2 * ex + dy > 0) {
           fx--;
@@ -1151,14 +1151,14 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
           yy += ba;
         }
       } while (fx > 0 && fy > 0);
-      
+
       if (2 * fy <= f) {
         if (py < ed)
           sgl_psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
         y0 += sy;
         fy += f;
       }
-      
+
       if (2 * fx <= f) {
         if (px < ed)
           sgl_psetb(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
@@ -1167,20 +1167,20 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
       }
     }
     break;
-    
+
   exit:
     if (2 * ex < dy && 2 * fy <= f + 2) {
       if (py < ed)
         sgl_psetb(s, x0 + sx, y0, ACHAN(col, 255 - (int)(255 * px / ed)));
       y0 += sy;
     }
-    
+
     if (2 * ex > dx && 2 * fx <= f + 2) {
       if (px < ed)
         sgl_psetb(s, x0, (int)y2 + sy, ACHAN(col, 255 - (int)(255 * px / ed)));
       x0 += sx;
     }
-    
+
     xx = x0;
     x0 = x3;
     x3 = xx;
@@ -1198,7 +1198,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
       do {
         if (dx > *pxy || dy < *pxy)
           goto exit;
-        
+
         y1 = 2 * ex - dy;
         if (2 * ex >= dx) {
           fx--;
@@ -1207,7 +1207,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
           yy += bc;
           xx += ab;
         }
-        
+
         if (y1 <= 0) {
           fy--;
           ex += dy += yy;
@@ -1216,7 +1216,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
           yy += ba;
         }
       } while (fx > 0 && fy > 0);
-      
+
       if (2 * fx <= f) {
         x0 += sx;
         fx += f;
@@ -1228,7 +1228,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
       if (pxy == &xy && dx < 0 && dy > 0)
         pxy = &EP;
     }
-    
+
   exit:
     xx = x0;
     x0 = x3;
@@ -1243,7 +1243,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
     x1 = x2;
 #endif
   } while (leg--);
-  
+
   sgl_line(s, x0, y0, x3, y3, col);
 }
 
@@ -1255,7 +1255,7 @@ void sgl_bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int 
   long yb = y0 - y1 - y2 + y3, yd = yb + 4 * (y1 + y2);
   float fx0 = x0, fx1, fx2, fx3, fy0 = y0, fy1, fy2, fy3;
   float t1 = xb * xb - xa * xc, t2, t[5];
-  
+
   if (xa == 0) {
     if (labs(xc) < 2 * labs(xb))
       t[n++] = xc / (2.f * xb);
@@ -1268,7 +1268,7 @@ void sgl_bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int 
     if (fabsf(t1) < 1.f)
       t[n++] = t1;
   }
-  
+
   t1 = yb * yb - ya * yc;
   if (ya == 0) {
     if (labs(yc) < 2 * labs(yb))
@@ -1282,13 +1282,13 @@ void sgl_bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int 
     if (fabsf(t1) < 1.f)
       t[n++] = t1;
   }
-  
+
   for (i = 1; i < n; i++)
     if ((t1 = t[i - 1]) > t[i]) {
       t[i - 1] = t[i];
       t[i] = t1; i = 0;
     }
-  
+
   t1 = -1.; t[n] = 1.;
   for (i = 0; i <= n; i++) {
     t2 = t[i];
@@ -1300,7 +1300,7 @@ void sgl_bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int 
     fy0 -= fy3 = (t2 * (t2 * (3 * yb - t2 * ya) - 3 * yc) + yd) / 8;
     x3 = floorf(fx3 + .5f);
     y3 = floorf(fy3 + .5f);
-    
+
     if (fx0 != .0f) {
       fx1 *= fx0 = (x0 - x3) / fx0;
       fx2 *= fx0;
@@ -1311,7 +1311,7 @@ void sgl_bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int 
     }
     if (x0 != x3 || y0 != y3)
       bezier_seg_cubic(s, x0, y0, x0 + fx1, y0 + fy1, x0 + fx2, y0 + fy2, x3, y3, col);
-    
+
     x0 = x3;
     y0 = y3;
     fx0 = fx3;
@@ -1329,17 +1329,17 @@ void sgl_rect(surface_t* s, int x, int y, int w, int h, int col, int fill) {
     h += y;
     y  = 0;
   }
-  
+
   w += x;
   h += y;
   if (w < 0 || h < 0 || x > s->w || y > s->h)
     return;
-  
+
   if (w > s->w)
     w = s->w;
   if (h > s->h)
     h = s->h;
-  
+
   if (fill) {
     for (; y < h; ++y)
       sgl_hline(s, y, x, w, col);
@@ -1398,11 +1398,11 @@ bool sgl_bmp(surface_t* s, const char* path) {
     error_handle(PRIO_NORM, "fopen() failed: %s", path);
     return false;
   }
-  
+
   fseek(fp, 0, SEEK_END);
   size_t length = ftell(fp);
   rewind(fp);
-  
+
   unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
   if (!data) {
     error_handle(PRIO_HIGH, "calloc() failed");
@@ -1410,7 +1410,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
   }
   fread(data, 1, length, fp);
   fclose(fp);
-  
+
   int off = 0;
   BMPHEADER header;
   BMPINFOHEADER info;
@@ -1418,14 +1418,14 @@ bool sgl_bmp(surface_t* s, const char* path) {
   BMP_GET(&header, data, sizeof(BMPHEADER));
   //int info_pos = off;
   BMP_GET(&info, data, sizeof(BMPINFOHEADER));
-  
+
   if (header.type != 0x4D42) {
     error_handle(PRIO_NORM, "bmp() failed: invalid BMP signiture '%d'", header.type);
     return false;
   }
-  
+
 #pragma TODO(Add support for OS/2 bitmaps)
-  
+
   unsigned char* color_map = NULL;
   int color_map_size = 0;
   if (info.bits <= 8) {
@@ -1437,13 +1437,13 @@ bool sgl_bmp(surface_t* s, const char* path) {
     }
     BMP_GET(color_map, data, color_map_size);
   }
-  
+
   if (!sgl_surface(s, info.width, info.height)) {
     FREE_SAFE(color_map);
     error_handle(PRIO_HIGH, "malloc() failed");
     return false;
   }
-  
+
   off = header.offset;
   int i, sz = info.width * info.height;
   unsigned char color;
@@ -1481,7 +1481,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
       sgl_destroy(s);
       return false;
   }
-  
+
   FREE_SAFE(color_map);
   return true;
 }
@@ -1494,7 +1494,7 @@ bool sgl_save_bmp(surface_t* s, const char* path) {
     return false;
   }
   memset(img, 0, 3 * s->w * s->h);
-  
+
   int i, j, y, c;
   for (i = 0; i < s->w; ++i) {
     for (j = s->h; j > 0; --j) {
@@ -1505,7 +1505,7 @@ bool sgl_save_bmp(surface_t* s, const char* path) {
       img[(i + y * s->w) * 3 + 0] = (unsigned char)B(c);
     }
   }
-  
+
   unsigned char header[14] = {'B', 'M',
     0,  0, 0, 0,
     0,  0,
@@ -1517,12 +1517,12 @@ bool sgl_save_bmp(surface_t* s, const char* path) {
     1,  0,
     24, 0};
   unsigned char pad[3] = {0, 0, 0};
-  
+
   header[2]  = (unsigned char)(filesize);
   header[3]  = (unsigned char)(filesize >> 8);
   header[4]  = (unsigned char)(filesize >> 16);
   header[5]  = (unsigned char)(filesize >> 24);
-  
+
   info[4]  = (unsigned char)(s->w);
   info[5]  = (unsigned char)(s->w >> 8);
   info[6]  = (unsigned char)(s->w >> 16);
@@ -1531,21 +1531,21 @@ bool sgl_save_bmp(surface_t* s, const char* path) {
   info[9]  = (unsigned char)(s->h >> 8);
   info[10] = (unsigned char)(s->h >> 16);
   info[11] = (unsigned char)(s->h >> 24);
-  
+
   FILE* fp = fopen(path, "wb");
   if (!fp) {
     error_handle(PRIO_NORM, "fopen() failed: %s", path);
     free(img);
     return false;
   }
-  
+
   fwrite(header, 1, 14, fp);
   fwrite(info, 1, 40, fp);
   for(i = 0; i < s->h; ++i) {
     fwrite(img + (s->w * (s->h - i - 1) * 3), 3, s->w, fp);
     fwrite(pad, 1, (4 - (s->w * 3) % 4) % 4,fp);
   }
-  
+
   free(img);
   fclose(fp);
   return true;
@@ -1735,7 +1735,7 @@ static char font[540][8] = {
   { 0x18, 0x18, 0x18, 0x00, 0x18, 0x18, 0x18, 0x00 },   // U+007C (|)
   { 0x07, 0x0C, 0x0C, 0x38, 0x0C, 0x0C, 0x07, 0x00 },   // U+007D (})
   { 0x6E, 0x3B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+007E (~)
-  
+
   // Block 95 - 126
   { 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00 },   // U+2580 (top half)
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF },   // U+2581 (box 1/8)
@@ -1769,7 +1769,7 @@ static char font[540][8] = {
   { 0xF0, 0xF0, 0xF0, 0xF0, 0x00, 0x00, 0x00, 0x00 },   // U+259D (box top right)
   { 0xF0, 0xF0, 0xF0, 0xF0, 0x0F, 0x0F, 0x0F, 0x0F },   // U+259E (boxes top right and bottom left)
   { 0xF0, 0xF0, 0xF0, 0xF0, 0xFF, 0xFF, 0xFF, 0xFF },   // U+259F (boxes right and bottom)
-  
+
   // Box 127 - 254
   { 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00 },   // U+2500 (thin horizontal)
   { 0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00 },   // U+2501 (thick horizontal)
@@ -1899,7 +1899,7 @@ static char font[540][8] = {
   { 0x08, 0x08, 0x08, 0x08, 0x18, 0x18, 0x18, 0x18 },   // U+257D (up L, down H)
   { 0x00, 0x00, 0x00, 0x0F, 0xFF, 0x00, 0x00, 0x00 },   // U+257E (right L, left H)
   { 0x18, 0x18, 0x18, 0x18, 0x08, 0x08, 0x08, 0x08 },   // U+257F (up H, down L)
-  
+
   // Greek 255 - 312
   { 0x2D, 0x00, 0x0C, 0x0C, 0x0C, 0x2C, 0x18, 0x00 },   // U+0390 (iota with tonos and diaeresis)
   { 0x0C, 0x1E, 0x33, 0x33, 0x3F, 0x33, 0x33, 0x00 },   // U+0391 (Alpha)
@@ -1959,7 +1959,7 @@ static char font[540][8] = {
   { 0x00, 0x63, 0x36, 0x1C, 0x1C, 0x36, 0x63, 0x00 },   // U+03C7 (chi)
   { 0x00, 0x00, 0xDB, 0xDB, 0xDB, 0x7E, 0x18, 0x00 },   // U+03C8 (psi)
   { 0x00, 0x00, 0x36, 0x63, 0x6B, 0x7F, 0x36, 0x00 },   // U+03C9 (omega)
-  
+
   // Hiragana 313 - 408
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+3040
   { 0x04, 0x3F, 0x04, 0x3C, 0x56, 0x4D, 0x26, 0x00 },   // U+3041 (Hiragana a)
@@ -2057,7 +2057,7 @@ static char font[540][8] = {
   { 0x00, 0x00, 0x08, 0x08, 0x10, 0x30, 0x0C, 0x00 },   // U+309D (Hiragana iteration mark)
   { 0x20, 0x40, 0x14, 0x24, 0x08, 0x18, 0x06, 0x00 },   // U+309E (Hiragana voiced iteration mark)
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+309F
-  
+
   // SGA 409 - 434
   { 0x00, 0x00, 0x38, 0x66, 0x06, 0x06, 0x07, 0x00 },   // U+E541 (SGA A)
   { 0x00, 0x00, 0x0C, 0x0C, 0x18, 0x30, 0x7F, 0x00 },   // U+E542 (SGA B)
@@ -2085,7 +2085,7 @@ static char font[540][8] = {
   { 0x00, 0x00, 0x66, 0x30, 0x18, 0x0C, 0x06, 0x00 },   // U+E558 (SGA X)
   { 0x00, 0x00, 0x36, 0x36, 0x36, 0x36, 0x36, 0x00 },   // U+E559 (SGA Y)
   { 0x00, 0x00, 0x18, 0x3C, 0x66, 0x66, 0x66, 0x00 },   // U+E55A (SGA Z)
-  
+
   // Latin extended 435 - 529
   { 0x18, 0x18, 0x00, 0x18, 0x18, 0x18, 0x18, 0x00 },   // U+00A1 (inverted !)
   { 0x18, 0x18, 0x7E, 0x03, 0x03, 0x7E, 0x18, 0x18 },   // U+00A2 (dollarcents)
@@ -2182,7 +2182,7 @@ static char font[540][8] = {
   { 0x00, 0x38, 0x00, 0x33, 0x33, 0x3E, 0x30, 0x1F },   // U+00FD (y aigu)
   { 0x00, 0x00, 0x06, 0x3E, 0x66, 0x3E, 0x06, 0x00 },   // U+00FE (thorn)
   { 0x00, 0x33, 0x00, 0x33, 0x33, 0x3E, 0x30, 0x1F },   // U+00FF (y umlaut)
-  
+
   // Extras 530 - 539
   { 0x1F, 0x33, 0x33, 0x5F, 0x63, 0xF3, 0x63, 0xE3 },   // U+20A7 (Spanish Pesetas/Pt)
   { 0x70, 0xD8, 0x18, 0x3C, 0x18, 0x18, 0x1B, 0x0E },   // U+0192 (dutch florijn)
@@ -2260,7 +2260,7 @@ int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
         u = (u << 6) | (c[l++] & 0x3F);
     }
   }
-  
+
   int uc = letter_index(u), i, j;
   for (i = 0; i < 8; ++i)
     for (j = 0; j < 8; ++j) {
@@ -2272,7 +2272,7 @@ int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
         pset_fn(s, x + j, y + i, bg);
       }
     }
-  
+
   return l;
 }
 
@@ -2310,12 +2310,12 @@ void sgl_writeln(surface_t* s, int x, int y, int fg, int bg, const char* str) {
 void sgl_writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
-  
+
   va_list argptr;
   va_start(argptr, fmt);
   int length = vsnprintf(buffer, buffer_size, fmt, argptr);
   va_end(argptr);
-  
+
   if (length + 1 > buffer_size) {
     buffer_size = length + 1;
     buffer = realloc(buffer, buffer_size);
@@ -2323,7 +2323,7 @@ void sgl_writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, .
     vsnprintf(buffer, buffer_size, fmt, argptr);
     va_end(argptr);
   }
-  
+
   sgl_writeln(s, x, y, fg, bg, buffer);
   free(buffer);
 }
@@ -2339,12 +2339,12 @@ void sgl_string(surface_t* out, int fg, int bg, const char* str) {
 void sgl_stringf(surface_t* out, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
-  
+
   va_list argptr;
   va_start(argptr, fmt);
   int length = vsnprintf(buffer, buffer_size, fmt, argptr);
   va_end(argptr);
-  
+
   if (length + 1 > buffer_size) {
     buffer_size = length + 1;
     buffer = realloc(buffer, buffer_size);
@@ -2440,14 +2440,14 @@ bool sgl_bdf(bdf_t* out, const char* path) {
     error_handle(PRIO_NORM, "fopen() failed: %s", path);
     return false;
   }
-  
+
   char *s, *p, buf[BUFSIZ];
   for (;;) {
     if (!fgets(buf, sizeof(buf), fp))
       break;
     if (!(s = strtok(buf, " \t\n\r")))
       break;
-    
+
     if (!strcasecmp(s, "FONTBOUNDINGBOX")) {
       BDF_READ_INT(out->fontbb.w);
       BDF_READ_INT(out->fontbb.h);
@@ -2458,17 +2458,17 @@ bool sgl_bdf(bdf_t* out, const char* path) {
       break;
     }
   }
-  
+
   if (out->fontbb.w <= 0 || out->fontbb.h <= 0) {
     error_handle(PRIO_NORM, "bdf() failed: No character size given for %s", path);
     return false;
   }
-  
+
   if (out->n_chars <= 0) {
     error_handle(PRIO_NORM, "bdf() failed: Unknown number of characters for %s", path);
     return false;
   }
-  
+
   out->encoding_table = malloc(out->n_chars * sizeof(unsigned int));
   if (!out->encoding_table) {
     error_handle(PRIO_HIGH, "malloc() failed");
@@ -2480,14 +2480,14 @@ bool sgl_bdf(bdf_t* out, const char* path) {
     error_handle(PRIO_HIGH, "malloc() failed");
     return false;
   }
-  
+
   int encoding = 0, width = -1, scanline = -1, i, j, n = 0;
   for (;;) {
     if (!fgets(buf, sizeof(buf), fp))
       break;
     if (!(s = strtok(buf, " \t\n\r")))
       break;
-    
+
     if (!strcasecmp(s, "ENCODING")) {
       BDF_READ_INT(encoding);
     } else if (!strcasecmp(s, "DWIDTH")) {
@@ -2508,14 +2508,14 @@ bool sgl_bdf(bdf_t* out, const char* path) {
         error_handle(PRIO_NORM, "bdf() failed: Unknown character with for %s", path);
         return false;
       }
-      
+
       if (out->chars[n].bb.x < 0) {
         width -= out->chars[n].bb.x;
         out->chars[n].bb.x = 0;
       }
       if (out->chars[n].bb.x + out->chars[n].bb.w > width)
         width = out->chars[n].bb.x + out->chars[n].bb.w;
-      
+
       out->chars[n].bitmap = malloc(((out->fontbb.w + 7) / 8) * out->fontbb.h * sizeof(unsigned char));
       if (!out->chars[n].bitmap) {
         sgl_bdf_destroy(out);
@@ -2524,14 +2524,14 @@ bool sgl_bdf(bdf_t* out, const char* path) {
       }
       out->chars[n].width = width;
       out->encoding_table[n] = encoding;
-      
+
       scanline = 0;
       memset(out->chars[n].bitmap, 0, ((out->fontbb.w + 7) / 8) * out->fontbb.h);
     } else if (!strcasecmp(s, "ENDCHAR")) {
       if (out->chars[n].bb.x) {
         if (out->chars[n].bb.x < 0 || out->chars[n].bb.x > 7)
           continue;
-        
+
         int x, y, c, o;
         for (y = 0; y < out->fontbb.h; ++y) {
           o = 0;
@@ -2542,14 +2542,14 @@ bool sgl_bdf(bdf_t* out, const char* path) {
           }
         }
       }
-      
+
       scanline = -1;
       width = -1;
       ++n;
     } else {
       if (n >= out->n_chars || !out->chars[n].bitmap || scanline < 0)
         continue;
-      
+
       p = s;
       j = 0;
       while (*p) {
@@ -2561,7 +2561,7 @@ bool sgl_bdf(bdf_t* out, const char* path) {
           out->chars[n].bitmap[j + scanline * ((out->fontbb.w + 7) / 8)] = i;
           break;
         }
-        
+
         out->chars[n].bitmap[j + scanline * ((out->fontbb.w + 7) / 8)] = i;
         ++j;
         ++p;
@@ -2569,7 +2569,7 @@ bool sgl_bdf(bdf_t* out, const char* path) {
       ++scanline;
     }
   }
-  
+
   fclose(fp);
   return true;
 }
@@ -2585,23 +2585,23 @@ int sgl_bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int 
         u = (u << 6) | (c[l++] & 0x3F);
     }
   }
-  
+
   for (i = 0; i < f->n_chars; ++i)
     if (f->encoding_table[i] == u) {
       n = i;
       break;
     }
-  
+
   int yoffset = f->fontbb.h - f->chars[n].bb.h + (f->fontbb.y - f->chars[n].bb.y), xx, yy, cc;
   for (yy = 0; yy < f->fontbb.h; ++yy) {
     for (xx = 0; xx < f->fontbb.w; xx += 8) {
       cc = (yy < yoffset || yy > yoffset + f->chars[n].bb.h ? 0 : f->chars[n].bitmap[(yy - yoffset) * ((f->fontbb.w + 7) / 8) + xx / 8]);
-      
+
       for (i = 128, j = 0; i; i /= 2, ++j)
         pset_fn(s, x + j, y + yy, (cc & i ? fg : bg));
     }
   }
-  
+
   return l;
 }
 
@@ -2714,12 +2714,12 @@ bool sgl_image(surface_t* out, const char* path) {
     error_handle(PRIO_NORM, "stbi_load() failed: %s", stbi_failure_reason());
     return false;
   }
-  
+
   if (!sgl_surface(out, w, h)) {
     stbi_image_free(data);
     return false;
   }
-  
+
   unsigned char* p = NULL;
   for (x = 0; x < w; ++x) {
     for (y = 0; y < h; ++y) {
@@ -2731,7 +2731,7 @@ bool sgl_image(surface_t* out, const char* path) {
 #endif
     }
   }
-  
+
   stbi_image_free(data);
   return true;
 }
@@ -2741,19 +2741,19 @@ bool sgl_save_image(surface_t* in, const char* path, SAVETYPE type) {
     error_handle(PRIO_NORM, "save_image() failed: Invalid parameters");
     return false;
   }
-  
+
 #if !defined(SGL_DISABLE_RGBA)
 #define NC 4
 #else
 #define NC 3
 #endif
-  
+
   unsigned char* data = malloc(in->w * in->h * NC * sizeof(unsigned char));
   if (!data) {
     error_handle(PRIO_NORM, "save_image() failed: Out of memory");
     return false;
   }
-  
+
   unsigned char* p = NULL;
   int i, j, c;
   for (i = 0; i < in->w; ++i) {
@@ -2786,7 +2786,7 @@ bool sgl_save_image(surface_t* in, const char* path, SAVETYPE type) {
     break;
   }
 #undef NC
-  
+
   if (!res) {
     error_handle(PRIO_NORM, "save_image() failed: stbi_write() failed");
     return false;
@@ -2820,10 +2820,11 @@ void sgl_joystick_callbacks(void(*connect_cb)(joystick_t*, int), void(*remove_cb
   joy_axis_callback = axis_cb;
 }
 
+#if defined(_WIN32) || defined(__APPLE__)
 joystick_t* sgl_joystick(int id) {
   if (id < 0 || !joy_devices.head)
     return NULL;
-  
+
   joystick_t* current = joy_devices.head;
   while (current) {
     if (current->device_id == id)
@@ -2832,6 +2833,7 @@ joystick_t* sgl_joystick(int id) {
   }
   return NULL;
 }
+#endif
 
 static inline void add_joystick(joystick_t* d) {
   CALL(joy_connect_callback, d, d->device_id);
@@ -2993,7 +2995,7 @@ GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
 }
 
 static GLuint vao, shader, texture;
-static bool gl3_available = false;
+static int gl3_available = 1;
 
 bool init_gl(int w, int h) {
 #if defined(_WIN32)
@@ -3018,14 +3020,14 @@ bool init_gl(int w, int h) {
   void* libGL = dlopen("libGL.so", RTLD_LAZY);
   if (!libGL) {
     sgl_release();
-    error_handle("dlopen() failed: libGL.so couldn't be loaded");
+    error_handle(PRIO_LOW, "dlopen() failed: libGL.so couldn't be loaded");
     return false;
   }
 
 #define GLE(ret, name, ...) \
   gl##name = (name##proc *) dlsym(libGL, "gl" #name); \
   if (!gl##name) { \
-    error_handle("dlsym() failed: Function gl" #name " couldn't be loaded from libGL.so"); \
+    error_handle(PRIO_LOW, "dlsym() failed: Function gl" #name " couldn't be loaded from libGL.so"); \
     gl3_available -= 1; \
   }
   GL_LIST
@@ -3291,7 +3293,7 @@ static int border_off = 22;
       0x00, 0x10, 0x00, 0x00, 0x02, 0x0E, 0x8C, 0x8F, 0xA9, 0xCB, 0xED,
       0x0F, 0xA3, 0x9C, 0xB4, 0xDA, 0x8B, 0xB3, 0x3E, 0x05, 0x00, 0x3B
     };
-    
+
     NSData* cursorData = [NSData dataWithBytesNoCopy:&cursorBytes[0]
                                               length:sizeof(cursorBytes)
                                         freeWhenDone:NO];
@@ -3299,7 +3301,7 @@ static int border_off = 22;
     invisibleCursor = [[NSCursor alloc] initWithImage:cursorImage
                                               hotSpot:NSZeroPoint];
   }
-  
+
   return invisibleCursor;
 }
 @end
@@ -3318,16 +3320,16 @@ void sgl_cursor(CURSORFLAGS flags) {
     error_handle(PRIO_LOW, "cursor() failed: Called before screen is set up");
     return;
   }
-  
+
   if (flags == DEFAULT)
     flags = SHOWN | UNLOCKED;
-  
+
   if (flags & HIDDEN && flags & ~SHOWN)
     [NSCursor hide];
   if (flags & SHOWN)
     [NSCursor unhide];
   cursor_state = flags & LOCKED ? flags & UNLOCKED ? !cursor_state : 1 : 0;
-  
+
   if (flags & 0xFFFFF0) {
     NSCursor* tmp = NULL;
     switch (flags & ~0x00000F) {
@@ -3369,16 +3371,16 @@ void sgl_cursor(CURSORFLAGS flags) {
         tmp = [NSCursor invisibleCursor];
         break;
     }
-    
+
     if (!tmp)
       return;
-    
+
     if (cursor && cursor != custom_cursor)
       [cursor sgl_release];
-    
+
     cursor = tmp;
     [cursor retain];
-    
+
     if (app && [app contentView])
       [[app contentView] resetCursorRects];
   }
@@ -3387,7 +3389,7 @@ void sgl_cursor(CURSORFLAGS flags) {
 static inline NSImage* create_cocoa_image(surface_t* s) {
   NSImage* nsi = [[[NSImage alloc] initWithSize: NSMakeSize(s->w, s->h)] autorelease];
   NSBitmapImageRep* nsbir = nil;
-  
+
   if (nsi && nsbir)
     [nsi addRepresentation:nsbir];
   return nsi;
@@ -3397,10 +3399,10 @@ void sgl_custom_cursor(surface_t* s) {
   NSImage* nsi = create_cocoa_image(s);
   if (!nsi)
     return;
-  
+
   if (custom_cursor)
     [custom_cursor sgl_release];
-  
+
   custom_cursor = [[NSCursor alloc] initWithImage:nsi
                                             hotSpot:NSMakePoint(0, 0)];
   if (!custom_cursor) {
@@ -3440,7 +3442,7 @@ extern surface_t* buffer;
   if (self != nil) {
     track = nil;
     [self updateTrackingAreas];
-    
+
     self.clearColor =  MTLClearColorMake(0., 0., 0., 0.);
     NSScreen *screen = [NSScreen mainScreen];
     scale_f = [screen backingScaleFactor];
@@ -3451,7 +3453,7 @@ extern surface_t* buffer;
                                       length:sizeof(quad_vertices)
                                      options:MTLResourceStorageModeShared];
     _n_vertices = sizeof(quad_vertices) / sizeof(AAPLVertex);
-    
+
     NSString *library = @""
       "#include <metal_stdlib>\n"
       "#include <simd/simd.h>\n"
@@ -3485,7 +3487,7 @@ extern surface_t* buffer;
       " const half4 colorSample = colorTexture.sample(textureSampler, in.textureCoordinate);"
       " return float4(colorSample);"
       "}";
-    
+
     NSError *err = nil;
     _library = [_device newLibraryWithSource:library
                                      options:nil
@@ -3495,16 +3497,16 @@ extern surface_t* buffer;
       error_handle(PRIO_HIGH, "[device newLibraryWithSource] failed: %s", [[err localizedDescription] UTF8String]);
       return nil;
     }
-    
+
     id<MTLFunction> vs = [_library newFunctionWithName:@"vertexShader"];
     id<MTLFunction> fs = [_library newFunctionWithName:@"samplingShader"];
-    
+
     MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
     pipelineStateDescriptor.label = @"[Texturing Pipeline]";
     pipelineStateDescriptor.vertexFunction = vs;
     pipelineStateDescriptor.fragmentFunction = fs;
     pipelineStateDescriptor.colorAttachments[0].pixelFormat = [self colorPixelFormat];
-    
+
     _pipeline = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor
                                                         error:&err];
     if (err || !_pipeline) {
@@ -3520,7 +3522,7 @@ extern surface_t* buffer;
     [self updateTrackingAreas];
   }
 #endif
-  
+
   return self;
 }
 
@@ -3568,7 +3570,7 @@ extern surface_t* buffer;
   if (cursor_state) {
     mx = CLAMP((int)(floorf([event locationInWindow].x - 1) + [event deltaX]), 0, win_w);
     my = CLAMP((int)(floorf(win_h - 1 - [event locationInWindow].y) + [event deltaY]), 0, win_h);
-    
+
     if (mx <= 0 || my <= 0 || mx >= win_w || my >= win_h) {
       NSPoint so = [[self window] convertRectToScreen:(NSRect){ [self convertPoint:NSMakePoint([self bounds].origin.x,
                                                                                                [self bounds].origin.y + [self bounds].size.height)
@@ -3604,25 +3606,25 @@ extern surface_t* buffer;
   [[self openGLContext] flushBuffer];
 #elif defined(SGL_ENABLE_METAL)
   [super drawRect: r];
-  
+
   MTLTextureDescriptor* td = [[MTLTextureDescriptor alloc] init];
   td.pixelFormat = MTLPixelFormatBGRA8Unorm;
   td.width = buffer->w;
   td.height = buffer->h;
-  
+
   _texture = [_device newTextureWithDescriptor:td];
   [_texture replaceRegion:(MTLRegion){{ 0, 0, 0 }, { buffer->w, buffer->h, 1 }}
               mipmapLevel:0
                 withBytes:buffer->buf
               bytesPerRow:buffer->w * 4];
-  
+
   id <MTLCommandBuffer> cmd_buf = [_cmd_queue commandBuffer];
   cmd_buf.label = @"[Command Buffer]";
   MTLRenderPassDescriptor* rpd = [self currentRenderPassDescriptor];
   if (rpd) {
     id<MTLRenderCommandEncoder> re = [cmd_buf renderCommandEncoderWithDescriptor:rpd];
     re.label = @"[Render Encoder]";
-    
+
     [re setViewport:(MTLViewport){ .0, .0, mtk_viewport.x, mtk_viewport.y, -1., 1. }];
     [re setRenderPipelineState:_pipeline];
     [re setVertexBuffer:_vertices
@@ -3637,10 +3639,10 @@ extern surface_t* buffer;
            vertexStart:0
            vertexCount:_n_vertices];
     [re endEncoding];
-    
+
     [cmd_buf presentDrawable:[self currentDrawable]];
   }
-  
+
   [_texture sgl_release];
   [td sgl_release];
   [cmd_buf commit];
@@ -3920,7 +3922,7 @@ int sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-  
+
   NSWindowStyleMask _flags = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
   if (flags & FULLSCREEN)
     flags |= (BORDERLESS | RESIZABLE | FULLSCREEN_DESKTOP);
@@ -3938,12 +3940,12 @@ int sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
     win_w = w;
     win_h = h;
   }
-  
+
   if (!border_off && flags & ~FULLSCREEN) {
     _flags &= ~NSWindowStyleMaskBorderless;
     _flags |= NSWindowStyleMaskFullSizeContentView;
   }
-  
+
   if (s)
     if (!sgl_surface(s, w, h))
       return 0;
@@ -3957,7 +3959,7 @@ int sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
     error_handle(PRIO_HIGH, "[osx_app_t initWithContentRect] failed");
     return 0;
   }
-  
+
   if (flags & ALWAYS_ON_TOP)
     [app setLevel:NSFloatingWindowLevel];
 
@@ -3967,7 +3969,7 @@ int sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
     error_handle(PRIO_HIGH, "[AppDelegate alloc] failed");
     [NSApp terminate:nil];
   }
-  
+
   if (flags & FULLSCREEN) {
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7
     [app toggleFullScreen:nil];
@@ -3984,7 +3986,7 @@ int sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
   [app setReleasedWhenClosed:NO];
   [app performSelectorOnMainThread:@selector(makeKeyAndOrderFront:) withObject:nil waitUntilDone:YES];
   [app center];
-  
+
   if (!border_off && flags & ~FULLSCREEN) {
     [app setTitle:@""];
     [app setTitlebarAppearsTransparent:YES];
@@ -3992,7 +3994,7 @@ int sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
     [[app standardWindowButton:NSWindowCloseButton] setHidden:YES];
     [[app standardWindowButton:NSWindowMiniaturizeButton] setHidden:YES];
   }
-  
+
   NSPoint mp = [NSEvent mouseLocation];
   lmx = mx = mp.x;
   lmy = my = mp.y;
@@ -4013,7 +4015,7 @@ int sgl_poll(event_t* ue) {
                                   untilDate:[NSDate distantPast]
                                      inMode:NSDefaultRunLoopMode
                                     dequeue:YES];
-  
+
   int ret = 1;
   if (!e || !ue) {
     ret = 0;
@@ -4128,10 +4130,10 @@ typedef struct {
 #define REG_STRING_MAX 256
 #else
 #if !defined(STRICT)
-#define STRICT 
+#define STRICT
 #endif
 #define INITGUID
-#define DIRECTINPUT_VERSION 0x0800 
+#define DIRECTINPUT_VERSION 0x0800
 #define _CRT_SECURE_NO_DEPRECATE
 #if defined(_MSC_VER)
 #undef UNICODE
@@ -4141,7 +4143,7 @@ typedef struct {
 #define __reserved
 #endif
 #if !defined(_WIN32_DCOM)
-#define _WIN32_DCOM 
+#define _WIN32_DCOM
 #endif
 #if !defined(COBJMACROS)
 #define COBJMACROS 1
@@ -5638,7 +5640,7 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
   bmpinfo->bmiColors[1].rgbGreen = 0xFF;
   bmpinfo->bmiColors[2].rgbBlue = 0xFF;
 #endif
-  
+
   ShowWindow(hwnd, SW_NORMAL);
 
   if (flags & ALWAYS_ON_TOP)
@@ -5691,7 +5693,6 @@ bool sgl_closed() {
 }
 #else
 static Display* display;
-static int closed = 0;
 static surface_t* buffer;
 static Window win;
 static GC gc;
@@ -5703,6 +5704,7 @@ static XImage* img;
 #endif
 static XEvent event;
 static KeySym sym;
+static Cursor __cursor = 0, __custom_cursor = 0;
 
 #define Button6 6
 #define Button7 7
@@ -5732,6 +5734,379 @@ static int check_ext(const char* list, const char* exts) {
   }
 
   return 0;
+}
+#endif
+
+#if defined(SGL_ENABLE_JOYSTICKS)
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <linux/input.h>
+#define __USE_UNIX98
+#include <pthread.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+
+typedef enum {
+  JOY_DEVICE_ATTACHED,
+  JOY_DEVICE_REMOVED,
+  JOY_BTN_DOWN,
+  JOY_BTN_UP,
+  JOY_AXIS_MOVED
+} JOYEVENTTYPE;
+
+typedef struct {
+	pthread_t thrd;
+	int fd;
+	char* path;
+	int buttons[KEY_CNT - BTN_MISC];
+	int axes[ABS_CNT];
+	struct input_absinfo axis_info[ABS_CNT];
+} joystick_private_t;
+
+typedef struct __joy_q_event_t {
+  unsigned int device_id;
+  JOYEVENTTYPE event;
+  struct __joy_q_event_t* next;
+  void* data;
+} joystick_queued_event_t;
+
+static struct {
+  int size;
+  joystick_queued_event_t* head;
+} event_queue;
+
+typedef struct {
+  joystick_t* device;
+  long timestamp;
+  unsigned int btn_id;
+  bool down;
+} joystick_btn_event_t;
+
+typedef struct {
+  joystick_t* device;
+  long timestamp;
+  unsigned int axis_id;
+  float value, last_value;
+} joystick_axis_event_t;
+
+static pthread_mutex_t devices_mtx;
+static pthread_mutex_t event_queue_mtx;
+
+#if !defined(MAX_PATH)
+#define MAX_PATH 128
+#endif
+
+#define test_bit(b, a) ((a[(b) / (sizeof(int) * 8)] >> ((b) % (sizeof(int) * 8))) & 0x1)
+
+joystick_t* sgl_joystick(int id) {
+  if (id < 0 || !joy_devices.head)
+    return NULL;
+  joystick_t* ret = NULL;
+  pthread_mutex_lock(&devices_mtx);
+  joystick_t* current = joy_devices.head;
+  while (current) {
+    if (current->device_id == id) {
+      ret = current;
+      break;
+    }
+    current = current->next;
+  }
+  pthread_mutex_lock(&devices_mtx);
+  return ret;
+}
+
+static void queue_joy_event(unsigned int id, JOYEVENTTYPE type, void* data) {
+  pthread_mutex_lock(&event_queue_mtx);
+
+  joystick_queued_event_t* e = malloc(sizeof(joystick_queued_event_t));
+  e->device_id = id;
+  e->event = type;
+  e->data = data;
+  e->next = NULL;
+
+  joystick_queued_event_t* current = event_queue.head;
+  if (!current)
+    event_queue.head = e;
+  else {
+    while (current)
+      current = current->next;
+    current->next = e;
+  }
+  event_queue.size++;
+
+  pthread_mutex_unlock(&event_queue_mtx);
+}
+
+static void queue_axis_event(joystick_t* device, long time, unsigned int id, float v, float lv) {
+  joystick_axis_event_t* e = malloc(sizeof(joystick_axis_event_t));
+  e->device = device;
+  e->timestamp = time;
+  e->axis_id = id;
+  e->value = v;
+  e->last_value = lv;
+  queue_joy_event(device->device_id, JOY_AXIS_MOVED, (void*)e);
+}
+
+static void queue_btn_event(joystick_t* device, long time, unsigned int id, bool down) {
+  joystick_btn_event_t* e = malloc(sizeof(joystick_btn_event_t));
+  e->device = device;
+  e->timestamp = time;
+  e->btn_id = id;
+  e->down = down;
+  queue_joy_event(device->device_id, down ? JOY_BTN_DOWN : JOY_BTN_UP, (void*)e);
+}
+
+static void* device_thrd(void* ctx) {
+  joystick_t* device = (joystick_t*)ctx;
+  joystick_private_t* private = (joystick_private_t*)device->__private;
+  struct input_event event;
+  while (read(private->fd, &event, sizeof(struct input_event)) > 0) {
+    if (event.type == EV_ABS) {
+      if (event.code > ABS_MAX || private->axes[event.code] == -1)
+        continue;
+
+      float value = (event.value - private->axis_info[event.code].minimum) / (float)(private->axis_info[event.code].maximum - private->axis_info[event.code].minimum) * 2.0f - 1.0f;
+      queue_axis_event(device, (long)(event.time.tv_sec + event.time.tv_usec * 0.000001), private->axes[event.code], value, device->axes[private->axes[event.code]]);
+      device->axes[private->axes[event.code]] = value;
+    } else if (event.type == EV_KEY) {
+      if (event.code < BTN_MISC || event.code > KEY_MAX || private->buttons[event.code - BTN_MISC] == -1)
+        continue;
+      queue_btn_event(device, (long)(event.time.tv_sec + event.time.tv_usec * 0.000001), private->buttons[event.code - BTN_MISC], !!event.value);
+      device->buttons[private->buttons[event.code - BTN_MISC]] = !!event.value;
+    }
+  }
+
+  queue_joy_event(device->device_id, JOY_DEVICE_REMOVED, device);
+  sgl_joystick_remove(device->device_id);
+  return NULL;
+}
+
+bool sgl_joystick_init(bool scan_too) {
+  pthread_mutexattr_t rlock;
+  pthread_mutexattr_init(&rlock);
+  pthread_mutexattr_settype(&rlock, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(&devices_mtx, &rlock);
+  pthread_mutex_init(&event_queue_mtx, &rlock);
+  return (scan_too ? sgl_joystick_scan() : true);
+}
+
+bool sgl_joystick_scan() {
+  pthread_mutex_lock(&devices_mtx);
+  DIR* dev_input = opendir("/dev/input");
+  if (!dev_input) {
+    error_handle(PRIO_LOW, "sgl_joystick_scan() failed: Couldn't open /dev/input");
+    return false;
+  }
+
+  time_t c_time = time(NULL);
+  static time_t l_time;
+  struct stat sb;
+  struct input_id id;
+  char fname[MAX_PATH], name[128];
+  struct dirent* de;
+  int e_cap_bits[(EV_CNT  - 1) / sizeof(int) * 8 + 1];
+	int e_key_bits[(KEY_CNT - 1) / sizeof(int) * 8 + 1];
+	int e_abs_bits[(ABS_CNT - 1) / sizeof(int) * 8 + 1];
+  while ((de = readdir(dev_input))) {
+    int cc = 0, n;
+    if (!sscanf(de->d_name, "event%d%n", &n, &cc) || cc != strlen(de->d_name))
+      continue;
+
+    snprintf(fname, PATH_MAX, "/dev/input/%s", de->d_name);
+    if (stat(fname, &sb) ||sb.st_mtime < l_time)
+      continue;
+
+    bool duplicate = false;
+    joystick_t* current = joy_devices.head;
+    while (current) {
+      if (!strcmp(((joystick_private_t*)current->__private)->path, fname)) {
+        duplicate = true;
+        break;
+      }
+      current = current->next;
+    }
+    if (duplicate)
+      continue;
+
+    int fd = open(fname, O_RDONLY, 0);
+    memset(e_cap_bits, 0, sizeof(e_cap_bits));
+    memset(e_key_bits, 0, sizeof(e_key_bits));
+    memset(e_abs_bits, 0, sizeof(e_abs_bits));
+    if (ioctl(fd, EVIOCGBIT(0, sizeof(e_cap_bits)), e_cap_bits) < 0 ||
+        ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(e_key_bits)), e_key_bits) < 0 ||
+        ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(e_abs_bits)), e_abs_bits) < 0) {
+      close(fd);
+      continue;
+    }
+    if (!test_bit(EV_KEY, e_cap_bits) || !test_bit(EV_ABS, e_cap_bits) ||
+        !test_bit(ABS_X, e_abs_bits) || !test_bit(ABS_Y, e_abs_bits) ||
+        (!test_bit(BTN_TRIGGER, e_key_bits) && !test_bit(BTN_A, e_key_bits) && !test_bit(BTN_1, e_key_bits))) {
+      close(fd);
+      continue;
+    }
+
+    joystick_private_t* private = malloc(sizeof(joystick_private_t));
+    private->fd = fd;
+    private->path = strdup(fname);
+    memset(private->buttons, 0xFF, sizeof(private->buttons));
+    memset(private->axes, 0xFF, sizeof(private->axes));
+
+    joystick_t* device = malloc(sizeof(joystick_t));
+    device->next = NULL;
+    device->device_id = next_device_id++;
+    device->__private = (void*)private;
+    device->description = strdup((ioctl(fd, EVIOCGNAME(sizeof(name)), name) > 0 ? name : fname));
+    if (!ioctl(fd, EVIOCGID, &id)) {
+      device->vendor_id = id.vendor;
+      device->product_id = id.product;
+    } else
+      device->vendor_id = device->product_id = 0;
+
+    memset(e_key_bits, 0, sizeof(e_key_bits));
+    memset(e_abs_bits, 0, sizeof(e_abs_bits));
+    ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(e_key_bits)), e_key_bits);
+    ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(e_abs_bits)), e_abs_bits);
+
+    device->n_axes = 0;
+    for (int b = 0; b < ABS_CNT; ++b) {
+      if (!test_bit(b, e_abs_bits))
+        continue;
+      if (ioctl(fd, EVIOCGABS(b), &private->axis_info[b]) < 0 ||
+          private->axis_info[b].minimum == private->axis_info[b].maximum)
+        continue;
+      private->axes[b] = device->n_axes;
+      device->n_axes++;
+    }
+    device->n_buttons = 0;
+    for (int b = BTN_MISC; b < KEY_CNT; ++b) {
+      if (!test_bit(b, e_key_bits))
+        continue;
+      private->buttons[b - BTN_MISC] = device->n_buttons;
+      device->n_buttons++;
+    }
+    device->axes = malloc(sizeof(float) * device->n_axes);
+    device->buttons = malloc(sizeof(bool) * device->n_buttons);
+
+    add_joystick(device);
+
+    pthread_create(&private->thrd, NULL, device_thrd, device);
+  }
+
+  closedir(dev_input);
+  l_time = c_time;
+  pthread_mutex_unlock(&devices_mtx);
+  return true;
+}
+
+static inline void release_joystick(joystick_t** d) {
+  joystick_t* _d = *d;
+  joystick_private_t* _p = _d->__private;
+  close(_p->fd);
+  FREE_SAFE(_p->path);
+  FREE_SAFE(_p);
+  pthread_cancel(_p->thrd);
+  pthread_join(_p->thrd, NULL);
+  if (_d->description)
+    free((void*)_d->description);
+  FREE_SAFE(_d->axes);
+  FREE_SAFE(_d->buttons);
+  FREE_SAFE(_d);
+}
+
+void sgl_joystick_release() {
+  pthread_mutex_lock(&devices_mtx);
+  joystick_t* current_d = joy_devices.head;
+  joystick_t* next_d = current_d;
+  while (current_d) {
+    next_d = current_d->next;
+    release_joystick(&current_d);
+    current_d = next_d;
+  }
+  joy_devices.head = NULL;
+  joy_devices.size = 0;
+  pthread_mutex_unlock(&devices_mtx);
+
+  pthread_mutex_lock(&event_queue_mtx);
+  joystick_queued_event_t* current_e = event_queue.head;
+  joystick_queued_event_t* next_e = current_e;
+  while (current_e) {
+    next_e = current_e->next;
+    if (current_e->event != JOY_DEVICE_REMOVED)
+      free(current_e->data);
+    free(current_e);
+    current_e = next_e;
+  }
+  event_queue.head = NULL;
+  event_queue.size = 0;
+  pthread_mutex_unlock(&event_queue_mtx);
+}
+
+bool sgl_joystick_remove(int id) {
+  pthread_mutex_lock(&devices_mtx);
+  joystick_t* current = joy_devices.head;
+  joystick_t* previous = current;
+  while (current) {
+    if (current->device_id == id) {
+      previous->next = current->next;
+      if (current == joy_devices.head)
+        joy_devices.head = current->next;
+      CALL(joy_removed_callback, current, current->device_id);
+      release_joystick(&current);
+      return true;
+    }
+    previous = current;
+    current = current->next;
+  }
+  pthread_mutex_lock(&devices_mtx);
+  return false;
+}
+
+void sgl_joystick_poll() {
+  static bool processing_events = false;
+  if (processing_events || !event_queue.size)
+    return;
+
+  processing_events = true;
+  pthread_mutex_lock(&event_queue_mtx);
+
+  joystick_queued_event_t* current = event_queue.head;
+  joystick_queued_event_t* next = current;
+  while (current) {
+    next = current->next;
+    switch(current->event) {
+      case JOY_DEVICE_ATTACHED:
+        CALL(joy_connect_callback, (joystick_t*)current->data, current->device_id);
+        break;
+      case JOY_DEVICE_REMOVED: {
+        joystick_t* d = (joystick_t*)current->data;
+        CALL(joy_removed_callback, d, d->device_id);
+        sgl_joystick_remove(d->device_id);
+        break;
+      }
+      case JOY_BTN_DOWN:
+      case JOY_BTN_UP: {
+        joystick_btn_event_t* e = (joystick_btn_event_t*)current->data;
+        CALL(joy_btn_callback, e->device, e->btn_id, e->down, e->timestamp);
+        free(e);
+        break;
+      }
+      case JOY_AXIS_MOVED: {
+        joystick_axis_event_t* e= (joystick_axis_event_t*)current->data;
+        CALL(joy_axis_callback, e->device, e->axis_id, e->value, e->last_value, e->timestamp);
+        free(e);
+        break;
+      }
+    }
+    free(current);
+    current = next;
+  }
+  event_queue.head = NULL;
+  event_queue.size = 0;
+
+  pthread_mutex_unlock(&event_queue_mtx);
+  processing_events = false;
 }
 #endif
 
@@ -5924,20 +6299,96 @@ static int translate_mod(int state) {
   return mods;
 }
 
-int sgl_screen(const char* title, int w, int h) {
-  win_w = w;
-  win_h = h;
+static Cursor x11_empty_cursor = None;
+static Cursor get_x11_empty_cursor() {
+  if (x11_empty_cursor == None) {
+    char data[1];
+    memset(data, 0, sizeof(data));
+    XColor color;
+    color.red = color.green = color.blue = 0;
+    Pixmap pixmap = XCreateBitmapFromData(display, DefaultRootWindow(display), data, 1, 1);
+    if (pixmap) {
+      x11_empty_cursor = XCreatePixmapCursor(display, pixmap, pixmap, &color, &color, 0, 0);
+      XFreePixmap(display, pixmap);
+    } else
+      error_handle(PRIO_LOW, "get_x11_empty_cursor() failed: Couldn't create X11 Pixmap");
+  }
+  return x11_empty_cursor;
+}
 
+static void x11_set_cursor(Cursor c) {
+  if (!c)
+    c = get_x11_empty_cursor();
+
+  XDefineCursor(display, win, c);
+  XFlush(display);
+}
+
+void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
+  x11_set_cursor(shown ? __cursor : 0);
+
+  unsigned int shape = -1;
+  switch (type) {
+    default:
+    case CURSOR_NO_CHANGE:
+      return;
+    case CURSOR_ARROW:
+      shape = XC_left_ptr;
+      break;
+    case CURSOR_IBEAM:
+      shape = XC_xterm;
+      break;
+    case CURSOR_WAIT:
+    case CURSOR_WAITARROW:
+      shape = XC_watch;
+      break;
+    case CURSOR_CROSSHAIR:
+      shape = XC_tcross;
+      break;
+    case CURSOR_SIZENWSE:
+    case CURSOR_SIZENESW:
+    case CURSOR_SIZEALL:
+      shape = XC_fleur;
+      break;
+    case CURSOR_SIZEWE:
+      shape = XC_sb_h_double_arrow;
+      break;
+    case CURSOR_SIZENS:
+      shape = XC_sb_v_double_arrow;
+      break;
+    case CURSOR_NO:
+      shape = XC_pirate;
+      break;
+    case CURSOR_HAND:
+      shape = XC_hand2;
+      break;
+    case CURSOR_CUSTOM:
+      if (!__custom_cursor) {
+        error_handle(PRIO_LOW, "cursor() failed: No custom cursor loaded");
+        return;
+      }
+  }
+
+  if (__cursor && __cursor != __custom_cursor)
+    XFreeCursor(display, __cursor);
+  __cursor = (shape == -1 ? __custom_cursor : XCreateFontCursor(display, shape));
+  if (shown)
+    x11_set_cursor(__cursor);
+}
+
+void sgl_custom_cursor(surface_t* s) {
+#pragma TODO(Add custom cursors for X11)
+}
+
+bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
   display = XOpenDisplay(0);
   if (!display) {
     sgl_release();
-    error_handle("XOpenDisplay(0) failed!");
-    return 0;
+    error_handle(PRIO_HIGH, "XOpenDisplay(0) failed!");
+    return false;
   }
 
   memset(keycodes, -1, sizeof(keycodes));
-  memset(scancodes, -1, sizeof(scancodes));
-
   int scancode, key;
   char name[XkbKeyNameLength + 1];
   XkbDescPtr desc = XkbGetMap(display, 0, XkbUseCoreKbd);
@@ -6003,14 +6454,7 @@ int sgl_screen(const char* title, int w, int h) {
   XkbFreeNames(desc, XkbKeyNamesMask, True);
   XkbFreeKeyboard(desc, 0, True);
 
-  for (scancode = 0;  scancode < 256;  scancode++) {
-    if (keycodes[scancode] < 0)
-      keycodes[scancode] = translate_keycode(scancode);
-    if (keycodes[scancode] > 0)
-      scancodes[keycodes[scancode]] = scancode;
-  }
-
-  int screen = DefaultScreen(display);
+  int __screen = DefaultScreen(display);
 
 #if defined(SGL_ENABLE_OPENGL)
   static int visual_attribs[] = {
@@ -6031,8 +6475,8 @@ int sgl_screen(const char* title, int w, int h) {
   GLXFBConfig* fbc = glXChooseFBConfig(display, DefaultScreen(display), visual_attribs, &fb_count);
   if (!fbc) {
     sgl_release();
-    error_handle("glXChooseFBConfig() failed: Failed to retreive framebuffer config");
-    return 0;
+    error_handle(PRIO_HIGH, "glXChooseFBConfig() failed: Failed to retreive framebuffer config");
+    return false;
   }
 
   int best_fbc = -1, worst_fbc = -1, best_num_samp = -1, worst_num_samp = 999;
@@ -6059,12 +6503,16 @@ int sgl_screen(const char* title, int w, int h) {
   XFree(fbc);
 
   XVisualInfo* vi = glXGetVisualFromFBConfig(display, fbc_best);
-  if (vi == 0) {
+  if (!vi) {
     sgl_release();
-    error_handle("glXGetVisualFromFBConfig() failed: Could not create correct visual window");
-    return 0;
+    error_handle(PRIO_HIGH, "glXGetVisualFromFBConfig() failed: Could not create correct visual window");
+    return false;
   }
 
+#if defined(screen)
+#pragma push_macro("screen")
+#undef screen
+#endif
   XSetWindowAttributes swa;
   swa.colormap = cmap = XCreateColormap(display, RootWindow(display, vi->screen), vi->visual, AllocNone);
   swa.background_pixmap = None;
@@ -6075,11 +6523,14 @@ int sgl_screen(const char* title, int w, int h) {
                       0, 0, w, h, 0, vi->depth,
                       InputOutput, vi->visual,
                       CWBorderPixel | CWColormap | CWEventMask, &swa);
+#if defined(screen)
+#pragma pop_macro("screen")
+#endif
 #else
-  Visual* visual = DefaultVisual(display, screen);
+  Visual* visual = DefaultVisual(display, __screen);
   int format_c;
   XPixmapFormatValues* formats = XListPixmapFormats(display, &format_c);
-  int depth = DefaultDepth(display, screen);
+  int depth = DefaultDepth(display, __screen);
   Window default_root_win = DefaultRootWindow(display);
 
   int c_depth;
@@ -6093,16 +6544,16 @@ int sgl_screen(const char* title, int w, int h) {
 
   if (c_depth != 32) {
     sgl_release();
-    error_handle("Invalid display depth: %d", c_depth);
-    return 0;
+    error_handle(PRIO_HIGH, "Invalid display depth: %d", c_depth);
+    return false;
   }
 
-  int s_width = DisplayWidth(display, screen);
-  int s_height = DisplayHeight(display, screen);
+  int s_width = DisplayWidth(display, __screen);
+  int s_height = DisplayHeight(display, __screen);
 
   XSetWindowAttributes win_attrib;
-  win_attrib.border_pixel = BlackPixel(display, screen);
-  win_attrib.background_pixel = BlackPixel(display, screen);
+  win_attrib.border_pixel = BlackPixel(display, __screen);
+  win_attrib.background_pixel = BlackPixel(display, __screen);
   win_attrib.backing_store = NotUseful;
 
   win = XCreateWindow(display, default_root_win,
@@ -6114,9 +6565,13 @@ int sgl_screen(const char* title, int w, int h) {
 
   if (!win) {
     sgl_release();
-    error_handle("XCreateWindow() failed!");
-    return 0;
+    error_handle(PRIO_HIGH, "XCreateWindow() failed!");
+    return false;
   }
+
+  if (s)
+    if (!sgl_surface(s, w, h))
+      return false;
 
   XSelectInput(display, win, StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask);
   XStoreName(display, win, title);
@@ -6138,7 +6593,7 @@ int sgl_screen(const char* title, int w, int h) {
   XMapRaised(display, win);
   XFlush(display);
 
-  gc = DefaultGC(display, screen);
+  gc = DefaultGC(display, __screen);
 
 #if defined(SGL_ENABLE_OPENGL)
   XFree(vi);
@@ -6159,8 +6614,8 @@ int sgl_screen(const char* title, int w, int h) {
 
   if (!ctx) {
     sgl_release();
-    error_handle("glXCreateContextAttribsARB() failed: Couldn't create OpenGL context");
-    return 0;
+    error_handle(PRIO_HIGH, "glXCreateContextAttribsARB() failed: Couldn't create OpenGL context");
+    return false;
   }
 
   glXMakeCurrent(display, win, ctx);
@@ -6169,104 +6624,90 @@ int sgl_screen(const char* title, int w, int h) {
   img = XCreateImage(display, CopyFromParent, depth, ZPixmap, 0, NULL, w, h, 32, w * 4);
 #endif
 
-  return 1;
+  __cursor = XCreateFontCursor(display, XC_left_ptr);
+
+  return true;
 }
 
-int should_close() {
-  return closed;
+bool sgl_closed() {
+  return __closed;
 }
 
-int poll_events(event_t* ue) {
-  if (!ue || !XPending(display))
-    return 0;
-
-  XNextEvent(display, &event);
-  switch (event.type) {
-  case KeyPress:
-    ue->type = KEYBOARD_KEY_DOWN;
-    ue->sym  = translate_key(event.xkey.keycode);
-    ue->mod  = translate_mod(event.xkey.state);
-    break;
-  case KeyRelease:
-    ue->type = KEYBOARD_KEY_UP;
-    ue->sym  = translate_key(event.xkey.keycode);
-    ue->mod  = translate_mod(event.xkey.state);
-    break;
-  case ButtonPress:
-    ue->type = MOUSE_BTN_DOWN;
-    ue->mod  = translate_mod(event.xkey.state);
-    switch (event.xbutton.button) {
-    case Button1:
-      ue->btn = MOUSE_BTN_1;
-      break;
-    case Button2:
-      ue->btn = MOUSE_BTN_2;
-      break;
-    case Button3:
-      ue->btn = MOUSE_BTN_3;
-      break;
-    case Button4:
-      ue->type = SCROLL_WHEEL;
-      ue->data1 = 0;
-      ue->data2 = 1;
-      break;
-    case Button5:
-      ue->type = SCROLL_WHEEL;
-      ue->data1 =  0;
-      ue->data2 = -1;
-      break;
-    case Button6:
-      ue->type = SCROLL_WHEEL;
-      ue->data1 = 1;
-      ue->data2 = 0;
-      break;
-    case Button7:
-      ue->type = SCROLL_WHEEL;
-      ue->data1 = -1;
-      ue->data2 =  0;
-      break;
-    default:
-      ue->btn = (event.xbutton.button - 4);
+void poll() {
+  while (XPending(display)) {
+    XNextEvent(display, &event);
+    switch (event.type) {
+      case KeyPress:
+        CALL(kb_callback, translate_key(event.xkey.keycode), translate_mod(event.xkey.state), true);
+        break;
+      case KeyRelease:
+        CALL(kb_callback, translate_key(event.xkey.keycode), translate_mod(event.xkey.state), false);
+        break;
+      case ButtonPress: {
+        int btn_mod = translate_mod(event.xkey.state);
+        switch (event.xbutton.button) {
+        case Button1:
+          CALL(mouse_btn_callback, MOUSE_BTN_1, btn_mod, true);
+          break;
+        case Button2:
+          CALL(mouse_btn_callback, MOUSE_BTN_2, btn_mod, true);
+          break;
+        case Button3:
+          CALL(mouse_btn_callback, MOUSE_BTN_3, btn_mod, true);
+          break;
+        case Button4:
+          CALL(scroll_callback, btn_mod, 0.f, 1.f);
+          break;
+        case Button5:
+          CALL(scroll_callback, btn_mod, 0.f, -1.f);
+          break;
+        case Button6:
+          CALL(scroll_callback, btn_mod, 1.f, 0.f);
+          break;
+        case Button7:
+          CALL(scroll_callback, btn_mod, -1.f, 0.f);
+          break;
+        default:
+          CALL(mouse_btn_callback, (MOUSEBTN)(event.xbutton.button - 4), btn_mod, true);
+        }
+        break;
+      }
+      case ButtonRelease: {
+        int btn_mod = translate_mod(event.xkey.state);
+        switch (event.xbutton.button) {
+          case Button1:
+            CALL(mouse_btn_callback, MOUSE_BTN_1, btn_mod, false);
+            break;
+          case Button2:
+            CALL(mouse_btn_callback, MOUSE_BTN_2, btn_mod, false);
+            break;
+          case Button3:
+            CALL(mouse_btn_callback, MOUSE_BTN_3, btn_mod, false);
+            break;
+          default:
+            CALL(mouse_btn_callback, (MOUSEBTN)(event.xbutton.button - 4), btn_mod, false);
+        }
+        break;
+      }
+    #if defined(SGL_ENABLE_OPENGL)
+      case ConfigureNotify:
+        win_w = event.xconfigure.width;
+        win_h = event.xconfigure.height;
+        glViewport(0, 0, win_w, win_h);
+        break;
+    #endif
+      case MotionNotify:
+        CALL(mouse_move_callback, event.xmotion.x, event.xmotion.y, 0, 0);
+        break;
+      case DestroyNotify:
+        __closed = true;
+      default:
+        break;
     }
-    break;
-  case ButtonRelease:
-    ue->type = MOUSE_BTN_UP;
-    ue->mod  = translate_mod(event.xkey.state);
-    switch (event.xbutton.button) {
-    case Button1:
-      ue->btn = MOUSE_BTN_1;
-      break;
-    case Button2:
-      ue->btn = MOUSE_BTN_2;
-      break;
-    case Button3:
-      ue->btn = MOUSE_BTN_3;
-      break;
-    default:
-      ue->btn = (event.xbutton.button - 4);
-    }
-    break;
-#if defined(SGL_ENABLE_OPENGL)
-  case ConfigureNotify:
-    win_w = event.xconfigure.width;
-    win_h = event.xconfigure.height;
-    glViewport(0, 0, win_w, win_h);
-    break;
-#endif
-  case MotionNotify:
-    mx = event.xmotion.x;
-    my = event.xmotion.y;
-    break;
-  case DestroyNotify:
-    ue->type = WINDOW_CLOSED;
-    closed = 1;
-  default:
-    break;
   }
-  return 1;
 }
 
-void render(surface_t* s) {
+void sgl_flush(surface_t* s) {
   if (s && s->buf)
     buffer = s;
 #if defined(SGL_ENABLE_OPENGL)
@@ -6288,6 +6729,12 @@ void sgl_release() {
   img->data = NULL;
   XDestroyImage(img);
 #endif
+  if (__cursor)
+    XFreeCursor(display, __cursor);
+  if (__custom_cursor)
+    XFreeCursor(display, __custom_cursor);
+  if (x11_empty_cursor)
+    XFreeCursor(display, x11_empty_cursor);
   XDestroyWindow(display, win);
   XCloseDisplay(display);
 }
