@@ -5317,7 +5317,7 @@ void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
   __cursor = (c ? LoadCursor(NULL, c) : ____custom_cursor);
 }
 
-void sgl___custom_cursor(surface_t* s) {
+void sgl_custom_cursor(surface_t* s) {
 #pragma TODO(Custom cursor loading for Windows)
 }
 
@@ -6294,7 +6294,7 @@ void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
     x11_set_cursor(__cursor);
 }
 
-void sgl___custom_cursor(surface_t* s) {
+void sgl_custom_cursor(surface_t* s) {
 #pragma TODO(Add custom cursors for X11)
 }
 
