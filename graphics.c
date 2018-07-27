@@ -5248,9 +5248,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       rect.right = LOWORD(lParam);
       rect.bottom = HIWORD(lParam);
       AdjustWindowRect(&rect, adjust_flags, 0);
-      win_w = rect.right + rect.left;
-      win_h = rect.bottom - rect.top;
-      CALL(resize_callback, win_w, win_h);
+      CALL(resize_callback, rect.right + rect.left, rect.bottom - rect.top);
 #if defined(SGL_ENABLE_OPENGL)
       glViewport(rect.left, rect.top, rect.right, win_h);
       PostMessage(hWnd, WM_PAINT, 0, 0);
@@ -5400,7 +5398,7 @@ void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
 }
 
 void sgl_custom_cursor(surface_t* s) {
-  // TODO later
+#pragma TODO(Custom cursor loading for Windows)
 }
 
 bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {

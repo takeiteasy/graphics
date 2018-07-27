@@ -49,9 +49,12 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 
 ### Important
 
-- Joystick/Gamepad input
-- Port new stuff to Linux
+- Test joysticks for Linux (need to setup spare laptop)
+- Fix crashes with Windows joysticks
+- Joystick API for OSX
+- Cursor clipping for Linux
 - [Fix OSX cursor lock to window](https://stackoverflow.com/a/40922095)
+- Sort out some redundant things
 
 ### Less important
 
@@ -63,8 +66,7 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 - 1 & 4 bpp, RLE compressed and OS/2 BMP support
 - Message box support
 - Window icon support
-- Merge text rendering functions to reduce redundancy
-- Finish cursor loading from surface
+- Finish cursor loading from surface (all platforms)
 
 ### Maybe
 

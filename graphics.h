@@ -44,6 +44,12 @@ extern "C" {
 #include <X11/cursorfont.h>
 #endif
 
+#if defined(RGB)
+#undef RGB
+#endif
+#if defined(RGBA)
+#undef RGBA
+#endif
 #if !defined(SGL_DISABLE_RGBA)
 #define RGBA(r, g, b, a) ((((unsigned int)(a)) << 24) | (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b))
 #define RGB(r, g, b) (RGBA((r), (g), (b), 255))
