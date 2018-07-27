@@ -373,7 +373,7 @@ bool sgl_rotate(surface_t* in, float angle, surface_t* out) {
       sy = ((y + mm[0][1]) * c - (x + mm[0][0]) * s);
       if (sx < 0 || sx >= in->w || sy < 0 || sy >= in->h)
         continue;
-      pset_fn(out, x, y, pget(in, sx, sy));
+      pset_fn(out, x, y, sgl_pget(in, sx, sy));
     }
   return true;
 }
@@ -3164,6 +3164,10 @@ void free_gl() {
 #endif
 
 #if defined(__APPLE__)
+#undef copy
+#undef release
+#undef cursor
+#undef screen
 #include <Cocoa/Cocoa.h>
 #if defined(SGL_ENABLE_METAL)
 #include <MetalKit/MetalKit.h>
@@ -3230,12 +3234,12 @@ static int translate_mod(NSUInteger flags) {
 }
 
 static int translate_key(unsigned int key) {
-  return (key >= sizeof(keycodes) / sizeof(keycodes[0]) ?  KEYBOARD_KEY_DOWN : keycodes[key]);
+  return (key >= sizeof(keycodes) / sizeof(keycodes[0]) ?  KB_KEY_UNKNOWN : keycodes[key]);
 }
 
 @interface osx_app_t : NSWindow {
   NSView* view;
-  @public int closed;
+  @public bool closed;
 }
 @end
 
@@ -3277,36 +3281,7 @@ static int translate_key(unsigned int key) {
 static osx_app_t* app;
 static int border_off = 22;
 
-@interface NSCursor(InvisibleCursor)
-+(NSCursor*)invisibleCursor;
-@end
-
-@implementation NSCursor(InvisibleCursor)
-+(NSCursor*)invisibleCursor {
-  static NSCursor* invisibleCursor = NULL;
-  if (!invisibleCursor) {
-    /* RAW 16x16 transparent GIF */
-    static unsigned char cursorBytes[] = {
-      0x47, 0x49, 0x46, 0x38, 0x37, 0x61, 0x10, 0x00, 0x10, 0x00, 0x80,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x21, 0xF9, 0x04,
-      0x01, 0x00, 0x00, 0x01, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x10,
-      0x00, 0x10, 0x00, 0x00, 0x02, 0x0E, 0x8C, 0x8F, 0xA9, 0xCB, 0xED,
-      0x0F, 0xA3, 0x9C, 0xB4, 0xDA, 0x8B, 0xB3, 0x3E, 0x05, 0x00, 0x3B
-    };
-
-    NSData* cursorData = [NSData dataWithBytesNoCopy:&cursorBytes[0]
-                                              length:sizeof(cursorBytes)
-                                        freeWhenDone:NO];
-    NSImage* cursorImage = [[[NSImage alloc] initWithData:cursorData] autorelease];
-    invisibleCursor = [[NSCursor alloc] initWithImage:cursorImage
-                                              hotSpot:NSZeroPoint];
-  }
-
-  return invisibleCursor;
-}
-@end
-
-static NSCursor *custom_cursor = nil, *cursor = nil;
+static NSCursor *__custom_cursor = nil, *__cursor = nil;
 static int cursor_state = 0;
 static CGFloat lmx = 0, lmy = 0, wdx = 0, wdy = 0;
 
@@ -3315,75 +3290,66 @@ NSPoint cursor_pos_abs() {
   return (NSPoint){ p.x, [app screen].frame.size.height - p.y };
 }
 
-void sgl_cursor(CURSORFLAGS flags) {
+void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
   if (!app) {
     error_handle(PRIO_LOW, "cursor() failed: Called before screen is set up");
     return;
   }
-
-  if (flags == DEFAULT)
-    flags = SHOWN | UNLOCKED;
-
-  if (flags & HIDDEN && flags & ~SHOWN)
+  
+  if (shown)
     [NSCursor hide];
-  if (flags & SHOWN)
+  else
     [NSCursor unhide];
-  cursor_state = flags & LOCKED ? flags & UNLOCKED ? !cursor_state : 1 : 0;
+  cursor_state = locked;
 
-  if (flags & 0xFFFFF0) {
-    NSCursor* tmp = NULL;
-    switch (flags & ~0x00000F) {
-      case CURSOR_ARROW:
-      case CURSOR_WAIT:
-      case CURSOR_WAITARROW:
-        tmp = [NSCursor arrowCursor];
-        break;
-      case CURSOR_IBEAM:
-        tmp = [NSCursor IBeamCursor];
-        break;
-      case CURSOR_CROSSHAIR:
-        tmp = [NSCursor crosshairCursor];
-        break;
-      case CURSOR_SIZENWSE:
-      case CURSOR_SIZENESW:
-        tmp = [NSCursor closedHandCursor];
-        break;
-      case CURSOR_SIZEWE:
-        tmp = [NSCursor resizeLeftRightCursor];
-        break;
-      case CURSOR_SIZENS:
-        tmp = [NSCursor resizeUpDownCursor];
-        break;
-      case CURSOR_SIZEALL:
-        tmp = [NSCursor closedHandCursor];
-        break;
-      case CURSOR_NO:
-        tmp = [NSCursor operationNotAllowedCursor];
-        break;
-      case CURSOR_HAND:
-        tmp = [NSCursor pointingHandCursor];
-        break;
-      case CURSOR_CUSTOM:
-        if (custom_cursor)
-          tmp = custom_cursor;
-        break;
-      default:
-        tmp = [NSCursor invisibleCursor];
-        break;
-    }
-
-    if (!tmp)
-      return;
-
-    if (cursor && cursor != custom_cursor)
-      [cursor sgl_release];
-
-    cursor = tmp;
-    [cursor retain];
-
-    if (app && [app contentView])
-      [[app contentView] resetCursorRects];
+  NSCursor* tmp = NULL;
+  switch (type) {
+    default:
+    case CURSOR_ARROW:
+    case CURSOR_WAIT:
+    case CURSOR_WAITARROW:
+      tmp = [NSCursor arrowCursor];
+      break;
+    case CURSOR_IBEAM:
+      tmp = [NSCursor IBeamCursor];
+      break;
+    case CURSOR_CROSSHAIR:
+      tmp = [NSCursor crosshairCursor];
+      break;
+    case CURSOR_SIZENWSE:
+    case CURSOR_SIZENESW:
+      tmp = [NSCursor closedHandCursor];
+      break;
+    case CURSOR_SIZEWE:
+      tmp = [NSCursor resizeLeftRightCursor];
+      break;
+    case CURSOR_SIZENS:
+      tmp = [NSCursor resizeUpDownCursor];
+      break;
+    case CURSOR_SIZEALL:
+      tmp = [NSCursor closedHandCursor];
+      break;
+    case CURSOR_NO:
+      tmp = [NSCursor operationNotAllowedCursor];
+      break;
+    case CURSOR_HAND:
+      tmp = [NSCursor pointingHandCursor];
+      break;
+    case CURSOR_CUSTOM:
+      if (!__custom_cursor) {
+        error_handle(PRIO_LOW, "cursor() failed: Custom cursor not loaded");
+        return;
+      }
   }
+  
+  if (__cursor && __cursor != __custom_cursor)
+    [__cursor release];
+
+  __cursor = (tmp ? tmp : __custom_cursor);
+  [__cursor retain];
+
+  if (app && [app contentView])
+    [[app contentView] resetCursorRects];
 }
 
 static inline NSImage* create_cocoa_image(surface_t* s) {
@@ -3400,16 +3366,16 @@ void sgl_custom_cursor(surface_t* s) {
   if (!nsi)
     return;
 
-  if (custom_cursor)
-    [custom_cursor sgl_release];
+  if (__custom_cursor)
+    [__custom_cursor release];
 
-  custom_cursor = [[NSCursor alloc] initWithImage:nsi
+  __custom_cursor = [[NSCursor alloc] initWithImage:nsi
                                             hotSpot:NSMakePoint(0, 0)];
-  if (!custom_cursor) {
-    custom_cursor = nil;
+  if (!__custom_cursor) {
+    __custom_cursor = nil;
     return;
   }
-  [custom_cursor retain];
+  [__custom_cursor retain];
 }
 
 @implementation osx_view_t
@@ -3529,7 +3495,7 @@ extern surface_t* buffer;
 -(void)updateTrackingAreas {
   if (track != nil) {
     [self removeTrackingArea:track];
-    [track sgl_release];
+    [track release];
   }
 
   track = [[NSTrackingArea alloc] initWithRect:[self visibleRect]
@@ -3543,13 +3509,13 @@ extern surface_t* buffer;
 
 -(void)resetCursorRects {
   [super resetCursorRects];
-  [self addCursorRect:[self visibleRect] sgl_cursor:(custom_cursor ? custom_cursor : [NSCursor arrowCursor])];
+  [self addCursorRect:[self visibleRect] cursor:(__custom_cursor ? __custom_cursor : [NSCursor arrowCursor])];
 }
 
 -(void)cursorUpdate:(NSEvent*)event {
   (void)event;
-  if (cursor)
-    [cursor set];
+  if (__cursor)
+    [__cursor set];
 }
 
 -(BOOL)acceptsFirstResponder {
@@ -3566,7 +3532,7 @@ extern surface_t* buffer;
 }
 
 -(void)mouseMoved:(NSEvent*)event {
-#pramga FIXME(CGWarpMouseCursorPosition affects delta values)
+#pragma FIXME(CGWarpMouseCursorPosition affects delta values)
   if (cursor_state) {
     mx = CLAMP((int)(floorf([event locationInWindow].x - 1) + [event deltaX]), 0, win_w);
     my = CLAMP((int)(floorf(win_h - 1 - [event locationInWindow].y) + [event deltaY]), 0, win_h);
@@ -3643,8 +3609,8 @@ extern surface_t* buffer;
     [cmd_buf presentDrawable:[self currentDrawable]];
   }
 
-  [_texture sgl_release];
-  [td sgl_release];
+  [_texture release];
+  [td release];
   [cmd_buf commit];
 #else
   CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
@@ -3666,13 +3632,13 @@ extern surface_t* buffer;
 #if defined(SGL_ENABLE_OPENGL)
   free_gl();
 #elif defined(SGL_ENABLE_METAL)
-  [_device sgl_release];
-  [_pipeline sgl_release];
-  [_cmd_queue sgl_release];
-  [_library sgl_release];
-  [_vertices sgl_release];
+  [_device release];
+  [_pipeline release];
+  [_cmd_queue release];
+  [_library release];
+  [_vertices release];
 #endif
-  [track sgl_release];
+  [track release];
   [super dealloc];
 }
 @end
@@ -3704,7 +3670,7 @@ extern surface_t* buffer;
                                                  name:NSWindowDidResizeNotification
                                                object:self];
 
-    closed = 0;
+    closed = false;
   }
   return self;
 }
@@ -3755,7 +3721,7 @@ extern surface_t* buffer;
 }
 
 -(void)win_close {
-  closed = 1;
+  closed = true;
 }
 
 -(void)win_resize:(NSNotification *)n {
@@ -3796,10 +3762,9 @@ extern surface_t* buffer;
 }
 @end
 
-int sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
+bool sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
   memset(keycodes,  -1, sizeof(keycodes));
-  memset(scancodes, -1, sizeof(scancodes));
-
+  
   keycodes[0x1D] = KB_KEY_0;
   keycodes[0x12] = KB_KEY_1;
   keycodes[0x13] = KB_KEY_2;
@@ -3915,10 +3880,6 @@ int sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
   keycodes[0x43] = KB_KEY_KP_MULTIPLY;
   keycodes[0x4E] = KB_KEY_KP_SUBTRACT;
 
-  for (int sc = 0;  sc < 256; ++sc)
-    if (keycodes[sc] >= 0)
-      scancodes[keycodes[sc]] = sc;
-
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
@@ -3948,7 +3909,7 @@ int sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
 
   if (s)
     if (!sgl_surface(s, w, h))
-      return 0;
+      return false;
 
   app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h + border_off)
                                      styleMask:_flags
@@ -3957,7 +3918,7 @@ int sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
   if (!app) {
     sgl_release();
     error_handle(PRIO_HIGH, "[osx_app_t initWithContentRect] failed");
-    return 0;
+    return false;
   }
 
   if (flags & ALWAYS_ON_TOP)
@@ -4002,65 +3963,24 @@ int sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
   [NSApp activateIgnoringOtherApps:YES];
   [pool drain];
 
-  return 1;
+  return true;
 }
 
-int sgl_closed() {
+bool sgl_closed() {
   return app->closed;
 }
 
-int sgl_poll(event_t* ue) {
+void sgl_poll(void) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   NSEvent* e = [NSApp nextEventMatchingMask:NSEventMaskAny
                                   untilDate:[NSDate distantPast]
                                      inMode:NSDefaultRunLoopMode
                                     dequeue:YES];
-
-  int ret = 1;
-  if (!e || !ue) {
-    ret = 0;
-    goto SEND_ANYWAY;
-  }
-
-  memset(ue, 0, sizeof(event_t));
-  switch ([e type]) {
-    case NSEventTypeKeyUp:
-      ue->type = KEYBOARD_KEY_UP;
-    case NSEventTypeKeyDown:
-      if (ue->type != KEYBOARD_KEY_UP)
-        ue->type = KEYBOARD_KEY_DOWN;
-      ue->sym = translate_key([e keyCode]);
-      ue->mod = translate_mod([e modifierFlags]);
-      break;
-    case NSEventTypeLeftMouseUp:
-    case NSEventTypeRightMouseUp:
-    case NSEventTypeOtherMouseUp:
-      ue->type = MOUSE_BTN_UP;
-    case NSEventTypeLeftMouseDown:
-    case NSEventTypeRightMouseDown:
-    case NSEventTypeOtherMouseDown:
-      if (ue->type != MOUSE_BTN_UP)
-        ue->type = MOUSE_BTN_DOWN;
-      ue->btn = (MOUSEBTN)([e buttonNumber] + 1);
-      ue->mod = translate_mod([e modifierFlags]);
-      ue->data1 = mx;
-      ue->data2 = my;
-      break;
-    case NSEventTypeScrollWheel:
-      ue->type = SCROLL_WHEEL;
-      ue->data1 = [e deltaX];
-      ue->data2 = [e deltaY];
-      break;
-    default:
-      if (app->closed)
-        ue->type = WINDOW_CLOSED;
-      break;
-  }
-
-SEND_ANYWAY:
+  
+#pragma TODO(Redo OSX poll event)
+  
   [NSApp sendEvent:e];
-  [pool sgl_release];
-  return ret;
+  [pool release];
 }
 
 void sgl_flush(surface_t* s) {
@@ -4073,10 +3993,10 @@ void sgl_release() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   if (app)
     [app close];
-  if (cursor)
-    [cursor sgl_release];
-  if (custom_cursor)
-    [custom_cursor sgl_release];
+  if (__cursor)
+    [__cursor release];
+  if (__custom_cursor)
+    [__custom_cursor release];
   [pool drain];
 }
 #elif defined(_WIN32)
@@ -4102,7 +4022,7 @@ static BITMAPINFO* bmpinfo;
 static int adjusted_win_w, adjusted_win_h;
 static BOOL ifuckinghatethewin32api = FALSE; // Should always be true because I do
 static BOOL is_focused = TRUE;
-static HCURSOR __cursor = NULL, __custom_cursor = NULL;
+static HCURSOR __cursor = NULL, ____custom_cursor = NULL;
 static BOOL cursor_locked = FALSE;
 static RECT rc = { 0 };
 static long adjust_flags = WS_POPUP | WS_SYSMENU | WS_CAPTION;
@@ -5386,18 +5306,18 @@ void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
       c = IDC_HAND;
       break;
     case CURSOR_CUSTOM:
-      if (!__custom_cursor) {
+      if (!____custom_cursor) {
         error_handle(PRIO_LOW, "cursor() failed: No custom cursor loaded");
         return;
       }
   }
 
-  if (__cursor && __cursor != __custom_cursor)
+  if (__cursor && __cursor != ____custom_cursor)
     DestroyCursor(__cursor);
-  __cursor = (c ? LoadCursor(NULL, c) : __custom_cursor);
+  __cursor = (c ? LoadCursor(NULL, c) : ____custom_cursor);
 }
 
-void sgl_custom_cursor(surface_t* s) {
+void sgl___custom_cursor(surface_t* s) {
 #pragma TODO(Custom cursor loading for Windows)
 }
 
@@ -5680,8 +5600,8 @@ void sgl_release() {
 
   if (__cursor)
     DestroyCursor(__cursor);
-  if (__custom_cursor)
-    DestroyCursor(__custom_cursor);
+  if (____custom_cursor)
+    DestroyCursor(____custom_cursor);
   ReleaseDC(hwnd, hdc);
   DestroyWindow(hwnd);
 }
@@ -5702,7 +5622,7 @@ static XImage* img;
 #endif
 static XEvent event;
 static KeySym sym;
-static Cursor __cursor = 0, __custom_cursor = 0;
+static Cursor __cursor = 0, ____custom_cursor = 0;
 
 #define Button6 6
 #define Button7 7
@@ -6361,20 +6281,20 @@ void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
       shape = XC_hand2;
       break;
     case CURSOR_CUSTOM:
-      if (!__custom_cursor) {
+      if (!____custom_cursor) {
         error_handle(PRIO_LOW, "cursor() failed: No custom cursor loaded");
         return;
       }
   }
 
-  if (__cursor && __cursor != __custom_cursor)
+  if (__cursor && __cursor != ____custom_cursor)
     XFreeCursor(display, __cursor);
-  __cursor = (shape == -1 ? __custom_cursor : XCreateFontCursor(display, shape));
+  __cursor = (shape == -1 ? ____custom_cursor : XCreateFontCursor(display, shape));
   if (shown)
     x11_set_cursor(__cursor);
 }
 
-void sgl_custom_cursor(surface_t* s) {
+void sgl___custom_cursor(surface_t* s) {
 #pragma TODO(Add custom cursors for X11)
 }
 
@@ -6766,8 +6686,8 @@ void sgl_release() {
 #endif
   if (__cursor)
     XFreeCursor(display, __cursor);
-  if (__custom_cursor)
-    XFreeCursor(display, __custom_cursor);
+  if (____custom_cursor)
+    XFreeCursor(display, ____custom_cursor);
   if (x11_empty_cursor)
     XFreeCursor(display, x11_empty_cursor);
   XDestroyWindow(display, win);
