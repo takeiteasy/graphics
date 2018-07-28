@@ -13,6 +13,7 @@
 		88B0A65320EC6E7200CE1317 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0A65220EC6E7200CE1317 /* OpenGL.framework */; };
 		88B0A65620EC6E7700CE1317 /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0A65420EC6E7600CE1317 /* MetalKit.framework */; };
 		88B0A65720EC6E7700CE1317 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0A65520EC6E7600CE1317 /* Metal.framework */; };
+		88CC7A19210CDAD600392B08 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88CC7A18210CDAD600392B08 /* IOKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -51,6 +52,7 @@
 		88B0A65220EC6E7200CE1317 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
 		88B0A65420EC6E7600CE1317 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		88B0A65520EC6E7600CE1317 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		88CC7A18210CDAD600392B08 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +60,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				88CC7A19210CDAD600392B08 /* IOKit.framework in Frameworks */,
 				88B0A65620EC6E7700CE1317 /* MetalKit.framework in Frameworks */,
 				88B0A65720EC6E7700CE1317 /* Metal.framework in Frameworks */,
 				88B0A65320EC6E7200CE1317 /* OpenGL.framework in Frameworks */,
@@ -131,6 +134,7 @@
 		88B0A64F20EC6E6D00CE1317 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				88CC7A18210CDAD600392B08 /* IOKit.framework */,
 				88B0A65520EC6E7600CE1317 /* Metal.framework */,
 				88B0A65420EC6E7600CE1317 /* MetalKit.framework */,
 				88B0A65220EC6E7200CE1317 /* OpenGL.framework */,
@@ -329,6 +333,7 @@
 					SGL_ENABLE_BDF,
 					SGL_ENABLE_STB_IMAGE,
 					SGL_DISABLE_RGBAno,
+					SGL_ENABLE_JOYSTICKS,
 				);
 				GCC_WARN_PEDANTIC = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
