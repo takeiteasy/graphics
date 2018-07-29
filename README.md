@@ -49,8 +49,8 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 
 ### Important
 
-- Test joysticks for Linux (need to setup spare laptop)
-- Fix crashes with Windows joysticks
+- Fix crashes with Windows + OSX joysticks
+- Linux joysticks totally untested, need to test on real hardware
 - Cursor clipping for Linux [and OSX](https://stackoverflow.com/a/40922095)
 - Sort out some redundant things
 - Reorganise stuff, especially joysticks

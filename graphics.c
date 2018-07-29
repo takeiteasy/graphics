@@ -3262,18 +3262,6 @@ static joystick_queue_t input_event_q, device_event_q;
 
 #define GAMEPAD_RUN_LOOP_MODE CFSTR("GamepadRunLoopMode")
 
-static int IOHIDDeviceGetIntProperty(IOHIDDeviceRef ref, CFStringRef key) {
-  CFTypeRef ref_type = IOHIDDeviceGetProperty(ref, key);
-  if (!ref_type || CFGetTypeID(ref_type) != CFNumberGetTypeID())
-    return 0;
-  int value;
-  CFNumberGetValue((CFNumberRef)ref_type, kCFNumberSInt32Type, &value);
-  return value;
-}
-
-#define IOHIDDeviceGetProductID(r) (IOHIDDeviceGetIntProperty(r, CFSTR(kIOHIDProductIDKey)))
-#define IOHIDDeviceGetVendorID(r) (IOHIDDeviceGetIntProperty(r, CFSTR(kIOHIDVendorIDKey)))
-
 static void queue_input_event(int device_id, JOYEVENTTYPE type, void* data) {
   joystick_queued_event_t* e = malloc(sizeof(joystick_queued_event_t));
   e->device_id = device_id;
@@ -3372,6 +3360,18 @@ static void device_val_changed(void* ctx, IOReturn result, void* sender, IOHIDVa
   }
 }
 
+static int IOHIDDeviceGetIntProperty(IOHIDDeviceRef ref, CFStringRef key) {
+  CFTypeRef ref_type = IOHIDDeviceGetProperty(ref, key);
+  if (!ref_type || CFGetTypeID(ref_type) != CFNumberGetTypeID())
+    return 0;
+  int value;
+  CFNumberGetValue((CFNumberRef)ref_type, kCFNumberSInt32Type, &value);
+  return value;
+}
+
+#define IOHIDDeviceGetProductID(r) (IOHIDDeviceGetIntProperty(r, CFSTR(kIOHIDProductIDKey)))
+#define IOHIDDeviceGetVendorID(r) (IOHIDDeviceGetIntProperty(r, CFSTR(kIOHIDVendorIDKey)))
+
 static void device_added(void* ctx, IOReturn result, void* sender, IOHIDDeviceRef device_ref) {
   joystick_private_t* private = malloc(sizeof(joystick_private_t));
   private->device = device_ref;
@@ -3432,7 +3432,8 @@ static void device_added(void* ctx, IOReturn result, void* sender, IOHIDDeviceRe
   CFRelease(elements);
   
   device->axes = malloc(sizeof(float) * device->n_axes);
-  device->buttons = malloc(sizeof(bool) * device->n_buttons);
+  device->buttons = malloc(sizeof(int) * device->n_buttons);
+  
   IOHIDDeviceRegisterInputValueCallback(device_ref, device_val_changed, device);
   
   joystick_queued_event_t* q_event = malloc(sizeof(joystick_queued_event_t));
@@ -3453,20 +3454,26 @@ static void device_added(void* ctx, IOReturn result, void* sender, IOHIDDeviceRe
 }
 
 static void device_removed(void* ctx, IOReturn result, void* sender, IOHIDDeviceRef device_ref) {
-  joystick_t* device = (joystick_t*)ctx;
-  joystick_queued_event_t* q_event = malloc(sizeof(joystick_queued_event_t));
-  q_event->device_id = device->device_id;
-  q_event->event = JOY_DEVICE_REMOVED;
-  q_event->data = (void*)device;
-  q_event->next = NULL;
+  joystick_t* current = joy_devices.head;
+  while (current) {
+    if (((joystick_private_t*)current->__private)->device == device_ref)
+      break;
+    current = current->next;
+  }
   
-  joystick_queued_event_t* current = device_event_q.head;
-  if (!current)
+  joystick_queued_event_t* q_event = malloc(sizeof(joystick_queued_event_t));
+  q_event->device_id = current->device_id;
+  q_event->event = JOY_DEVICE_REMOVED;
+  q_event->data = (void*)current;
+  q_event->next = NULL;
+
+  joystick_queued_event_t* e_current = device_event_q.head;
+  if (!e_current)
     device_event_q.head = q_event;
   else {
-    while (current->next)
-      current = current->next;
-    current->next = q_event;
+    while (e_current->next)
+      e_current = e_current->next;
+    e_current->next = q_event;
   }
   device_event_q.size++;
 }
@@ -3549,12 +3556,10 @@ static void process_event_queue(joystick_queued_event_t* e) {
 }
 
 bool sgl_joystick_scan(void) {
-  if (!device_event_q.size)
-    return false;
-  
   CFRunLoopRunInMode(GAMEPAD_RUN_LOOP_MODE, 0, true);
   joystick_queued_event_t* current = device_event_q.head;
   joystick_queued_event_t* next = current;
+  
   while (current) {
     next = current->next;
     process_event_queue(current);
@@ -3630,6 +3635,7 @@ void sgl_joystick_release() {
 bool sgl_joystick_remove(int id) {
   joystick_t* current = joy_devices.head;
   joystick_t* previous = current;
+  
   while (current) {
     if (current->device_id == id) {
       previous->next = current->next;
@@ -3642,6 +3648,7 @@ bool sgl_joystick_remove(int id) {
     previous = current;
     current = current->next;
   }
+  
   return false;
 }
 
@@ -5261,7 +5268,7 @@ bool sgl_joystick_scan() {
       device->n_axes = caps.wNumAxes + ((caps.wCaps & JOYCAPS_HASPOV) ? 2 : 0);
       device->n_buttons = caps.wNumButtons;
       device->axes = malloc(sizeof(float) * device->n_axes);
-      device->buttons = malloc(sizeof(bool) * device->n_buttons);
+      device->buttons = malloc(sizeof(int) * device->n_buttons);
 
       add_joystick(device);
     }
@@ -6374,7 +6381,7 @@ bool sgl_joystick_scan() {
       device->n_buttons++;
     }
     device->axes = malloc(sizeof(float) * device->n_axes);
-    device->buttons = malloc(sizeof(bool) * device->n_buttons);
+    device->buttons = malloc(sizeof(int) * device->n_buttons);
 
     add_joystick(device);
 
