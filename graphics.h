@@ -40,18 +40,8 @@ extern "C" {
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <windowsx.h>
-#include <shellapi.h>
 #else
 #include <unistd.h>
-#endif
-#if defined(SGL_LINUX)
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/XKBlib.h>
-#include <X11/keysym.h>
-#include <X11/Xatom.h>
-#include <X11/cursorfont.h>
 #endif
 
 #if defined(RGB)

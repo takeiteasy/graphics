@@ -5,9 +5,11 @@
 //  Copyright © 2017 Rory B. Bellows. All rights reserved.
 //
 
-#if defined(SGL_WINDOWS)
+#if defined(_MSC_VER)
 #define _CRT_SECURE_NO_WARNINGS
 #endif
+
+#include "graphics.h"
 
 #if defined(SGL_OSX)
 # if defined(SGL_ENABLE_METAL) && defined(SGL_ENABLE_OPENGL)
@@ -28,8 +30,6 @@
 #   undef SGL_ENABLE_OPENGL
 # endif
 #endif
-
-#include "graphics.h"
 
 #if defined(_MSC_VER)
 #define strdup _strdup
@@ -5714,7 +5714,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       CALL(scroll_callback, translate_mod(), -((SHORT)HIWORD(wParam) / (float)WHEEL_DELTA), (SHORT)HIWORD(wParam) / (float)WHEEL_DELTA);
       break;
     case WM_MOUSEMOVE:
-      CALL(mouse_move_callback, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), 0, 0);
+      CALL(mouse_move_callback, ((int)(short)LOWORD(lParam)), ((int)(short)HIWORD(lParam)), 0, 0);
       if (cursor_locked && is_focused) {
         GetWindowRect(hwnd, &rc);
         rc.left += 3;
@@ -6086,6 +6086,13 @@ bool sgl_closed() {
   return __closed;
 }
 #else
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/XKBlib.h>
+#include <X11/keysym.h>
+#include <X11/Xatom.h>
+#include <X11/cursorfont.h>
+
 static Display* display;
 static surface_t* buffer;
 static Window win;
