@@ -5,15 +5,15 @@
 //  Copyright © 2017 Rory B. Bellows. All rights reserved.
 //
 
-#if defined(_WIN32)
+#if defined(SGL_WINDOWS)
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#if defined(__APPLE__)
+#if defined(SGL_OSX)
 # if defined(SGL_ENABLE_METAL) && defined(SGL_ENABLE_OPENGL)
 #   undef SGL_ENABLE_OPENGL
 # endif
-#elif defined(_WIN32)
+#elif defined(SGL_WINDOWS)
 # if (defined(SGL_ENABLE_DX9) || defined(SGL_ENABLE_DX11) || defined(SGL_ENABLE_VULKAN)) && defined(SGL_ENABLE_OPENGL)
 #   undef SGL_ENABLE_OPENGL
 # endif
@@ -2361,7 +2361,7 @@ void sgl_stringf(surface_t* out, int fg, int bg, const char* fmt, ...) {
 static int ticks_started = 0;
 
 long sgl_ticks() {
-#if defined(_WIN32)
+#if defined(SGL_WINDOWS)
   static LARGE_INTEGER ticks_start;
   if (!ticks_started) {
     QueryPerformanceCounter(&ticks_start);
@@ -2387,7 +2387,7 @@ long sgl_ticks() {
 }
 
 void sgl_delay(long ms) {
-#if defined(_WIN32)
+#if defined(SGL_WINDOWS)
   Sleep((DWORD)ms);
 #else
   usleep((unsigned int)(ms * 1000));
@@ -2395,7 +2395,7 @@ void sgl_delay(long ms) {
 }
 
 #if defined(SGL_ENABLE_BDF)
-#if defined(_WIN32)
+#if defined(SGL_WINDOWS)
 #define snprintf _snprintf
 #define vsnprintf _vsnprintf
 #define strcasecmp _stricmp
@@ -2820,7 +2820,7 @@ void sgl_joystick_callbacks(void(*connect_cb)(joystick_t*, int), void(*remove_cb
   joy_axis_callback = axis_cb;
 }
 
-#if defined(_WIN32) || defined(__APPLE__)
+#if defined(SGL_WINDOWS) || defined(SGL_OSX)
 joystick_t* sgl_joystick(int id) {
   if (id < 0 || !joy_devices.head)
     return NULL;
@@ -2877,11 +2877,11 @@ void sgl_screen_callbacks(
 }
 
 #if defined(SGL_ENABLE_OPENGL)
-#if defined(__APPLE__)
+#if defined(SGL_OSX)
 #include <OpenGL/gl3.h>
 #endif
 
-#if defined(__linux__)
+#if defined(SGL_LINUX)
 #define GLDECL // Empty define
 #include <GL/gl.h>
 #include <GL/glu.h>
@@ -2889,7 +2889,7 @@ void sgl_screen_callbacks(
 #include <dlfcn.h>
 #endif
 
-#if defined(_WIN32)
+#if defined(SGL_WINDOWS)
 #define GLDECL WINAPI
 
 #define GL_ARRAY_BUFFER                   0x8892
@@ -2915,7 +2915,7 @@ typedef ptrdiff_t GLsizeiptr;
 #pragma comment(lib, "opengl32.lib")
 #endif
 
-#if defined(_WIN32) || defined(__linux__)
+#if defined(SGL_WINDOWS) || defined(SGL_LINUX)
 #define GL_LIST \
     /* ret, name, params */ \
     GLE(void,      AttachShader,            GLuint program, GLuint shader) \
@@ -2998,7 +2998,7 @@ static GLuint vao, shader, texture;
 static int gl3_available = 1;
 
 bool init_gl(int w, int h) {
-#if defined(_WIN32)
+#if defined(SGL_WINDOWS)
   HINSTANCE dll = LoadLibraryA("opengl32.dll");
   typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
   if (!dll) {
@@ -3016,7 +3016,7 @@ bool init_gl(int w, int h) {
   }
   GL_LIST
 #undef GLE
-#elif defined(__linux__)
+#elif defined(SGL_LINUX)
   void* libGL = dlopen("libGL.so", RTLD_LAZY);
   if (!libGL) {
     sgl_release();
@@ -3036,7 +3036,7 @@ bool init_gl(int w, int h) {
 
   glClearColor(0.f, 0.f, 0.f, 1.f);
 
-#if !defined(__APPLE__)
+#if !defined(SGL_OSX)
   if (gl3_available < 0) {
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -3115,7 +3115,7 @@ bool init_gl(int w, int h) {
     GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
     glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
     glEnableVertexAttribArray(texture_coord_attribute);
-#if !defined(__APPLE__)
+#if !defined(SGL_OSX)
   }
 #endif
 
@@ -3132,7 +3132,7 @@ void draw_gl() {
 
   glClear(GL_COLOR_BUFFER_BIT);
 
-#if !defined(__APPLE__)
+#if !defined(SGL_OSX)
   if (gl3_available < 0) {
     glBegin(GL_QUADS);
       glTexCoord2f(0, 1); glVertex3f(0, 0, 0);
@@ -3144,7 +3144,7 @@ void draw_gl() {
 #endif
     glBindVertexArray(vao);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-#if !defined(__APPLE__)
+#if !defined(SGL_OSX)
   }
 
   glFlush();
@@ -3163,7 +3163,7 @@ void free_gl() {
 }
 #endif
 
-#if defined(__APPLE__)
+#if defined(SGL_OSX)
 // These fuck with Objective-C stuff
 #undef copy
 #undef release
@@ -4475,7 +4475,7 @@ void sgl_release() {
     [__custom_cursor release];
   [pool drain];
 }
-#elif defined(_WIN32)
+#elif defined(SGL_WINDOWS)
 static WNDCLASS wnd;
 static HWND hwnd;
 static HDC hdc = 0;

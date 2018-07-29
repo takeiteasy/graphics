@@ -12,6 +12,16 @@
 extern "C" {
 #endif
 
+#if defined(__gnu_linux__) || defined(__linux__) || defined(__unix__)
+#define SGL_LINUX
+#elif defined(macintosh) || defined(Macintosh) || (defined(__APPLE__) && defined(__MACH__))
+#define SGL_OSX
+#elif defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(__WINDOWS__)
+#define SGL_WINDOWS
+#else
+#error Unsupported operating system
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -26,7 +36,7 @@ extern "C" {
 #include <math.h>
 #include <time.h>
 #include <ctype.h>
-#if defined(_WIN32)
+#if defined(SGL_WINDOWS)
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -34,8 +44,8 @@ extern "C" {
 #include <shellapi.h>
 #else
 #include <unistd.h>
-#endif // defined(_WIN32)
-#if defined(__linux__) || defined(__unix__)
+#endif
+#if defined(SGL_LINUX)
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/XKBlib.h>
