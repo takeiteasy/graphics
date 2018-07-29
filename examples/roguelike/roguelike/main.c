@@ -24,6 +24,7 @@
 
 static bool running = true;
 static point_t mp, mgp;
+static int win_w = SCREEN_WIDTH, win_h = SCREEN_HEIGHT;
 static surface_t win;
 
 typedef struct {
@@ -152,8 +153,8 @@ void on_mouse_btn(MOUSEBTN btn, KEYMOD mod, bool down) {
 }
 
 void on_mouse_move(int x, int y, int dx, int dy) {
-  mp.x = x;
-  mp.y = y;
+  mp.x = (int)(((float)x / (float)win_w) * win.w);
+  mp.y = (int)(((float)y / (float)win_h) * win.h);
 }
 
 void on_scroll(KEYMOD mod, float dx, float dy) {
@@ -164,12 +165,19 @@ void on_focus(bool focused) {
   printf("%s\n", (focused ? "FOCUSED" : "UNFOCUSED"));
 }
 
+void on_resize(int w, int h) {
+  win_w = w;
+  win_h = h;
+  fill(&win, BLACK);
+  writelnf(&win, 4, 5, WHITE, -1, "%dx%d\n", w, h);
+}
+
 int main(int argc, const char * argv[]) {
   srand(((argc > 1) ? atoi(argv[1]) : (unsigned int)time(NULL)));
   
   error_callback(on_error);
-  screen("roguelike", &win, SCREEN_WIDTH, SCREEN_HEIGHT, DEFAULT);
-  screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, NULL);
+  screen("roguelike", &win, SCREEN_WIDTH, SCREEN_HEIGHT, RESIZABLE);
+  screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize);
   
   //  int map_load_progress = 0;
   //  dungeon_t map;
