@@ -507,10 +507,10 @@ void draw_dungeon(surface_t* dst, dungeon_t* d) {
         if (k > tile_map[c].size || tile_map[c].map[k] == ' ')
           continue;
         
-        letter(dst, tile_map[c].map[k],
-               (i * 8) + (k * ((i + off_cx) - cx)) / draw_distance,
-               (j * 8) + (k * ((j + off_cy) - cy)) / draw_distance,
-               RGB(r, g, b));
+        ascii(dst, tile_map[c].map[k],
+              (i * 8) + (k * ((i + off_cx) - cx)) / draw_distance,
+              (j * 8) + (k * ((j + off_cy) - cy)) / draw_distance,
+              RGB(r, g, b), 0);
       }
     }
     r += rgb_inc;

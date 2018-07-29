@@ -49,6 +49,7 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 
 ### Important
 
+- Fix borderless window mode for OSX
 - Fix crashes with Windows + OSX joysticks
 - Linux joysticks totally untested, need to test on real hardware
 - Cursor clipping for Linux [and OSX](https://stackoverflow.com/a/40922095)

@@ -146,7 +146,6 @@ int main(int argc, const char* argv[]) {
   surface_t s[10];
   for (int i = 0; i < 10; ++i)
     s[i].buf = NULL;
-  SGL_WINDOWS
   surface(&s[0], 50, 50);
 
 #if defined(SGL_ENABLE_STB_IMAGE)

@@ -8,9 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		88C4963120E7A51A004A6FAF /* threads.c in Sources */ = {isa = PBXBuildFile; fileRef = 88C4963020E7A51A004A6FAF /* threads.c */; };
+		88CC7A1C210E3D7500392B08 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88CC7A1A210E3D7400392B08 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
 		88EB7D1320DCE471006E91FD /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 88EB7D1220DCE471006E91FD /* main.c */; };
 		88EB7D7220DF76A8006E91FD /* heap.c in Sources */ = {isa = PBXBuildFile; fileRef = 88EB7D7120DF76A8006E91FD /* heap.c */; };
-		88EB7D7520DF9496006E91FD /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88EB7D7420DF9496006E91FD /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
 		88EB7D7820DF9A90006E91FD /* dungeon.c in Sources */ = {isa = PBXBuildFile; fileRef = 88EB7D7720DF9A90006E91FD /* dungeon.c */; };
 /* End PBXBuildFile section */
 
@@ -29,13 +29,13 @@
 /* Begin PBXFileReference section */
 		88C4962F20E7A50D004A6FAF /* threads.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = threads.h; sourceTree = "<group>"; };
 		88C4963020E7A51A004A6FAF /* threads.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = threads.c; sourceTree = "<group>"; };
+		88CC7A1A210E3D7400392B08 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../../../graphics.c; sourceTree = "<group>"; };
+		88CC7A1B210E3D7400392B08 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../../../graphics.h; sourceTree = "<group>"; };
 		88EB7D0F20DCE471006E91FD /* roguelike */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = roguelike; sourceTree = BUILT_PRODUCTS_DIR; };
 		88EB7D1220DCE471006E91FD /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		88EB7D4320DCE533006E91FD /* common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
 		88EB7D7020DF76A8006E91FD /* heap.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = heap.h; sourceTree = "<group>"; };
 		88EB7D7120DF76A8006E91FD /* heap.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = heap.c; sourceTree = "<group>"; };
-		88EB7D7320DF9496006E91FD /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = graphics.h; sourceTree = "<group>"; };
-		88EB7D7420DF9496006E91FD /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = graphics.c; sourceTree = "<group>"; };
 		88EB7D7620DF9A90006E91FD /* dungeon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dungeon.h; sourceTree = "<group>"; };
 		88EB7D7720DF9A90006E91FD /* dungeon.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dungeon.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -70,10 +70,10 @@
 		88EB7D1120DCE471006E91FD /* roguelike */ = {
 			isa = PBXGroup;
 			children = (
+				88CC7A1A210E3D7400392B08 /* graphics.c */,
+				88CC7A1B210E3D7400392B08 /* graphics.h */,
 				88C4962F20E7A50D004A6FAF /* threads.h */,
 				88C4963020E7A51A004A6FAF /* threads.c */,
-				88EB7D7420DF9496006E91FD /* graphics.c */,
-				88EB7D7320DF9496006E91FD /* graphics.h */,
 				88EB7D4320DCE533006E91FD /* common.h */,
 				88EB7D1220DCE471006E91FD /* main.c */,
 				88EB7D7020DF76A8006E91FD /* heap.h */,
@@ -140,8 +140,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				88CC7A1C210E3D7500392B08 /* graphics.c in Sources */,
 				88EB7D7220DF76A8006E91FD /* heap.c in Sources */,
-				88EB7D7520DF9496006E91FD /* graphics.c in Sources */,
 				88EB7D7820DF9A90006E91FD /* dungeon.c in Sources */,
 				88C4963120E7A51A004A6FAF /* threads.c in Sources */,
 				88EB7D1320DCE471006E91FD /* main.c in Sources */,
@@ -264,6 +264,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;

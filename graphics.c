@@ -4356,10 +4356,8 @@ bool sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
     win_h = h;
   }
 
-  if (!border_off && flags & ~FULLSCREEN) {
-    _flags &= ~NSWindowStyleMaskBorderless;
-    _flags |= NSWindowStyleMaskFullSizeContentView;
-  }
+  if (!border_off && flags & FULLSCREEN)
+    _flags |= (~NSWindowStyleMaskBorderless | NSWindowStyleMaskFullSizeContentView);
 
   if (s)
     if (!sgl_surface(s, w, h))
