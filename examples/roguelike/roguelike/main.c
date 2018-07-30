@@ -96,7 +96,6 @@ int load_map_func(void* _arg) {
   return 0;
 }
 
-
 void on_error(ERRPRIO pri, const char* msg, const char* file, const char* func, int line) {
   fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
   if (pri == PRIO_HIGH || pri == PRIO_NORM)

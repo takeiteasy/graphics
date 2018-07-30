@@ -3988,7 +3988,6 @@ extern surface_t* buffer;
 }
 
 -(void)cursorUpdate:(NSEvent*)event {
-  (void)event;
   if (__cursor)
     [__cursor set];
 }
@@ -3998,25 +3997,20 @@ extern surface_t* buffer;
 }
 
 -(BOOL)performKeyEquivalent:(NSEvent*)event {
-  (void)event;
   return YES;
 }
 
 -(void)mouseEntered: (NSEvent*)event {
-  (void)event;
   cursor_in_win = true;
 #pragma TODO(Add mouse entered event cb)
 }
 
 -(void)mouseExited: (NSEvent*)event {
-  (void)event;
   cursor_in_win = false;
 #pragma TODO(Add mouse exited event cb)
 }
 
 -(void)drawRect:(NSRect)r {
-  (void)r;
-
   if (!buffer || !buffer->buf)
     return;
 
@@ -4109,7 +4103,7 @@ extern surface_t* buffer;
 
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(win_changed:)
-                                                 name:NSWindowDidBecomeMainNotification
+                                                 name:NSWindowDidBecomeKeyNotification
                                                object:self];
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(win_changed:)
@@ -4171,7 +4165,7 @@ extern surface_t* buffer;
 }
 
 -(void)win_changed:(NSNotification *)n {
-  (void)n;
+  CALL(focus_callback, false);
 }
 
 -(void)win_close {
@@ -4179,7 +4173,6 @@ extern surface_t* buffer;
 }
 
 -(void)win_resize:(NSNotification *)n {
-  (void)n;
   CGSize size = [app contentRectForFrameRect:[app frame]].size;
   win_w = size.width;
   win_h = size.height - border_off;
@@ -4205,13 +4198,16 @@ extern surface_t* buffer;
   return YES;
 }
 
+-(void)becomeKeyWindow {
+  CALL(focus_callback, true);
+}
+
 -(NSRect)contentRectForFrameRect:(NSRect)f {
   f.origin = NSZeroPoint;
   return NSInsetRect(f, 0, 0);
 }
 
 +(NSRect)frameRectForContentRect:(NSRect)r styleMask:(NSWindowStyleMask)s {
-  (void)s;
   return NSInsetRect(r, 0, 0);
 }
 @end
