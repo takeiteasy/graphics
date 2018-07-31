@@ -76,7 +76,7 @@ void dungeon_free(dungeon_t* d);
 nodeptr_t dungeon_in(dungeon_t* d, int x, int y);
 int dungeon_solid(dungeon_t* d, int x, int y);
 nodeptr_t astar(dungeon_t* d, int x0, int y0, int x1, int y1);
-void new_cave(dungeon_t* d, int* progress, int minw, int minh, int maxw, int maxh, int fill_prob, int iterations, int survival, int starve);
+void new_cave(dungeon_t* d, int minw, int minh, int maxw, int maxh, int fill_prob, int iterations, int survival, int starve);
 #define new_cave_default(m, p) (new_cave((m), (p), 50, 50, 200, 200, RND_RANGE(38, 46), 5, 4, 3))
 void draw_dungeon(surface_t* dst, dungeon_t* d);
 

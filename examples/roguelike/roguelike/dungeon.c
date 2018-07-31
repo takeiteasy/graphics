@@ -431,21 +431,16 @@ void dungeon_connect_rooms(dungeon_t* d, grid_t* map, int main_room) {
   free(rci);
 }
 
-void new_cave(dungeon_t* d, int* progress, int minw, int minh, int maxw, int maxh, int fill_prob, int iterations, int survival, int starve) {
+void new_cave(dungeon_t* d, int minw, int minh, int maxw, int maxh, int fill_prob, int iterations, int survival, int starve) {
   int map_w = RND_RANGE(minw, maxh), map_h = RND_RANGE(minh, maxh);
   grid_t* map = celluar_automata(map_w, map_h, fill_prob, iterations, survival, starve);
-  *progress = 20;
   
   point_t** regions[2] = { NULL, NULL };
   get_regions(regions, map, map_w, map_h);
-  *progress = 40;
   
   int main_room = 0;
   dungeon_fill_rooms(d, map, regions[0], sb_count(regions[0]), &main_room);
-  *progress = 50;
   dungeon_connect_rooms(d, map, main_room);
-  *progress = 80;
-  
   
   point_t *p = NULL, *region = NULL;
   int i, j, nw, nf, nx, ny;
@@ -475,11 +470,9 @@ void new_cave(dungeon_t* d, int* progress, int minw, int minh, int maxw, int max
   }
   sb_free(regions[0]);
   sb_free(regions[1]);
-  *progress = 90;
   
   dungeon_fill(d, map);
   GRID_FREE(map);
-  *progress = 100;
 }
 
 static int draw_distance = 5;
