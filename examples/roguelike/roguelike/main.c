@@ -80,6 +80,7 @@ void on_error(ERRPRIO pri, const char* msg, const char* file, const char* func, 
 typedef struct {
   surface_t ctx;
   point_t pos;
+  rect_t aabb;
   const char* name;
 } panel_t;
 
@@ -88,6 +89,17 @@ void create_panel(panel_t* p, const char* n, int x, int y, int w, int h) {
   fill(&p->ctx, BLACK);
   p->pos = (point_t){ x, y };
   p->name = n;
+  p->aabb = (rect_t){ x, y, x + w, y + h };
+}
+
+void move_panel(panel_t* p, int x, int y) {
+  p->pos = (point_t){ x, y };
+  p->aabb = (rect_t){ x, y, x + p->ctx.w, y + p->ctx.h };
+}
+
+void resize_panel(panel_t* p, int w, int h) {
+  reset(&p->ctx, w, h);
+  p->aabb = (rect_t){ p->pos.x, p->pos.y, p->pos.x + w, p->pos.y + h };
 }
 
 void draw_panel(surface_t* dst, panel_t* p) {
@@ -98,16 +110,14 @@ void draw_panel(surface_t* dst, panel_t* p) {
 }
 
 typedef struct {
+  void* ctx;
   bool (*init)(void*);
   void (*update)(long);
   void (*render)(void);
   void (*dispose)(void);
 } state_t;
 
-static panel_t test_panel, test_panel_2;
-static vector_t panels_test;
 static state_t* current_state = NULL, test_state;
-#define this current_state
 
 void create_state(state_t* s, bool (*init_fn)(void*), void (*update_fn)(long), void (*render_fn)(void), void (*dispose_fn)(void)) {
   s->init = init_fn;
@@ -123,49 +133,25 @@ bool update_main_state(state_t* s, void* ctx) {
   return current_state->init(ctx);
 }
 
-bool init_test(void* ctx) {
-  vector_init(&panels_test);
-  create_panel(&test_panel, "test", 10, 10, 100, 100);
-  create_panel(&test_panel_2, "test2", 30, 30, 100, 100);
-  vector_push(&panels_test, (void*)&test_panel);
-  vector_push(&panels_test, (void*)&test_panel_2);
+bool create_state_ctx(size_t sz) {
+  current_state->ctx = malloc(sz);
+  return !!current_state->ctx;
+}
+
+bool init_test(void* data) {
   return true;
 }
 
 void update_test(long time) {
-  for (int i = 0; i < panels_test.length; ++i)
-    fill(&((panel_t*)vector_get(&panels_test, i))->ctx, BLACK);
   
-  panel_t* current = NULL;
-  for (int i = panels_test.length - 1; i >= 0; --i) {
-    current = (panel_t*)vector_get(&panels_test, i);
-    rect_t aabb = {
-      current->pos.x,
-      current->pos.y,
-      current->pos.x + current->ctx.w,
-      current->pos.y + current->ctx.h
-    };
-    if (mouse_handler.pos.x >= aabb.x && mouse_handler.pos.y >= aabb.y && mouse_handler.pos.x <= aabb.w && mouse_handler.pos.y <= aabb.h)
-      break;
-    current = NULL;
-  }
-  
-  if (current)
-    fill(&current->ctx, RED);
 }
 
 void render_test(void) {
-  panel_t* p;
-  for (int i = 0; i < panels_test.length; ++i) {
-    p = (panel_t*)vector_get(&panels_test, i);
-    draw_panel(&win, p);
-  }
+  
 }
 
 void dispose_test(void) {
-  for (int i = 0; i < panels_test.length; ++i)
-    sgl_destroy(&((panel_t*)vector_get(&panels_test, i))->ctx);
-  vector_free(&panels_test);
+  
 }
 
 int main(int argc, const char * argv[]) {
