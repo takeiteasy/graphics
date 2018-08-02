@@ -109,6 +109,10 @@ void draw_panel(surface_t* dst, panel_t* p) {
     sgl_writelnf(dst, p->pos.x + 10, p->pos.y - 4, WHITE, BLACK, "%s", p->name);
 }
 
+bool aabb_point_rect(rect_t* r, point_t* p) {
+  return (p->x >= r->x && p->y >= r->y && p->x <= r->w && p->y <= r->h);
+}
+
 typedef struct {
   void* ctx;
   bool (*init)(void*);

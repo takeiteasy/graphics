@@ -2854,12 +2854,12 @@ static inline void add_joystick(joystick_t* d) {
 #endif
 #endif
 
-static void(*kb_callback)(KEYSYM, KEYMOD, bool) = NULL;
-static void(*mouse_btn_callback)(MOUSEBTN, KEYMOD, bool) = NULL;
-static void(*mouse_move_callback)(int, int, int, int) = NULL;
-static void(*scroll_callback)(KEYMOD, float, float) = NULL;
-static void(*focus_callback)(bool) = NULL;
-static void(*resize_callback)(int, int) = NULL;
+static void(*__kb_callback)(KEYSYM, KEYMOD, bool) = NULL;
+static void(*__mouse_btn_callback)(MOUSEBTN, KEYMOD, bool) = NULL;
+static void(*__mouse_move_callback)(int, int, int, int) = NULL;
+static void(*__scroll_callback)(KEYMOD, float, float) = NULL;
+static void(*__focus_callback)(bool) = NULL;
+static void(*__resize_callback)(int, int) = NULL;
 
 void sgl_screen_callbacks(
   void(*kb_cb)(KEYSYM, KEYMOD, bool),
@@ -2868,12 +2868,36 @@ void sgl_screen_callbacks(
   void(*scroll_cb)(KEYMOD, float, float),
   void(*focus_cb)(bool),
   void(*resize_cb)(int, int)) {
-  kb_callback = kb_cb;
-  mouse_btn_callback = mouse_btn_cb;
-  mouse_move_callback = mouse_move_cb;
-  scroll_callback = scroll_cb;
-  focus_callback = focus_cb;
-  resize_callback = resize_cb;
+  __kb_callback = kb_cb;
+  __mouse_btn_callback = mouse_btn_cb;
+  __mouse_move_callback = mouse_move_cb;
+  __scroll_callback = scroll_cb;
+  __focus_callback = focus_cb;
+  __resize_callback = resize_cb;
+}
+
+void keyboard_callback(void(*kb_cb)(KEYSYM, KEYMOD, bool)) {
+  __kb_callback = kb_cb;
+}
+
+void mouse_button_callback(void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool)) {
+  __mouse_btn_callback = mouse_btn_cb;
+}
+
+void mouse_move_callback(void(*mouse_move_cb)(int, int, int, int)) {
+  __mouse_move_callback = mouse_move_cb;
+}
+
+void scroll_callback(void(*scroll_cb)(KEYMOD, float, float)) {
+  __scroll_callback = scroll_cb;
+}
+
+void active_callback(void(*active_cb)(bool)) {
+  __focus_callback = active_cb;
+}
+
+void resize_callback(void(*resize_cb)(int, int)) {
+  __resize_callback = resize_cb;
 }
 
 #if defined(SGL_ENABLE_OPENGL)
@@ -4165,7 +4189,7 @@ extern surface_t* buffer;
 }
 
 -(void)win_changed:(NSNotification *)n {
-  CALL(focus_callback, false);
+  CALL(__focus_callback, false);
 }
 
 -(void)win_close {
@@ -4182,8 +4206,7 @@ extern surface_t* buffer;
   mtk_viewport.x = win_w * scale_f;
   mtk_viewport.y = (win_h * scale_f) + (4 * scale_f);
 #endif
-  if (resize_callback)
-    resize_callback(win_w, win_h);
+  CALL(__resize_callback, win_w, win_h);
 }
 
 -(NSView*)contentView {
@@ -4199,7 +4222,7 @@ extern surface_t* buffer;
 }
 
 -(void)becomeKeyWindow {
-  CALL(focus_callback, true);
+  CALL(__focus_callback, true);
 }
 
 -(NSRect)contentRectForFrameRect:(NSRect)f {
@@ -4428,24 +4451,24 @@ void sgl_poll(void) {
     switch ([e type]) {
       case NSEventTypeKeyUp:
       case NSEventTypeKeyDown:
-        CALL(kb_callback, translate_key([e keyCode]), translate_mod([e modifierFlags]), ([e type] == NSEventTypeKeyDown));
+        CALL(__kb_callback, translate_key([e keyCode]), translate_mod([e modifierFlags]), ([e type] == NSEventTypeKeyDown));
         break;
       case NSEventTypeLeftMouseUp:
       case NSEventTypeRightMouseUp:
       case NSEventTypeOtherMouseUp:
-        CALL(mouse_btn_callback, (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), false);
+        CALL(__mouse_btn_callback, (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), false);
         break;
       case NSEventTypeLeftMouseDown:
       case NSEventTypeRightMouseDown:
       case NSEventTypeOtherMouseDown:
-        CALL(mouse_btn_callback, (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
+        CALL(__mouse_btn_callback, (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
         break;
       case NSEventTypeScrollWheel:
-        CALL(scroll_callback, translate_mod([e modifierFlags]), [e deltaX], [e deltaY]);
+        CALL(__scroll_callback, translate_mod([e modifierFlags]), [e deltaX], [e deltaY]);
         break;
       case NSEventTypeMouseMoved:
         if (cursor_in_win)
-          CALL(mouse_move_callback, [e locationInWindow].x, [app frame].size.height - border_off - [e locationInWindow].y, 0, 0);
+          CALL(__mouse_move_callback, [e locationInWindow].x, [app frame].size.height - border_off - [e locationInWindow].y, 0, 0);
         break;
     }
     [NSApp sendEvent:e];
@@ -5638,7 +5661,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       rect.right = LOWORD(lParam);
       rect.bottom = HIWORD(lParam);
       AdjustWindowRect(&rect, adjust_flags, 0);
-      CALL(resize_callback, rect.right + rect.left, rect.bottom - rect.top);
+      CALL(__resize_callback, rect.right + rect.left, rect.bottom - rect.top);
 #if defined(SGL_ENABLE_OPENGL)
       glViewport(rect.left, rect.top, rect.right, win_h);
       PostMessage(hWnd, WM_PAINT, 0, 0);
@@ -5658,11 +5681,11 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       if (kb_key == KB_KEY_UNKNOWN)
         return FALSE;
       if (!kb_action && wParam == VK_SHIFT) {
-        CALL(kb_callback, KB_KEY_LEFT_SHIFT, kb_mods, kb_action);
+        CALL(__kb_callback, KB_KEY_LEFT_SHIFT, kb_mods, kb_action);
       } else if (wParam == VK_SNAPSHOT) {
-        CALL(kb_callback, kb_key, kb_mods, false);
+        CALL(__kb_callback, kb_key, kb_mods, false);
       } else {
-        CALL(kb_callback, kb_key, kb_mods, kb_action);
+        CALL(__kb_callback, kb_key, kb_mods, kb_action);
       }
       break;
     }
@@ -5700,15 +5723,15 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
           if (message == WM_XBUTTONDOWN)
             m_action = 1;
       }
-      CALL(mouse_btn_callback, (MOUSEBTN)m_button, translate_mod(), m_action);
+      CALL(__mouse_btn_callback, (MOUSEBTN)m_button, translate_mod(), m_action);
       break;
     }
     case WM_MOUSEWHEEL:
     case WM_MOUSEHWHEEL:
-      CALL(scroll_callback, translate_mod(), -((SHORT)HIWORD(wParam) / (float)WHEEL_DELTA), (SHORT)HIWORD(wParam) / (float)WHEEL_DELTA);
+      CALL(__scroll_callback, translate_mod(), -((SHORT)HIWORD(wParam) / (float)WHEEL_DELTA), (SHORT)HIWORD(wParam) / (float)WHEEL_DELTA);
       break;
     case WM_MOUSEMOVE:
-      CALL(mouse_move_callback, ((int)(short)LOWORD(lParam)), ((int)(short)HIWORD(lParam)), 0, 0);
+      CALL(__mouse_move_callback, ((int)(short)LOWORD(lParam)), ((int)(short)HIWORD(lParam)), 0, 0);
       if (cursor_locked && is_focused) {
         GetWindowRect(hwnd, &rc);
         rc.left += 3;
@@ -5723,11 +5746,11 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       break;
     case WM_SETFOCUS:
       is_focused = TRUE;
-      CALL(focus_callback, is_focused);
+      CALL(__focus_callback, is_focused);
       break;
     case WM_KILLFOCUS:
       is_focused = FALSE;
-      CALL(focus_callback, is_focused);
+      CALL(__focus_callback, is_focused);
       break;
     default:
       res = DefWindowProc(hWnd, message, wParam, lParam);
@@ -7070,37 +7093,37 @@ void poll() {
     XNextEvent(display, &event);
     switch (event.type) {
       case KeyPress:
-        CALL(kb_callback, translate_key(event.xkey.keycode), translate_mod(event.xkey.state), true);
+        CALL(__kb_callback, translate_key(event.xkey.keycode), translate_mod(event.xkey.state), true);
         break;
       case KeyRelease:
-        CALL(kb_callback, translate_key(event.xkey.keycode), translate_mod(event.xkey.state), false);
+        CALL(__kb_callback, translate_key(event.xkey.keycode), translate_mod(event.xkey.state), false);
         break;
       case ButtonPress: {
         int btn_mod = translate_mod(event.xkey.state);
         switch (event.xbutton.button) {
         case Button1:
-          CALL(mouse_btn_callback, MOUSE_BTN_1, btn_mod, true);
+          CALL(__mouse_btn_callback, MOUSE_BTN_1, btn_mod, true);
           break;
         case Button2:
-          CALL(mouse_btn_callback, MOUSE_BTN_2, btn_mod, true);
+          CALL(__mouse_btn_callback, MOUSE_BTN_2, btn_mod, true);
           break;
         case Button3:
-          CALL(mouse_btn_callback, MOUSE_BTN_3, btn_mod, true);
+          CALL(__mouse_btn_callback, MOUSE_BTN_3, btn_mod, true);
           break;
         case Button4:
-          CALL(scroll_callback, btn_mod, 0.f, 1.f);
+          CALL(__scroll_callback, btn_mod, 0.f, 1.f);
           break;
         case Button5:
-          CALL(scroll_callback, btn_mod, 0.f, -1.f);
+          CALL(__scroll_callback, btn_mod, 0.f, -1.f);
           break;
         case Button6:
-          CALL(scroll_callback, btn_mod, 1.f, 0.f);
+          CALL(__scroll_callback, btn_mod, 1.f, 0.f);
           break;
         case Button7:
-          CALL(scroll_callback, btn_mod, -1.f, 0.f);
+          CALL(__scroll_callback, btn_mod, -1.f, 0.f);
           break;
         default:
-          CALL(mouse_btn_callback, (MOUSEBTN)(event.xbutton.button - 4), btn_mod, true);
+          CALL(__mouse_btn_callback, (MOUSEBTN)(event.xbutton.button - 4), btn_mod, true);
         }
         break;
       }
@@ -7108,16 +7131,16 @@ void poll() {
         int btn_mod = translate_mod(event.xkey.state);
         switch (event.xbutton.button) {
           case Button1:
-            CALL(mouse_btn_callback, MOUSE_BTN_1, btn_mod, false);
+            CALL(__mouse_btn_callback, MOUSE_BTN_1, btn_mod, false);
             break;
           case Button2:
-            CALL(mouse_btn_callback, MOUSE_BTN_2, btn_mod, false);
+            CALL(__mouse_btn_callback, MOUSE_BTN_2, btn_mod, false);
             break;
           case Button3:
-            CALL(mouse_btn_callback, MOUSE_BTN_3, btn_mod, false);
+            CALL(__mouse_btn_callback, MOUSE_BTN_3, btn_mod, false);
             break;
           default:
-            CALL(mouse_btn_callback, (MOUSEBTN)(event.xbutton.button - 4), btn_mod, false);
+            CALL(__mouse_btn_callback, (MOUSEBTN)(event.xbutton.button - 4), btn_mod, false);
         }
         break;
       }
@@ -7129,7 +7152,7 @@ void poll() {
         break;
     #endif
       case MotionNotify:
-        CALL(mouse_move_callback, event.xmotion.x, event.xmotion.y, 0, 0);
+        CALL(__mouse_move_callback, event.xmotion.x, event.xmotion.y, 0, 0);
         break;
       case DestroyNotify:
         __closed = true;

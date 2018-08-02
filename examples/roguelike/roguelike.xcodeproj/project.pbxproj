@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		88C4963120E7A51A004A6FAF /* threads.c in Sources */ = {isa = PBXBuildFile; fileRef = 88C4963020E7A51A004A6FAF /* threads.c */; };
 		88CC7A1C210E3D7500392B08 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88CC7A1A210E3D7400392B08 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
+		88CC7A1F2110EC8700392B08 /* vector.c in Sources */ = {isa = PBXBuildFile; fileRef = 88CC7A1E2110EC8700392B08 /* vector.c */; };
 		88EB7D1320DCE471006E91FD /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 88EB7D1220DCE471006E91FD /* main.c */; };
 		88EB7D7220DF76A8006E91FD /* heap.c in Sources */ = {isa = PBXBuildFile; fileRef = 88EB7D7120DF76A8006E91FD /* heap.c */; };
 		88EB7D7820DF9A90006E91FD /* dungeon.c in Sources */ = {isa = PBXBuildFile; fileRef = 88EB7D7720DF9A90006E91FD /* dungeon.c */; };
@@ -31,6 +32,8 @@
 		88C4963020E7A51A004A6FAF /* threads.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = threads.c; sourceTree = "<group>"; };
 		88CC7A1A210E3D7400392B08 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../../../graphics.c; sourceTree = "<group>"; };
 		88CC7A1B210E3D7400392B08 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../../../graphics.h; sourceTree = "<group>"; };
+		88CC7A1D2110EC7B00392B08 /* vector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = vector.h; sourceTree = "<group>"; };
+		88CC7A1E2110EC8700392B08 /* vector.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = vector.c; sourceTree = "<group>"; };
 		88EB7D0F20DCE471006E91FD /* roguelike */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = roguelike; sourceTree = BUILT_PRODUCTS_DIR; };
 		88EB7D1220DCE471006E91FD /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		88EB7D4320DCE533006E91FD /* common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
@@ -80,6 +83,8 @@
 				88EB7D7120DF76A8006E91FD /* heap.c */,
 				88EB7D7620DF9A90006E91FD /* dungeon.h */,
 				88EB7D7720DF9A90006E91FD /* dungeon.c */,
+				88CC7A1D2110EC7B00392B08 /* vector.h */,
+				88CC7A1E2110EC8700392B08 /* vector.c */,
 			);
 			path = roguelike;
 			sourceTree = "<group>";
@@ -142,6 +147,7 @@
 			files = (
 				88CC7A1C210E3D7500392B08 /* graphics.c in Sources */,
 				88EB7D7220DF76A8006E91FD /* heap.c in Sources */,
+				88CC7A1F2110EC8700392B08 /* vector.c in Sources */,
 				88EB7D7820DF9A90006E91FD /* dungeon.c in Sources */,
 				88C4963120E7A51A004A6FAF /* threads.c in Sources */,
 				88EB7D1320DCE471006E91FD /* main.c in Sources */,

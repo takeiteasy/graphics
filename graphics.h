@@ -563,6 +563,12 @@ extern "C" {
     void(*scroll_cb)(KEYMOD, float, float),
     void(*active_cb)(bool),
     void(*resize_cb)(int, int));
+  void keyboard_callback(void(*kb_cb)(KEYSYM, KEYMOD, bool));
+  void mouse_button_callback(void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool));
+  void mouse_move_callback(void(*mouse_move_cb)(int, int, int, int));
+  void scroll_callback(void(*scroll_cb)(KEYMOD, float, float));
+  void active_callback(void(*active_cb)(bool));
+  void resize_callback(void(*resize_cb)(int, int));
 
 #define DEFAULT 0
 
