@@ -57,30 +57,40 @@ if ((x)) {  \
   (x) = NULL; \
 }
 
+static void* userdata = NULL;
+
+void sgl_set_userdata(void* data) {
+  userdata = data;
+}
+
+void* sgl_get_userdata() {
+  return userdata;
+}
+
 #define CALL(x, ...) \
 if ((x)) \
-  (x)(__VA_ARGS__);
+  (x)(userdata, __VA_ARGS__);
 
-static void(*__error_callback)(ERRPRIO, const char*, const char*, const char*, int) = NULL;
+static void(*__error_callback)(void*, ERRORLVL, ERRORTYPE, const char*, const char*, const char*, int) = NULL;
 
-void sgl_error_callback(void (*cb)(ERRPRIO, const char*, const char*, const char*, int)) {
+void sgl_error_callback(void (*cb)(void*, ERRORLVL, ERRORTYPE, const char*, const char*, const char*, int)) {
   __error_callback = cb;
 }
 
-static inline const char* errprio_str(ERRPRIO pri) {
+static inline const char* errprio_str(ERRORLVL pri) {
   switch (pri) {
-    case PRIO_HIGH:
+    case HIGH_PRIORITY:
       return "SERIOUS";
-    case PRIO_NORM:
+    case NORMAL_PRIORITY:
       return "ERROR";
-    case PRIO_LOW:
+    case LOW_PRIORITY:
       return "WARNING";
     default:
       return "LOG";
   }
 }
 
-void error_handle(ERRPRIO pri, const char* msg, ...) {
+void error_handle(ERRORLVL pri, ERRORTYPE type, const char* msg, ...) {
   va_list args;
   va_start(args, msg);
 
@@ -88,9 +98,9 @@ void error_handle(ERRPRIO pri, const char* msg, ...) {
   vsprintf(error, msg, args);
 
   if (__error_callback)
-    __error_callback(pri, error, __FILE__, __FUNCTION__, __LINE__);
+    __error_callback(userdata, pri, type, error, __FILE__, __FUNCTION__, __LINE__);
   else
-    fprintf(stderr, "[%s] from %s in %s() at %d -- %s\n", errprio_str(pri), __FILE__, __FUNCTION__, __LINE__, error);
+    fprintf(stderr, "[%s:%d] from %s in %s() at %d -- %s\n", errprio_str(pri), (int)type, __FILE__, __FUNCTION__, __LINE__, error);
 
   va_end(args);
 }
@@ -119,7 +129,7 @@ bool sgl_surface(surface_t* s, unsigned int w, unsigned int h) {
   size_t sz = w * h * sizeof(unsigned int) + 1;
   s->buf = malloc(sz);
   if (!s->buf) {
-    error_handle(PRIO_HIGH, "malloc() failed");
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
   memset(s->buf, 0, sz);
@@ -291,7 +301,7 @@ bool sgl_reset(surface_t* s, int nw, int nh) {
   size_t sz = nw * nh * sizeof(unsigned int) + 1;
   int* tmp = realloc(s->buf, sz);
   if (!tmp) {
-    error_handle(PRIO_HIGH, "realloc() failed");
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "realloc() failed");
     return false;
   }
   s->buf = tmp;
@@ -1395,7 +1405,7 @@ off += s;
 bool sgl_bmp(surface_t* s, const char* path) {
   FILE* fp = fopen(path, "rb");
   if (!fp) {
-    error_handle(PRIO_NORM, "fopen() failed: %s", path);
+    error_handle(NORMAL_PRIORITY, FILE_OPEN_FAILED, "fopen() failed: %s", path);
     return false;
   }
 
@@ -1405,7 +1415,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
 
   unsigned char* data = (unsigned char*)calloc(length + 1, sizeof(unsigned char));
   if (!data) {
-    error_handle(PRIO_HIGH, "calloc() failed");
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "calloc() failed");
     return false;
   }
   fread(data, 1, length, fp);
@@ -1420,7 +1430,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
   BMP_GET(&info, data, sizeof(BMPINFOHEADER));
 
   if (header.type != 0x4D42) {
-    error_handle(PRIO_NORM, "bmp() failed: invalid BMP signiture '%d'", header.type);
+    error_handle(NORMAL_PRIORITY, INVALID_BMP, "bmp() failed: invalid BMP signiture '%d'", header.type);
     return false;
   }
 
@@ -1432,7 +1442,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
     color_map_size = (1 << info.bits) * 4;
     color_map = (unsigned char*)malloc(color_map_size * sizeof(unsigned char));
     if (!color_map) {
-      error_handle(PRIO_HIGH, "malloc() failed");
+      error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
       return false;
     }
     BMP_GET(color_map, data, color_map_size);
@@ -1440,7 +1450,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
 
   if (!sgl_surface(s, info.width, info.height)) {
     FREE_SAFE(color_map);
-    error_handle(PRIO_HIGH, "malloc() failed");
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
 
@@ -1453,7 +1463,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
         case 1:
         case 4:
 #pragma TODO(Add 1 & 4 bpp support);
-          error_handle(PRIO_NORM, "bmp() failed. Unsupported BPP: %d", info.bits);
+          error_handle(NORMAL_PRIORITY, UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
           sgl_destroy(s);
           break;
         case 8:
@@ -1468,7 +1478,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
             BMP_SET(RGB(data[off + 2], data[off + 1], data[off]));
           break;
         default:
-          error_handle(PRIO_NORM, "bmp() failed. Unsupported BPP: %d", info.bits);
+          error_handle(NORMAL_PRIORITY, UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
           sgl_destroy(s);
           return false;
       }
@@ -1477,7 +1487,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
     case 2: // RLE4
     default:
 #pragma TODO(Add RLE support);
-      error_handle(PRIO_NORM, "bmp() failed. Unsupported compression: %d", info.compression);
+      error_handle(NORMAL_PRIORITY, UNSUPPORTED_BMP, "bmp() failed. Unsupported compression: %d", info.compression);
       sgl_destroy(s);
       return false;
   }
@@ -1490,7 +1500,7 @@ bool sgl_save_bmp(surface_t* s, const char* path) {
   const int filesize = 54 + 3 * s->w * s->h;
   unsigned char* img = (unsigned char *)malloc(3 * s->w * s->h);
   if (!img) {
-    error_handle(PRIO_HIGH, "malloc() failed");
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
   memset(img, 0, 3 * s->w * s->h);
@@ -1534,7 +1544,7 @@ bool sgl_save_bmp(surface_t* s, const char* path) {
 
   FILE* fp = fopen(path, "wb");
   if (!fp) {
-    error_handle(PRIO_NORM, "fopen() failed: %s", path);
+    error_handle(NORMAL_PRIORITY, FILE_OPEN_FAILED, "fopen() failed: %s", path);
     free(img);
     return false;
   }
@@ -2437,7 +2447,7 @@ static inline int htoi(const char* p) {
 bool sgl_bdf(bdf_t* out, const char* path) {
   FILE* fp = fopen(path, "r");
   if (!fp) {
-    error_handle(PRIO_NORM, "fopen() failed: %s", path);
+    error_handle(NORMAL_PRIORITY, FILE_OPEN_FAILED, "fopen() failed: %s", path);
     return false;
   }
 
@@ -2460,24 +2470,24 @@ bool sgl_bdf(bdf_t* out, const char* path) {
   }
 
   if (out->fontbb.w <= 0 || out->fontbb.h <= 0) {
-    error_handle(PRIO_NORM, "bdf() failed: No character size given for %s", path);
+    error_handle(NORMAL_PRIORITY, BDF_NO_CHAR_SIZE, "bdf() failed: No character size given for %s", path);
     return false;
   }
 
   if (out->n_chars <= 0) {
-    error_handle(PRIO_NORM, "bdf() failed: Unknown number of characters for %s", path);
+    error_handle(NORMAL_PRIORITY, BDF_NO_CHAR_LENGTH, "bdf() failed: Unknown number of characters for %s", path);
     return false;
   }
 
   out->encoding_table = malloc(out->n_chars * sizeof(unsigned int));
   if (!out->encoding_table) {
-    error_handle(PRIO_HIGH, "malloc() failed");
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
   out->chars = malloc(out->n_chars * sizeof(bdf_char_t));
   if (!out->chars) {
     free(out->encoding_table);
-    error_handle(PRIO_HIGH, "malloc() failed");
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
 
@@ -2500,12 +2510,12 @@ bool sgl_bdf(bdf_t* out, const char* path) {
     } else if (!strcasecmp(s, "BITMAP")) {
       if (n == out->n_chars) {
         sgl_bdf_destroy(out);
-        error_handle(PRIO_NORM, "bdf() failed: More bitmaps than characters for %s", path);
+        error_handle(NORMAL_PRIORITY, BDF_TOO_MANY_BITMAPS, "bdf() failed: More bitmaps than characters for %s", path);
         return false;
       }
       if (width == -1) {
         sgl_bdf_destroy(out);
-        error_handle(PRIO_NORM, "bdf() failed: Unknown character with for %s", path);
+        error_handle(NORMAL_PRIORITY, BDF_UNKNOWN_CHAR, "bdf() failed: Unknown character with for %s", path);
         return false;
       }
 
@@ -2519,7 +2529,7 @@ bool sgl_bdf(bdf_t* out, const char* path) {
       out->chars[n].bitmap = malloc(((out->fontbb.w + 7) / 8) * out->fontbb.h * sizeof(unsigned char));
       if (!out->chars[n].bitmap) {
         sgl_bdf_destroy(out);
-        error_handle(PRIO_HIGH, "malloc() failed");
+        error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
         return false;
       }
       out->chars[n].width = width;
@@ -2711,7 +2721,7 @@ bool sgl_image(surface_t* out, const char* path) {
   int w, h, c, x, y;
   unsigned char* data = stbi_load(path, &w, &h, &c, 0);
   if (!data) {
-    error_handle(PRIO_NORM, "stbi_load() failed: %s", stbi_failure_reason());
+    error_handle(NORMAL_PRIORITY, STBI_LOAD_FAILED, "stbi_load() failed: %s", stbi_failure_reason());
     return false;
   }
 
@@ -2738,7 +2748,7 @@ bool sgl_image(surface_t* out, const char* path) {
 
 bool sgl_save_image(surface_t* in, const char* path, SAVETYPE type) {
   if (!in || !path) {
-    error_handle(PRIO_NORM, "save_image() failed: Invalid parameters");
+    error_handle(NORMAL_PRIORITY, INVALID_PARAMETERS, "save_image() failed: Invalid parameters");
     return false;
   }
 
@@ -2750,7 +2760,7 @@ bool sgl_save_image(surface_t* in, const char* path, SAVETYPE type) {
 
   unsigned char* data = malloc(in->w * in->h * NC * sizeof(unsigned char));
   if (!data) {
-    error_handle(PRIO_NORM, "save_image() failed: Out of memory");
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "save_image() failed: Out of memory");
     return false;
   }
 
@@ -2788,7 +2798,7 @@ bool sgl_save_image(surface_t* in, const char* path, SAVETYPE type) {
 #undef NC
 
   if (!res) {
-    error_handle(PRIO_NORM, "save_image() failed: stbi_write() failed");
+    error_handle(NORMAL_PRIORITY, STBI_WRITE_FAILED, "save_image() failed: stbi_write() failed");
     return false;
   }
   return true;
@@ -2808,12 +2818,16 @@ static struct {
 } joy_devices;
 static int next_device_id = 0;
 
-static void(*joy_removed_callback)(joystick_t*, int) = NULL;
-static void(*joy_connect_callback)(joystick_t*, int) = NULL;
-static void(*joy_btn_callback)(joystick_t*, int, bool, long) = NULL;
-static void(*joy_axis_callback)(joystick_t*, int, float, float, long) = NULL;
+static void(*joy_removed_callback)(void*, joystick_t*, int) = NULL;
+static void(*joy_connect_callback)(void*, joystick_t*, int) = NULL;
+static void(*joy_btn_callback)(void*, joystick_t*, int, bool, long) = NULL;
+static void(*joy_axis_callback)(void*, joystick_t*, int, float, float, long) = NULL;
 
-void sgl_joystick_callbacks(void(*connect_cb)(joystick_t*, int), void(*remove_cb)(joystick_t*, int), void(*btn_cb)(joystick_t*, int, bool, long), void(*axis_cb)(joystick_t*, int, float, float, long)) {
+void sgl_joystick_callbacks(
+    void(*connect_cb)(void*, joystick_t*, int),
+    void(*remove_cb)(void*, joystick_t*, int),
+    void(*btn_cb)(void*, joystick_t*, int, bool, long),
+    void(*axis_cb)(void*, joystick_t*, int, float, float, long)) {
   joy_connect_callback = connect_cb;
   joy_removed_callback = remove_cb;
   joy_btn_callback = btn_cb;
@@ -2854,20 +2868,20 @@ static inline void add_joystick(joystick_t* d) {
 #endif
 #endif
 
-static void(*__kb_callback)(KEYSYM, KEYMOD, bool) = NULL;
-static void(*__mouse_btn_callback)(MOUSEBTN, KEYMOD, bool) = NULL;
-static void(*__mouse_move_callback)(int, int, int, int) = NULL;
-static void(*__scroll_callback)(KEYMOD, float, float) = NULL;
-static void(*__focus_callback)(bool) = NULL;
-static void(*__resize_callback)(int, int) = NULL;
+static void(*__kb_callback)(void*, KEYSYM, KEYMOD, bool) = NULL;
+static void(*__mouse_btn_callback)(void*, MOUSEBTN, KEYMOD, bool) = NULL;
+static void(*__mouse_move_callback)(void*, int, int, int, int) = NULL;
+static void(*__scroll_callback)(void*, KEYMOD, float, float) = NULL;
+static void(*__focus_callback)(void*, bool) = NULL;
+static void(*__resize_callback)(void*, int, int) = NULL;
 
 void sgl_screen_callbacks(
-  void(*kb_cb)(KEYSYM, KEYMOD, bool),
-  void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool),
-  void(*mouse_move_cb)(int, int, int, int),
-  void(*scroll_cb)(KEYMOD, float, float),
-  void(*focus_cb)(bool),
-  void(*resize_cb)(int, int)) {
+    void(*kb_cb)(void*, KEYSYM, KEYMOD, bool),
+    void(*mouse_btn_cb)(void*, MOUSEBTN, KEYMOD, bool),
+    void(*mouse_move_cb)(void*, int, int, int, int),
+    void(*scroll_cb)(void*, KEYMOD, float, float),
+    void(*focus_cb)(void*, bool),
+    void(*resize_cb)(void*, int, int)) {
   __kb_callback = kb_cb;
   __mouse_btn_callback = mouse_btn_cb;
   __mouse_move_callback = mouse_move_cb;
@@ -2876,27 +2890,27 @@ void sgl_screen_callbacks(
   __resize_callback = resize_cb;
 }
 
-void keyboard_callback(void(*kb_cb)(KEYSYM, KEYMOD, bool)) {
+void sgl_keyboard_callback(void(*kb_cb)(void*, KEYSYM, KEYMOD, bool)) {
   __kb_callback = kb_cb;
 }
 
-void mouse_button_callback(void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool)) {
+void sgl_mouse_button_callback(void(*mouse_btn_cb)(void*, MOUSEBTN, KEYMOD, bool)) {
   __mouse_btn_callback = mouse_btn_cb;
 }
 
-void mouse_move_callback(void(*mouse_move_cb)(int, int, int, int)) {
+void sgl_mouse_move_callback(void(*mouse_move_cb)(void*, int, int, int, int)) {
   __mouse_move_callback = mouse_move_cb;
 }
 
-void scroll_callback(void(*scroll_cb)(KEYMOD, float, float)) {
+void sgl_scroll_callback(void(*scroll_cb)(void*, KEYMOD, float, float)) {
   __scroll_callback = scroll_cb;
 }
 
-void active_callback(void(*active_cb)(bool)) {
+void sgl_active_callback(void(*active_cb)(void*, bool)) {
   __focus_callback = active_cb;
 }
 
-void resize_callback(void(*resize_cb)(int, int)) {
+void sgl_resize_callback(void(*resize_cb)(void*, int, int)) {
   __resize_callback = resize_cb;
 }
 
@@ -2985,7 +2999,7 @@ void print_shader_log(GLuint s) {
 
     glGetShaderInfoLog(s, max_len, &log_len, log);
     if (log_len > 0)
-      error_handle(PRIO_HIGH, "load_shader() failed: %s", log);
+      error_handle(HIGH_PRIORITY, GL_SHADER_ERROR, "load_shader() failed: %s", log);
 
     free(log);
   }
@@ -3027,7 +3041,7 @@ bool init_gl(int w, int h) {
   typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
   if (!dll) {
     sgl_release();
-    error_handle(PRIO_LOW, "LoadLibraryA() failed: opengl32.dll not found");
+    error_handle(LOW_PRIORITY, GL_LOAD_DL_FAILED, "LoadLibraryA() failed: opengl32.dll not found");
     return false;
   }
   wglGetProcAddressproc* wglGetProcAddress = (wglGetProcAddressproc*)GetProcAddress(dll, "wglGetProcAddress");
@@ -3035,7 +3049,7 @@ bool init_gl(int w, int h) {
 #define GLE(ret, name, ...) \
   gl##name = (name##proc*)wglGetProcAddress("gl" #name); \
   if (!gl##name) { \
-    error_handle(PRIO_LOW, "wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
+    error_handle(LOW_PRIORITY, GL_GET_PROC_ADDR_FAILED, "wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
     gl3_available -= 1; \
   }
   GL_LIST
@@ -3044,14 +3058,14 @@ bool init_gl(int w, int h) {
   void* libGL = dlopen("libGL.so", RTLD_LAZY);
   if (!libGL) {
     sgl_release();
-    error_handle(PRIO_LOW, "dlopen() failed: libGL.so couldn't be loaded");
+    error_handle(LOW_PRIORITY, GL_LOAD_DL_FAILED, "dlopen() failed: libGL.so couldn't be loaded");
     return false;
   }
 
 #define GLE(ret, name, ...) \
   gl##name = (name##proc *) dlsym(libGL, "gl" #name); \
   if (!gl##name) { \
-    error_handle(PRIO_LOW, "dlsym() failed: Function gl" #name " couldn't be loaded from libGL.so"); \
+    error_handle(LOW_PRIORITY, GL_GET_PROC_ADDR_FAILED, "dlsym() failed: Function gl" #name " couldn't be loaded from libGL.so"); \
     gl3_available -= 1; \
   }
   GL_LIST
@@ -3791,7 +3805,7 @@ NSPoint cursor_pos_abs() {
 
 void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
   if (!app) {
-    error_handle(PRIO_LOW, "cursor() failed: Called before screen is set up");
+    error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "cursor() failed: Called before screen is set up");
     return;
   }
   
@@ -3836,7 +3850,7 @@ void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
       break;
     case CURSOR_CUSTOM:
       if (!__custom_cursor) {
-        error_handle(PRIO_LOW, "cursor() failed: Custom cursor not loaded");
+        error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "cursor() failed: Custom cursor not loaded");
         return;
       }
   }
@@ -3959,7 +3973,7 @@ extern surface_t* buffer;
                                        error:&err];
     if (err || !_library) {
       sgl_release();
-      error_handle(PRIO_HIGH, "[device newLibraryWithSource] failed: %s", [[err localizedDescription] UTF8String]);
+      error_handle(HIGH_PRIORITY, MTK_LIBRARY_ERROR, "[device newLibraryWithSource] failed: %s", [[err localizedDescription] UTF8String]);
       return nil;
     }
 
@@ -3976,7 +3990,7 @@ extern surface_t* buffer;
                                                         error:&err];
     if (err || !_pipeline) {
       sgl_release();
-      error_handle(PRIO_HIGH, "[device newRenderPipelineStateWithDescriptor] failed: %s", [[err localizedDescription] UTF8String]);
+      error_handle(HIGH_PRIORITY, MTK_CREATE_PIPELINE_FAILED, "[device newRenderPipelineStateWithDescriptor] failed: %s", [[err localizedDescription] UTF8String]);
       return nil;
     }
   }
@@ -4388,7 +4402,7 @@ bool sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
                                          defer:NO];
   if (!app) {
     sgl_release();
-    error_handle(PRIO_HIGH, "[osx_app_t initWithContentRect] failed");
+    error_handle(HIGH_PRIORITY, OSX_WINDOW_CREATION_FAILED, "[osx_app_t initWithContentRect] failed");
     return false;
   }
 
@@ -4398,7 +4412,7 @@ bool sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
   id app_del = [AppDelegate alloc];
   if (!app_del) {
     sgl_release();
-    error_handle(PRIO_HIGH, "[AppDelegate alloc] failed");
+    error_handle(HIGH_PRIORITY, OSX_APPDEL_CREATION_FAILED, "[AppDelegate alloc] failed");
     [NSApp terminate:nil];
   }
 
@@ -4407,7 +4421,7 @@ bool sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
     [app toggleFullScreen:nil];
     [[NSApplication sharedApplication] setPresentationOptions:NSApplicationPresentationFullScreen];
 #else
-    error_handle(PRIO_LOW, "screen() failed: Fullscreen flag is only supported on OSX v10.7 and above");
+    error_handle(LOW_PRIORITY, OSX_FULLSCREEN_FAILED, "screen() failed: Fullscreen flag is only supported on OSX v10.7 and above");
 #endif
   }
 
@@ -4928,7 +4942,7 @@ static BOOL CALLBACK enum_axes_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID con
     range.lMax = AXIS_MAX;
 
     if (IDirectInputDevice8_SetProperty(private->di8dev, DIPROP_RANGE, &range.diph) != DI_OK)
-      error_handle(PRIO_LOW, "IDirectInputDevice8_SetProperty() failed: %s", GetLastError());
+      error_handle(LOW_PRIORITY, JOY_DI_SETPROP_FAILED, "IDirectInputDevice8_SetProperty() failed: %s", GetLastError());
 
     DIPROPDWORD dead_zone;
     dead_zone.diph.dwSize = sizeof(dead_zone);
@@ -4938,7 +4952,7 @@ static BOOL CALLBACK enum_axes_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID con
     dead_zone.dwData = 0;
 
     if (IDirectInputDevice8_SetProperty(private->di8dev, DIPROP_DEADZONE, &dead_zone.diph) != DI_OK)
-      error_handle(PRIO_LOW, "IDirectInputDevice8_SetProperty() failed: %s", GetLastError());
+      error_handle(LOW_PRIORITY, JOY_DI_SETPROP_FAILED, "IDirectInputDevice8_SetProperty() failed: %s", GetLastError());
   }
   return DIENUM_CONTINUE;
 }
@@ -4968,21 +4982,21 @@ static BOOL CALLBACK enum_devices_cb(const DIDEVICEINSTANCE* instance, LPVOID co
   IDirectInputDevice8* di8dev;
 
   if (IDirectInput8_CreateDevice(did, &instance->guidInstance, &didev, NULL) != DI_OK) {
-    error_handle(PRIO_LOW, "IDirectInput8_CreateDevice() failed: %s", GetLastError());
+    error_handle(LOW_PRIORITY, JOY_DI_CREATE_DEVICE_FAILED, "IDirectInput8_CreateDevice() failed: %s", GetLastError());
     return DIENUM_CONTINUE;
   }
   if (IDirectInputDevice8_QueryInterface(didev, &IID_IDirectInputDevice8, (LPVOID *)&di8dev) != DI_OK) {
-    error_handle(PRIO_LOW, "IDirectInputDevice8_QueryInterface() failed: %s", GetLastError());
+    error_handle(LOW_PRIORITY, JOY_DI_SETPROP_FAILED, "IDirectInputDevice8_QueryInterface() failed: %s", GetLastError());
     return DIENUM_CONTINUE;
   }
   IDirectInputDevice8_Release(didev);
 
   if (IDirectInputDevice8_SetCooperativeLevel(di8dev, GetActiveWindow(), DISCL_NONEXCLUSIVE | DISCL_BACKGROUND) != DI_OK) {
-    error_handle(PRIO_LOW, "IDirectInputDevice8_SetCooperativeLevel() failed: %s", GetLastError());
+    error_handle(LOW_PRIORITY, JOY_DI_SETPROP_FAILED, "IDirectInputDevice8_SetCooperativeLevel() failed: %s", GetLastError());
     return DIENUM_CONTINUE;
   }
   if (IDirectInputDevice8_SetDataFormat(di8dev, &c_dfDIJoystick2) != DI_OK) {
-    error_handle(PRIO_LOW, "IDirectInputDevice8_SetDataFormat() failed: %s", GetLastError());
+    error_handle(LOW_PRIORITY, JOY_DI_SETPROP_FAILED, "IDirectInputDevice8_SetDataFormat() failed: %s", GetLastError());
     return DIENUM_CONTINUE;
   }
 
@@ -4997,7 +5011,7 @@ static BOOL CALLBACK enum_devices_cb(const DIDEVICEINSTANCE* instance, LPVOID co
   if (hr == DI_POLLEDDEVICE)
     buffered = FALSE;
   else if (hr != DI_OK) {
-    error_handle(PRIO_LOW, "IDirectInputDevice8_SetProperty() failed: %s", GetLastError());
+    error_handle(LOW_PRIORITY, JOY_DI_SETPROP_FAILED, "IDirectInputDevice8_SetProperty() failed: %s", GetLastError());
     return DIENUM_CONTINUE;
   }
 
@@ -5047,7 +5061,7 @@ bool sgl_joystick_init(bool scan_too) {
   }
   if (!dll_xi) {
     xinput_available = false;
-    error_handle(PRIO_LOW, "sgl_joystick_init() failed: Couldn't find XInput DLL");
+    error_handle(LOW_PRIORITY, JOY_XI_LOADDL_FAILED, "sgl_joystick_init() failed: Couldn't find XInput DLL");
   } else {
     XInputGetStateEx_proc = (DWORD(WINAPI*)(DWORD, XINPUT_STATE_EX*)) GetProcAddress(dll_xi, (LPCSTR)100);
     XInputGetState_proc = (DWORD(WINAPI*)(DWORD, XINPUT_STATE *)) GetProcAddress(dll_xi, "XInputGetState");
@@ -5057,12 +5071,12 @@ bool sgl_joystick_init(bool scan_too) {
 
   HMODULE dll_di = LoadLibrary("DINPUT8.dll");
   if (!dll_di) {
-    error_handle(PRIO_LOW, "LoadLibrary() failed: DINPUT8.dll not found");
+    error_handle(LOW_PRIORITY, JOY_DI_LOADDL_FAILED, "LoadLibrary() failed: DINPUT8.dll not found");
     return false;
   }
   HRESULT(WINAPI* DirectInput8Create_proc)(HINSTANCE, DWORD, REFIID, LPVOID *, LPUNKNOWN) = (HRESULT(WINAPI *)(HINSTANCE, DWORD, REFIID, LPVOID *, LPUNKNOWN)) GetProcAddress(dll_di, "DirectInput8Create");
   if (DirectInput8Create_proc(GetModuleHandle(NULL), DIRECTINPUT_VERSION, &IID_IDirectInput8, (VOID**)&did, NULL) != DI_OK) {
-    error_handle(PRIO_LOW, "DirectInput8Create() failed: %s", GetLastError());
+    error_handle(LOW_PRIORITY, JOY_DI_INIT_FAILED, "DirectInput8Create() failed: %s", GetLastError());
     return false;
   }
 #endif
@@ -5292,12 +5306,12 @@ bool sgl_joystick_scan() {
   }
 #else
   if (!did) {
-    error_handle(PRIO_LOW, "IDirectInput_EnumDevices() failed: DirectInput not initiated, call sgl_joystick_init first");
+    error_handle(LOW_PRIORITY, JOY_DI_ENUM_DEVICE_FAILED, "IDirectInput_EnumDevices() failed: DirectInput not initiated, call sgl_joystick_init first");
     return false;
   }
 
   if (IDirectInput_EnumDevices(did, DI8DEVCLASS_GAMECTRL, enum_devices_cb, NULL, DIEDFL_ALLDEVICES) != DI_OK) {
-    error_handle(PRIO_LOW, "IDirectInput_EnumDevices() failed: %s", GetLastError());
+    error_handle(LOW_PRIORITY, JOY_DI_ENUM_DEVICE_FAILED, "IDirectInput_EnumDevices() failed: %s", GetLastError());
     return false;
   }
 
@@ -5661,7 +5675,9 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM l
       rect.right = LOWORD(lParam);
       rect.bottom = HIWORD(lParam);
       AdjustWindowRect(&rect, adjust_flags, 0);
-      CALL(__resize_callback, rect.right + rect.left, rect.bottom - rect.top);
+      win_w = rect.right + rect.left;
+      win_h = rect.bottom - rect.top;
+      CALL(__resize_callback, win_w, win_h);
 #if defined(SGL_ENABLE_OPENGL)
       glViewport(rect.left, rect.top, rect.right, win_h);
       PostMessage(hWnd, WM_PAINT, 0, 0);
@@ -5800,7 +5816,7 @@ void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
       break;
     case CURSOR_CUSTOM:
       if (!____custom_cursor) {
-        error_handle(PRIO_LOW, "cursor() failed: No custom cursor loaded");
+        error_handle(LOW_PRIORITY, CUSTOM_CURSOR_NOT_CREATED, "cursor() failed: No custom cursor loaded");
         return;
       }
   }
@@ -5951,7 +5967,7 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
     settings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
     if (ChangeDisplaySettings(&settings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL) {
       cursor_locked = 1;
-      error_handle(PRIO_LOW, "screen() failed: Failed to go to fullscreen mode: Defaulting to fullscreen desktop");
+      error_handle(LOW_PRIORITY, WIN_FULLSCREEN_FAILED, "screen() failed: Failed to go to fullscreen mode: Defaulting to fullscreen desktop");
     }
   }
   _flags |= (flags & RESIZABLE ? WS_THICKFRAME : 0);
@@ -5989,13 +6005,13 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
 
   if (!RegisterClass(&wnd)) {
     sgl_release();
-    error_handle(PRIO_HIGH, "RegisterClass() failed: %s", GetLastError());
+    error_handle(HIGH_PRIORITY, WIN_WINDOW_CREATION_FAILED, "RegisterClass() failed: %s", GetLastError());
     return false;
   }
 
   if (!(hwnd = CreateWindow(title, title, _flags, cx, cy, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
     sgl_release();
-    error_handle(PRIO_HIGH, "CreateWindowEx() failed: %s", GetLastError());
+    error_handle(HIGH_PRIORITY, WIN_WINDOW_CREATION_FAILED, "CreateWindowEx() failed: %s", GetLastError());
     return false;
   }
 
@@ -6012,13 +6028,13 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
   int pf = ChoosePixelFormat(hdc, &pfd);
   if (pf == 0) {
     sgl_release();
-    error_handle(PRIO_HIGH, "ChoosePixelFormat() failed: %s", GetLastError());
+    error_handle(HIGH_PRIORITY, WIN_GL_PF_ERROR, "ChoosePixelFormat() failed: %s", GetLastError());
     return false;
   }
 
   if (SetPixelFormat(hdc, pf, &pfd) == FALSE) {
     sgl_release();
-    error_handle(PRIO_HIGH, "SetPixelFormat() failed: %s", GetLastError());
+    error_handle(HIGH_PRIORITY, WIN_GL_PF_ERROR, "SetPixelFormat() failed: %s", GetLastError());
     return false;
   }
 
@@ -6314,7 +6330,7 @@ bool sgl_joystick_scan() {
   pthread_mutex_lock(&devices_mtx);
   DIR* dev_input = opendir("/dev/input");
   if (!dev_input) {
-    error_handle(PRIO_LOW, "sgl_joystick_scan() failed: Couldn't open /dev/input");
+    error_handle(PRIO_LOW, JOY_NIX_SCAN_FAILED, "sgl_joystick_scan() failed: Couldn't open /dev/input");
     return false;
   }
 
@@ -6729,7 +6745,7 @@ static Cursor get_x11_empty_cursor() {
       x11_empty_cursor = XCreatePixmapCursor(display, pixmap, pixmap, &color, &color, 0, 0);
       XFreePixmap(display, pixmap);
     } else
-      error_handle(PRIO_LOW, "get_x11_empty_cursor() failed: Couldn't create X11 Pixmap");
+      error_handle(PRIO_LOW, NIX_CURSOR_PIXMAP_ERROR, "get_x11_empty_cursor() failed: Couldn't create X11 Pixmap");
   }
   return x11_empty_cursor;
 }
@@ -6782,7 +6798,7 @@ void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
       break;
     case CURSOR_CUSTOM:
       if (!____custom_cursor) {
-        error_handle(PRIO_LOW, "cursor() failed: No custom cursor loaded");
+        error_handle(PRIO_LOW, CUSTOM_CURSOR_NOT_CREATED, "cursor() failed: No custom cursor loaded");
         return;
       }
   }
@@ -6802,7 +6818,7 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
   display = XOpenDisplay(0);
   if (!display) {
     sgl_release();
-    error_handle(PRIO_HIGH, "XOpenDisplay(0) failed!");
+    error_handle(PRIO_HIGH, NIX_OPEN_DISPLAY_FAILED, "XOpenDisplay(0) failed!");
     return false;
   }
 
@@ -6906,7 +6922,7 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
   GLXFBConfig* fbc = glXChooseFBConfig(display, DefaultScreen(display), visual_attribs, &fb_count);
   if (!fbc) {
     sgl_release();
-    error_handle(PRIO_HIGH, "glXChooseFBConfig() failed: Failed to retreive framebuffer config");
+    error_handle(PRIO_HIGH, NIX_GL_FB_ERROR, "glXChooseFBConfig() failed: Failed to retreive framebuffer config");
     return false;
   }
 
@@ -6936,7 +6952,7 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
   XVisualInfo* vi = glXGetVisualFromFBConfig(display, fbc_best);
   if (!vi) {
     sgl_release();
-    error_handle(PRIO_HIGH, "glXGetVisualFromFBConfig() failed: Could not create correct visual window");
+    error_handle(PRIO_HIGH, NIX_GL_FB_ERROR, "glXGetVisualFromFBConfig() failed: Could not create correct visual window");
     return false;
   }
 
@@ -6976,7 +6992,7 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
 
   if (c_depth != 32) {
     sgl_release();
-    error_handle(PRIO_HIGH, "Invalid display depth: %d", c_depth);
+    error_handle(PRIO_HIGH, NIX_WINDOW_CREATION_FAILED, "Invalid display depth: %d", c_depth);
     return false;
   }
 
@@ -6995,7 +7011,7 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
 
   if (!win) {
     sgl_release();
-    error_handle(PRIO_HIGH, "XCreateWindow() failed!");
+    error_handle(PRIO_HIGH, NIX_WINDOW_CREATION_FAILED, "XCreateWindow() failed!");
     return false;
   }
 
@@ -7069,7 +7085,7 @@ bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
 
   if (!ctx) {
     sgl_release();
-    error_handle(PRIO_HIGH, "glXCreateContextAttribsARB() failed: Couldn't create OpenGL context");
+    error_handle(PRIO_HIGH, NIX_GL_CONTEXT_ERROR, "glXCreateContextAttribsARB() failed: Couldn't create OpenGL context");
     return false;
   }
 

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -84,6 +84,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;SGL_DISABLE_SHORT_NAMES;DEBUG=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -116,15 +117,26 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\graphics.h" />
-    <ClInclude Include="..\roguelike\common.h" />
-    <ClInclude Include="..\roguelike\dungeon.h" />
-    <ClInclude Include="..\roguelike\heap.h" />
+    <ClInclude Include="..\roguelike\cave.hpp" />
+    <ClInclude Include="..\roguelike\common.hpp" />
+    <ClInclude Include="..\roguelike\dungeon.hpp" />
+    <ClInclude Include="..\roguelike\entity.hpp" />
+    <ClInclude Include="..\roguelike\game_engine.hpp" />
+    <ClInclude Include="..\roguelike\game_state.hpp" />
+    <ClInclude Include="..\roguelike\main_state.hpp" />
+    <ClInclude Include="..\roguelike\menu_state.hpp" />
+    <ClInclude Include="..\roguelike\panel.hpp" />
+    <ClInclude Include="..\roguelike\vec2.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\graphics.c" />
-    <ClCompile Include="..\roguelike\dungeon.c" />
-    <ClCompile Include="..\roguelike\heap.c" />
-    <ClCompile Include="..\roguelike\main.c" />
+    <ClCompile Include="..\roguelike\cave.cpp" />
+    <ClCompile Include="..\roguelike\dungeon.cpp" />
+    <ClCompile Include="..\roguelike\entity.cpp" />
+    <ClCompile Include="..\roguelike\main.cpp" />
+    <ClCompile Include="..\roguelike\main_state.cpp" />
+    <ClCompile Include="..\roguelike\menu_state.cpp" />
+    <ClCompile Include="..\roguelike\panel.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -65,6 +65,8 @@ extern "C" {
 #define GCHAN(a, b) (((a) & ~0x0000FF00) | ((b) << 8))
 #define BCHAN(a, b) (((a) & ~0x000000FF) |  (b))
 #define ACHAN(a, b) (((a) & ~0xFF000000) | ((b) << 24))
+#define RGB1(c) (RGB((c), (c), (c)))
+#define RGBA1(c, a) (RGBA((c), (c), (c), (a)))
 
 #if !defined(SGL_DISABLE_DEFAULT_COLORS)
 #define BLACK RGB(0, 0, 0)
@@ -224,12 +226,76 @@ extern "C" {
   } point_t;
 
   typedef enum {
-    PRIO_HIGH,
-    PRIO_NORM,
-    PRIO_LOW
-  } ERRPRIO;
+    LOW_PRIORITY = 0,
+    NORMAL_PRIORITY = 1,
+    HIGH_PRIORITY = 2
+  } ERRORLVL;
 
-  void sgl_error_callback(void(*cb)(ERRPRIO, const char*, const char*, const char*, int));
+  typedef enum {
+    OUT_OF_MEMEORY,
+    FILE_OPEN_FAILED,
+    INVALID_BMP,
+    UNSUPPORTED_BMP,
+    INVALID_PARAMETERS,
+#if defined(SGL_ENABLE_BDF)
+    BDF_NO_CHAR_SIZE,
+    BDF_NO_CHAR_LENGTH,
+    BDF_TOO_MANY_BITMAPS,
+    BDF_UNKNOWN_CHAR,
+#endif
+#if defined(SGL_ENABLE_STB_IMAGE)
+    STBI_LOAD_FAILED,
+    STBI_WRITE_FAILED,
+#endif
+#if defined(SGL_ENABLE_OPENGL)
+    GL_SHADER_ERROR,
+#endif
+#if !defined(SGL_OSX)
+    GL_LOAD_DL_FAILED,
+    GL_GET_PROC_ADDR_FAILED,
+#else
+    CURSOR_MOD_FAILED,
+#if defined(SGL_ENABLE_METAL)
+    MTK_LIBRARY_ERROR,
+    MTK_CREATE_PIPELINE_FAILED,
+#endif
+    OSX_WINDOW_CREATION_FAILED,
+    OSX_APPDEL_CREATION_FAILED,
+    OSX_FULLSCREEN_FAILED,
+#endif
+#if defined(SGL_WINDOWS)
+#if defined(SGL_ENABLE_JOYSTICKS)
+    JOY_DI_SETPROP_FAILED,
+    JOY_DI_CREATE_DEVICE_FAILED,
+    JOY_DI_LOADDL_FAILED,
+    JOY_DI_INIT_FAILED,
+    JOY_DI_ENUM_DEVICE_FAILED,
+    JOY_XI_LOADDL_FAILED,
+#endif
+#if defined(SGL_ENABLE_DX9)
+#elif defined(SGL_ENABLE_OPENGL)
+    WIN_GL_PF_ERROR,
+#endif
+    WIN_WINDOW_CREATION_FAILED,
+    WIN_FULLSCREEN_FAILED,
+#elif defined(SGL_LINUX)
+#if defined(SGL_ENABLE_JOYSTICKS)
+    JOY_NIX_SCAN_FAILED,
+#endif
+    NIX_CURSOR_PIXMAP_ERROR,
+    NIX_OPEN_DISPLAY_FAILED,
+#if defined(SGL_ENABLE_OPENGL)
+    NIX_GL_FB_ERROR,
+    NIX_GL_CONTEXT_ERROR,
+#endif
+    NIX_WINDOW_CREATION_FAILED,
+#endif
+    CUSTOM_CURSOR_NOT_CREATED
+  } ERRORTYPE;
+
+  void sgl_set_userdata(void* data);
+  void* sgl_get_userdata(void);
+  void sgl_error_callback(void(*cb)(void*, ERRORLVL, ERRORTYPE, const char*, const char*, const char*, int));
 
   bool sgl_surface(surface_t* s, unsigned int w, unsigned int h);
   void sgl_destroy(surface_t*);
@@ -275,6 +341,8 @@ extern "C" {
   void sgl_delay(long ms);
 
 #if !defined(SGL_DISABLE_SHORT_NAMES)
+#define set_userdata sgl_set_userdata
+#define get_userdata sgl_get_userdata
 #define error_callback sgl_error_callback
 #define surface sgl_surface
 #define destroy sgl_destroy
@@ -382,10 +450,10 @@ extern "C" {
   } joystick_t;
 
   void sgl_joystick_callbacks(
-    void(*connect_cb)(joystick_t*, int),
-    void(*remove_cb)(joystick_t*, int),
-    void(*btn_cb)(joystick_t*, int, bool, long),
-    void(*axis_cb)(joystick_t*, int, float, float, long));
+    void(*connect_cb)(void*, joystick_t*, int),
+    void(*remove_cb)(void*, joystick_t*, int),
+    void(*btn_cb)(void*, joystick_t*, int, bool, long),
+    void(*axis_cb)(void*, joystick_t*, int, float, float, long));
   joystick_t* sgl_joystick(int id);
   bool sgl_joystick_init(bool scan_too);
   bool sgl_joystick_scan(void);
@@ -557,18 +625,18 @@ extern "C" {
   } KEYMOD;
 
   void sgl_screen_callbacks(
-    void(*kb_cb)(KEYSYM, KEYMOD, bool),
-    void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool),
-    void(*mouse_move_cb)(int, int, int, int),
-    void(*scroll_cb)(KEYMOD, float, float),
-    void(*active_cb)(bool),
-    void(*resize_cb)(int, int));
-  void keyboard_callback(void(*kb_cb)(KEYSYM, KEYMOD, bool));
-  void mouse_button_callback(void(*mouse_btn_cb)(MOUSEBTN, KEYMOD, bool));
-  void mouse_move_callback(void(*mouse_move_cb)(int, int, int, int));
-  void scroll_callback(void(*scroll_cb)(KEYMOD, float, float));
-  void active_callback(void(*active_cb)(bool));
-  void resize_callback(void(*resize_cb)(int, int));
+    void(*kb_cb)(void*, KEYSYM, KEYMOD, bool),
+    void(*mouse_btn_cb)(void*, MOUSEBTN, KEYMOD, bool),
+    void(*mouse_move_cb)(void*, int, int, int, int),
+    void(*scroll_cb)(void*, KEYMOD, float, float),
+    void(*active_cb)(void*, bool),
+    void(*resize_cb)(void*, int, int));
+  void sgl_keyboard_callback(void(*kb_cb)(void*, KEYSYM, KEYMOD, bool));
+  void sgl_mouse_button_callback(void(*mouse_btn_cb)(void*, MOUSEBTN, KEYMOD, bool));
+  void sgl_mouse_move_callback(void(*mouse_move_cb)(void*, int, int, int, int));
+  void sgl_scroll_callback(void(*scroll_cb)(void*, KEYMOD, float, float));
+  void sgl_active_callback(void(*active_cb)(void*, bool));
+  void sgl_resize_callback(void(*resize_cb)(void*, int, int));
 
 #define DEFAULT 0
 
@@ -613,6 +681,12 @@ extern "C" {
 
 #if !defined(SGL_DISABLE_SHORT_NAMES)
 #define screen_callbacks sgl_screen_callbacks
+#define keyboard_callback sgl_keyboard_callback
+#define mouse_button_callback sgl_mouse_button_callback
+#define mouse_move_callback sgl_mouse_move_callback
+#define scroll_callback sgl_scroll_callback
+#define active_callback sgl_active_callback
+#define resize_callback sgl_resize_callback
 #define cursor sgl_cursor
 #define custom_cursor sgl_custom_cursor
 #define screen sgl_screen
