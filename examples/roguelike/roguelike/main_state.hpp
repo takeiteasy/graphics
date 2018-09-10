@@ -5,9 +5,25 @@
 #include <future>
 #include <memory>
 
+class dungeon_handler_t {
+  std::unique_ptr<dungeon_t> main_map, current_map;
+  player_t* p = nullptr;
+  
+public:
+  void init(player_t* _p) {
+    p = _p;
+  }
+  
+  void draw_current_map_to(surface_t* s) {
+    current_map.get()->draw_to(s);
+  }
+};
+
 class main_state_t : public game_state_t {
   std::vector<std::unique_ptr<dungeon_t>> maps;
-
+  dungeon_handler_t map_handler;
+  player_t player;
+  
   enum game_state {
     LOADING,
     PLAYING

@@ -18,4 +18,5 @@ public:
 
 class player_t : public entity_t {
 public:
+  player_t(): entity_t(0, 0, '@') {}
 };

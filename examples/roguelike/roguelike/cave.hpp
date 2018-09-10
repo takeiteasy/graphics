@@ -3,7 +3,6 @@
 
 class cave_t : public dungeon_t {
   int w, h, fill_prob, iterations, survival, starve;
-  std::vector<std::string>& info_ref;
 
   vector2d<int> cellular_automata();
   void get_rooms(const vector2d<int>& map);
@@ -14,7 +13,8 @@ class cave_t : public dungeon_t {
   void finalize_map(vector2d<int>& map);
 
 public:
-  cave_t(std::vector<std::string>& info,
+  cave_t(std::vector<std::string>* info = nullptr,
+         int _depth = 0,
          int _w = 0,
          int _h = 0,
          int _fill_prob = 40,

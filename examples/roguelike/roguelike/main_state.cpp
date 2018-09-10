@@ -12,7 +12,8 @@ template<typename T, typename... Args> void main_state_t::add_map(Args... args) 
 }
 
 void main_state_t::enter(game_engine_t& e) {
-  add_map<cave_t>(std::ref(loading_info), 50, 50);
+  map_handler.init(&player);
+  add_map<cave_t>(&loading_info, 200, 200);
 
   load_thrd = std::async(std::launch::async, [&]() {
     maps[0]->generate();
@@ -30,7 +31,7 @@ void main_state_t::update(game_engine_t& e, long t) {
         loading_info.clear();
         state = PLAYING;
 
-        add_panel(456, e.buffer().h - 20, 10, 10, " camera ");
+        add_panel(456, e.buffer().h - 20, 10,  10, " camera ");
         add_panel(152, e.buffer().h - 20, 476, 10, " inventory ");
       }
 
@@ -57,7 +58,6 @@ void main_state_t::render(game_engine_t& e) {
         sgl_writeln(e, 5, j, RGB1(255 - ((loading_info.size() - i) * 30)), 0, loading_info[i].c_str());
       break;
     case PLAYING: {
-      (&*maps[current_map])->draw_to(*panels[MAIN]);
 
       for (auto&& p : panels)
         p->draw_to(e);

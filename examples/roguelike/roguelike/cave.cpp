@@ -197,7 +197,7 @@ void cave_t::connect_closest_rooms(vector2d<int>& map, const vector1d<room_t>& r
   for (int i = 0; i < rooms_a.size(); ++i) {
     bool match = false;
     float best_dist = .0f;
-    int best_room_a, best_room_b;
+    int best_room_a = -1, best_room_b = -1;
     const vec2i *best_edge_a = nullptr, *best_edge_b = nullptr;
     for (int j = 0; j < rooms_b.size(); ++j) {
       if (rooms_a[i].id == rooms_b[j].id or rci[rooms_a[i].id][rooms_b[j].id])
@@ -269,38 +269,33 @@ void cave_t::finalize_map(vector2d<int>& map) {
       map[p.x][p.y] = 8 - nf;
     }
   }
+  
+  fill_entities();
 
 #if DEBUG
   print_map_test(map, "FINAL");
 #endif
-
-  // Add other shit later, enemies, door, etc
 }
 
-cave_t::cave_t(std::vector<std::string>& info, int _w, int _h, int _fill_prob, int _iterations, int _survival, int _starve): info_ref(info), w(_w), h(_h), fill_prob(_fill_prob), iterations(_iterations), survival(_survival), starve(_starve) {
-  if (w == 0 || h == 0) {
+cave_t::cave_t(std::vector<std::string>* info, int _depth, int _w, int _h, int _fill_prob, int _iterations, int _survival, int _starve): w(_w), h(_h), fill_prob(_fill_prob), iterations(_iterations), survival(_survival), starve(_starve) {
+  if (!w or !h) {
     std::uniform_int_distribution<> rnd_wh(50, 200);
     if (!w)
       w = rnd_wh(rnd_eng);
     if (!h)
       h = rnd_wh(rnd_eng);
   }
-  info_ref.push_back(fmt("Generating map at %dx%d", w, h));
+  depth = _depth;
+  info_ref = info;
+  if (info_ref)
+    info_ref->push_back(fmt("Generating map at %dx%d", w, h));
 }
 
 void cave_t::generate() {
-  info_ref.push_back("Cellular automata...");
-  auto _map = cellular_automata();
-  info_ref.back() += "DONE!";
-  info_ref.push_back("Finding rooms...");
-  get_rooms(_map);
-  info_ref.back() += "DONE!";
-  info_ref.push_back("Connecting rooms...");
-  connect_rooms(_map);
-  info_ref.back() += "DONE!";
-  info_ref.push_back("Finalizing map...");
-  finalize_map(_map);
-  info_ref.back() += "DONE!";
-  fill_map(_map);
+  DO_SOMETHING("Cellular, automata...", auto _map = cellular_automata());
+  DO_SOMETHING("Finding rooms...", get_rooms(_map));
+  DO_SOMETHING("Connecting rooms...", connect_rooms(_map));
+  DO_SOMETHING("Finalizing map...", finalize_map(_map));
+  DO_SOMETHING("Filling map...", fill_map(_map));
   loaded = true;
 }

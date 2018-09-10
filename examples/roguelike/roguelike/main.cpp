@@ -9,10 +9,12 @@
 #include "game_engine.hpp"
 
 /* TODO:
- * - Replace heap & stb_sb
- * - Implement no diag pathfinding in A*
- * - Mouse movement
- * - Better way to store tile map
+ * A*
+ * Player control
+ * Camera movement
+ * Enemies
+ * Background level loading
+ * Mod dungeon info log
  */
 
 int main(int argc, const char* argv[]) {

@@ -17,6 +17,10 @@ void dungeon_t::fill_map(vector2d<int>& _map) {
   }
 }
 
+void dungeon_t::fill_entities() {
+  
+}
+
 dungeon_t::dungeon_t() {
   rnd_eng = std::mt19937(rnd_dev());
 }
