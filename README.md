@@ -73,7 +73,7 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 - Finish cursor loading from surface (all platforms)
 - Set cursor position function
 
-### Maybe
+### At some point
 
 - Keyboard scancodes
 - Make thread safe (surface locks)
@@ -88,6 +88,7 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 - Audio playback (wav files)
 - Other language bindings
 - Investigate why CoreGraphics rendering is so slow
+- Investigate resizing for X11?
 
 
 ## License
