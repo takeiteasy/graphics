@@ -9,12 +9,12 @@
 #include "game_engine.hpp"
 
 /* TODO:
+ * Fix cave room connection
  * A*
  * Player control
  * Camera movement
  * Enemies
  * Background level loading
- * Mod dungeon info log
  */
 
 int main(int argc, const char* argv[]) {

@@ -340,7 +340,7 @@ extern "C" {
   long sgl_ticks(void);
   void sgl_delay(long ms);
 
-#if !defined(SGL_DISABLE_SHORT_NAMES)
+#if defined(SGL_ENABLE_SHORT_NAMES)
 #define set_userdata sgl_set_userdata
 #define get_userdata sgl_get_userdata
 #define error_callback sgl_error_callback
@@ -386,28 +386,16 @@ extern "C" {
 #endif
 
 #if defined(SGL_ENABLE_BDF)
-  typedef struct {
-    unsigned int width;
-    unsigned char* bitmap;
-    rect_t bb;
-  } bdf_char_t;
-
-  typedef struct {
-    rect_t fontbb;
-    unsigned int* encoding_table;
-    bdf_char_t* chars;
-    int n_chars;
-  } bdf_t;
-
+  typedef struct bdf_t* bdf_t;
   void sgl_bdf_destroy(bdf_t* f);
   bool sgl_bdf(bdf_t* out, const char* path);
-  int sgl_bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, int bg);
-  void sgl_bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* str);
-  void sgl_bdf_writelnf(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...);
-  void sgl_bdf_string(surface_t* out, bdf_t* f, int fg, int bg, const char* str);
-  void sgl_bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, ...);
+  int sgl_bdf_character(surface_t* s, bdf_t f, const char* ch, int x, int y, int fg, int bg);
+  void sgl_bdf_writeln(surface_t* s, bdf_t f, int x, int y, int fg, int bg, const char* str);
+  void sgl_bdf_writelnf(surface_t* s, bdf_t f, int x, int y, int fg, int bg, const char* fmt, ...);
+  void sgl_bdf_string(surface_t* out, bdf_t f, int fg, int bg, const char* str);
+  void sgl_bdf_stringf(surface_t* out, bdf_t f, int fg, int bg, const char* fmt, ...);
 
-#if !defined(SGL_DISABLE_SHORT_NAMES)
+#if defined(SGL_ENABLE_SHORT_NAMES)
 #define bdf_destroy sgl_bdf_destroy
 #define bdf sgl_bdf
 #define bdf_character sgl_bdf_character
@@ -415,6 +403,31 @@ extern "C" {
 #define bdf_writelnf sgl_bdf_writelnf
 #define bdf_string sgl_bdf_string
 #define bdf_stringf sgl_bdf_stringf
+#endif
+#endif
+  
+#if defined(SGL_ENABLE_FREETYPE)
+  typedef struct ftfont_t* ftfont_t;
+  void sgl_ft_init(void);
+  void sgl_ft_release(void);
+  void sgl_ftfont(ftfont_t* font, const char* path, unsigned int size);
+  void sgl_ftfont_destroy(ftfont_t* font);
+  int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y, int fg, int bg);
+  void sgl_ftfont_writeln(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* str);
+  void sgl_ftfont_writelnf(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* fmt, ...);
+  void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* str);
+  void sgl_ftfont_stringf(surface_t* out, ftfont_t f, int fg, int bg, const char* fmt, ...);
+  
+#if defined(SGL_ENABLE_SHORT_NAMES)
+#define ft_init sgl_ft_init
+#define ft_release sgl_ft_release
+#define ftfont sgl_ftfont
+#define ftfont_destroy sgl_ftfont_destroy
+#define ftfont_character sgl_ftfont_character
+#define ftfont_writeln sgl_ftfont_writeln
+#define ftfont_writelnf sgl_ftfont_writelnf
+#define ftfont_string sgl_ftfont_string
+#define ftfont_stringf sgl_ftfont_stringf
 #endif
 #endif
 
@@ -428,7 +441,7 @@ extern "C" {
   bool sgl_image(surface_t* out, const char* path);
   bool sgl_save_image(surface_t* in, const char* path, SAVETYPE type);
 
-#if !defined(SGL_DISABLE_SHORT_NAMES)
+#if defined(SGL_ENABLE_SHORT_NAMES)
 #define image sgl_image
 #define save_image sgl_save_image
 #endif
@@ -461,7 +474,7 @@ extern "C" {
   bool sgl_joystick_remove(int id);
   void sgl_joystick_poll(void);
 
-#if !defined(SGL_DISABLE_SHORT_NAMES)
+#if defined(SGL_ENABLE_SHORT_NAMES)
 #define joystick sgl_joystick
 #define joystick_init sgl_joystick_init
 #define joystick_scan sgl_joystick_scan
@@ -679,7 +692,7 @@ extern "C" {
   void sgl_release(void);
   bool sgl_closed(void);
 
-#if !defined(SGL_DISABLE_SHORT_NAMES)
+#if defined(SGL_ENABLE_SHORT_NAMES)
 #define screen_callbacks sgl_screen_callbacks
 #define keyboard_callback sgl_keyboard_callback
 #define mouse_button_callback sgl_mouse_button_callback

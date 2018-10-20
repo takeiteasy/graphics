@@ -7,34 +7,19 @@ void main_state_t::add_panel(int w, int h, int x, int y, const char* title) {
   panels.emplace_back(std::make_unique<panel_t>(w, h, x, y, title));
 }
 
-template<typename T, typename... Args> void main_state_t::add_map(Args... args) {
-  maps.emplace_back(std::make_unique<T>(args...));
-}
-
 void main_state_t::enter(game_engine_t& e) {
   map_handler.init(&player);
-  add_map<cave_t>(&loading_info, 200, 200);
-
-  load_thrd = std::async(std::launch::async, [&]() {
-    maps[0]->generate();
-    return true;
-  });
-
-  std::future_status load_thrd_status = load_thrd.wait_for(1ns);
-  state = (load_thrd_status == std::future_status::ready ? PLAYING : LOADING);
 }
 
 void main_state_t::update(game_engine_t& e, long t) {
   switch (state) {
     case LOADING:
-      if (load_thrd.wait_for(1ns) == std::future_status::ready) {
-        loading_info.clear();
+      if (map_handler.is_current_map_loaded()) {
         state = PLAYING;
-
         add_panel(456, e.buffer().h - 20, 10,  10, " camera ");
         add_panel(152, e.buffer().h - 20, 476, 10, " inventory ");
       }
-
+      
       if (sgl_ticks() - last_loading_tick > 100) {
         loading_ticks--;
         last_loading_tick = sgl_ticks();
@@ -43,6 +28,10 @@ void main_state_t::update(game_engine_t& e, long t) {
       }
       break;
     case PLAYING: {
+      dragging = (e.is_btn_down(MOUSE_BTN_1));
+      if (dragging)
+        map_handler.move_camera(e.last_mouse_pos().x - e.mouse_pos().x, e.last_mouse_pos().y - e.mouse_pos().y);
+      
       if (e.key_pressed(KB_KEY_SPACE))
         e.pop();
       break;
@@ -54,11 +43,16 @@ void main_state_t::render(game_engine_t& e) {
   switch (state) {
     case LOADING:
       sgl_writeln(e, 5, e.buffer().h - 15, WHITE, 0, loading_str.substr(0, 12 - loading_ticks).c_str());
-      for (int i = loading_info.size() - 1, j = e.buffer().h - 25; i > -1; --i, j -= 10)
-        sgl_writeln(e, 5, j, RGB1(255 - ((loading_info.size() - i) * 30)), 0, loading_info[i].c_str());
       break;
     case PLAYING: {
-
+      for (auto&& p : panels)
+        p->clear();
+      
+      map_handler.draw_current_map_to(*panels[MAIN]);
+      
+      sgl_writelnf(*panels[INV], 5, 5, WHITE, 0, "MOUSE: %d, %d", e.mouse_pos().x, e.mouse_pos().y);
+      sgl_line(*panels[MAIN], 0, 0, e.mouse_pos().x, e.mouse_pos().y, RED);
+      
       for (auto&& p : panels)
         p->draw_to(e);
       break;
@@ -67,5 +61,6 @@ void main_state_t::render(game_engine_t& e) {
 }
 
 void main_state_t::exit(game_engine_t& e) {
-
+  maps.clear();
+  panels.clear();
 }

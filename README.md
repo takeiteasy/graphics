@@ -30,6 +30,7 @@ On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're usin
 
 On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line options or unicode decoding won't work properly. I don't know why, but it doesn't.
 
+
 ## Screenshots
 
 <p align="center">
@@ -50,16 +51,19 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 ### Important
 
 - Fix borderless window mode for OSX
-- Fix crashes with Windows + OSX joysticks
 - Linux joysticks totally untested, need to test on real hardware
 - Cursor clipping for Linux [and OSX](https://stackoverflow.com/a/40922095)
-- Sort out some redundant things
-- Reorganise stuff, especially joysticks
+- Sort out redundant functions in font rendering default/bdf/freetype
+- Sort out joysticks
+  - General clean up
+  - Remove redundant stuff
+  - Make joystick_t a private struct in source
+  - Fix crashes
 
 ### Less important
 
 - Come back to surface transformation
-- Test different scaling functions
+- Different scaling functions
 - Add fill option for ```ellipse_rotated()``` and other functions
 - Add line width option
 - CMake file for build options
@@ -67,10 +71,10 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 - Message box support
 - Window icon support
 - Finish cursor loading from surface (all platforms)
+- Set cursor position function
 
 ### Maybe
 
-- Set cursor position function
 - Keyboard scancodes
 - Make thread safe (surface locks)
 - Vulkan/DirectX/~~Metal~~ backends
@@ -78,9 +82,12 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples/tests
-- More extras (gif load/save, FreeType fonts, C++ OOP wrapper)
+- More extras (gif load/save, ~FreeType fonts~, C++ OOP wrapper)
 - Optional OpenCL for processing stuff
 - Pixel shader support
+- Audio playback (wav files)
+- Other language bindings
+- Investigate why CoreGraphics rendering is so slow
 
 
 ## License

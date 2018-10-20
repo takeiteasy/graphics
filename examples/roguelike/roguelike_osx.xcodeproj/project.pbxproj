@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		88C9E52C2145518C004C74B5 /* game_engine.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 88C9E51A2145518C004C74B5 /* game_engine.cpp */; };
 		88C9E52D2145518C004C74B5 /* dungeon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 88C9E51C2145518C004C74B5 /* dungeon.cpp */; };
-		88C9E52E2145518C004C74B5 /* entity.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 88C9E51D2145518C004C74B5 /* entity.cpp */; };
 		88C9E52F2145518C004C74B5 /* menu_state.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 88C9E51E2145518C004C74B5 /* menu_state.cpp */; };
 		88C9E5302145518C004C74B5 /* cave.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 88C9E51F2145518C004C74B5 /* cave.cpp */; };
 		88C9E5312145518C004C74B5 /* main_state.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 88C9E5202145518C004C74B5 /* main_state.cpp */; };
@@ -35,7 +34,6 @@
 		88C9E51A2145518C004C74B5 /* game_engine.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = game_engine.cpp; sourceTree = "<group>"; };
 		88C9E51B2145518C004C74B5 /* vec2.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = vec2.hpp; sourceTree = "<group>"; };
 		88C9E51C2145518C004C74B5 /* dungeon.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = dungeon.cpp; sourceTree = "<group>"; };
-		88C9E51D2145518C004C74B5 /* entity.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = entity.cpp; sourceTree = "<group>"; };
 		88C9E51E2145518C004C74B5 /* menu_state.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = menu_state.cpp; sourceTree = "<group>"; };
 		88C9E51F2145518C004C74B5 /* cave.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = cave.cpp; sourceTree = "<group>"; };
 		88C9E5202145518C004C74B5 /* main_state.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main_state.cpp; sourceTree = "<group>"; };
@@ -48,7 +46,6 @@
 		88C9E5272145518C004C74B5 /* game_engine.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = game_engine.hpp; sourceTree = "<group>"; };
 		88C9E5282145518C004C74B5 /* common.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = common.hpp; sourceTree = "<group>"; };
 		88C9E52A2145518C004C74B5 /* dungeon.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = dungeon.hpp; sourceTree = "<group>"; };
-		88C9E52B2145518C004C74B5 /* entity.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = entity.hpp; sourceTree = "<group>"; };
 		88C9E538214590F9004C74B5 /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = graphics.c; path = ../../graphics.c; sourceTree = "<group>"; };
 		88C9E539214590F9004C74B5 /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = graphics.h; path = ../../graphics.h; sourceTree = "<group>"; };
 		88C9E53B21459111004C74B5 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = main.cpp; path = roguelike/main.cpp; sourceTree = "<group>"; };
@@ -90,8 +87,6 @@
 				88C9E5282145518C004C74B5 /* common.hpp */,
 				88C9E51C2145518C004C74B5 /* dungeon.cpp */,
 				88C9E52A2145518C004C74B5 /* dungeon.hpp */,
-				88C9E51D2145518C004C74B5 /* entity.cpp */,
-				88C9E52B2145518C004C74B5 /* entity.hpp */,
 				88C9E51A2145518C004C74B5 /* game_engine.cpp */,
 				88C9E5272145518C004C74B5 /* game_engine.hpp */,
 				88C9E5212145518C004C74B5 /* game_state.hpp */,
@@ -177,7 +172,6 @@
 				88C9E53C21459111004C74B5 /* main.cpp in Sources */,
 				88C9E52F2145518C004C74B5 /* menu_state.cpp in Sources */,
 				88C9E52D2145518C004C74B5 /* dungeon.cpp in Sources */,
-				88C9E52E2145518C004C74B5 /* entity.cpp in Sources */,
 				88C9E5302145518C004C74B5 /* cave.cpp in Sources */,
 				88C9E5312145518C004C74B5 /* main_state.cpp in Sources */,
 				88C9E52C2145518C004C74B5 /* game_engine.cpp in Sources */,

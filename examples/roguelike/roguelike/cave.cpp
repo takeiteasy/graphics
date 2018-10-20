@@ -1,5 +1,7 @@
 #include "cave.hpp"
 
+#undef DEBUG
+
 vector2d<int> cave_t::cellular_automata() {
   std::uniform_int_distribution<> fill_chance(0, 100);
   auto map = create_vector2d<int>(w, h, 0);
@@ -89,8 +91,6 @@ static void find_regions(const vector2d<int>& in, const int type, vector2d<vec2i
 }
 
 void cave_t::get_rooms(const vector2d<int>& map) {
-  int i, j;
-
   vector2d<vec2i> walls, floors;
   std::thread floors_thrd(find_regions, std::ref(map), 0, std::ref(floors));
   std::thread walls_thrd(find_regions, std::ref(map), 1, std::ref(walls));
@@ -99,20 +99,20 @@ void cave_t::get_rooms(const vector2d<int>& map) {
 
 #if DEBUG
   auto wall_map = create_vector2d<int>(w, h, 0);
-  for (i = 0; i < walls.size(); ++i)
+  for (int i = 0; i < walls.size(); ++i)
     for (auto&& v : walls[i])
       wall_map[v.x][v.y] = i + 1;
   print_map_test(wall_map, "WALLS");
 
   auto floor_map = create_vector2d<int>(w, h, 0);
-  for (i = 0; i < floors.size(); ++i)
+  for (int i = 0; i < floors.size(); ++i)
     for (auto&& v : floors[i])
       floor_map[v.x][v.y] = i + 1;
   print_map_test(floor_map, "FLOORS");
 #endif
 
   main_room = std::distance(std::begin(floors), std::max_element(std::begin(floors), std::end(floors), [](const auto& lhs, const auto& rhs) { return lhs.size() < rhs.size(); }));
-  for (i = 0; i < floors.size(); ++i) {
+  for (int i = 0; i < floors.size(); ++i) {
     room_t room;
     room.id = i;
     room.tiles = floors[i];
@@ -130,7 +130,7 @@ void cave_t::get_rooms(const vector2d<int>& map) {
 
 #if DEBUG
   auto edge_map = create_vector2d<int>(w, h, 0);
-  for (i = 0; i < rooms.size(); ++i)
+  for (int i = 0; i < rooms.size(); ++i)
     for (auto&& v : rooms[i].edges)
       edge_map[v.x][v.y] = i + 1;
   print_map_test(edge_map, "EDGES");
@@ -270,14 +270,12 @@ void cave_t::finalize_map(vector2d<int>& map) {
     }
   }
   
-  fill_entities();
-
 #if DEBUG
   print_map_test(map, "FINAL");
 #endif
 }
 
-cave_t::cave_t(std::vector<std::string>* info, int _depth, int _w, int _h, int _fill_prob, int _iterations, int _survival, int _starve): w(_w), h(_h), fill_prob(_fill_prob), iterations(_iterations), survival(_survival), starve(_starve) {
+cave_t::cave_t(dungeon_t* _parent, int _depth, int _w, int _h, int _fill_prob, int _iterations, int _survival, int _starve): w(_w), h(_h), fill_prob(_fill_prob), iterations(_iterations), survival(_survival), starve(_starve) {
   if (!w or !h) {
     std::uniform_int_distribution<> rnd_wh(50, 200);
     if (!w)
@@ -286,16 +284,14 @@ cave_t::cave_t(std::vector<std::string>* info, int _depth, int _w, int _h, int _
       h = rnd_wh(rnd_eng);
   }
   depth = _depth;
-  info_ref = info;
-  if (info_ref)
-    info_ref->push_back(fmt("Generating map at %dx%d", w, h));
+  parent = _parent;
 }
 
 void cave_t::generate() {
-  DO_SOMETHING("Cellular, automata...", auto _map = cellular_automata());
-  DO_SOMETHING("Finding rooms...", get_rooms(_map));
-  DO_SOMETHING("Connecting rooms...", connect_rooms(_map));
-  DO_SOMETHING("Finalizing map...", finalize_map(_map));
-  DO_SOMETHING("Filling map...", fill_map(_map));
+  auto _map = cellular_automata();
+  get_rooms(_map);
+  connect_rooms(_map);
+  finalize_map(_map);
+  fill_map(_map);
   loaded = true;
 }

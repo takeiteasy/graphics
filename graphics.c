@@ -2416,35 +2416,53 @@ void sgl_delay(long ms) {
 p = strtok(NULL, " \t\n\r"); \
 (x) = atoi(p);
 
-//#define BDF_READ_STR(x) \
-//p = strtok(NULL, "\t\n\r"); \
-//strcpy((x), p);
+typedef struct {
+  unsigned int width;
+  unsigned char* bitmap;
+  rect_t bb;
+} bdf_char_t;
 
-void sgl_bdf_destroy(bdf_t* f) {
-  if (f) {
-    for (int i = 0; i < f->n_chars; ++i)
-      if (f->chars[i].bitmap) {
-        free(f->chars[i].bitmap);
-        f->chars[i].bitmap = NULL;
-      }
-    if (f->chars) {
-      free(f->chars);
-      f->chars = NULL;
+struct bdf_t {
+  rect_t fontbb;
+  unsigned int* encoding_table;
+  bdf_char_t* chars;
+  int n_chars;
+};
+
+void sgl_bdf_destroy(struct bdf_t** _f) {
+  if (!*_f)
+    return;
+  
+  struct bdf_t* f = *_f;
+  for (int i = 0; i < f->n_chars; ++i)
+    if (f->chars[i].bitmap) {
+      free(f->chars[i].bitmap);
+      f->chars[i].bitmap = NULL;
     }
-    if (f->encoding_table) {
-      free(f->encoding_table);
-      f->encoding_table = NULL;
-    }
-    f->n_chars = 0;
-    memset(&f->fontbb, 0, sizeof(rect_t));
+  if (f->chars) {
+    free(f->chars);
+    f->chars = NULL;
   }
+  if (f->encoding_table) {
+    free(f->encoding_table);
+    f->encoding_table = NULL;
+  }
+  f->n_chars = 0;
+  memset(&f->fontbb, 0, sizeof(rect_t));
+  free(f);
 }
 
 static inline int htoi(const char* p) {
   return (*p <= '9' ? *p - '0' : (*p <= 'F' ? *p - 'A' + 10 : *p - 'a' + 10));
 }
 
-bool sgl_bdf(bdf_t* out, const char* path) {
+bool sgl_bdf(struct bdf_t** _out, const char* path) {
+  struct bdf_t* out = *_out = malloc(sizeof(struct bdf_t));
+  if (!out) {
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
+    return false;
+  }
+  
   FILE* fp = fopen(path, "r");
   if (!fp) {
     error_handle(NORMAL_PRIORITY, FILE_OPEN_FAILED, "fopen() failed: %s", path);
@@ -2509,12 +2527,12 @@ bool sgl_bdf(bdf_t* out, const char* path) {
       BDF_READ_INT(out->chars[n].bb.y);
     } else if (!strcasecmp(s, "BITMAP")) {
       if (n == out->n_chars) {
-        sgl_bdf_destroy(out);
+        sgl_bdf_destroy(_out);
         error_handle(NORMAL_PRIORITY, BDF_TOO_MANY_BITMAPS, "bdf() failed: More bitmaps than characters for %s", path);
         return false;
       }
       if (width == -1) {
-        sgl_bdf_destroy(out);
+        sgl_bdf_destroy(_out);
         error_handle(NORMAL_PRIORITY, BDF_UNKNOWN_CHAR, "bdf() failed: Unknown character with for %s", path);
         return false;
       }
@@ -2528,7 +2546,7 @@ bool sgl_bdf(bdf_t* out, const char* path) {
 
       out->chars[n].bitmap = malloc(((out->fontbb.w + 7) / 8) * out->fontbb.h * sizeof(unsigned char));
       if (!out->chars[n].bitmap) {
-        sgl_bdf_destroy(out);
+        sgl_bdf_destroy(_out);
         error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
         return false;
       }
@@ -2584,7 +2602,7 @@ bool sgl_bdf(bdf_t* out, const char* path) {
   return true;
 }
 
-int sgl_bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int fg, int bg) {
+int sgl_bdf_character(surface_t* s, struct bdf_t* f, const char* ch, int x, int y, int fg, int bg) {
   const char* c = (const char*)ch;
   int u = *c, l = 1, i, j, n = 0;
   if ((u & 0xC0) == 0xC0) {
@@ -2615,7 +2633,7 @@ int sgl_bdf_character(surface_t* s, bdf_t* f, const char* ch, int x, int y, int 
   return l;
 }
 
-void sgl_bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* str) {
+void sgl_bdf_writeln(surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* str) {
   const char* c = (const char*)str;
   int u = x, v = y, col, len;
   while (c != NULL && *c != '\0') {
@@ -2649,7 +2667,7 @@ void sgl_bdf_writeln(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const
   }
 }
 
-void sgl_bdf_writelnf(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...) {
+void sgl_bdf_writelnf(surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
 
@@ -2670,7 +2688,7 @@ void sgl_bdf_writelnf(surface_t* s, bdf_t* f, int x, int y, int fg, int bg, cons
   free(buffer);
 }
 
-void sgl_bdf_string(surface_t* out, bdf_t* f, int fg, int bg, const char* str) {
+void sgl_bdf_string(surface_t* out, struct bdf_t* f, int fg, int bg, const char* str) {
   int w, h;
   str_size(str, &w, &h);
   sgl_surface(out, w * 8, h * LINE_HEIGHT);
@@ -2678,7 +2696,7 @@ void sgl_bdf_string(surface_t* out, bdf_t* f, int fg, int bg, const char* str) {
   sgl_bdf_writeln(out, f, 0, 0, fg, bg, str);
 }
 
-void sgl_bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, ...) {
+void sgl_bdf_stringf(surface_t* out, struct bdf_t* f, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
 
@@ -2700,10 +2718,418 @@ void sgl_bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, 
 }
 #endif
 
+#if defined(SGL_ENABLE_FREETYPE)
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+#define SH_SLOT_FREE     0x00000000
+#define SH_SLOT_DELETED  0x00000001
+#define SH_SLOT_FILLED   0x80000000
+
+#ifdef SLIM_HASH_NO_TYPEDEFS
+  #define SH_GEN_DECL(name, key_t, value_t)  SH_GEN_TYPES_AND_PROTOTYPES(name, key_t, value_t)
+#else
+  #define SH_GEN_DECL(name, key_t, value_t)  SH_GEN_TYPES_AND_PROTOTYPES(name, key_t, value_t)   \
+      typedef struct name name##_t, *name##_p;                                                   \
+      typedef struct name##_slot *name##_it_p;
+#endif
+
+#define SH_GEN_TYPES_AND_PROTOTYPES(name, key_t, value_t)                                          \
+    struct name##_slot {                                                                           \
+        uint32_t hash_or_flags;                                                                    \
+        key_t key;                                                                                 \
+        value_t value;                                                                             \
+    };                                                                                             \
+                                                                                                   \
+    struct name {                                                                                  \
+        uint32_t length, capacity, deleted;                                                        \
+        struct name##_slot* slots;                                                                 \
+    };                                                                                             \
+                                                                                                   \
+    void     name##_new(struct name* hashmap);                                                     \
+    void     name##_destroy(struct name* hashmap);                                                 \
+                                                                                                   \
+    value_t  name##_get(struct name* hashmap, key_t key, value_t default_value);                   \
+    void     name##_put(struct name* hashmap, key_t key, value_t value);                           \
+    bool     name##_del(struct name* hashmap, key_t key);                                          \
+    bool     name##_contains(struct name* hashmap, key_t key);                                     \
+                                                                                                   \
+    value_t* name##_get_ptr(struct name* hashmap, key_t key);                                      \
+    value_t* name##_put_ptr(struct name* hashmap, key_t key);                                      \
+                                                                                                   \
+    struct name##_slot*  name##_start(struct name* hashmap);                                       \
+    struct name##_slot*  name##_next(struct name* hashmap, struct name##_slot* it);                \
+    void                 name##_remove(struct name* hashmap, struct name##_slot* it);              \
+    bool                 name##_shrink_if_necessary(struct name* hashmap);                         \
+
+#define SH_GEN_HASH_IMPL(name, key_t, value_t)                                                     \
+    SH_GEN_IMPL(name, key_t, value_t,                                                              \
+        sh_murmur3(&key, sizeof(key), 0),  /* key_hash_expr(key_t key)                       */    \
+        (a == b),                          /* key_cmp_expr(key_t a, key_t b)                 */    \
+        key,                               /* key_put_expr(key_t key)                        */    \
+        0,                                 /* key_del_expr(key_t key)                        */    \
+        calloc(capacity, slot_size),       /* calloc_expr(size_t capacity, size_t slot_size) */    \
+        free(ptr)                          /* free_expr(void* ptr)                           */    \
+    )
+
+#define SH_GEN_DICT_IMPL(name, key_t, value_t)                                                     \
+    SH_GEN_IMPL(name, key_t, value_t,                                                              \
+        sh_murmur3(key, strlen(key), 0),  /* key_hash_expr(key_t key)                       */     \
+        (strcmp(a, b) == 0),              /* key_cmp_expr(key_t a, key_t b)                 */     \
+        sh_strdup(key),                   /* key_put_expr(key_t key)                        */     \
+        (free((void*)key), NULL),         /* key_del_expr(key_t key)                        */     \
+        calloc(capacity, slot_size),      /* calloc_expr(size_t capacity, size_t slot_size) */     \
+        free(ptr)                         /* free_expr(void* ptr)                           */     \
+    )
+
+#define SH_GEN_IMPL(name, key_t, value_t, key_hash_expr, key_cmp_expr, key_put_expr, key_del_expr, calloc_expr, free_expr)  \
+  value_t* name##_put_ptr_internal(struct name* hashmap, key_t key);                             \
+  bool     name##_resize(struct name* hashmap, uint32_t new_capacity);                           \
+                                                                                                 \
+  void name##_new(struct name* hashmap) {                                                        \
+      hashmap->length = 0;                                                                       \
+      hashmap->capacity = 0;                                                                     \
+      hashmap->deleted = 0;                                                                      \
+      hashmap->slots = NULL;                                                                     \
+      name##_resize(hashmap, 8);                                                                 \
+  }                                                                                              \
+                                                                                                 \
+  void name##_destroy(struct name* hashmap) {                                                    \
+      for(struct name##_slot* it = name##_start(hashmap); it; it = name##_next(hashmap, it)) {   \
+          key_t key = it->key;                                                                   \
+          key = key;  /* avoid unused variable warning */                                        \
+          it->key = (key_del_expr);                                                              \
+          it->hash_or_flags = SH_SLOT_DELETED;                                                   \
+      }                                                                                          \
+                                                                                                 \
+      hashmap->length = 0;                                                                       \
+      hashmap->capacity = 0;                                                                     \
+      hashmap->deleted = 0;                                                                      \
+                                                                                                 \
+      void* ptr = hashmap->slots;                                                                \
+      ptr = ptr;  /* avoid unused variable warning if free_expr doesn't use ptr */               \
+      free_expr;                                                                                 \
+                                                                                                 \
+      hashmap->slots = NULL;                                                                     \
+  }                                                                                              \
+                                                                                                 \
+  bool name##_resize(struct name* hashmap, uint32_t new_capacity) {                              \
+      if (new_capacity < hashmap->length)                                                        \
+          return false;                                                                          \
+                                                                                                 \
+      struct name new_hashmap;                                                                   \
+      new_hashmap.length = 0;                                                                    \
+      new_hashmap.capacity = new_capacity;                                                       \
+      new_hashmap.deleted = 0;                                                                   \
+                                                                                                 \
+      size_t capacity = new_capacity;                                                            \
+      size_t slot_size = sizeof(new_hashmap.slots[0]);                                           \
+      new_hashmap.slots = calloc_expr;                                                           \
+                                                                                                 \
+      if (new_hashmap.slots == NULL)                                                             \
+          return false;                                                                          \
+                                                                                                 \
+      for(struct name##_slot* it = name##_start(hashmap); it; it = name##_next(hashmap, it)) {   \
+          *name##_put_ptr_internal(&new_hashmap, it->key) = it->value;                           \
+      }                                                                                          \
+                                                                                                 \
+      void* ptr = hashmap->slots;                                                                \
+      ptr = ptr;  /* avoid unused variable warning if free_expr doesn't use ptr */               \
+      free_expr;                                                                                 \
+      *hashmap = new_hashmap;                                                                    \
+      return true;                                                                               \
+  }                                                                                              \
+                                                                                                 \
+  value_t* name##_put_ptr(struct name* hashmap, key_t key) {                                     \
+      if (hashmap->length + hashmap->deleted + 1 > hashmap->capacity * 0.5) {                    \
+          uint32_t new_capacity = (hashmap->capacity == 0) ? 8 : hashmap->capacity * 2;          \
+          if ( name##_resize(hashmap, new_capacity) == false )                                   \
+              return NULL;                                                                       \
+      }                                                                                          \
+                                                                                                 \
+      return name##_put_ptr_internal(hashmap, (key_put_expr));                                   \
+  }                                                                                              \
+                                                                                                 \
+  value_t* name##_put_ptr_internal(struct name* hashmap, key_t key) {                            \
+      uint32_t hash = (key_hash_expr) | SH_SLOT_FILLED;                                          \
+      size_t index = hash % hashmap->capacity;                                                   \
+                                                                                                 \
+      while ( !(                                                                                 \
+          hashmap->slots[index].hash_or_flags == SH_SLOT_FREE ||                                 \
+          hashmap->slots[index].hash_or_flags == SH_SLOT_DELETED                                 \
+      ) ) {                                                                                      \
+          if (hashmap->slots[index].hash_or_flags == hash) {                                     \
+              key_t a = hashmap->slots[index].key;                                               \
+              key_t b = key;                                                                     \
+              if (key_cmp_expr)                                                                  \
+                  break;                                                                         \
+          }                                                                                      \
+          index = (index + 1) % hashmap->capacity;                                               \
+      }                                                                                          \
+                                                                                                 \
+      if (hashmap->slots[index].hash_or_flags == SH_SLOT_DELETED)                                \
+          hashmap->deleted--;                                                                    \
+      hashmap->length++;                                                                         \
+      hashmap->slots[index].hash_or_flags = hash;                                                \
+      hashmap->slots[index].key = key;                                                           \
+                                                                                                 \
+      return &hashmap->slots[index].value;                                                       \
+  }                                                                                              \
+                                                                                                 \
+  value_t* name##_get_ptr(struct name* hashmap, key_t key) {                                     \
+      uint32_t hash = (key_hash_expr) | SH_SLOT_FILLED;                                          \
+      size_t index = hash % hashmap->capacity;                                                   \
+      while ( !(hashmap->slots[index].hash_or_flags == SH_SLOT_FREE) ) {                         \
+          if (hashmap->slots[index].hash_or_flags == hash) {                                     \
+              key_t a = hashmap->slots[index].key;                                               \
+              key_t b = key;                                                                     \
+              if (key_cmp_expr)                                                                  \
+                  return &hashmap->slots[index].value;                                           \
+          }                                                                                      \
+                                                                                                 \
+          index = (index + 1) % hashmap->capacity;                                               \
+      }                                                                                          \
+                                                                                                 \
+      return NULL;                                                                               \
+  }                                                                                              \
+                                                                                                 \
+  bool name##_del(struct name* hashmap, key_t key) {                                             \
+      uint32_t hash = (key_hash_expr) | SH_SLOT_FILLED;                                          \
+      size_t index = hash % hashmap->capacity;                                                   \
+      while ( !(hashmap->slots[index].hash_or_flags == SH_SLOT_FREE) ) {                         \
+          if (hashmap->slots[index].hash_or_flags == hash) {                                     \
+              key_t a = hashmap->slots[index].key;                                               \
+              key_t b = key;                                                                     \
+              if (key_cmp_expr) {                                                                \
+                  key_t key = hashmap->slots[index].key;                                         \
+                  key = key; /* avoid unused variable warning */                                 \
+                  hashmap->slots[index].key = (key_del_expr);                                    \
+                  hashmap->slots[index].hash_or_flags = SH_SLOT_DELETED;                         \
+                  hashmap->length--;                                                             \
+                  hashmap->deleted++;                                                            \
+                                                                                                 \
+                  name##_shrink_if_necessary(hashmap);                                           \
+                  return true;                                                                   \
+              }                                                                                  \
+          }                                                                                      \
+                                                                                                 \
+          index = (index + 1) % hashmap->capacity;                                               \
+      }                                                                                          \
+                                                                                                 \
+      return false;                                                                              \
+  }                                                                                              \
+                                                                                                 \
+  void name##_put(struct name* hashmap, key_t key, value_t value) {                              \
+      *name##_put_ptr(hashmap, key) = value;                                                     \
+  }                                                                                              \
+                                                                                                 \
+  value_t name##_get(struct name* hashmap, key_t key, value_t default_value) {                   \
+      value_t* value_ptr = name##_get_ptr(hashmap, key);                                         \
+      return (value_ptr) ? *value_ptr : default_value;                                           \
+  }                                                                                              \
+                                                                                                 \
+  bool name##_contains(struct name* hashmap, key_t key) {                                        \
+      return (name##_get_ptr(hashmap, key) != NULL);                                             \
+  }                                                                                              \
+                                                                                                 \
+  struct name##_slot* name##_start(struct name* hashmap) {                                       \
+      return name##_next(hashmap, hashmap->slots - 1);                                           \
+  }                                                                                              \
+                                                                                                 \
+  struct name##_slot* name##_next(struct name* hashmap, struct name##_slot* it) {                \
+      if (it == NULL)                                                                            \
+          return NULL;                                                                           \
+                                                                                                 \
+      do {                                                                                       \
+          it++;                                                                                  \
+          if (it - hashmap->slots >= hashmap->capacity)                                          \
+              return NULL;                                                                       \
+      } while( it->hash_or_flags == SH_SLOT_FREE || it->hash_or_flags == SH_SLOT_DELETED );      \
+                                                                                                 \
+      return it;                                                                                 \
+  }                                                                                              \
+                                                                                                 \
+  void name##_remove(struct name* hashmap, struct name##_slot* it) {                             \
+      if (it != NULL && it >= hashmap->slots && it - hashmap->slots < hashmap->capacity) {       \
+          key_t key = it->key;                                                                   \
+          key = key;  /* avoid unused variable warning */                                        \
+          it->key = (key_del_expr);                                                              \
+          it->hash_or_flags = SH_SLOT_DELETED;                                                   \
+                                                                                                 \
+          hashmap->length--;                                                                     \
+          hashmap->deleted++;                                                                    \
+      }                                                                                          \
+  }                                                                                              \
+                                                                                                 \
+  bool name##_shrink_if_necessary(struct name* hashmap) {                                        \
+      uint32_t new_capacity = hashmap->capacity;                                                 \
+      while ( hashmap->length < new_capacity * 0.25 && new_capacity > 8 )                        \
+          new_capacity /= 2;                                                                     \
+                                                                                                 \
+      if (new_capacity < hashmap->capacity) {                                                    \
+          name##_resize(hashmap, new_capacity);                                                  \
+          return true;                                                                           \
+      }                                                                                          \
+                                                                                                 \
+      return false;                                                                              \
+  }                                                                                              \
+
+static uint32_t sh_murmur3(const void* key, int size, uint32_t seed) {
+  if (key == NULL || size == 0)
+    return 0;
+  
+  const uint32_t* data = (const uint32_t*)key;
+  const int nblocks = size / 4;
+  
+  uint32_t h1 = seed;
+  const uint32_t c1 = 0xcc9e2d51;
+  const uint32_t c2 = 0x1b873593;
+  
+  // Body
+  for(int i = 0; i < nblocks; i++) {
+    uint32_t k1 = data[i];
+    
+    k1 *= c1;
+    k1 = (k1 << 15) | (k1 >> (32 - 15));
+    k1 *= c2;
+    
+    h1 ^= k1;
+    h1 = (h1 << 13) | (h1 >> (32 - 13));
+    h1 = h1 * 5 + 0xe6546b64;
+  }
+  
+  // Tail
+  const uint8_t* tail = (const uint8_t*)(data + nblocks);
+  uint32_t k1 = 0;
+  
+  switch(size & 3) {
+    case 3:
+      k1 ^= tail[2] << 16;
+    case 2:
+      k1 ^= tail[1] << 8;
+    case 1:
+      k1 ^= tail[0];
+      k1 *= c1;
+      k1 = (k1 << 15) | (k1 >> (32 - 15));;
+      k1 *= c2;
+      h1 ^= k1;
+  };
+  
+  // Finalization
+  h1 ^= size;
+  
+  h1 ^= h1 >> 16;
+  h1 *= 0x85ebca6b;
+  h1 ^= h1 >> 13;
+  h1 *= 0xc2b2ae35;
+  h1 ^= h1 >> 16;
+  
+  return h1;
+}
+
+static FT_Library ft_library;
+
+typedef struct {
+  point_t size, bearing;
+  long advance;
+  surface_t buffer;
+} ftchar_t;
+
+SH_GEN_DECL(font_map, char, ftchar_t*)
+SH_GEN_HASH_IMPL(font_map, char, ftchar_t*)
+
+struct ftfont_t {
+  FT_Face face;
+  struct font_map map;
+};
+
+static void load_ftfont_char(struct ftfont_t* font, char c) {
+  if (font_map_contains(&font->map, c))
+    return;
+  
+  if (FT_Load_Char(font->face, c, FT_LOAD_RENDER))
+    abort();
+  
+  ftchar_t* new = malloc(sizeof(ftchar_t));
+  new->size.x = font->face->glyph->bitmap.width;
+  new->size.y = font->face->glyph->bitmap.rows;
+  new->bearing.x = font->face->glyph->bitmap_left;
+  new->bearing.y = font->face->glyph->bitmap_top;
+  new->advance = font->face->glyph->advance.x;
+  
+  sgl_surface(&new->buffer, new->size.x, new->size.y);
+  
+  int i, j;
+  for (i = 0; i < new->size.x; ++i)
+    for (j = 0; j < new->size.y; ++j) {
+      int b = B(font->face->glyph->bitmap.buffer[j * new->size.x + i]);
+      sgl_psetb(&new->buffer, i, j, b ? RGBA1(255, b) : 0);
+    }
+  
+  font_map_put(&font->map, c, new);
+}
+
+void sgl_ft_init() {
+  if (FT_Init_FreeType(&ft_library))
+    abort();
+}
+
+void sgl_ft_release() {
+  FT_Done_FreeType(ft_library);
+}
+
+void sgl_ftfont(struct ftfont_t** _font, const char* path, unsigned int size) {
+  struct ftfont_t* font = *_font = malloc(sizeof(struct ftfont_t));
+  if (!font)
+    abort();
+  
+  if (FT_New_Face(ft_library, path, 0, &font->face))
+    abort();
+  FT_Set_Pixel_Sizes(font->face, 0, size);
+  font_map_new(&font->map);
+  for (char c = ' '; c < '~'; ++c)
+    load_ftfont_char(font, c);
+}
+
+void sgl_ftfont_destroy(struct ftfont_t** _font) {
+  if (!*_font)
+    abort();
+  
+  struct ftfont_t* font = *_font;
+  FT_Done_Face(font->face);
+  for(struct font_map_slot* it = font_map_start(&font->map); it != NULL; it = font_map_next(&font->map, it)) {
+    sgl_destroy(&it->value->buffer);
+    free(it->value);
+    font_map_remove(&font->map, it);
+  }
+  font_map_destroy(&font->map);
+}
+
+int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y, int fg, int bg) {
+  return 0;
+}
+
+void sgl_ftfont_writeln(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* str) {
+  
+}
+
+void sgl_ftfont_writelnf(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* fmt, ...) {
+  
+}
+
+void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* str) {
+  
+}
+
+void sgl_ftfont_stringf(surface_t* out, ftfont_t f, int fg, int bg, const char* fmt, ...) {
+  
+}
+#endif
+
 #if defined(SGL_ENABLE_STB_IMAGE)
 #define STB_IMAGE_IMPLEMENTATION
 #if !defined(STB_IMAGE_PATH)
-#include "3rdparty/stb_image.h"
+#include <stb_image.h>
 #else
 #include STB_IMAGE_PATH
 #endif
@@ -2712,7 +3138,7 @@ void sgl_bdf_stringf(surface_t* out, bdf_t* f, int fg, int bg, const char* fmt, 
 #define STBI_MSC_SECURE_CRT
 #endif
 #if !defined(STB_IMAGE_WRITE_PATH)
-#include "3rdparty/stb_image_write.h"
+#include <stb_image_write.h>
 #else
 #include STB_IMAGE_WRITE_PATH
 #endif
@@ -4479,6 +4905,14 @@ void sgl_poll(void) {
         break;
       case NSEventTypeScrollWheel:
         CALL(__scroll_callback, translate_mod([e modifierFlags]), [e deltaX], [e deltaY]);
+        break;
+      case NSEventTypeLeftMouseDragged:
+      case NSEventTypeRightMouseDragged:
+      case NSEventTypeOtherMouseDragged:
+        if (cursor_in_win) {
+          CALL(__mouse_btn_callback, (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
+          CALL(__mouse_move_callback, [e locationInWindow].x, [app frame].size.height - border_off - [e locationInWindow].y, 0, 0);
+        }
         break;
       case NSEventTypeMouseMoved:
         if (cursor_in_win)

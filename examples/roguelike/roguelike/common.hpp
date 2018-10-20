@@ -51,3 +51,28 @@ static std::array<vec2i, 4> nsew(const vec2i& p) {
     vec2i(p.x - 1, p.y)  // West
   };
 }
+
+static int rnd_range(int a, int b) {
+  static std::random_device rnd_dev;
+  static std::mt19937 rnd_eng = std::mt19937(rnd_dev());
+  std::uniform_int_distribution<> rnd_dist(a, b);
+  return rnd_dist(rnd_eng);
+}
+
+static vec2i rnd_grid_pos(int w, int h) {
+  return vec2i(rnd_range(0, w), rnd_range(0, h));
+}
+
+static vec2i rnd_grid_edge(int w, int h) {
+  switch (rnd_range(0, 3)) {
+    case 0:
+      return vec2i(0, rnd_range(0, h));
+    case 1:
+      return vec2i(rnd_range(0, w), 0);
+    case 2:
+      return vec2i(w, rnd_range(0, h));
+    case 3:
+    default:
+      return vec2i(rnd_range(0, w), h);
+  }
+}

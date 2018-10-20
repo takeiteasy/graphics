@@ -28,7 +28,7 @@ static bool grey = false;
 #define printf(fmt, ...) (0)
 #endif
 
-void on_keyboard(KEYSYM sym, KEYMOD mod, bool down) {
+void on_keyboard(void* data, KEYSYM sym, KEYMOD mod, bool down) {
   if (down) {
     printf("kb: key %d is down\n", sym);
     switch (sym) {
@@ -66,24 +66,24 @@ void on_keyboard(KEYSYM sym, KEYMOD mod, bool down) {
   }
 }
 
-void on_mouse_btn(MOUSEBTN btn, KEYMOD mod, bool down) {
+void on_mouse_btn(void* data, MOUSEBTN btn, KEYMOD mod, bool down) {
   printf("mouse btn: %d is %s\n", (int)btn, (down ? "down" : "up"));
 }
 
-void on_mouse_move(int x, int y, int dx, int dy) {
+void on_mouse_move(void* data, int x, int y, int dx, int dy) {
   mx = x;
   my = y;
 }
 
-void on_scroll(KEYMOD mod, float dx, float dy) {
+void on_scroll(void* data, KEYMOD mod, float dx, float dy) {
   printf("scroll: %f %f\n", dx, dy);
 }
 
-void on_focus(bool focused) {
+void on_focus(void* data, bool focused) {
   printf("%s\n", (focused ? "FOCUSED" : "UNFOCUSED"));
 }
 
-void on_resize(int w, int h) {
+void on_resize(void* data, int w, int h) {
   win_w = w;
   win_h = h;
 #if !SKIP_RESIZE
@@ -107,9 +107,9 @@ void on_resize(int w, int h) {
 #define RES_JOIN(X,Y) (X Y)
 #define RES(X) (RES_JOIN(RES_PATH, X))
 
-void on_error(ERRPRIO pri, const char* msg, const char* file, const char* func, int line) {
+void on_error(void* data, ERRORLVL lvl, ERRORTYPE type, const char* msg, const char* file, const char* func, int line) {
   fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
-  if (pri == PRIO_HIGH || pri == PRIO_NORM)
+  if (lvl == HIGH_PRIORITY || lvl == NORMAL_PRIORITY)
     abort();
 }
 
@@ -142,7 +142,14 @@ int main(int argc, const char* argv[]) {
   joystick_callbacks(on_joystick_connect, on_joystick_disconnect, on_joystick_btn, on_joystick_axis);
   joystick_init(true);
 #endif
+  
+#if defined(SGL_ENABLE_FREETYPE)
+  ft_init();
 
+  ftfont_t ftf;
+  ftfont(&ftf, "/Library/Fonts/Times New Roman.ttf", 36);
+#endif
+  
   surface_t s[10];
   for (int i = 0; i < 10; ++i)
     s[i].buf = NULL;
@@ -191,6 +198,9 @@ int main(int argc, const char* argv[]) {
   rect(&s[5], 50, 50, 50, 50, RGBA(0, 255, 0, 128), 1);
   rect(&s[5], 50, 0,  50, 50, RGBA(0, 0, 255, 128), 1);
   rect(&s[5], 0,  50, 50, 50, RGBA(255, 255, 0, 128), 1);
+  
+  clock_t current_ticks, delta_ticks;
+  clock_t fps = 0;
 
   float theta = 1.f;
   int col = 0;
@@ -209,6 +219,8 @@ int main(int argc, const char* argv[]) {
 #if SKIP_RENDING
     goto FLUSH;
 #endif
+    
+    current_ticks = clock();
 
 //    cls(&win);
     fill(&win, WHITE);
@@ -225,7 +237,7 @@ int main(int argc, const char* argv[]) {
     writeln(&win, 10, 10, RED, -1, "Hello World");
     writeln(&win, 10, 22, MAROON, -1, "こんにちは");
 #if defined(SGL_ENABLE_BDF)
-    bdf_writeln(&win, &tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ bdf!");
+    bdf_writeln(&win, tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ bdf!");
 #endif
     writeln(&win, 10, 48, RED, BLACK, "\f(255,0,0)\b(0,0,0)test\f(0,255,0)\b(0,0,0)test");
 
@@ -279,7 +291,12 @@ int main(int argc, const char* argv[]) {
 
     if (grey)
       filter(&win, greyscale);
-
+    
+    delta_ticks = clock() - current_ticks;
+    if (delta_ticks > 0)
+      fps = CLOCKS_PER_SEC / delta_ticks;
+    writelnf(&win, 2, 2, RED, 0, "FPS: %ju", fps);
+    
 FLUSH:
     flush(&win);
   }
@@ -289,6 +306,10 @@ FLUSH:
 #endif
 #if defined(SGL_ENABLE_BDF)
   bdf_destroy(&tewi);
+#endif
+#if defined(SGL_ENABLE_FREETYPE)
+  ftfont_destroy(&ftf);
+  ft_release();
 #endif
   destroy(&win);
   for (int i = 0; i < (int)(sizeof(s) / sizeof(s[0])); ++i)

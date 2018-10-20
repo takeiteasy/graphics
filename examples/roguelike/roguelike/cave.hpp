@@ -13,7 +13,7 @@ class cave_t : public dungeon_t {
   void finalize_map(vector2d<int>& map);
 
 public:
-  cave_t(std::vector<std::string>* info = nullptr,
+  cave_t(dungeon_t* _parent = nullptr,
          int _depth = 0,
          int _w = 0,
          int _h = 0,
