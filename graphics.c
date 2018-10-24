@@ -11,32 +11,6 @@
 
 #include "graphics.h"
 
-#if defined(SGL_OSX)
-# if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_13
-#   if !defined(SGL_ENABLE_OPENGL)
-#     #define SGL_ENABLE_METAL // Force Metal on 10.13
-#   endif
-# else
-#   if defined(SGL_ENABLE_METAL) && defined(SGL_ENABLE_OPENGL)
-#     undef SGL_ENABLE_OPENGL
-#   endif
-# endif
-#elif defined(SGL_WINDOWS)
-# if (defined(SGL_ENABLE_DX9) || defined(SGL_ENABLE_DX11) || defined(SGL_ENABLE_VULKAN)) && defined(SGL_ENABLE_OPENGL)
-#   undef SGL_ENABLE_OPENGL
-# endif
-# if (defined(SGL_ENABLE_DX9) || defined(SGL_ENABLE_DX11)) && defined(SGL_ENABLE_VULKAN)
-#   undef SGL_ENABLE_VULKAN
-# endif
-# if defined(SGL_ENABLE_DX9) && defined(SGL_ENABLE_DX11)
-#   undef SGL_ENABLE_DX9
-# endif
-#else
-# if defined(SGL_ENABLE_VULKAN) && defined(SGL_ENABLE_OPENGL)
-#   undef SGL_ENABLE_OPENGL
-# endif
-#endif
-
 #if defined(_MSC_VER)
 #define strdup _strdup
 #endif

@@ -341,7 +341,7 @@
 					SGL_ENABLE_FREETYPE,
 					SGL_ENABLE_SHORT_NAMES,
 				);
-				GCC_WARN_PEDANTIC = YES;
+				GCC_WARN_PEDANTIC = NO;
 				HEADER_SEARCH_PATHS = (
 					/Users/roryb/Documents/git/graphics.h/3rdparty,
 					/Users/roryb/Documents/git/graphics.h/3rdparty/freetype,
@@ -351,10 +351,7 @@
 					/usr/local/Cellar/freetype/2.9.1/lib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				WARNING_CFLAGS = (
-					"-Wall",
-					"-Wextra",
-				);
+				WARNING_CFLAGS = "";
 				WARNING_LDFLAGS = "";
 			};
 			name = Debug;
@@ -367,7 +364,7 @@
 				CLANG_MODULES_AUTOLINK = NO;
 				CODE_SIGN_STYLE = Automatic;
 				GCC_C_LANGUAGE_STANDARD = c99;
-				GCC_WARN_PEDANTIC = YES;
+				GCC_WARN_PEDANTIC = NO;
 				HEADER_SEARCH_PATHS = (
 					/Users/roryb/Documents/git/graphics.h/3rdparty,
 					/Users/roryb/Documents/git/graphics.h/3rdparty/freetype,
@@ -377,10 +374,7 @@
 					/usr/local/Cellar/freetype/2.9.1/lib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				WARNING_CFLAGS = (
-					"-Wall",
-					"-Wextra",
-				);
+				WARNING_CFLAGS = "";
 				WARNING_LDFLAGS = "";
 			};
 			name = Release;
