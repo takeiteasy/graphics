@@ -437,9 +437,9 @@ extern "C" {
     TGA,
     BMP,
     JPG
-  } SAVETYPE;
+  } SAVEFORMAT;
   bool sgl_image(surface_t* out, const char* path);
-  bool sgl_save_image(surface_t* in, const char* path, SAVETYPE type);
+  bool sgl_save_image(surface_t* in, const char* path, SAVEFORMAT type);
 
 #if defined(SGL_ENABLE_SHORT_NAMES)
 #define image sgl_image
