@@ -94,9 +94,11 @@ Tested on:
 - Pixel shader support
 - Audio playback (wav files)
 - Other language bindings
-- Investigate why CoreGraphics rendering is so slow
-- Investigate resizing for X11?
-- Investigate getting CoreGraphcs working on OSX in 10.13 again?
+
+### Investigate
+- Why CoreGraphics rendering is so slow
+- Resizing for X11
+- Getting CoreGraphcs working on OSX in 10.13 again
 
 
 ## License

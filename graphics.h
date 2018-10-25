@@ -438,7 +438,7 @@ extern "C" {
   void sgl_ft_release(void);
   void sgl_ftfont(ftfont_t* font, const char* path, unsigned int size);
   void sgl_ftfont_destroy(ftfont_t* font);
-  int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y, int fg, int bg);
+  int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y, int fg, int bg, int* w, int* h);
   void sgl_ftfont_writeln(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* str);
   void sgl_ftfont_writelnf(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* fmt, ...);
   void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* str);

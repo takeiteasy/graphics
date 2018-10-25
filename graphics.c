@@ -1589,7 +1589,7 @@ int read_color(const char* str, int* col, int* len) {
 static inline void str_size(const char* str, int* w, int* h) {
   const char* s = (const char*)str;
   int n = 0, m = 0, l = 1, c, len;
-  while (s != NULL && *s != '\0') {
+  while (s && *s != '\0') {
     c = *s;
     if (c >= 0 && c <= 127) {
       switch (c) {
@@ -2636,7 +2636,7 @@ int sgl_bdf_character(surface_t* s, struct bdf_t* f, const char* ch, int x, int 
 void sgl_bdf_writeln(surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* str) {
   const char* c = (const char*)str;
   int u = x, v = y, col, len;
-  while (c != NULL && *c != '\0') {
+  while (c && *c != '\0') {
     switch (*c) {
       case '\n':
         v += f->fontbb.h + 2;
@@ -2801,14 +2801,14 @@ static int load_ftfont_char(struct ftfont_t* font, const char* ch) {
   new.size.y    = font->face->glyph->bitmap.rows;
   new.bearing.x = font->face->glyph->bitmap_left;
   new.bearing.y = font->face->glyph->bitmap_top;
-  new.advance   = font->face->glyph->advance.x;
+  new.advance = font->face->glyph->advance.x;
   sgl_surface(&new.buffer, new.size.x, new.size.y);
   
   int i, j;
   for (i = 0; i < new.size.x; ++i)
     for (j = 0; j < new.size.y; ++j) {
       int b = B(font->face->glyph->bitmap.buffer[j * new.size.x + i]);
-      sgl_psetb(&new.buffer, i, j, b ? RGBA1(255, b) : 0);
+      sgl_psetb(&new.buffer, i, j, b ? RGBA1(0, b) : 0);
     }
   
   stb_sb_push(font->encoding_table, u);
@@ -2849,7 +2849,7 @@ void sgl_ftfont_destroy(struct ftfont_t** _font) {
   free(font);
 }
 
-int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y, int fg, int bg) {
+int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y, int fg, int bg, int* w, int* h) {
   int u = -1, i, j, col;
   int l = ctoi(ch, &u);
   int index = ftfont_char_index(f, u);
@@ -2857,20 +2857,76 @@ int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y,
     index = load_ftfont_char(f, ch);
   
   ft_char_t* c = &f->chars[index];
+  y -= c->bearing.y;
   for (i = 0; i < c->size.x; ++i) {
     for (j = 0; j < c->size.y; ++j) {
-      pset_fn(s, 300 + i, 300 + j, pget(&c->buffer, i, j));
+      col = A(pget(&c->buffer, i, j));
+      pset_fn(s, x + i, y + j, (col > 0 ? ACHAN(fg, col) : bg));
     }
   }
+  if (w)
+    *w = (int)(c->advance >> 6);
+  if (h)
+    *h = c->size.y;
   return l;
 }
 
 void sgl_ftfont_writeln(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* str) {
-  
+  const char* c = (const char*)str;
+  int u = x, v = y, w, lh, h = 0, col, len;
+  while (c && *c != '\0') {
+    switch (*c) {
+      case '\n':
+        v += h + 6;
+        h  = 0;
+        u  = x;
+        c++;
+        break;
+      case '\f':
+        if (read_color(c + 1, &col, &len)) {
+          fg = col;
+          c += len;
+        }
+        else
+          c++;
+        break;
+      case '\b':
+        if (read_color(c + 1, &col, &len)) {
+          bg = col;
+          c += len;
+        }
+        else
+          c++;
+        break;
+      default:
+        c += sgl_ftfont_character(s, f, c, u, v, fg, bg, &w, &lh);
+        if (lh > h)
+          h = lh;
+        u += w;
+        break;
+    }
+  }
 }
 
 void sgl_ftfont_writelnf(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* fmt, ...) {
+  char *buffer = NULL;
+  int buffer_size = 0;
   
+  va_list argptr;
+  va_start(argptr, fmt);
+  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
+  va_end(argptr);
+  
+  if (length + 1 > buffer_size) {
+    buffer_size = length + 1;
+    buffer = realloc(buffer, buffer_size);
+    va_start(argptr, fmt);
+    vsnprintf(buffer, buffer_size, fmt, argptr);
+    va_end(argptr);
+  }
+  
+  sgl_ftfont_writeln(s, f, x, y, fg, bg, buffer);
+  free(buffer);
 }
 
 void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* str) {
@@ -4880,7 +4936,7 @@ static bool is_xinput_device(const GUID* pGuidProductFromDirectInput) {
       GetRawInputDeviceInfoA(raw_dev_list[i].hDevice, RIDI_DEVICEINFO, &rdi, &rdiSize) != (UINT)-1 &&
       MAKELONG(rdi.hid.dwVendorId, rdi.hid.dwProductId) == (LONG)pGuidProductFromDirectInput->Data1 &&
       GetRawInputDeviceInfoA(raw_dev_list[i].hDevice, RIDI_DEVICENAME, devName, &nameSize) != (UINT)-1 &&
-      strstr(devName, "IG_") != NULL)
+      strstr(devName, "IG_"))
       return true;
   }
 
@@ -5531,7 +5587,7 @@ bool sgl_joystick_scan() {
         add_joystick(device);
         xinput_devices[i] = device;
       }
-      else if (xresult != ERROR_SUCCESS && xinput_devices[i] != NULL) {
+      else if (xresult != ERROR_SUCCESS && xinput_devices[i]) {
         sgl_joystick_remove(xinput_devices[i]->device_id);
         xinput_devices[i] = NULL;
       }
@@ -5636,7 +5692,7 @@ void sgl_joystick_poll() {
       XINPUT_STATE state;
       DWORD xresult;
 
-      if (XInputGetStateEx_proc != NULL) {
+      if (XInputGetStateEx_proc) {
         XINPUT_STATE_EX state_ex;
         xresult = XInputGetStateEx_proc(private->player_index, &state_ex);
         state.Gamepad.wButtons = state_ex.Gamepad.wButtons;

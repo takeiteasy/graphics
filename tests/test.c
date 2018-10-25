@@ -147,7 +147,7 @@ int main(int argc, const char* argv[]) {
   ft_init();
 
   ftfont_t ftf;
-  ftfont(&ftf, "/Library/Fonts/Times New Roman.ttf", 36);
+  ftfont(&ftf, "/Library/Fonts/Times New Roman.ttf", 32);
 #endif
   
   surface_t s[10];
@@ -201,7 +201,8 @@ int main(int argc, const char* argv[]) {
   
   clock_t current_ticks, delta_ticks;
   clock_t fps = 0;
-
+  time_t rt;
+  
   float theta = 1.f;
   int col = 0;
   long sine_i = 0;
@@ -297,7 +298,9 @@ int main(int argc, const char* argv[]) {
       fps = CLOCKS_PER_SEC / delta_ticks;
     writelnf(&win, 2, 2, RED, 0, "FPS: %ju", fps);
     
-    sgl_ftfont_character(&win, ftf, "A", 0, 0, RED, 0);
+    time(&rt);
+    struct tm tm = *localtime(&rt);
+    sgl_ftfont_writelnf(&win, ftf, 2, 495, RED, GREEN, "It is %d/%d/%d at %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     
 FLUSH:
     flush(&win);
