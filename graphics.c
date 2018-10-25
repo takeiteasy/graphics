@@ -1541,7 +1541,7 @@ bool sgl_save_bmp(surface_t* s, const char* path) {
   return true;
 }
 
-#if !defined(SGL_DISABLE_TEXT) || defined(SGL_ENABLE_BDF)
+#if !defined(SGL_DISABLE_TEXT) || defined(SGL_ENABLE_BDF) || defined(SGL_ENABLE_FREETYPE)
 int read_color(const char* str, int* col, int* len) {
 #pragma FIXME(Alpha value wrong?)
   const char* c = str;
@@ -1624,6 +1624,20 @@ static inline void str_size(const char* str, int* w, int* h) {
   }
   *w = MAX(n, m);
   *h = l;
+}
+
+int ctoi(const char* c, int* out) {
+  int u = *c, l = 1;
+  if ((u & 0xC0) == 0xC0) {
+    int a = (u & 0x20) ? ((u & 0x10) ? ((u & 0x08) ? ((u & 0x04) ? 6 : 5) : 4) : 3) : 2;
+    if (a < 6 || !(u & 0x02)) {
+      u = ((u << (a + 1)) & 0xFF) >> (a + 1);
+      for (int b = 1; b < a; ++b)
+        u = (u << 6) | (c[l++] & 0x3F);
+    }
+  }
+  *out = u;
+  return l;
 }
 #endif
 
@@ -2264,17 +2278,8 @@ void sgl_ascii(surface_t* s, char ch, int x, int y, int fg, int bg) {
 }
 
 int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
-  const char* c = (const char*)ch;
-  int u = *c, l = 1;
-  if ((u & 0xC0) == 0xC0) {
-    int a = (u & 0x20) ? ((u & 0x10) ? ((u & 0x08) ? ((u & 0x04) ? 6 : 5) : 4) : 3) : 2;
-    if (a < 6 || !(u & 0x02)) {
-      u = ((u << (a + 1)) & 0xFF) >> (a + 1);
-      for (int b = 1; b < a; ++b)
-        u = (u << 6) | (c[l++] & 0x3F);
-    }
-  }
-
+  int u = -1;
+  int l = ctoi(ch, &u);
   int uc = letter_index(u), i, j;
   for (i = 0; i < 8; ++i)
     for (j = 0; j < 8; ++j) {
@@ -2607,17 +2612,8 @@ bool sgl_bdf(struct bdf_t** _out, const char* path) {
 }
 
 int sgl_bdf_character(surface_t* s, struct bdf_t* f, const char* ch, int x, int y, int fg, int bg) {
-  const char* c = (const char*)ch;
-  int u = *c, l = 1, i, j, n = 0;
-  if ((u & 0xC0) == 0xC0) {
-    int a = (u & 0x20) ? ((u & 0x10) ? ((u & 0x08) ? ((u & 0x04) ? 6 : 5) : 4) : 3) : 2;
-    if (a < 6 || !(u & 0x02)) {
-      u = ((u << (a + 1)) & 0xFF) >> (a + 1);
-      for (int b = 1; b < a; ++b)
-        u = (u << 6) | (c[l++] & 0x3F);
-    }
-  }
-
+  int u = -1, i, j, n;
+  int l = ctoi(ch, &u);
   for (i = 0; i < f->n_chars; ++i)
     if (f->encoding_table[i] == u) {
       n = i;
@@ -2740,7 +2736,7 @@ void sgl_bdf_stringf(surface_t* out, struct bdf_t* f, int fg, int bg, const char
 #define stb__sbmaybegrow(a,n) (stb__sbneedgrow(a,(n)) ? stb__sbgrow(a,n) : 0)
 #define stb__sbgrow(a,n)      (*((void **)&(a)) = stb__sbgrowf((a), (n), sizeof(*(a))))
 
-static void * stb__sbgrowf(void *arr, int increment, int itemsize) {
+static void* stb__sbgrowf(void *arr, int increment, int itemsize) {
   int dbl_cur = arr ? 2*stb__sbm(arr) : 0;
   int min_needed = stb_sb_count(arr) + increment;
   int m = dbl_cur > min_needed ? dbl_cur : min_needed;
@@ -2772,12 +2768,33 @@ struct ftfont_t {
   ft_char_t* chars;
 };
 
-static void load_ftfont_char(struct ftfont_t* font, unsigned int c) {
-  for (int x = 0; x < stb_sb_count(font->encoding_table); ++x)
-    if (font->encoding_table[x] == c)
-      abort(); // Shouldn't happen I don't think
+void sgl_ft_init() {
+  if (FT_Init_FreeType(&ft_library))
+    abort();
+}
+
+void sgl_ft_release() {
+  FT_Done_FreeType(ft_library);
+}
+
+static int ftfont_char_index(struct ftfont_t* font, int c) {
+  int i, x = -1;
+  for (i = 0; i < stb_sb_count(font->encoding_table); ++i)
+    if (font->encoding_table[i] == c) {
+      x = i;
+      break;
+    }
+  return x;
+}
+
+static int load_ftfont_char(struct ftfont_t* font, const char* ch) {
+  int u = -1;
+  ctoi(ch, &u);
   
-  FT_UInt index = FT_Get_Char_Index(font->face, c);
+  if (ftfont_char_index(font, u) >= 0)
+    abort(); // This probably shouldn't happen
+  
+  FT_UInt index = FT_Get_Char_Index(font->face, u);
   if (!index)
     abort();
   
@@ -2790,7 +2807,6 @@ static void load_ftfont_char(struct ftfont_t* font, unsigned int c) {
   new.bearing.x = font->face->glyph->bitmap_left;
   new.bearing.y = font->face->glyph->bitmap_top;
   new.advance   = font->face->glyph->advance.x;
-  
   sgl_surface(&new.buffer, new.size.x, new.size.y);
   
   int i, j;
@@ -2800,17 +2816,9 @@ static void load_ftfont_char(struct ftfont_t* font, unsigned int c) {
       sgl_psetb(&new.buffer, i, j, b ? RGBA1(255, b) : 0);
     }
   
-  stb_sb_push(font->encoding_table, c);
+  stb_sb_push(font->encoding_table, u);
   stb_sb_push(font->chars, new);
-}
-
-void sgl_ft_init() {
-  if (FT_Init_FreeType(&ft_library))
-    abort();
-}
-
-void sgl_ft_release() {
-  FT_Done_FreeType(ft_library);
+  return stb_sb_count(font->encoding_table) - 1;
 }
 
 void sgl_ftfont(struct ftfont_t** _font, const char* path, unsigned int size) {
@@ -2825,8 +2833,12 @@ void sgl_ftfont(struct ftfont_t** _font, const char* path, unsigned int size) {
   font->encoding_table = NULL;
   font->chars = NULL;
   
-  for (char c = ' '; c < '~'; ++c)
-    load_ftfont_char(font, (unsigned int)c);
+  static const char* default_chars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}";
+  const char* c = default_chars;
+  while (*c) {
+    load_ftfont_char(font, c);
+    c++;
+  }
 }
 
 void sgl_ftfont_destroy(struct ftfont_t** _font) {
@@ -2843,19 +2855,19 @@ void sgl_ftfont_destroy(struct ftfont_t** _font) {
 }
 
 int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y, int fg, int bg) {
-  const char* c = (const char*)ch;
-  int u = *c, l = 1, i, j, n = 0;
-  if ((u & 0xC0) == 0xC0) {
-    int a = (u & 0x20) ? ((u & 0x10) ? ((u & 0x08) ? ((u & 0x04) ? 6 : 5) : 4) : 3) : 2;
-    if (a < 6 || !(u & 0x02)) {
-      u = ((u << (a + 1)) & 0xFF) >> (a + 1);
-      for (int b = 1; b < a; ++b)
-        u = (u << 6) | (c[l++] & 0x3F);
+  int u = -1, i, j, col;
+  int l = ctoi(ch, &u);
+  int index = ftfont_char_index(f, u);
+  if (index == -1)
+    index = load_ftfont_char(f, ch);
+  
+  ft_char_t* c = &f->chars[index];
+  for (i = 0; i < c->size.x; ++i) {
+    for (j = 0; j < c->size.y; ++j) {
+      pset_fn(s, 300 + i, 300 + j, pget(&c->buffer, i, j));
     }
   }
-  
-  
-  return 0;
+  return l;
 }
 
 void sgl_ftfont_writeln(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* str) {

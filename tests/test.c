@@ -114,19 +114,19 @@ void on_error(void* data, ERRORLVL lvl, ERRORTYPE type, const char* msg, const c
 }
 
 #if defined(SGL_ENABLE_JOYSTICKS)
-void on_joystick_connect(joystick_t* d, int i) {
+void on_joystick_connect(void* data, joystick_t* d, int i) {
   printf("%s:%d connected\n", d->description, i);
 }
 
-void on_joystick_disconnect(joystick_t* d, int i) {
+void on_joystick_disconnect(void* data, joystick_t* d, int i) {
   printf("%s:%d disconnected\n", d->description, i);
 }
 
-void on_joystick_btn(joystick_t* d, int btn, bool down, long time) {
+void on_joystick_btn(void* data, joystick_t* d, int btn, bool down, long time) {
   printf("%s:%d bnt %d: %d\n", d->description, d->device_id, btn, down);
 }
 
-void on_joystick_axis(joystick_t* d, int axis, float v, float lv, long time) {
+void on_joystick_axis(void* data, joystick_t* d, int axis, float v, float lv, long time) {
   printf("%s:%d axis: %d: %f %f\n", d->description, d->device_id, axis, v, lv);
 }
 #endif
@@ -296,6 +296,8 @@ int main(int argc, const char* argv[]) {
     if (delta_ticks > 0)
       fps = CLOCKS_PER_SEC / delta_ticks;
     writelnf(&win, 2, 2, RED, 0, "FPS: %ju", fps);
+    
+    sgl_ftfont_character(&win, ftf, "A", 0, 0, RED, 0);
     
 FLUSH:
     flush(&win);

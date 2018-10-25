@@ -26,6 +26,8 @@ No external libraries are used unless you want to use the alternate backends (en
 
 On OSX you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for Metal. Also, if you're using XCode you'll also have to disable modules in the build settings, becuase modules imports curses with stdio for some reason.
 
+OSX 10.13 changed something and CoreGraphics isn't working like it used to, so if you're using 10.13 Metal is now the default rending library, so see above.
+
 On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're using the OpenGL backend include ```-ld -lGL```. **NOTE**: X11 can't automatically strech stuff being rendered like ```StretchDIBits``` and ```CGContextDrawImage``` can - so resizing the window is disabled (_until I can find a solution_) unless you're using the OpenGL backend.
 
 On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line options or unicode decoding won't work properly. I don't know why, but it doesn't.
@@ -77,18 +79,19 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 
 - Keyboard scancodes
 - Make thread safe (surface locks)
-- Vulkan/DirectX/~~Metal~~ backends
+- Vulkan/DirectX/~~Metal~~/SIXEL backends
 - Wayland window code
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples/tests
-- More extras (gif load/save, ~FreeType fonts~, C++ OOP wrapper)
+- More extras (gif load/save, ~FreeType fonts~ [WIP], C++ OOP wrapper)
 - Optional OpenCL for processing stuff
 - Pixel shader support
 - Audio playback (wav files)
 - Other language bindings
 - Investigate why CoreGraphics rendering is so slow
 - Investigate resizing for X11?
+- Investigate getting CoreGraphcs working on OSX in 10.13 again?
 
 
 ## License
