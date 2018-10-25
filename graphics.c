@@ -118,11 +118,11 @@ bool sgl_surface(surface_t* s, unsigned int w, unsigned int h) {
 }
 
 void sgl_destroy(surface_t* s) {
-  if (s) {
-    FREE_SAFE(s->buf);
-    s->w = 0;
-    s->h = 0;
-  }
+  if (!s)
+    return;
+  FREE_SAFE(s->buf);
+  s->w = 0;
+  s->h = 0;
 }
 
 void sgl_fill(surface_t* s, int col) {
@@ -363,7 +363,7 @@ bool sgl_rotate(surface_t* in, float angle, surface_t* out) {
       sy = ((y + mm[0][1]) * c - (x + mm[0][0]) * s);
       if (sx < 0 || sx >= in->w || sy < 0 || sy >= in->h)
         continue;
-      pset_fn(out, x, y, sgl_pget(in, sx, sy));
+      pset_fn(out, x, y, XYGET(in, sx, sy));
     }
   return true;
 }
@@ -2295,6 +2295,7 @@ int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
   return l;
 }
 
+#pragma TODO(All writeln/string functions similar, combine somehow)
 void sgl_writeln(surface_t* s, int x, int y, int fg, int bg, const char* str) {
   const char* c = str;
   int u = x, v = y, col, len;
@@ -2722,6 +2723,8 @@ void sgl_bdf_stringf(surface_t* out, struct bdf_t* f, int fg, int bg, const char
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#pragma TODO(Add error handling to Freetype stuff)
+
 #define stb_sb_free(a)         ((a) ? free(stb__sbraw(a)),0 : 0)
 #define stb_sb_push(a,v)       (stb__sbmaybegrow(a,1), (a)[stb__sbn(a)++] = (v))
 #define stb_sb_count(a)        ((a) ? stb__sbn(a) : 0)
@@ -2860,10 +2863,12 @@ int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y,
   y -= c->bearing.y;
   for (i = 0; i < c->size.x; ++i) {
     for (j = 0; j < c->size.y; ++j) {
-      col = A(pget(&c->buffer, i, j));
-      pset_fn(s, x + i, y + j, (col > 0 ? ACHAN(fg, col) : bg));
+      col = ACHAN(fg, A(XYGET((&(c->buffer)), i, j)));
+#pragma TODO(Fix background colour)
+      pset_fn(s, x + i, y + j, col);
     }
   }
+  
   if (w)
     *w = (int)(c->advance >> 6);
   if (h)
@@ -2930,11 +2935,11 @@ void sgl_ftfont_writelnf(surface_t* s, ftfont_t f, int x, int y, int fg, int bg,
 }
 
 void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* str) {
-  
+#pragma TODO(Finish this)
 }
 
 void sgl_ftfont_stringf(surface_t* out, ftfont_t f, int fg, int bg, const char* fmt, ...) {
-  
+#pragma TODO(Finish this)
 }
 #endif
 
