@@ -32,6 +32,11 @@ On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're usin
 
 On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line options or unicode decoding won't work properly. I don't know why, but it doesn't.
 
+Tested on:
+- OSX 10.12 & 10.13
+- Windows 7 x64
+-  Ubuntu 19 x86_64 (Linux 4.13.0-16) (Inside VM only)
+
 
 ## Screenshots
 

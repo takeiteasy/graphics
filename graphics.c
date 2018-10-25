@@ -2793,12 +2793,7 @@ static int load_ftfont_char(struct ftfont_t* font, const char* ch) {
   
   if (ftfont_char_index(font, u) >= 0)
     abort(); // This probably shouldn't happen
-  
-  FT_UInt index = FT_Get_Char_Index(font->face, u);
-  if (!index)
-    abort();
-  
-  if (FT_Load_Char(font->face, index, FT_LOAD_RENDER))
+  if (FT_Load_Char(font->face, u, FT_LOAD_RENDER))
     abort();
   
   ft_char_t new;
