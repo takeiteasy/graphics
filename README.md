@@ -15,7 +15,7 @@ Designed to be a drop-in and use with little hassle sort of deal. I don't know i
 - Text rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
 - Joystick handling (adapted from [ThemsAllTook/libstem_gamepad](https://github.com/ThemsAllTook/libstem_gamepad))
 - Optional OpenGL & Metal backends (Just for rendering to screen)
-- Optional extras (AA primitives, BDF font loader, image loader using [stb_image](https://github.com/nothings/stb))
+- Optional extras (AA primitives, BDF font rendering, Freetype rendering, image loader using [stb_image](https://github.com/nothings/stb))
 
 See below screenshots for TODO list and the examples folder for some idea of how to use. ___Still a WIP, API subject to change a lot___.
 
@@ -26,7 +26,7 @@ No external libraries are used unless you want to use the alternate backends (en
 
 On OSX you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for Metal. Also, if you're using XCode you'll also have to disable modules in the build settings, becuase modules imports curses with stdio for some reason.
 
-OSX 10.13 changed something and CoreGraphics isn't working like it used to, so if you're using 10.13 Metal is now the default rending library, so see above.
+NOTE: On OSX 10.13, something changed and CoreGraphics isn't working like it used to. So if you're using 10.13 Metal is now the default rending backend. See above.
 
 On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're using the OpenGL backend include ```-ld -lGL```. **NOTE**: X11 can't automatically strech stuff being rendered like ```StretchDIBits``` and ```CGContextDrawImage``` can - so resizing the window is disabled (_until I can find a solution_) unless you're using the OpenGL backend.
 
@@ -58,7 +58,6 @@ Tested on:
 ### Important
 
 - Fix borderless window mode for OSX
-- Linux joysticks totally untested, need to test on real hardware
 - Cursor clipping for Linux [and OSX](https://stackoverflow.com/a/40922095)
 - Sort out redundant functions in font rendering default/bdf/freetype
 - Sort out joysticks
@@ -66,6 +65,7 @@ Tested on:
   - Remove redundant stuff
   - Make joystick_t a private struct in source
   - Fix crashes
+  - Linux joysticks totally untested, need to test on real hardware
 
 ### Less important
 
@@ -85,15 +85,16 @@ Tested on:
 - Keyboard scancodes
 - Make thread safe (surface locks)
 - Vulkan/DirectX/~~Metal~~/SIXEL backends
+- Multiple Windows
 - Wayland window code
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples/tests
-- More extras (gif load/save, ~FreeType fonts~ [WIP], C++ OOP wrapper)
+- More extras (gif load/save, ~FreeType fonts~ [WIP], SDF for Freetype, C++ OOP wrapper)
 - Optional OpenCL for processing stuff
 - Pixel shader support
 - Audio playback (wav files)
-- Other language bindings
+- Other language bindings (Wren/Lua/Ruby probably)
 
 ### Investigate
 - Why CoreGraphics rendering is so slow
