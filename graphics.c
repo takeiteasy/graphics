@@ -192,20 +192,20 @@ void sgl_pset(surface_t* s, int x, int y, int c)  {
     s->buf[y * s->w + x] = c;
 }
 
-#if !defined(SGL_DISABLE_RGBA)
 #define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
 
+#if !defined(SGL_DISABLE_RGBA)
 void sgl_psetb(surface_t* s, int x, int y, int c) {
   int a = A(c);
   if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
 
   int* p = &s->buf[y * s->w + x];
-  int b = A(*p);
+  int  b = A(*p);
   *p = (a == 255 || !b) ? c : RGBA(BLEND(R(c), R(*p), a, b),
                                    BLEND(G(c), G(*p), a, b),
                                    BLEND(B(c), B(*p), a, b),
-                                   a + (b * (255 - a) / 255));
+                                   a + (b * (255 - a) >> 8));
 }
 
 static void(*pset_fn)(surface_t*, int, int, int) = sgl_psetb;
@@ -218,8 +218,8 @@ void sgl_psetb(surface_t* s, int x, int y, int c) {
   int b = XYGET(s, x, y);
   float i = (float)a / 255.f;
   sgl_pset(s, x, y, (i >= 1.f || i <= 0.f) ? c : RGB((int)roundf(R(c) * (1 - i) + R(b) * i),
-                                                 (int)roundf(G(c) * (1 - i) + G(b) * i),
-                                                 (int)roundf(B(c) * (1 - i) + B(b) * i)));
+                                                     (int)roundf(G(c) * (1 - i) + G(b) * i),
+                                                     (int)roundf(B(c) * (1 - i) + B(b) * i)));
 }
 
 static void(*pset_fn)(surface_t*, int, int, int) = sgl_pset;
@@ -2853,7 +2853,7 @@ void sgl_ftfont_destroy(struct ftfont_t** _font) {
 }
 
 int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y, int fg, int bg, int* w, int* h) {
-  int u = -1, i, j, col;
+  int u = -1, i, j;
   int l = ctoi(ch, &u);
   int index = ftfont_char_index(f, u);
   if (index == -1)
@@ -2863,9 +2863,10 @@ int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y,
   y -= c->bearing.y;
   for (i = 0; i < c->size.x; ++i) {
     for (j = 0; j < c->size.y; ++j) {
-      col = ACHAN(fg, A(XYGET((&(c->buffer)), i, j)));
-#pragma TODO(Fix background colour)
-      pset_fn(s, x + i, y + j, col);
+      pset_fn(s, x + i, y + j, bg);
+#pragma TODO(Find better solution than called pset twice)
+#pragma TODO(Update other font renderers to fix alpha)
+      pset_fn(s, x + i, y + j, ACHAN(fg, CLAMP(A(fg) - (255 - A(XYGET((&(c->buffer)), i, j))), 0, 255)));
     }
   }
   
@@ -3446,6 +3447,7 @@ void free_gl() {
 
 #if defined(SGL_OSX)
 // These fuck with Objective-C stuff
+#pragma TODO(Sort this horrible shit out ffs)
 #undef copy
 #undef release
 #undef cursor

@@ -208,6 +208,7 @@ int main(int argc, const char* argv[]) {
   long sine_i = 0;
   long prev_frame_tick;
   long curr_frame_tick = ticks();
+  int test_alpha = 255;
   while (!closed() && running) {
     prev_frame_tick = curr_frame_tick;
     curr_frame_tick = ticks();
@@ -282,16 +283,7 @@ int main(int argc, const char* argv[]) {
     circle(&win, 502, 32, 30, INDIGO, 1);
     circle(&win, 532, 32, 30, VIOLET, 1);
 
-    writelnf(&win, 400, 88, BLACK, 0, "mouse pos: (%d, %d)\ntheta: %f", mx, my, theta);
-    col = pget(&win, mx, my);
-
-    line(&win, 0, 0, mx, my, col);
-    circle(&win, mx, my, 30, col, 0);
-
     blit(&win, NULL, &s[8], NULL);
-
-    if (grey)
-      filter(&win, greyscale);
     
     delta_ticks = clock() - current_ticks;
     if (delta_ticks > 0)
@@ -300,7 +292,19 @@ int main(int argc, const char* argv[]) {
     
     time(&rt);
     struct tm tm = *localtime(&rt);
-    sgl_ftfont_writelnf(&win, ftf, 2, 495, RED, GREEN, "It is %d/%d/%d at %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    sgl_ftfont_writelnf(&win, ftf, 2, 495, RGBA(255, 0, 0, test_alpha), RGBA(0, 255, 0, test_alpha), "It is %d/%d/%d at %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    test_alpha -= 1;
+    if (test_alpha <= 0)
+      test_alpha = 255;
+    
+    writelnf(&win, 400, 88, BLACK, 0, "mouse pos: (%d, %d)\ntheta: %f", mx, my, theta);
+    col = pget(&win, mx, my);
+    
+    line(&win, 0, 0, mx, my, col);
+    circle(&win, mx, my, 30, col, 0);
+
+    if (grey)
+      filter(&win, greyscale);
     
 FLUSH:
     flush(&win);
