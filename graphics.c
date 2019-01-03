@@ -2935,12 +2935,84 @@ void sgl_ftfont_writelnf(surface_t* s, ftfont_t f, int x, int y, int fg, int bg,
   free(buffer);
 }
 
+
 void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* str) {
-#pragma TODO(Finish this)
+  int w, h;
+  const char* s = (const char*)str;
+  int n = 0, m = 0, nn = 0, mm = 6, c, len, index;
+  ft_char_t* ch = NULL;
+  while (s && *s != '\0') {
+    c = *s;
+    if (c >= 0 && c <= 127) {
+      switch (c) {
+        case '\f':
+        case '\b':
+          if (read_color(s, NULL, &len)) {
+            s += len;
+            continue;
+          }
+          else
+            s++;
+          break;
+        case '\n':
+          if (ch)
+            nn -= (int)(ch->advance >> 6);
+          if (nn > n)
+            n = nn;
+          m += (mm + 6);
+          break;
+        default:
+          index = ftfont_char_index(f, c);
+          if (index == -1)
+            index = load_ftfont_char(f, s);
+          
+          ch = &f->chars[index];
+          nn += ch->size.x + (int)(ch->advance >> 6);
+          if (ch->size.y > mm)
+            mm = ch->size.y;
+          
+          s++;
+          break;
+      }
+    } else {
+      len = ctoi(s, &c);
+      index = ftfont_char_index(f, c);
+      if (index == -1)
+        index = load_ftfont_char(f, s);
+      
+      
+    }
+  }
+  if (nn > n)
+    n = nn;
+  m += (mm + 6);
+  w = n;
+  h = m;
+  
+  sgl_surface(out, w, h);
+  sgl_fill(out, bg);
+  sgl_ftfont_writeln(out, f, 0, 0, fg, 0, str);
 }
 
 void sgl_ftfont_stringf(surface_t* out, ftfont_t f, int fg, int bg, const char* fmt, ...) {
-#pragma TODO(Finish this)
+  char *buffer = NULL;
+  int buffer_size = 0;
+  
+  va_list argptr;
+  va_start(argptr, fmt);
+  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
+  va_end(argptr);
+  
+  if (length + 1 > buffer_size) {
+    buffer_size = length + 1;
+    buffer = realloc(buffer, buffer_size);
+    va_start(argptr, fmt);
+    vsnprintf(buffer, buffer_size, fmt, argptr);
+    va_end(argptr);
+  }
+  
+  sgl_ftfont_string(out, f, fg, bg, buffer);
+  free(buffer);
 }
 #endif
 
@@ -4621,10 +4693,9 @@ bool sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
     flags |= (BORDERLESS | RESIZABLE | FULLSCREEN_DESKTOP);
   _flags |= (flags & RESIZABLE ? NSWindowStyleMaskResizable : 0);
   if (flags & BORDERLESS) {
+    _flags |= NSWindowStyleMaskFullSizeContentView;
     border_off = 0;
-    _flags |= NSWindowStyleMaskBorderless;
-  } else
-    _flags |= NSWindowStyleMaskTitled;
+  }
   if (flags & FULLSCREEN_DESKTOP) {
     NSRect f = [[NSScreen mainScreen] frame];
     w = win_w = f.size.width;
@@ -4633,9 +4704,6 @@ bool sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
     win_w = w;
     win_h = h;
   }
-
-  if (!border_off && flags & FULLSCREEN)
-    _flags |= (~NSWindowStyleMaskBorderless | NSWindowStyleMaskFullSizeContentView);
 
   if (s)
     if (!sgl_surface(s, w, h))
@@ -4650,7 +4718,7 @@ bool sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
     error_handle(HIGH_PRIORITY, OSX_WINDOW_CREATION_FAILED, "[osx_app_t initWithContentRect] failed");
     return false;
   }
-
+  
   if (flags & ALWAYS_ON_TOP)
     [app setLevel:NSFloatingWindowLevel];
 

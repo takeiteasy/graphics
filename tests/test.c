@@ -134,7 +134,7 @@ void on_joystick_axis(void* data, joystick_t* d, int axis, float v, float lv, lo
 int main(int argc, const char* argv[]) {
   error_callback(on_error);
 
-  screen("test", &win, win_w, win_h, DEFAULT);
+  screen("test", &win, win_w, win_h, BORDERLESS);
   screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize);
   cursor(SHOWN, LOCKED, CURSOR_HAND);
 
@@ -202,6 +202,9 @@ int main(int argc, const char* argv[]) {
   clock_t current_ticks, delta_ticks;
   clock_t fps = 0;
   time_t rt;
+  
+  surface_t test_str;
+  sgl_ftfont_string(&test_str, ftf, RED, 0, "Hello World!");
   
   float theta = 1.f;
   int col = 0;
@@ -292,7 +295,7 @@ int main(int argc, const char* argv[]) {
     
     time(&rt);
     struct tm tm = *localtime(&rt);
-    sgl_ftfont_writelnf(&win, ftf, 2, 495, RGBA(255, 0, 0, test_alpha), RGBA(0, 255, 0, test_alpha), "It is %d/%d/%d at %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    sgl_ftfont_writelnf(&win, ftf, 0, 90, RGBA(255, 0, 0, test_alpha), RGBA(0, 255, 0, test_alpha), "It is %d/%d/%d at %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     test_alpha -= 1;
     if (test_alpha <= 0)
       test_alpha = 255;
@@ -305,6 +308,8 @@ int main(int argc, const char* argv[]) {
 
     if (grey)
       filter(&win, greyscale);
+    
+    sgl_blit(&win, NULL, &test_str, NULL);
     
 FLUSH:
     flush(&win);

@@ -57,7 +57,6 @@ Tested on:
 
 ### Important
 
-- Fix borderless window mode for OSX
 - Cursor clipping for Linux [and OSX](https://stackoverflow.com/a/40922095)
 - Sort out redundant functions in font rendering default/bdf/freetype
 - Sort out joysticks
@@ -97,6 +96,7 @@ Tested on:
 - Other language bindings (Wren/Lua/Ruby probably)
 
 ### Investigate
+
 - Why CoreGraphics rendering is so slow
 - Resizing for X11
 - Getting CoreGraphcs working on OSX in 10.13 again
