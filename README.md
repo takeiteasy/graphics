@@ -19,6 +19,8 @@ Designed to be a drop-in and use with little hassle sort of deal. I don't know i
 
 See below screenshots for TODO list and the examples folder for some idea of how to use. ___Still a WIP, API subject to change a lot___.
 
+OSX will be the primary platform for all stuff, then after that is working to a level I like I will finish the windows port and after that the linux port. It's too much effort changing something on OSX then doing it on other platforms all the time.
+
 
 ## Building
 
@@ -65,6 +67,7 @@ Tested on:
   - Make joystick_t a private struct in source
   - Fix crashes
   - Linux joysticks totally untested, need to test on real hardware
+- Make a CMake build file
 
 ### Less important
 

@@ -2935,9 +2935,7 @@ void sgl_ftfont_writelnf(surface_t* s, ftfont_t f, int x, int y, int fg, int bg,
   free(buffer);
 }
 
-
 void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* str) {
-  int w, h;
   const char* s = (const char*)str;
   int n = 0, m = 0, nn = 0, mm = 6, c, len, index;
   ft_char_t* ch = NULL;
@@ -2945,6 +2943,15 @@ void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* s
     c = *s;
     if (c >= 0 && c <= 127) {
       switch (c) {
+        case '\n':
+          if (ch)
+            nn -= (int)(ch->advance >> 6);
+          if (nn > n)
+            n = nn;
+          nn = 0;
+          m += (mm + 6);
+          s++;
+          break;
         case '\f':
         case '\b':
           if (read_color(s, NULL, &len)) {
@@ -2954,23 +2961,15 @@ void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* s
           else
             s++;
           break;
-        case '\n':
-          if (ch)
-            nn -= (int)(ch->advance >> 6);
-          if (nn > n)
-            n = nn;
-          m += (mm + 6);
-          break;
         default:
           index = ftfont_char_index(f, c);
           if (index == -1)
             index = load_ftfont_char(f, s);
           
           ch = &f->chars[index];
-          nn += ch->size.x + (int)(ch->advance >> 6);
+          nn += (int)(ch->advance >> 6);
           if (ch->size.y > mm)
             mm = ch->size.y;
-          
           s++;
           break;
       }
@@ -2979,19 +2978,15 @@ void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* s
       index = ftfont_char_index(f, c);
       if (index == -1)
         index = load_ftfont_char(f, s);
-      
-      
     }
   }
   if (nn > n)
     n = nn;
-  m += (mm + 6);
-  w = n;
-  h = m;
+  m += mm + 6;
   
-  sgl_surface(out, w, h);
+  sgl_surface(out, n, m);
   sgl_fill(out, bg);
-  sgl_ftfont_writeln(out, f, 0, 0, fg, 0, str);
+  sgl_ftfont_writeln(out, f, 0, mm, fg, 0, str);
 }
 
 void sgl_ftfont_stringf(surface_t* out, ftfont_t f, int fg, int bg, const char* fmt, ...) {

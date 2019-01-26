@@ -97,7 +97,7 @@ void on_resize(void* data, int w, int h) {
 // Define RES_PATH or it will use my paths
 #if !defined(RES_PATH)
 #if defined(__APPLE__)
-#define RES_PATH "/Users/roryb/Documents/git/graphics.h/tests/"
+#define RES_PATH "/Users/roryb/git/graphics.h/tests/"
 #elif defined(_WIN32)
 #define RES_PATH "C:\\Users\\DESKTOP\\Documents\\graphics.h\\tests\\"
 #else
@@ -150,8 +150,9 @@ int main(int argc, const char* argv[]) {
   ftfont(&ftf, "/Library/Fonts/Times New Roman.ttf", 32);
 #endif
   
-  surface_t s[10];
-  for (int i = 0; i < 10; ++i)
+#define TOTAL_SURFACES 11
+  surface_t s[TOTAL_SURFACES];
+  for (int i = 0; i < TOTAL_SURFACES; ++i)
     s[i].buf = NULL;
   surface(&s[0], 50, 50);
 
@@ -172,7 +173,7 @@ int main(int argc, const char* argv[]) {
   copy(&s[2], &s[4]);
   filter(&s[4], invert);
 
-  point_t points[9] = {
+  point_t points[10] = {
     { 10,  150 },
     { 5,   227 },
     { 350, 125 },
@@ -181,7 +182,8 @@ int main(int argc, const char* argv[]) {
     { 425, 110 },
     { 482, 170 },
     { 530, 370 },
-    { 100, 20  }
+    { 100, 20  },
+    { 15, 300 }
   };
   points[3].x = points[1].x + s[2].w + 5;
   points[3].y = points[1].y;
@@ -203,8 +205,7 @@ int main(int argc, const char* argv[]) {
   clock_t fps = 0;
   time_t rt;
   
-  surface_t test_str;
-  sgl_ftfont_string(&test_str, ftf, RED, 0, "Hello World!");
+  sgl_ftfont_string(&s[10], ftf, RED, 0, "Hello World!\nThis is a test ABCDEFGHIJKLMNOPQ\nHello Word... Again!");
   
   float theta = 1.f;
   int col = 0;
@@ -305,11 +306,11 @@ int main(int argc, const char* argv[]) {
     
     line(&win, 0, 0, mx, my, col);
     circle(&win, mx, my, 30, col, 0);
+    
+    sgl_blit(&win, &points[9], &s[10], NULL);
 
     if (grey)
       filter(&win, greyscale);
-    
-    sgl_blit(&win, NULL, &test_str, NULL);
     
 FLUSH:
     flush(&win);
