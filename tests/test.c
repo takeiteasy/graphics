@@ -134,7 +134,7 @@ void on_joystick_axis(void* data, joystick_t* d, int axis, float v, float lv, lo
 int main(int argc, const char* argv[]) {
   sgl_error_callback(on_error);
 
-  sgl_screen("test", &win, win_w, win_h, BORDERLESS);
+  sgl_screen("test", &win, win_w, win_h, DEFAULT);
   sgl_screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize);
   sgl_cursor(SHOWN, LOCKED, CURSOR_HAND);
 
