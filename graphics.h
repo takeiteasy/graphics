@@ -273,6 +273,9 @@ extern "C" {
     STBI_LOAD_FAILED,
     STBI_WRITE_FAILED,
 #endif
+#if defined(SGL_ENABLE_GIF)
+    GIF_LOAD_FAILED,
+#endif
 #if defined(SGL_ENABLE_OPENGL)
     GL_SHADER_ERROR,
 #endif
@@ -366,51 +369,6 @@ extern "C" {
   long sgl_ticks(void);
   void sgl_delay(long ms);
 
-#if defined(SGL_ENABLE_SHORT_NAMES)
-#define set_userdata sgl_set_userdata
-#define get_userdata sgl_get_userdata
-#define error_callback sgl_error_callback
-#define surface sgl_surface
-#define destroy sgl_destroy
-#define fill sgl_fill
-#define flood sgl_flood
-#define cls sgl_cls
-#define pset sgl_pset
-#define psetb sgl_psetb
-#define pget sgl_pget
-#define blit sgl_blit
-#define reset sgl_reset
-#define copy sgl_copy
-#define filter sgl_filter
-#define resize sgl_resize
-#define rotate sgl_rotate
-
-#define vline sgl_vline
-#define hline sgl_hline
-#define line sgl_line
-#define circle sgl_circle
-#define ellipse sgl_ellipse
-#define ellipse_rotated sgl_ellipse_rotated
-#define ellipse_rect_rotated sgl_ellipse_rect_rotated
-#define bezier sgl_bezier
-#define bezier_rational sgl_bezier_rational
-#define bezier_cubic sgl_bezier_cubic
-#define rect sgl_rect
-
-#define bmp sgl_bmp
-#define save_bmp sgl_save_bmp
-
-#define ascii sgl_ascii
-#define character sgl_character
-#define writeln sgl_writeln
-#define writelnf sgl_writelnf
-#define string sgl_string
-#define stringf sgl_stringf
-
-#define ticks sgl_ticks
-#define delay sgl_delay
-#endif
-
 #if defined(SGL_ENABLE_BDF)
   typedef struct bdf_t* bdf_t;
   void sgl_bdf_destroy(bdf_t* f);
@@ -420,16 +378,6 @@ extern "C" {
   void sgl_bdf_writelnf(surface_t* s, bdf_t f, int x, int y, int fg, int bg, const char* fmt, ...);
   void sgl_bdf_string(surface_t* out, bdf_t f, int fg, int bg, const char* str);
   void sgl_bdf_stringf(surface_t* out, bdf_t f, int fg, int bg, const char* fmt, ...);
-
-#if defined(SGL_ENABLE_SHORT_NAMES)
-#define bdf_destroy sgl_bdf_destroy
-#define bdf sgl_bdf
-#define bdf_character sgl_bdf_character
-#define bdf_writeln sgl_bdf_writeln
-#define bdf_writelnf sgl_bdf_writelnf
-#define bdf_string sgl_bdf_string
-#define bdf_stringf sgl_bdf_stringf
-#endif
 #endif
   
 #if defined(SGL_ENABLE_FREETYPE)
@@ -443,18 +391,6 @@ extern "C" {
   void sgl_ftfont_writelnf(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* fmt, ...);
   void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* str);
   void sgl_ftfont_stringf(surface_t* out, ftfont_t f, int fg, int bg, const char* fmt, ...);
-  
-#if defined(SGL_ENABLE_SHORT_NAMES)
-#define ft_init sgl_ft_init
-#define ft_release sgl_ft_release
-#define ftfont sgl_ftfont
-#define ftfont_destroy sgl_ftfont_destroy
-#define ftfont_character sgl_ftfont_character
-#define ftfont_writeln sgl_ftfont_writeln
-#define ftfont_writelnf sgl_ftfont_writelnf
-#define ftfont_string sgl_ftfont_string
-#define ftfont_stringf sgl_ftfont_stringf
-#endif
 #endif
 
 #if defined(SGL_ENABLE_STB_IMAGE)
@@ -464,13 +400,20 @@ extern "C" {
     BMP,
     JPG
   } SAVEFORMAT;
+  
   bool sgl_image(surface_t* out, const char* path);
   bool sgl_save_image(surface_t* in, const char* path, SAVEFORMAT type);
-
-#if defined(SGL_ENABLE_SHORT_NAMES)
-#define image sgl_image
-#define save_image sgl_save_image
 #endif
+  
+#if defined(SGL_ENABLE_GIF)
+#include <stdint.h>
+  
+  typedef struct {
+    int delay, frames, frame, w, h;
+    surface_t* surfaces;
+  } gif_t;
+
+  bool sgl_gif(gif_t* g, const char* path);
 #endif
 
 #if !defined(SGL_DISABLE_WINDOW)
@@ -499,16 +442,6 @@ extern "C" {
   void sgl_joystick_release(void);
   bool sgl_joystick_remove(int id);
   void sgl_joystick_poll(void);
-
-#if defined(SGL_ENABLE_SHORT_NAMES)
-#define joystick sgl_joystick
-#define joystick_init sgl_joystick_init
-#define joystick_scan sgl_joystick_scan
-#define joystick_release sgl_joystick_release
-#define joystick_remove sgl_joystick_remove
-#define joystick_callbacks sgl_joystick_callbacks
-#define joystick_poll sgl_joystick_poll
-#endif
 #endif
 
   typedef enum {
@@ -717,23 +650,6 @@ extern "C" {
   void sgl_flush(surface_t* s);
   void sgl_release(void);
   bool sgl_closed(void);
-
-#if defined(SGL_ENABLE_SHORT_NAMES)
-#define screen_callbacks sgl_screen_callbacks
-#define keyboard_callback sgl_keyboard_callback
-#define mouse_button_callback sgl_mouse_button_callback
-#define mouse_move_callback sgl_mouse_move_callback
-#define scroll_callback sgl_scroll_callback
-#define active_callback sgl_active_callback
-#define resize_callback sgl_resize_callback
-#define cursor sgl_cursor
-#define custom_cursor sgl_custom_cursor
-#define screen sgl_screen
-#define poll sgl_poll
-#define flush sgl_flush
-#define release sgl_release
-#define closed sgl_closed
-#endif
 #endif
 
 #if defined(__cplusplus)

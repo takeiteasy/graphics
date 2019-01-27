@@ -14,6 +14,7 @@ Designed to be a drop-in and use with little hassle sort of deal. I don't know i
 - Save surfaces to BMP file
 - Text rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
 - Joystick handling (adapted from [ThemsAllTook/libstem_gamepad](https://github.com/ThemsAllTook/libstem_gamepad))
+- GIF loading (adapted from [hidefromkgb/gif_load](https://github.com/hidefromkgb/gif_load))
 - Optional OpenGL & Metal backends (Just for rendering to screen)
 - Optional extras (AA primitives, BDF font rendering, Freetype rendering, image loader using [stb_image](https://github.com/nothings/stb))
 
@@ -60,22 +61,21 @@ Tested on:
 ### Important
 
 - Cursor clipping for Linux [and OSX](https://stackoverflow.com/a/40922095)
-- Sort out redundant functions in font rendering default/bdf/freetype
 - Sort out joysticks
   - General clean up
   - Remove redundant stuff
   - Make joystick_t a private struct in source
   - Fix crashes
-  - Linux joysticks totally untested, need to test on real hardware
+  - Linux joysticks totally untested
 - Make a CMake build file
+- Port new stuff to Windows & Linux
 
 ### Less important
 
 - Come back to surface transformation
 - Different scaling functions
 - Add fill option for ```ellipse_rotated()``` and other functions
-- Add line width option
-- CMake file for build options
+- Add line width option to primitives
 - 1 & 4 bpp, RLE compressed and OS/2 BMP support
 - Message box support
 - Window icon support
@@ -92,7 +92,7 @@ Tested on:
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples/tests
-- More extras (gif load/save, ~FreeType fonts~ [WIP], SDF for Freetype, C++ OOP wrapper)
+- More extras (gif ~load~/save, ~FreeType fonts~, C++ OOP wrapper)
 - Optional OpenCL for processing stuff
 - Pixel shader support
 - Audio playback (wav files)

@@ -55,11 +55,11 @@ void on_keyboard(void* data, KEYSYM sym, KEYMOD mod, bool down) {
         grey = false;
         break;
       case KB_KEY_F1:
-        save_bmp(&win, "test.bmp");
+        sgl_save_bmp(&win, "test.bmp");
         break;
 #if defined(SGL_ENABLE_STB_IMAGE)
       case KB_KEY_F2:
-        save_image(&win, "test.png", PNG);
+        sgl_save_image(&win, "test.png", PNG);
         break;
 #endif
     }
@@ -87,11 +87,11 @@ void on_resize(void* data, int w, int h) {
   win_w = w;
   win_h = h;
 #if !SKIP_RESIZE
-  reset(&win, w, h);
+  sgl_reset(&win, w, h);
 #else
   cls(&win);
 #endif
-  writelnf(&win, 4, 5, WHITE, -1, "%dx%d\n", w, h);
+  sgl_writelnf(&win, 4, 5, WHITE, -1, "%dx%d\n", w, h);
 }
 
 // Define RES_PATH or it will use my paths
@@ -132,48 +132,50 @@ void on_joystick_axis(void* data, joystick_t* d, int axis, float v, float lv, lo
 #endif
 
 int main(int argc, const char* argv[]) {
-  error_callback(on_error);
+  sgl_error_callback(on_error);
 
-  screen("test", &win, win_w, win_h, BORDERLESS);
-  screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize);
-  cursor(SHOWN, LOCKED, CURSOR_HAND);
+  sgl_screen("test", &win, win_w, win_h, BORDERLESS);
+  sgl_screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize);
+  sgl_cursor(SHOWN, LOCKED, CURSOR_HAND);
 
 #if defined(SGL_ENABLE_JOYSTICKS)
-  joystick_callbacks(on_joystick_connect, on_joystick_disconnect, on_joystick_btn, on_joystick_axis);
-  joystick_init(true);
-#endif
-  
-#if defined(SGL_ENABLE_FREETYPE)
-  ft_init();
-
-  ftfont_t ftf;
-  ftfont(&ftf, "/Library/Fonts/Times New Roman.ttf", 32);
+  sgl_joystick_callbacks(on_joystick_connect, on_joystick_disconnect, on_joystick_btn, on_joystick_axis);
+  sgl_joystick_init(true);
 #endif
   
 #define TOTAL_SURFACES 11
   surface_t s[TOTAL_SURFACES];
   for (int i = 0; i < TOTAL_SURFACES; ++i)
     s[i].buf = NULL;
-  surface(&s[0], 50, 50);
+  sgl_surface(&s[0], 50, 50);
+  
+#if defined(SGL_ENABLE_FREETYPE)
+  sgl_ft_init();
 
-#if defined(SGL_ENABLE_STB_IMAGE)
-  image(&s[1], RES("test_alpha.png"));
+  ftfont_t ftf;
+  sgl_ftfont(&ftf, "/Library/Fonts/Times New Roman.ttf", 32);
+  
+  sgl_ftfont_string(&s[10], ftf, WHITE, BLACK, "Hello World!\nThis is a test ABCDEFGHIJKLMNOPQ\nHello Word... Again!");
 #endif
 
-  bmp(&s[6], RES("lena.bmp"));
-  resize(&s[6], s[6].w / 2, s[6].h / 2, &s[2]);
-  destroy(&s[6]);
+#if defined(SGL_ENABLE_STB_IMAGE)
+  sgl_image(&s[1], RES("test_alpha.png"));
+#endif
+
+  sgl_bmp(&s[6], RES("lena.bmp"));
+  sgl_resize(&s[6], s[6].w / 2, s[6].h / 2, &s[2]);
+  sgl_destroy(&s[6]);
 
 #if defined(SGL_ENABLE_BDF)
   // BDF font from tewi-font: https://github.com/lucy/tewi-font
   bdf_t tewi;
-  bdf(&tewi, RES("tewi.bdf"));
+  sgl_bdf(&tewi, RES("tewi.bdf"));
 #endif
 
-  copy(&s[2], &s[4]);
-  filter(&s[4], invert);
+  sgl_copy(&s[2], &s[4]);
+  sgl_filter(&s[4], invert);
 
-  point_t points[10] = {
+  point_t points[11] = {
     { 10,  150 },
     { 5,   227 },
     { 350, 125 },
@@ -183,43 +185,47 @@ int main(int argc, const char* argv[]) {
     { 482, 170 },
     { 530, 370 },
     { 100, 20  },
-    { 15, 300 }
+    { 15, 400 },
+    { 200, 100 }
   };
   points[3].x = points[1].x + s[2].w + 5;
   points[3].y = points[1].y;
 
   rect_t cutr  = { 125, 120, 50, 50 };
-  stringf(&s[3], RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", cutr.x, cutr.y, cutr.w, cutr.h);
+  sgl_stringf(&s[3], RED, LIME, "cut from the\nimage below\nx: %d y: %d\nw: %d h: %d", cutr.x, cutr.y, cutr.w, cutr.h);
 
-  surface(&s[9], 50, 50);
-  fill(&s[9], BLACK);
-  writeln(&s[9], 13, 20, LIME, BLACK, "WOW");
+  sgl_surface(&s[9], 50, 50);
+  sgl_fill(&s[9], BLACK);
+  sgl_writeln(&s[9], 13, 20, LIME, BLACK, "WOW");
 
-  surface(&s[5], 100, 100);
-  rect(&s[5], 0,  0,  50, 50, RGBA(255, 0, 0, 128), 1);
-  rect(&s[5], 50, 50, 50, 50, RGBA(0, 255, 0, 128), 1);
-  rect(&s[5], 50, 0,  50, 50, RGBA(0, 0, 255, 128), 1);
-  rect(&s[5], 0,  50, 50, 50, RGBA(255, 255, 0, 128), 1);
+  sgl_surface(&s[5], 100, 100);
+  sgl_rect(&s[5], 0,  0,  50, 50, RGBA(255, 0, 0, 128), 1);
+  sgl_rect(&s[5], 50, 50, 50, 50, RGBA(0, 255, 0, 128), 1);
+  sgl_rect(&s[5], 50, 0,  50, 50, RGBA(0, 0, 255, 128), 1);
+  sgl_rect(&s[5], 0,  50, 50, 50, RGBA(255, 255, 0, 128), 1);
   
   clock_t current_ticks, delta_ticks;
   clock_t fps = 0;
   time_t rt;
   
-  sgl_ftfont_string(&s[10], ftf, RED, 0, "Hello World!\nThis is a test ABCDEFGHIJKLMNOPQ\nHello Word... Again!");
+#if defined(SGL_ENABLE_GIF)
+  gif_t ok_hand;
+  sgl_gif(&ok_hand, RES("ok.gif"));
+#endif
   
   float theta = 1.f;
   int col = 0;
   long sine_i = 0;
   long prev_frame_tick;
-  long curr_frame_tick = ticks();
+  long curr_frame_tick = sgl_ticks();
   int test_alpha = 255;
-  while (!closed() && running) {
+  while (!sgl_closed() && running) {
     prev_frame_tick = curr_frame_tick;
-    curr_frame_tick = ticks();
+    curr_frame_tick = sgl_ticks();
 #if defined(SGL_ENABLE_JOYSTICKS)
-    joystick_poll();
+    sgl_joystick_poll();
 #endif
-    poll();
+    sgl_poll();
     long speed = curr_frame_tick - prev_frame_tick;
 
 #if SKIP_RENDING
@@ -229,70 +235,77 @@ int main(int argc, const char* argv[]) {
     current_ticks = clock();
 
 //    cls(&win);
-    fill(&win, WHITE);
+    sgl_fill(&win, WHITE);
 
     for (int x = 32; x < win.w; x += 32)
-      vline(&win, x, 0, win.h, GRAY);
+      sgl_vline(&win, x, 0, win.h, GRAY);
     for (int y = 32; y < win.h; y += 32)
-      hline(&win, y, 0, win.w, GRAY);
+      sgl_hline(&win, y, 0, win.w, GRAY);
 
 #if defined(SGL_ENABLE_STB_IMAGE)
-    blit(&win, &points[8], &s[1], NULL);
+    sgl_blit(&win, &points[8], &s[1], NULL);
 #endif
 
-    writeln(&win, 10, 10, RED, -1, "Hello World");
-    writeln(&win, 10, 22, MAROON, -1, "こんにちは");
+    sgl_writeln(&win, 10, 10, RED, -1, "Hello World");
+    sgl_writeln(&win, 10, 22, MAROON, -1, "こんにちは");
 #if defined(SGL_ENABLE_BDF)
-    bdf_writeln(&win, tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ bdf!");
+    sgl_bdf_writeln(&win, tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ bdf!");
 #endif
-    writeln(&win, 10, 48, RED, BLACK, "\f(255,0,0)\b(0,0,0)test\f(0,255,0)\b(0,0,0)test");
+    sgl_writeln(&win, 10, 48, RED, BLACK, "\f(255,0,0)\b(0,0,0)test\f(0,255,0)\b(0,0,0)test");
 
     int last_x = 0, last_y = 200;
     for (long i = sine_i; i < (sine_i + win.w); ++i) {
       float x = (float)(i - sine_i);
       float y = 200.f + (75.f * sinf(i * (3.141f / 180.f)));
-      line(&win, last_x, last_y, x, y, col);
+      sgl_line(&win, last_x, last_y, x, y, col);
       last_x = x;
       last_y = y;
     }
     sine_i += (int)(speed * .2);
 
-    blit(&win, &points[4], &s[3], NULL);
-    blit(&win, &points[0], &s[2], &cutr);
+    sgl_blit(&win, &points[4], &s[3], NULL);
+    sgl_blit(&win, &points[0], &s[2], &cutr);
 
-    blit(&win, &points[1], &s[2], NULL);
-    blit(&win, &points[3], &s[4], NULL);
+    sgl_blit(&win, &points[1], &s[2], NULL);
+    sgl_blit(&win, &points[3], &s[4], NULL);
 
-    rotate(&s[5], theta, &s[7]);
+    sgl_rotate(&s[5], theta, &s[7]);
     point_t tmp = {
       points[5].x - s[7].w / 2 + s[5].w / 2,
       points[5].y - s[7].h / 2 + s[5].h / 2,
     };
-    blit(&win, &tmp, &s[7], NULL);
-    blit(&win, &points[5], &s[5], NULL);
+    sgl_blit(&win, &tmp, &s[7], NULL);
+    sgl_blit(&win, &points[5], &s[5], NULL);
     theta += (.05f * speed);
     if (theta >= 360.f)
       theta = 0.f;
-    destroy(&s[7]);
+    sgl_destroy(&s[7]);
 
-    filter(&s[0], rnd);
-    blit(&s[0], NULL, &s[9], NULL);
-    blit(&win, &points[2], &s[0], NULL);
+    sgl_filter(&s[0], rnd);
+    sgl_blit(&s[0], NULL, &s[9], NULL);
+    sgl_blit(&win, &points[2], &s[0], NULL);
+    
+#if defined(SGL_ENABLE_GIF)
+    sgl_blit(&win, &points[10], &ok_hand.surfaces[ok_hand.frame], NULL);
+    ok_hand.frame++;
+    if (ok_hand.frame >= ok_hand.frames)
+      ok_hand.frame = 0;
+#endif
 
-    circle(&win, 352, 32, 30, RED,    1);
-    circle(&win, 382, 32, 30, ORANGE, 1);
-    circle(&win, 412, 32, 30, YELLOW, 1);
-    circle(&win, 442, 32, 30, LIME,   1);
-    circle(&win, 472, 32, 30, BLUE,   1);
-    circle(&win, 502, 32, 30, INDIGO, 1);
-    circle(&win, 532, 32, 30, VIOLET, 1);
+    sgl_circle(&win, 352, 32, 30, RED,    1);
+    sgl_circle(&win, 382, 32, 30, ORANGE, 1);
+    sgl_circle(&win, 412, 32, 30, YELLOW, 1);
+    sgl_circle(&win, 442, 32, 30, LIME,   1);
+    sgl_circle(&win, 472, 32, 30, BLUE,   1);
+    sgl_circle(&win, 502, 32, 30, INDIGO, 1);
+    sgl_circle(&win, 532, 32, 30, VIOLET, 1);
 
-    blit(&win, NULL, &s[8], NULL);
+    sgl_blit(&win, NULL, &s[8], NULL);
     
     delta_ticks = clock() - current_ticks;
     if (delta_ticks > 0)
       fps = CLOCKS_PER_SEC / delta_ticks;
-    writelnf(&win, 2, 2, RED, 0, "FPS: %ju", fps);
+    sgl_writelnf(&win, 2, 2, RED, 0, "FPS: %ju", fps);
     
     time(&rt);
     struct tm tm = *localtime(&rt);
@@ -301,34 +314,34 @@ int main(int argc, const char* argv[]) {
     if (test_alpha <= 0)
       test_alpha = 255;
     
-    writelnf(&win, 400, 88, BLACK, 0, "mouse pos: (%d, %d)\ntheta: %f", mx, my, theta);
-    col = pget(&win, mx, my);
+    sgl_writelnf(&win, 400, 88, BLACK, 0, "mouse pos: (%d, %d)\ntheta: %f", mx, my, theta);
+    col = sgl_pget(&win, mx, my);
     
-    line(&win, 0, 0, mx, my, col);
-    circle(&win, mx, my, 30, col, 0);
+    sgl_line(&win, 0, 0, mx, my, col);
+    sgl_circle(&win, mx, my, 30, col, 0);
     
     sgl_blit(&win, &points[9], &s[10], NULL);
 
     if (grey)
-      filter(&win, greyscale);
+      sgl_filter(&win, greyscale);
     
 FLUSH:
-    flush(&win);
+    sgl_flush(&win);
   }
 
 #if defined(SGL_ENABLE_JOYSTICKS)
-  joystick_release();
+  sgl_joystick_release();
 #endif
 #if defined(SGL_ENABLE_BDF)
-  bdf_destroy(&tewi);
+  sgl_bdf_destroy(&tewi);
 #endif
 #if defined(SGL_ENABLE_FREETYPE)
-  ftfont_destroy(&ftf);
-  ft_release();
+  sgl_ftfont_destroy(&ftf);
+  sgl_ft_release();
 #endif
-  destroy(&win);
+  sgl_destroy(&win);
   for (int i = 0; i < (int)(sizeof(s) / sizeof(s[0])); ++i)
-    destroy(&s[i]);
-  release();
+    sgl_destroy(&s[i]);
+  sgl_release();
   return 0;
 }
