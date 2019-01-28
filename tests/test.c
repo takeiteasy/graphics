@@ -211,6 +211,7 @@ int main(int argc, const char* argv[]) {
 #if defined(SGL_ENABLE_GIF)
   gif_t ok_hand;
   sgl_gif(&ok_hand, RES("ok.gif"));
+  sgl_save_gif(&ok_hand, "/Users/roryb/Desktop/test.gif");
 #endif
   
   float theta = 1.f;
@@ -338,6 +339,9 @@ FLUSH:
 #if defined(SGL_ENABLE_FREETYPE)
   sgl_ftfont_destroy(&ftf);
   sgl_ft_release();
+#endif
+#if defined(SGL_ENABLE_GIF)
+  sgl_gif_destroy(&ok_hand);
 #endif
   sgl_destroy(&win);
   for (int i = 0; i < (int)(sizeof(s) / sizeof(s[0])); ++i)

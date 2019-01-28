@@ -275,6 +275,8 @@ extern "C" {
 #endif
 #if defined(SGL_ENABLE_GIF)
     GIF_LOAD_FAILED,
+    GIF_SAVE_INVALID_SIZE,
+    GIF_SAVE_FAILED,
 #endif
 #if defined(SGL_ENABLE_OPENGL)
     GL_SHADER_ERROR,
@@ -406,14 +408,14 @@ extern "C" {
 #endif
   
 #if defined(SGL_ENABLE_GIF)
-#include <stdint.h>
-  
   typedef struct {
     int delay, frames, frame, w, h;
     surface_t* surfaces;
   } gif_t;
 
   bool sgl_gif(gif_t* g, const char* path);
+  bool sgl_save_gif(gif_t* g, const char* path);
+  void sgl_gif_destroy(gif_t** g);
 #endif
 
 #if !defined(SGL_DISABLE_WINDOW)

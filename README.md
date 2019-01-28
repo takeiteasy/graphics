@@ -14,7 +14,7 @@ Designed to be a drop-in and use with little hassle sort of deal. I don't know i
 - Save surfaces to BMP file
 - Text rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
 - Joystick handling (adapted from [ThemsAllTook/libstem_gamepad](https://github.com/ThemsAllTook/libstem_gamepad))
-- GIF loading (adapted from [hidefromkgb/gif_load](https://github.com/hidefromkgb/gif_load))
+- GIF loading (adapted from [hidefromkgb/gif_load](https://github.com/hidefromkgb/gif_load)) and saving (adapted from [lecram/gifenc](https://github.com/lecram/gifenc))
 - Optional OpenGL & Metal backends (Just for rendering to screen)
 - Optional extras (AA primitives, BDF font rendering, Freetype rendering, image loader using [stb_image](https://github.com/nothings/stb))
 
