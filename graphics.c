@@ -3729,20 +3729,19 @@ void ge_close_gif(ge_GIF* gif) {
 }
 
 bool sgl_save_gif(gif_t* _g, const char* path) {
-  int nframes = sizeof(_g->surfaces) / sizeof(surface_t);
   int w = _g->w, h = _g->h, i, x, y, j, c, cp;
   uint8_t r, g, b;
   
-  for (i = 0; i < nframes; ++i) {
+  for (i = 0; i < _g->frames; ++i) {
     if (_g->surfaces[i].w != w || _g->surfaces[i].h != h) {
       error_handle(NORMAL_PRIORITY, GIF_SAVE_INVALID_SIZE, "Sizes of surfaces in GIF don't match");
       return false;
     }
   }
   
-  int** frames = malloc(sizeof(int*) * nframes);
+  int** frames = malloc(sizeof(int*) * _g->frames);
   uint8_t* pallet = NULL;
-  for (i = 0; i < nframes; ++i) {
+  for (i = 0; i < _g->frames; ++i) {
     frames[i] = malloc(sizeof(int) * w * h);
     for (x = 0; x < w; ++x) {
       for (y = 0; y < h; ++y) {
@@ -3759,46 +3758,46 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
           }
         }
         
-        if (cp >= 0) {
+        if (cp < 0) {
           cp = stb_sb_count(pallet);
           stb_sb_push(pallet, r);
           stb_sb_push(pallet, g);
           stb_sb_push(pallet, b);
         }
         
-        frames[i][y * w + x] = cp;
+        frames[i][y * w + x] = cp / 3;
       }
     }
   }
   
-  ge_GIF* out = ge_new_gif(path, w, h, pallet, log2(stb_sb_count(pallet)), 0);
+  printf("%d\n", stb_sb_count(pallet) / 3);
+  
+  int depth = (int)log2((double)(stb_sb_count(pallet) / 3));
+  ge_GIF* out = ge_new_gif(path, w, h, pallet, (depth > 8 ? 8 : depth), 0);
   if (!out) {
     error_handle(HIGH_PRIORITY, GIF_SAVE_FAILED, "Failed to create GIF");
     return false;
   }
   
-  for (i = 0; i < nframes; ++i) {
-    memcpy(out->frame, frames[i], sizeof(uint8_t) * w * h);
+  for (i = 0; i < _g->frames; ++i) {
+    for (j = 0; j < w * h; ++j)
+      out->frame[j] = frames[i][j];
     ge_add_frame(out, _g->delay);
   }
-  ge_close_gif(out);;
+  ge_close_gif(out);
   
-  for (i = 0; i < nframes; ++i)
+  for (i = 0; i < _g->frames; ++i)
     free(frames[i]);
   free(frames);
   stb_sb_free(pallet);
   return true;
 }
 
-void sgl_gif_destroy(gif_t** g) {
-  if (!*g)
-    return;
-  
-  gif_t* _g = *g;
-  int nframes = sizeof(_g->surfaces) / sizeof(surface_t);
+void sgl_gif_destroy(gif_t* g) {
+  int nframes = sizeof(g->surfaces) / sizeof(surface_t);
   for (int i = 0; i < nframes; ++i)
-    sgl_destroy(&_g->surfaces[i]);
-  free(_g->surfaces);
+    sgl_destroy(&g->surfaces[i]);
+  free(g->surfaces);
 }
 #endif
 

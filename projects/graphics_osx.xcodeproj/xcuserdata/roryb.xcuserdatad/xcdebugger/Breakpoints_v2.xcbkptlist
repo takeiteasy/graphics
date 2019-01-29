@@ -9,14 +9,30 @@
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "../tests/test.c"
-            timestampString = "570396161.636295"
+            filePath = "../graphics.c"
+            timestampString = "570491927.304665"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1"
-            endingLineNumber = "1"
-            landmarkName = "unknown"
-            landmarkType = "0">
+            startingLineNumber = "3738"
+            endingLineNumber = "3738"
+            landmarkName = "sgl_save_gif"
+            landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "../tests/test.c"
+            timestampString = "570491927.305159"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "217"
+            endingLineNumber = "217"
+            landmarkName = "main"
+            landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

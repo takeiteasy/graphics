@@ -16,7 +16,7 @@ Designed to be a drop-in and use with little hassle sort of deal. I don't know i
 - Joystick handling (adapted from [ThemsAllTook/libstem_gamepad](https://github.com/ThemsAllTook/libstem_gamepad))
 - GIF loading (adapted from [hidefromkgb/gif_load](https://github.com/hidefromkgb/gif_load)) and saving (adapted from [lecram/gifenc](https://github.com/lecram/gifenc))
 - Optional OpenGL & Metal backends (Just for rendering to screen)
-- Optional extras (AA primitives, BDF font rendering, Freetype rendering, image loader using [stb_image](https://github.com/nothings/stb))
+- Optional extras (AA primitives, BDF font rendering, Freetype rendering, image loader (adapted from  [stb_image](https://github.com/nothings/stb)))
 
 See below screenshots for TODO list and the examples folder for some idea of how to use. ___Still a WIP, API subject to change a lot___.
 
@@ -92,7 +92,7 @@ Tested on:
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples/tests
-- More extras (gif ~load~/save, ~FreeType fonts~, C++ OOP wrapper)
+- More extras (~gif load/save~, ~FreeType fonts~, C++ OOP wrapper)
 - Optional OpenCL for processing stuff
 - Pixel shader support
 - Audio playback (wav files)

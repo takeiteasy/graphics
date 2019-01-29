@@ -415,7 +415,7 @@ extern "C" {
 
   bool sgl_gif(gif_t* g, const char* path);
   bool sgl_save_gif(gif_t* g, const char* path);
-  void sgl_gif_destroy(gif_t** g);
+  void sgl_gif_destroy(gif_t* g);
 #endif
 
 #if !defined(SGL_DISABLE_WINDOW)
