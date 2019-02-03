@@ -3770,8 +3770,6 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
     }
   }
   
-  printf("%d\n", stb_sb_count(pallet) / 3);
-  
   int depth = (int)log2((double)(stb_sb_count(pallet) / 3));
   ge_GIF* out = ge_new_gif(path, w, h, pallet, (depth > 8 ? 8 : depth), 0);
   if (!out) {
@@ -3803,9 +3801,8 @@ void sgl_gif_destroy(gif_t* g) {
 
 #if !defined(SGL_DISABLE_WINDOW)
 static short int keycodes[512];
-static surface_t* buffer;
-static int mx = 0, my = 0, win_w, win_h;
-static bool __closed = false;
+static bool keycodes_init = false;
+static int mx = 0, my = 0;
 
 #if defined(SGL_ENABLE_JOYSTICKS)
 static struct {
@@ -4741,12 +4738,6 @@ static int translate_key(unsigned int key) {
   return (key >= sizeof(keycodes) / sizeof(keycodes[0]) ?  KB_KEY_UNKNOWN : keycodes[key]);
 }
 
-@interface osx_app_t : NSWindow {
-  NSView* view;
-  @public bool closed;
-}
-@end
-
 #if defined(SGL_ENABLE_OPENGL)
 @interface osx_view_t : NSOpenGLView {
 #elif defined(SGL_ENABLE_METAL)
@@ -4762,6 +4753,15 @@ static int translate_key(unsigned int key) {
 @interface osx_view_t : NSView {
 #endif
   NSTrackingArea* track;
+  surface_t* buf;
+}
+@end
+  
+@interface osx_app_t : NSWindow {
+  NSView* view;
+  osx_view_t* subview;
+  screen_t* parent;
+  bool closed;
 }
 @end
 
@@ -4781,6 +4781,10 @@ static int translate_key(unsigned int key) {
     [super sendEvent:event];
 }
 @end
+
+typedef struct {
+  osx_app_t* app;
+} osx_screen_t;
 
 static osx_app_t* app;
 static int border_off = 22;
@@ -4883,8 +4887,6 @@ void sgl_custom_cursor(surface_t* s) {
 }
 
 @implementation osx_view_t
-extern surface_t* buffer;
-
 -(id)initWithFrame:(CGRect)r {
 #if defined(SGL_ENABLE_OPENGL)
   NSOpenGLPixelFormatAttribute pixelFormatAttributes[] = {
@@ -5039,10 +5041,16 @@ extern surface_t* buffer;
 #pragma TODO(Add mouse exited event cb)
 }
 
--(void)drawRect:(NSRect)r {
-  if (!buffer || !buffer->buf)
+-(void)updateBufPtr:(surface_t*)b {
+  if (!b || !b->buf)
     return;
+  buf = b;
+}
 
+-(void)drawRect:(NSRect)r {
+  if (!buf || !buf->buf)
+    return;
+  
 #if defined(SGL_ENABLE_OPENGL)
   [super drawRect: r];
   draw_gl();
@@ -5052,14 +5060,14 @@ extern surface_t* buffer;
 
   MTLTextureDescriptor* td = [[MTLTextureDescriptor alloc] init];
   td.pixelFormat = MTLPixelFormatBGRA8Unorm;
-  td.width = buffer->w;
-  td.height = buffer->h;
+  td.width = buf->w;
+  td.height = buf->h;
 
   _texture = [_device newTextureWithDescriptor:td];
-  [_texture replaceRegion:(MTLRegion){{ 0, 0, 0 }, { buffer->w, buffer->h, 1 }}
+  [_texture replaceRegion:(MTLRegion){{ 0, 0, 0 }, { buf->w, buf->h, 1 }}
               mipmapLevel:0
-                withBytes:buffer->buf
-              bytesPerRow:buffer->w * 4];
+                withBytes:buf->buf
+              bytesPerRow:buf->w * 4];
 
   id <MTLCommandBuffer> cmd_buf = [_cmd_queue commandBuffer];
   cmd_buf.label = @"[Command Buffer]";
@@ -5116,7 +5124,6 @@ extern surface_t* buffer;
   [_vertices release];
 #endif
   [track release];
-  [super dealloc];
 }
 @end
 
@@ -5191,10 +5198,12 @@ extern surface_t* buffer;
   [view setFrame:[self contentRectForFrameRect:b]];
   [view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
   [fv addSubview:view];
+  subview = fv;
 }
 
 -(void)win_changed:(NSNotification *)n {
   CALL(__focus_callback, false);
+  app = self;
 }
 
 -(void)win_close {
@@ -5203,19 +5212,34 @@ extern surface_t* buffer;
 
 -(void)win_resize:(NSNotification *)n {
   CGSize size = [app contentRectForFrameRect:[app frame]].size;
-  win_w = size.width;
-  win_h = size.height - border_off;
+  int h = size.height - border_off;
 #if defined(SGL_ENABLE_OPENGL)
-  glViewport(0, 0, win_w, win_h);
+  glViewport(0, 0, size.width, h);
 #elif defined(SGL_ENABLE_METAL)
-  mtk_viewport.x = win_w * scale_f;
-  mtk_viewport.y = (win_h * scale_f) + (4 * scale_f);
+  mtk_viewport.x = size.width * scale_f;
+  mtk_viewport.y = ((h) * scale_f) + (4 * scale_f);
 #endif
-  CALL(__resize_callback, win_w, win_h);
+  parent->w = size.width;
+  parent->h = h;
+  CALL(__resize_callback, size.width, h);
 }
 
 -(NSView*)contentView {
   return view;
+}
+
+-(osx_view_t*)subView {
+  return subview;
+}
+  
+-(bool)isClosed {
+  return closed;
+}
+
+-(void)setParent:(screen_t*)p {
+  if (parent || !p)
+    return;
+  parent = p;
 }
 
 -(BOOL)canBecomeKeyWindow {
@@ -5240,128 +5264,131 @@ extern surface_t* buffer;
 }
 @end
 
-bool sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
-  memset(keycodes,  -1, sizeof(keycodes));
+bool sgl_screen(screen_t* s, const char* t, int w, int h, short flags) {
+  if (!keycodes_init) {
+    memset(keycodes,  -1, sizeof(keycodes));
+    
+    keycodes[0x1D] = KB_KEY_0;
+    keycodes[0x12] = KB_KEY_1;
+    keycodes[0x13] = KB_KEY_2;
+    keycodes[0x14] = KB_KEY_3;
+    keycodes[0x15] = KB_KEY_4;
+    keycodes[0x17] = KB_KEY_5;
+    keycodes[0x16] = KB_KEY_6;
+    keycodes[0x1A] = KB_KEY_7;
+    keycodes[0x1C] = KB_KEY_8;
+    keycodes[0x19] = KB_KEY_9;
+    keycodes[0x00] = KB_KEY_A;
+    keycodes[0x0B] = KB_KEY_B;
+    keycodes[0x08] = KB_KEY_C;
+    keycodes[0x02] = KB_KEY_D;
+    keycodes[0x0E] = KB_KEY_E;
+    keycodes[0x03] = KB_KEY_F;
+    keycodes[0x05] = KB_KEY_G;
+    keycodes[0x04] = KB_KEY_H;
+    keycodes[0x22] = KB_KEY_I;
+    keycodes[0x26] = KB_KEY_J;
+    keycodes[0x28] = KB_KEY_K;
+    keycodes[0x25] = KB_KEY_L;
+    keycodes[0x2E] = KB_KEY_M;
+    keycodes[0x2D] = KB_KEY_N;
+    keycodes[0x1F] = KB_KEY_O;
+    keycodes[0x23] = KB_KEY_P;
+    keycodes[0x0C] = KB_KEY_Q;
+    keycodes[0x0F] = KB_KEY_R;
+    keycodes[0x01] = KB_KEY_S;
+    keycodes[0x11] = KB_KEY_T;
+    keycodes[0x20] = KB_KEY_U;
+    keycodes[0x09] = KB_KEY_V;
+    keycodes[0x0D] = KB_KEY_W;
+    keycodes[0x07] = KB_KEY_X;
+    keycodes[0x10] = KB_KEY_Y;
+    keycodes[0x06] = KB_KEY_Z;
+    
+    keycodes[0x27] = KB_KEY_APOSTROPHE;
+    keycodes[0x2A] = KB_KEY_BACKSLASH;
+    keycodes[0x2B] = KB_KEY_COMMA;
+    keycodes[0x18] = KB_KEY_EQUAL;
+    keycodes[0x32] = KB_KEY_GRAVE_ACCENT;
+    keycodes[0x21] = KB_KEY_LEFT_BRACKET;
+    keycodes[0x1B] = KB_KEY_MINUS;
+    keycodes[0x2F] = KB_KEY_PERIOD;
+    keycodes[0x1E] = KB_KEY_RIGHT_BRACKET;
+    keycodes[0x29] = KB_KEY_SEMICOLON;
+    keycodes[0x2C] = KB_KEY_SLASH;
+    keycodes[0x0A] = KB_KEY_WORLD_1;
+    
+    keycodes[0x33] = KB_KEY_BACKSPACE;
+    keycodes[0x39] = KB_KEY_CAPS_LOCK;
+    keycodes[0x75] = KB_KEY_DELETE;
+    keycodes[0x7D] = KB_KEY_DOWN;
+    keycodes[0x77] = KB_KEY_END;
+    keycodes[0x24] = KB_KEY_ENTER;
+    keycodes[0x35] = KB_KEY_ESCAPE;
+    keycodes[0x7A] = KB_KEY_F1;
+    keycodes[0x78] = KB_KEY_F2;
+    keycodes[0x63] = KB_KEY_F3;
+    keycodes[0x76] = KB_KEY_F4;
+    keycodes[0x60] = KB_KEY_F5;
+    keycodes[0x61] = KB_KEY_F6;
+    keycodes[0x62] = KB_KEY_F7;
+    keycodes[0x64] = KB_KEY_F8;
+    keycodes[0x65] = KB_KEY_F9;
+    keycodes[0x6D] = KB_KEY_F10;
+    keycodes[0x67] = KB_KEY_F11;
+    keycodes[0x6F] = KB_KEY_F12;
+    keycodes[0x69] = KB_KEY_F13;
+    keycodes[0x6B] = KB_KEY_F14;
+    keycodes[0x71] = KB_KEY_F15;
+    keycodes[0x6A] = KB_KEY_F16;
+    keycodes[0x40] = KB_KEY_F17;
+    keycodes[0x4F] = KB_KEY_F18;
+    keycodes[0x50] = KB_KEY_F19;
+    keycodes[0x5A] = KB_KEY_F20;
+    keycodes[0x73] = KB_KEY_HOME;
+    keycodes[0x72] = KB_KEY_INSERT;
+    keycodes[0x7B] = KB_KEY_LEFT;
+    keycodes[0x3A] = KB_KEY_LEFT_ALT;
+    keycodes[0x3B] = KB_KEY_LEFT_CONTROL;
+    keycodes[0x38] = KB_KEY_LEFT_SHIFT;
+    keycodes[0x37] = KB_KEY_LEFT_SUPER;
+    keycodes[0x6E] = KB_KEY_MENU;
+    keycodes[0x47] = KB_KEY_NUM_LOCK;
+    keycodes[0x79] = KB_KEY_PAGE_DOWN;
+    keycodes[0x74] = KB_KEY_PAGE_UP;
+    keycodes[0x7C] = KB_KEY_RIGHT;
+    keycodes[0x3D] = KB_KEY_RIGHT_ALT;
+    keycodes[0x3E] = KB_KEY_RIGHT_CONTROL;
+    keycodes[0x3C] = KB_KEY_RIGHT_SHIFT;
+    keycodes[0x36] = KB_KEY_RIGHT_SUPER;
+    keycodes[0x31] = KB_KEY_SPACE;
+    keycodes[0x30] = KB_KEY_TAB;
+    keycodes[0x7E] = KB_KEY_UP;
+    
+    keycodes[0x52] = KB_KEY_KP_0;
+    keycodes[0x53] = KB_KEY_KP_1;
+    keycodes[0x54] = KB_KEY_KP_2;
+    keycodes[0x55] = KB_KEY_KP_3;
+    keycodes[0x56] = KB_KEY_KP_4;
+    keycodes[0x57] = KB_KEY_KP_5;
+    keycodes[0x58] = KB_KEY_KP_6;
+    keycodes[0x59] = KB_KEY_KP_7;
+    keycodes[0x5B] = KB_KEY_KP_8;
+    keycodes[0x5C] = KB_KEY_KP_9;
+    keycodes[0x45] = KB_KEY_KP_ADD;
+    keycodes[0x41] = KB_KEY_KP_DECIMAL;
+    keycodes[0x4B] = KB_KEY_KP_DIVIDE;
+    keycodes[0x4C] = KB_KEY_KP_ENTER;
+    keycodes[0x51] = KB_KEY_KP_EQUAL;
+    keycodes[0x43] = KB_KEY_KP_MULTIPLY;
+    keycodes[0x4E] = KB_KEY_KP_SUBTRACT;
+    keycodes_init = true;
+  }
   
-  keycodes[0x1D] = KB_KEY_0;
-  keycodes[0x12] = KB_KEY_1;
-  keycodes[0x13] = KB_KEY_2;
-  keycodes[0x14] = KB_KEY_3;
-  keycodes[0x15] = KB_KEY_4;
-  keycodes[0x17] = KB_KEY_5;
-  keycodes[0x16] = KB_KEY_6;
-  keycodes[0x1A] = KB_KEY_7;
-  keycodes[0x1C] = KB_KEY_8;
-  keycodes[0x19] = KB_KEY_9;
-  keycodes[0x00] = KB_KEY_A;
-  keycodes[0x0B] = KB_KEY_B;
-  keycodes[0x08] = KB_KEY_C;
-  keycodes[0x02] = KB_KEY_D;
-  keycodes[0x0E] = KB_KEY_E;
-  keycodes[0x03] = KB_KEY_F;
-  keycodes[0x05] = KB_KEY_G;
-  keycodes[0x04] = KB_KEY_H;
-  keycodes[0x22] = KB_KEY_I;
-  keycodes[0x26] = KB_KEY_J;
-  keycodes[0x28] = KB_KEY_K;
-  keycodes[0x25] = KB_KEY_L;
-  keycodes[0x2E] = KB_KEY_M;
-  keycodes[0x2D] = KB_KEY_N;
-  keycodes[0x1F] = KB_KEY_O;
-  keycodes[0x23] = KB_KEY_P;
-  keycodes[0x0C] = KB_KEY_Q;
-  keycodes[0x0F] = KB_KEY_R;
-  keycodes[0x01] = KB_KEY_S;
-  keycodes[0x11] = KB_KEY_T;
-  keycodes[0x20] = KB_KEY_U;
-  keycodes[0x09] = KB_KEY_V;
-  keycodes[0x0D] = KB_KEY_W;
-  keycodes[0x07] = KB_KEY_X;
-  keycodes[0x10] = KB_KEY_Y;
-  keycodes[0x06] = KB_KEY_Z;
-
-  keycodes[0x27] = KB_KEY_APOSTROPHE;
-  keycodes[0x2A] = KB_KEY_BACKSLASH;
-  keycodes[0x2B] = KB_KEY_COMMA;
-  keycodes[0x18] = KB_KEY_EQUAL;
-  keycodes[0x32] = KB_KEY_GRAVE_ACCENT;
-  keycodes[0x21] = KB_KEY_LEFT_BRACKET;
-  keycodes[0x1B] = KB_KEY_MINUS;
-  keycodes[0x2F] = KB_KEY_PERIOD;
-  keycodes[0x1E] = KB_KEY_RIGHT_BRACKET;
-  keycodes[0x29] = KB_KEY_SEMICOLON;
-  keycodes[0x2C] = KB_KEY_SLASH;
-  keycodes[0x0A] = KB_KEY_WORLD_1;
-
-  keycodes[0x33] = KB_KEY_BACKSPACE;
-  keycodes[0x39] = KB_KEY_CAPS_LOCK;
-  keycodes[0x75] = KB_KEY_DELETE;
-  keycodes[0x7D] = KB_KEY_DOWN;
-  keycodes[0x77] = KB_KEY_END;
-  keycodes[0x24] = KB_KEY_ENTER;
-  keycodes[0x35] = KB_KEY_ESCAPE;
-  keycodes[0x7A] = KB_KEY_F1;
-  keycodes[0x78] = KB_KEY_F2;
-  keycodes[0x63] = KB_KEY_F3;
-  keycodes[0x76] = KB_KEY_F4;
-  keycodes[0x60] = KB_KEY_F5;
-  keycodes[0x61] = KB_KEY_F6;
-  keycodes[0x62] = KB_KEY_F7;
-  keycodes[0x64] = KB_KEY_F8;
-  keycodes[0x65] = KB_KEY_F9;
-  keycodes[0x6D] = KB_KEY_F10;
-  keycodes[0x67] = KB_KEY_F11;
-  keycodes[0x6F] = KB_KEY_F12;
-  keycodes[0x69] = KB_KEY_F13;
-  keycodes[0x6B] = KB_KEY_F14;
-  keycodes[0x71] = KB_KEY_F15;
-  keycodes[0x6A] = KB_KEY_F16;
-  keycodes[0x40] = KB_KEY_F17;
-  keycodes[0x4F] = KB_KEY_F18;
-  keycodes[0x50] = KB_KEY_F19;
-  keycodes[0x5A] = KB_KEY_F20;
-  keycodes[0x73] = KB_KEY_HOME;
-  keycodes[0x72] = KB_KEY_INSERT;
-  keycodes[0x7B] = KB_KEY_LEFT;
-  keycodes[0x3A] = KB_KEY_LEFT_ALT;
-  keycodes[0x3B] = KB_KEY_LEFT_CONTROL;
-  keycodes[0x38] = KB_KEY_LEFT_SHIFT;
-  keycodes[0x37] = KB_KEY_LEFT_SUPER;
-  keycodes[0x6E] = KB_KEY_MENU;
-  keycodes[0x47] = KB_KEY_NUM_LOCK;
-  keycodes[0x79] = KB_KEY_PAGE_DOWN;
-  keycodes[0x74] = KB_KEY_PAGE_UP;
-  keycodes[0x7C] = KB_KEY_RIGHT;
-  keycodes[0x3D] = KB_KEY_RIGHT_ALT;
-  keycodes[0x3E] = KB_KEY_RIGHT_CONTROL;
-  keycodes[0x3C] = KB_KEY_RIGHT_SHIFT;
-  keycodes[0x36] = KB_KEY_RIGHT_SUPER;
-  keycodes[0x31] = KB_KEY_SPACE;
-  keycodes[0x30] = KB_KEY_TAB;
-  keycodes[0x7E] = KB_KEY_UP;
-
-  keycodes[0x52] = KB_KEY_KP_0;
-  keycodes[0x53] = KB_KEY_KP_1;
-  keycodes[0x54] = KB_KEY_KP_2;
-  keycodes[0x55] = KB_KEY_KP_3;
-  keycodes[0x56] = KB_KEY_KP_4;
-  keycodes[0x57] = KB_KEY_KP_5;
-  keycodes[0x58] = KB_KEY_KP_6;
-  keycodes[0x59] = KB_KEY_KP_7;
-  keycodes[0x5B] = KB_KEY_KP_8;
-  keycodes[0x5C] = KB_KEY_KP_9;
-  keycodes[0x45] = KB_KEY_KP_ADD;
-  keycodes[0x41] = KB_KEY_KP_DECIMAL;
-  keycodes[0x4B] = KB_KEY_KP_DIVIDE;
-  keycodes[0x4C] = KB_KEY_KP_ENTER;
-  keycodes[0x51] = KB_KEY_KP_EQUAL;
-  keycodes[0x43] = KB_KEY_KP_MULTIPLY;
-  keycodes[0x4E] = KB_KEY_KP_SUBTRACT;
-
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   [NSApplication sharedApplication];
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-
+  
   NSWindowStyleMask _flags = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
   if (flags & FULLSCREEN)
     flags |= (BORDERLESS | RESIZABLE | FULLSCREEN_DESKTOP);
@@ -5372,74 +5399,85 @@ bool sgl_screen(const char* t, surface_t* s, int w, int h, short flags) {
   }
   if (flags & FULLSCREEN_DESKTOP) {
     NSRect f = [[NSScreen mainScreen] frame];
-    w = win_w = f.size.width;
-    h = win_h = f.size.height - border_off;
-  } else {
-    win_w = w;
-    win_h = h;
+    w = f.size.width;
+    h = f.size.height - border_off;
   }
-
-  if (s)
-    if (!sgl_surface(s, w, h))
-      return false;
-
-  app = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h + border_off)
-                                     styleMask:_flags
-                                       backing:NSBackingStoreBuffered
-                                         defer:NO];
-  if (!app) {
+  
+  id tmp = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h + border_off)
+                                        styleMask:_flags
+                                          backing:NSBackingStoreBuffered
+                                            defer:NO];
+  if (!tmp) {
     sgl_release();
     error_handle(HIGH_PRIORITY, OSX_WINDOW_CREATION_FAILED, "[osx_app_t initWithContentRect] failed");
     return false;
   }
   
   if (flags & ALWAYS_ON_TOP)
-    [app setLevel:NSFloatingWindowLevel];
-
+    [tmp setLevel:NSFloatingWindowLevel];
+  
   id app_del = [AppDelegate alloc];
   if (!app_del) {
     sgl_release();
     error_handle(HIGH_PRIORITY, OSX_APPDEL_CREATION_FAILED, "[AppDelegate alloc] failed");
     [NSApp terminate:nil];
   }
-
+  
   if (flags & FULLSCREEN) {
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7
-    [app toggleFullScreen:nil];
+    [tmp toggleFullScreen:nil];
     [[NSApplication sharedApplication] setPresentationOptions:NSApplicationPresentationFullScreen];
 #else
     error_handle(LOW_PRIORITY, OSX_FULLSCREEN_FAILED, "screen() failed: Fullscreen flag is only supported on OSX v10.7 and above");
 #endif
   }
-
-  [app setDelegate:app_del];
-  [app setAcceptsMouseMovedEvents:YES];
-  [app setRestorable:NO];
-  [app setTitle:(t ? [NSString stringWithUTF8String:t] : [[NSProcessInfo processInfo] processName])];
-  [app setReleasedWhenClosed:NO];
-  [app performSelectorOnMainThread:@selector(makeKeyAndOrderFront:) withObject:nil waitUntilDone:YES];
-  [app center];
-
+  
+  [tmp setDelegate:app_del];
+  [tmp setAcceptsMouseMovedEvents:YES];
+  [tmp setRestorable:NO];
+  [tmp setTitle:(t ? [NSString stringWithUTF8String:t] : [[NSProcessInfo processInfo] processName])];
+  [tmp setReleasedWhenClosed:NO];
+  [tmp performSelectorOnMainThread:@selector(makeKeyAndOrderFront:) withObject:nil waitUntilDone:YES];
+  [tmp center];
+  
   if (!border_off && flags & ~FULLSCREEN) {
-    [app setTitle:@""];
-    [app setTitlebarAppearsTransparent:YES];
-    [[app standardWindowButton:NSWindowZoomButton] setHidden:YES];
-    [[app standardWindowButton:NSWindowCloseButton] setHidden:YES];
-    [[app standardWindowButton:NSWindowMiniaturizeButton] setHidden:YES];
+    [tmp setTitle:@""];
+    [tmp setTitlebarAppearsTransparent:YES];
+    [[tmp standardWindowButton:NSWindowZoomButton] setHidden:YES];
+    [[tmp standardWindowButton:NSWindowCloseButton] setHidden:YES];
+    [[tmp standardWindowButton:NSWindowMiniaturizeButton] setHidden:YES];
   }
-
+  
   NSPoint mp = [NSEvent mouseLocation];
   lmx = mx = mp.x;
   lmy = my = mp.y;
-
+  
+  memset(s, 0, sizeof(*s));
+  s->id = (int)[tmp windowNumber];
+  s->w  = w;
+  s->h  = h;
+  osx_screen_t* priv = (void*)malloc(sizeof(osx_screen_t));
+  priv->app = app = tmp;
+  [priv->app setParent:s];
+  s->__private = (void*)priv;
+  
   [NSApp activateIgnoringOtherApps:YES];
   [pool drain];
-
+  
   return true;
 }
+  
+void sgl_screen_destroy(screen_t* s) {
+  osx_screen_t* tmp = (osx_screen_t*)s->__private;
+  NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
+  [[tmp->app subView] dealloc];
+  if (tmp->app)
+    [tmp->app close];
+  [pool drain];
+}
 
-bool sgl_closed() {
-  return app->closed;
+bool sgl_closed(screen_t* s) {
+  return [((osx_screen_t*)(s->__private))->app isClosed];
 }
 
 void sgl_poll(void) {
@@ -5470,13 +5508,13 @@ void sgl_poll(void) {
       case NSEventTypeLeftMouseDragged:
       case NSEventTypeRightMouseDragged:
       case NSEventTypeOtherMouseDragged:
-        if (cursor_in_win) {
+        if (cursor_in_win && app) {
           CALL(__mouse_btn_callback, (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
           CALL(__mouse_move_callback, [e locationInWindow].x, [app frame].size.height - border_off - [e locationInWindow].y, 0, 0);
         }
         break;
       case NSEventTypeMouseMoved:
-        if (cursor_in_win)
+        if (cursor_in_win && app)
           CALL(__mouse_move_callback, [e locationInWindow].x, [app frame].size.height - border_off - [e locationInWindow].y, 0, 0);
         break;
     }
@@ -5485,16 +5523,14 @@ void sgl_poll(void) {
   [pool release];
 }
 
-void sgl_flush(surface_t* s) {
-  if (s && s->buf)
-    buffer = s;
-  [[app contentView] setNeedsDisplay:YES];
+void sgl_flush(screen_t* s, surface_t* b) {
+  osx_screen_t* tmp = (osx_screen_t*)s->__private;
+  [[tmp->app subView] updateBufPtr:b];
+  [[tmp->app contentView] setNeedsDisplay:YES];
 }
 
 void sgl_release() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-  if (app)
-    [app close];
   if (__cursor)
     [__cursor release];
   if (__custom_cursor)

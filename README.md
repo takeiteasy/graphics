@@ -7,7 +7,7 @@ Designed to be a drop-in and use with little hassle sort of deal. I don't know i
 
 ## Features
 
-- Windows, OSX and Linux (X11)
+- Windows, OS X and Linux (X11)
 - Keyboard and mouse events
 - Primitive shapes
 - BMP loading (Uncompressed 8, 24 & 32 bpp) (1 & 4 bpp, RLE compression and OS/2 not supported yet)
@@ -20,23 +20,23 @@ Designed to be a drop-in and use with little hassle sort of deal. I don't know i
 
 See below screenshots for TODO list and the examples folder for some idea of how to use. ___Still a WIP, API subject to change a lot___.
 
-OSX will be the primary platform for all stuff, then after that is working to a level I like I will finish the windows port and after that the linux port. It's too much effort changing something on OSX then doing it on other platforms all the time.
+OS X will be the primary platform for all stuff, then after that is working to a level I like I will finish the windows port and after that the linux port. It's too much effort changing something on OS X then doing it on other platforms all the time. __At the moment Windows & Linux won't build__.
 
 
 ## Building
 
 No external libraries are used unless you want to use the alternate backends (enable them by defining ```GRAPHICS_ENABLE_(OPENGL/METAL)```). I don't know how to make CMake files yet so backends will have to be defined manually. To enable AA primitives define ```GRAPHICS_ENABLE_AA```, for BDF rendering ```GRAPHICS_ENABLE_BDF``` and for image loading using stb_image ```GRAPHICS_ENABLE_STB_IMAGE```.
 
-On OSX you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for Metal. Also, if you're using XCode you'll also have to disable modules in the build settings, becuase modules imports curses with stdio for some reason.
+On OS X you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for Metal. Also, if you're using XCode you'll also have to disable modules in the build settings, becuase modules imports curses with stdio for some reason.
 
-NOTE: On OSX 10.13, something changed and CoreGraphics isn't working like it used to. So if you're using 10.13 Metal is now the default rending backend. See above.
+NOTE: On OS X 10.14, something changed and CoreGraphics isn't working like it used to. So if you're using 10.14 Metal is now the default rending backend. See above.
 
 On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're using the OpenGL backend include ```-ld -lGL```. **NOTE**: X11 can't automatically strech stuff being rendered like ```StretchDIBits``` and ```CGContextDrawImage``` can - so resizing the window is disabled (_until I can find a solution_) unless you're using the OpenGL backend.
 
 On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line options or unicode decoding won't work properly. I don't know why, but it doesn't.
 
 Tested on:
-- OSX 10.12 & 10.13
+- OS X 10.12, 10.13 & 10.14
 - Windows 7 x64
 -  Ubuntu 19 x86_64 (Linux 4.13.0-16) (Inside VM only)
 
@@ -60,7 +60,7 @@ Tested on:
 
 ### Important
 
-- Cursor clipping for Linux [and OSX](https://stackoverflow.com/a/40922095)
+- Cursor clipping for Linux [and OS X](https://stackoverflow.com/a/40922095)
 - Sort out joysticks
   - General clean up
   - Remove redundant stuff
@@ -79,7 +79,7 @@ Tested on:
 - 1 & 4 bpp, RLE compressed and OS/2 BMP support
 - Message box support
 - Window icon support
-- Finish cursor loading from surface (all platforms)
+- Cursor loading from surface
 - Set cursor position function
 
 ### At some point
@@ -87,7 +87,7 @@ Tested on:
 - Keyboard scancodes
 - Make thread safe (surface locks)
 - Vulkan/DirectX/~~Metal~~/SIXEL backends
-- Multiple Windows
+- Multiple Windows (~OS X~/Windows/Linux)
 - Wayland window code
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
@@ -102,7 +102,7 @@ Tested on:
 
 - Why CoreGraphics rendering is so slow
 - Resizing for X11
-- Getting CoreGraphcs working on OSX in 10.13 again
+- Getting CoreGraphcs working on OS X in 10.14 again
 
 
 ## License

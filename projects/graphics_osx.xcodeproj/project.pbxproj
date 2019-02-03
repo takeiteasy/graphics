@@ -343,8 +343,8 @@
 				);
 				GCC_WARN_PEDANTIC = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/roryb/git/graphics.h/3rdparty,
-					/Users/roryb/git/graphics.h/3rdparty/freetype,
+					/Users/rory/git/graphics.h/3rdparty,
+					/Users/rory/git/graphics.h/3rdparty/freetype,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -366,8 +366,8 @@
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_WARN_PEDANTIC = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/roryb/git/graphics.h/3rdparty,
-					/Users/roryb/git/graphics.h/3rdparty/freetype,
+					/Users/rory/git/graphics.h/3rdparty,
+					/Users/rory/git/graphics.h/3rdparty/freetype,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",

@@ -419,6 +419,11 @@ extern "C" {
 #endif
 
 #if !defined(SGL_DISABLE_WINDOW)
+  typedef struct {
+    int id, w, h;
+    void* __private;
+  } screen_t;
+  
 #if defined(SGL_ENABLE_JOYSTICKS)
   typedef struct __joystick_t {
     const char* description;
@@ -647,11 +652,12 @@ extern "C" {
     ALWAYS_ON_TOP = 0x10,
   } WINDOWFLAGS;
 
-  bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags);
+  bool sgl_screen(screen_t* s, const char* t, int w, int h, short flags);
+  void sgl_screen_destroy(screen_t* s);
   void sgl_poll(void);
-  void sgl_flush(surface_t* s);
+  void sgl_flush(screen_t* s, surface_t* b);
   void sgl_release(void);
-  bool sgl_closed(void);
+  bool sgl_closed(screen_t* s);
 #endif
 
 #if defined(__cplusplus)

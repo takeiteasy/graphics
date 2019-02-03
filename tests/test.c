@@ -16,11 +16,12 @@ int rnd(int x, int y, int c) {
   return RND_RGB;
 }
 
-static surface_t win;
-static int win_w = 575, win_h = 500, mx = 0, my = 0, running = 1;
+static screen_t win;
+static surface_t buf;
+static int mx = 0, my = 0, running = 1;
 static bool grey = false;
 
-#define SKIP_RESIZE 0
+#define SKIP_RESIZE 1
 #define SKIP_PRINTF 0
 #define SKIP_RENDING 0
 
@@ -55,11 +56,11 @@ void on_keyboard(void* data, KEYSYM sym, KEYMOD mod, bool down) {
         grey = false;
         break;
       case KB_KEY_F1:
-        sgl_save_bmp(&win, "test.bmp");
+        sgl_save_bmp(&buf, "test.bmp");
         break;
 #if defined(SGL_ENABLE_STB_IMAGE)
       case KB_KEY_F2:
-        sgl_save_image(&win, "test.png", PNG);
+        sgl_save_image(&buf, "test.png", PNG);
         break;
 #endif
     }
@@ -71,8 +72,13 @@ void on_mouse_btn(void* data, MOUSEBTN btn, KEYMOD mod, bool down) {
 }
 
 void on_mouse_move(void* data, int x, int y, int dx, int dy) {
+#if !SKIP_RESIZE
   mx = x;
   my = y;
+#else
+  mx = (int)(((float)x / (float)win.w) * buf.w);
+  my = (int)(((float)y / (float)win.h) * buf.h);
+#endif
 }
 
 void on_scroll(void* data, KEYMOD mod, float dx, float dy) {
@@ -84,20 +90,19 @@ void on_focus(void* data, bool focused) {
 }
 
 void on_resize(void* data, int w, int h) {
-  win_w = w;
-  win_h = h;
 #if !SKIP_RESIZE
-  sgl_reset(&win, w, h);
+  sgl_reset(&buf, w, h);
+  printf("%d %d\n", buf.w, buf.h);
 #else
-  cls(&win);
+  sgl_cls(&buf);
 #endif
-  sgl_writelnf(&win, 4, 5, WHITE, -1, "%dx%d\n", w, h);
+  sgl_writelnf(&buf, 4, 5, WHITE, -1, "%dx%d\n", w, h);
 }
 
 // Define RES_PATH or it will use my paths
 #if !defined(RES_PATH)
 #if defined(__APPLE__)
-#define RES_PATH "/Users/roryb/git/graphics.h/tests/"
+#define RES_PATH "/Users/rory/git/graphics.h/tests/"
 #elif defined(_WIN32)
 #define RES_PATH "C:\\Users\\DESKTOP\\Documents\\graphics.h\\tests\\"
 #else
@@ -131,12 +136,17 @@ void on_joystick_axis(void* data, joystick_t* d, int axis, float v, float lv, lo
 }
 #endif
 
+#define WIN_W 575
+#define WIN_H 500
+
 int main(int argc, const char* argv[]) {
   sgl_error_callback(on_error);
 
-  sgl_screen("test", &win, win_w, win_h, DEFAULT);
+  sgl_screen(&win, "test",  WIN_W, WIN_H, RESIZABLE);
   sgl_screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize);
   sgl_cursor(SHOWN, LOCKED, CURSOR_HAND);
+  
+  sgl_surface(&buf, WIN_W, WIN_H);
 
 #if defined(SGL_ENABLE_JOYSTICKS)
   sgl_joystick_callbacks(on_joystick_connect, on_joystick_disconnect, on_joystick_btn, on_joystick_axis);
@@ -211,7 +221,7 @@ int main(int argc, const char* argv[]) {
 #if defined(SGL_ENABLE_GIF)
   gif_t ok_hand;
   sgl_gif(&ok_hand, RES("ok.gif"));
-  sgl_save_gif(&ok_hand, "/Users/roryb/Desktop/test.gif");
+  // sgl_save_gif(&ok_hand, RES("ok_2.gif"));
 #endif
   
   float theta = 1.f;
@@ -220,7 +230,7 @@ int main(int argc, const char* argv[]) {
   long prev_frame_tick;
   long curr_frame_tick = sgl_ticks();
   int test_alpha = 255;
-  while (!sgl_closed() && running) {
+  while (!sgl_closed(&win) && running) {
     prev_frame_tick = curr_frame_tick;
     curr_frame_tick = sgl_ticks();
 #if defined(SGL_ENABLE_JOYSTICKS)
@@ -236,47 +246,47 @@ int main(int argc, const char* argv[]) {
     current_ticks = clock();
 
 //    cls(&win);
-    sgl_fill(&win, WHITE);
+    sgl_fill(&buf, WHITE);
 
-    for (int x = 32; x < win.w; x += 32)
-      sgl_vline(&win, x, 0, win.h, GRAY);
-    for (int y = 32; y < win.h; y += 32)
-      sgl_hline(&win, y, 0, win.w, GRAY);
+    for (int x = 32; x < buf.w; x += 32)
+      sgl_vline(&buf, x, 0, buf.h, GRAY);
+    for (int y = 32; y < buf.h; y += 32)
+      sgl_hline(&buf, y, 0, buf.w, GRAY);
 
 #if defined(SGL_ENABLE_STB_IMAGE)
-    sgl_blit(&win, &points[8], &s[1], NULL);
+    sgl_blit(&buf, &points[8], &s[1], NULL);
 #endif
 
-    sgl_writeln(&win, 10, 10, RED, -1, "Hello World");
-    sgl_writeln(&win, 10, 22, MAROON, -1, "こんにちは");
+    sgl_writeln(&buf, 10, 10, RED, -1, "Hello World");
+    sgl_writeln(&buf, 10, 22, MAROON, -1, "こんにちは");
 #if defined(SGL_ENABLE_BDF)
-    sgl_bdf_writeln(&win, tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ bdf!");
+    sgl_bdf_writeln(&buf, tewi, 10, 34, WHITE, BLACK, "ΔhelloΔ bdf!");
 #endif
-    sgl_writeln(&win, 10, 48, RED, BLACK, "\f(255,0,0)\b(0,0,0)test\f(0,255,0)\b(0,0,0)test");
+    sgl_writeln(&buf, 10, 48, RED, BLACK, "\f(255,0,0)\b(0,0,0)test\f(0,255,0)\b(0,0,0)test");
 
     int last_x = 0, last_y = 200;
-    for (long i = sine_i; i < (sine_i + win.w); ++i) {
+    for (long i = sine_i; i < (sine_i + buf.w); ++i) {
       float x = (float)(i - sine_i);
       float y = 200.f + (75.f * sinf(i * (3.141f / 180.f)));
-      sgl_line(&win, last_x, last_y, x, y, col);
+      sgl_line(&buf, last_x, last_y, x, y, col);
       last_x = x;
       last_y = y;
     }
     sine_i += (int)(speed * .2);
 
-    sgl_blit(&win, &points[4], &s[3], NULL);
-    sgl_blit(&win, &points[0], &s[2], &cutr);
+    sgl_blit(&buf, &points[4], &s[3], NULL);
+    sgl_blit(&buf, &points[0], &s[2], &cutr);
 
-    sgl_blit(&win, &points[1], &s[2], NULL);
-    sgl_blit(&win, &points[3], &s[4], NULL);
+    sgl_blit(&buf, &points[1], &s[2], NULL);
+    sgl_blit(&buf, &points[3], &s[4], NULL);
 
     sgl_rotate(&s[5], theta, &s[7]);
     point_t tmp = {
       points[5].x - s[7].w / 2 + s[5].w / 2,
       points[5].y - s[7].h / 2 + s[5].h / 2,
     };
-    sgl_blit(&win, &tmp, &s[7], NULL);
-    sgl_blit(&win, &points[5], &s[5], NULL);
+    sgl_blit(&buf, &tmp, &s[7], NULL);
+    sgl_blit(&buf, &points[5], &s[5], NULL);
     theta += (.05f * speed);
     if (theta >= 360.f)
       theta = 0.f;
@@ -284,50 +294,50 @@ int main(int argc, const char* argv[]) {
 
     sgl_filter(&s[0], rnd);
     sgl_blit(&s[0], NULL, &s[9], NULL);
-    sgl_blit(&win, &points[2], &s[0], NULL);
+    sgl_blit(&buf, &points[2], &s[0], NULL);
     
 #if defined(SGL_ENABLE_GIF)
-    sgl_blit(&win, &points[10], &ok_hand.surfaces[ok_hand.frame], NULL);
+    sgl_blit(&buf, &points[10], &ok_hand.surfaces[ok_hand.frame], NULL);
     ok_hand.frame++;
     if (ok_hand.frame >= ok_hand.frames)
       ok_hand.frame = 0;
 #endif
 
-    sgl_circle(&win, 352, 32, 30, RED,    1);
-    sgl_circle(&win, 382, 32, 30, ORANGE, 1);
-    sgl_circle(&win, 412, 32, 30, YELLOW, 1);
-    sgl_circle(&win, 442, 32, 30, LIME,   1);
-    sgl_circle(&win, 472, 32, 30, BLUE,   1);
-    sgl_circle(&win, 502, 32, 30, INDIGO, 1);
-    sgl_circle(&win, 532, 32, 30, VIOLET, 1);
+    sgl_circle(&buf, 352, 32, 30, RED,    1);
+    sgl_circle(&buf, 382, 32, 30, ORANGE, 1);
+    sgl_circle(&buf, 412, 32, 30, YELLOW, 1);
+    sgl_circle(&buf, 442, 32, 30, LIME,   1);
+    sgl_circle(&buf, 472, 32, 30, BLUE,   1);
+    sgl_circle(&buf, 502, 32, 30, INDIGO, 1);
+    sgl_circle(&buf, 532, 32, 30, VIOLET, 1);
 
-    sgl_blit(&win, NULL, &s[8], NULL);
+    sgl_blit(&buf, NULL, &s[8], NULL);
     
     delta_ticks = clock() - current_ticks;
     if (delta_ticks > 0)
       fps = CLOCKS_PER_SEC / delta_ticks;
-    sgl_writelnf(&win, 2, 2, RED, 0, "FPS: %ju", fps);
+    sgl_writelnf(&buf, 2, 2, RED, 0, "FPS: %ju", fps);
     
     time(&rt);
     struct tm tm = *localtime(&rt);
-    sgl_ftfont_writelnf(&win, ftf, 0, 90, RGBA(255, 0, 0, test_alpha), RGBA(0, 255, 0, test_alpha), "It is %d/%d/%d at %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    sgl_ftfont_writelnf(&buf, ftf, 0, 90, RGBA(255, 0, 0, test_alpha), RGBA(0, 255, 0, test_alpha), "It is %d/%d/%d at %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     test_alpha -= 1;
     if (test_alpha <= 0)
       test_alpha = 255;
     
-    sgl_writelnf(&win, 400, 88, BLACK, 0, "mouse pos: (%d, %d)\ntheta: %f", mx, my, theta);
-    col = sgl_pget(&win, mx, my);
+    sgl_writelnf(&buf, 400, 88, BLACK, 0, "mouse pos: (%d, %d)\ntheta: %f", mx, my, theta);
+    col = sgl_pget(&buf, mx, my);
     
-    sgl_line(&win, 0, 0, mx, my, col);
-    sgl_circle(&win, mx, my, 30, col, 0);
+    sgl_line(&buf, 0, 0, mx, my, col);
+    sgl_circle(&buf, mx, my, 30, col, 0);
     
-    sgl_blit(&win, &points[9], &s[10], NULL);
+    sgl_blit(&buf, &points[9], &s[10], NULL);
 
     if (grey)
-      sgl_filter(&win, greyscale);
+      sgl_filter(&buf, greyscale);
     
 FLUSH:
-    sgl_flush(&win);
+    sgl_flush(&win, &buf);
   }
 
 #if defined(SGL_ENABLE_JOYSTICKS)
@@ -343,9 +353,10 @@ FLUSH:
 #if defined(SGL_ENABLE_GIF)
   sgl_gif_destroy(&ok_hand);
 #endif
-  sgl_destroy(&win);
+  sgl_destroy(&buf);
   for (int i = 0; i < (int)(sizeof(s) / sizeof(s[0])); ++i)
     sgl_destroy(&s[i]);
+  sgl_screen_destroy(&win);
   sgl_release();
   return 0;
 }
