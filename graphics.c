@@ -1491,6 +1491,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
           break;
         default:
           error_handle(NORMAL_PRIORITY, UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
+          FREE_SAFE(color_map);
           sgl_destroy(s);
           return false;
       }
@@ -1500,6 +1501,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
     default:
 #pragma TODO(Add RLE support);
       error_handle(NORMAL_PRIORITY, UNSUPPORTED_BMP, "bmp() failed. Unsupported compression: %d", info.compression);
+      FREE_SAFE(color_map);
       sgl_destroy(s);
       return false;
   }
@@ -3106,6 +3108,7 @@ bool sgl_save_image(surface_t* in, const char* path, SAVEFORMAT type) {
     res = stbi_write_jpg(path, in->w, in->h, NC, data, 85);
     break;
   }
+  FREE_SAFE(data);
 #undef NC
 
   if (!res) {
@@ -3861,20 +3864,20 @@ static inline void add_joystick(joystick_t* d) {
 #endif
 #endif
 
-static void(*__kb_callback)(void*, KEYSYM, KEYMOD, bool) = NULL;
-static void(*__mouse_btn_callback)(void*, MOUSEBTN, KEYMOD, bool) = NULL;
-static void(*__mouse_move_callback)(void*, int, int, int, int) = NULL;
-static void(*__scroll_callback)(void*, KEYMOD, float, float) = NULL;
-static void(*__focus_callback)(void*, bool) = NULL;
-static void(*__resize_callback)(void*, int, int) = NULL;
+static void(*__kb_callback)(void*, screen_t*, KEYSYM, KEYMOD, bool) = NULL;
+static void(*__mouse_btn_callback)(void*, screen_t*, MOUSEBTN, KEYMOD, bool) = NULL;
+static void(*__mouse_move_callback)(void*, screen_t*, int, int, int, int) = NULL;
+static void(*__scroll_callback)(void*, screen_t*, KEYMOD, float, float) = NULL;
+static void(*__focus_callback)(void*, screen_t*, bool) = NULL;
+static void(*__resize_callback)(void*, screen_t*, int, int) = NULL;
 
 void sgl_screen_callbacks(
-    void(*kb_cb)(void*, KEYSYM, KEYMOD, bool),
-    void(*mouse_btn_cb)(void*, MOUSEBTN, KEYMOD, bool),
-    void(*mouse_move_cb)(void*, int, int, int, int),
-    void(*scroll_cb)(void*, KEYMOD, float, float),
-    void(*focus_cb)(void*, bool),
-    void(*resize_cb)(void*, int, int)) {
+    void(*kb_cb)(void*, screen_t*, KEYSYM, KEYMOD, bool),
+    void(*mouse_btn_cb)(void*, screen_t*, MOUSEBTN, KEYMOD, bool),
+    void(*mouse_move_cb)(void*, screen_t*, int, int, int, int),
+    void(*scroll_cb)(void*, screen_t*, KEYMOD, float, float),
+    void(*focus_cb)(void*, screen_t*, bool),
+    void(*resize_cb)(void*, screen_t*, int, int)) {
   __kb_callback = kb_cb;
   __mouse_btn_callback = mouse_btn_cb;
   __mouse_move_callback = mouse_move_cb;
@@ -3883,27 +3886,27 @@ void sgl_screen_callbacks(
   __resize_callback = resize_cb;
 }
 
-void sgl_keyboard_callback(void(*kb_cb)(void*, KEYSYM, KEYMOD, bool)) {
+void sgl_keyboard_callback(void(*kb_cb)(void*, screen_t*, KEYSYM, KEYMOD, bool)) {
   __kb_callback = kb_cb;
 }
 
-void sgl_mouse_button_callback(void(*mouse_btn_cb)(void*, MOUSEBTN, KEYMOD, bool)) {
+void sgl_mouse_button_callback(void(*mouse_btn_cb)(void*, screen_t*, MOUSEBTN, KEYMOD, bool)) {
   __mouse_btn_callback = mouse_btn_cb;
 }
 
-void sgl_mouse_move_callback(void(*mouse_move_cb)(void*, int, int, int, int)) {
+void sgl_mouse_move_callback(void(*mouse_move_cb)(void*, screen_t*, int, int, int, int)) {
   __mouse_move_callback = mouse_move_cb;
 }
 
-void sgl_scroll_callback(void(*scroll_cb)(void*, KEYMOD, float, float)) {
+void sgl_scroll_callback(void(*scroll_cb)(void*, screen_t*, KEYMOD, float, float)) {
   __scroll_callback = scroll_cb;
 }
 
-void sgl_active_callback(void(*active_cb)(void*, bool)) {
+void sgl_active_callback(void(*active_cb)(void*, screen_t*, bool)) {
   __focus_callback = active_cb;
 }
 
-void sgl_resize_callback(void(*resize_cb)(void*, int, int)) {
+void sgl_resize_callback(void(*resize_cb)(void*, screen_t*, int, int)) {
   __resize_callback = resize_cb;
 }
 
@@ -5202,12 +5205,26 @@ void sgl_custom_cursor(surface_t* s) {
 }
 
 -(void)win_changed:(NSNotification *)n {
-  CALL(__focus_callback, false);
+  CALL(__focus_callback, [app getParent], false);
   app = self;
 }
 
 -(void)win_close {
   closed = true;
+}
+  
+-(bool)isClosed {
+  return closed;
+}
+
+-(void)setParent:(screen_t*)p {
+  if (parent || !p)
+    return;
+  parent = p;
+}
+
+-(screen_t*)getParent {
+  return parent;
 }
 
 -(void)win_resize:(NSNotification *)n {
@@ -5221,7 +5238,7 @@ void sgl_custom_cursor(surface_t* s) {
 #endif
   parent->w = size.width;
   parent->h = h;
-  CALL(__resize_callback, size.width, h);
+  CALL(__resize_callback, [app getParent], size.width, h);
 }
 
 -(NSView*)contentView {
@@ -5230,16 +5247,6 @@ void sgl_custom_cursor(surface_t* s) {
 
 -(osx_view_t*)subView {
   return subview;
-}
-  
--(bool)isClosed {
-  return closed;
-}
-
--(void)setParent:(screen_t*)p {
-  if (parent || !p)
-    return;
-  parent = p;
 }
 
 -(BOOL)canBecomeKeyWindow {
@@ -5251,7 +5258,7 @@ void sgl_custom_cursor(surface_t* s) {
 }
 
 -(void)becomeKeyWindow {
-  CALL(__focus_callback, true);
+  CALL(__focus_callback, [app getParent], true);
 }
 
 -(NSRect)contentRectForFrameRect:(NSRect)f {
@@ -5490,32 +5497,32 @@ void sgl_poll(void) {
     switch ([e type]) {
       case NSEventTypeKeyUp:
       case NSEventTypeKeyDown:
-        CALL(__kb_callback, translate_key([e keyCode]), translate_mod([e modifierFlags]), ([e type] == NSEventTypeKeyDown));
+        CALL(__kb_callback, [app getParent], translate_key([e keyCode]), translate_mod([e modifierFlags]), ([e type] == NSEventTypeKeyDown));
         break;
       case NSEventTypeLeftMouseUp:
       case NSEventTypeRightMouseUp:
       case NSEventTypeOtherMouseUp:
-        CALL(__mouse_btn_callback, (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), false);
+        CALL(__mouse_btn_callback, [app getParent], (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), false);
         break;
       case NSEventTypeLeftMouseDown:
       case NSEventTypeRightMouseDown:
       case NSEventTypeOtherMouseDown:
-        CALL(__mouse_btn_callback, (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
+        CALL(__mouse_btn_callback, [app getParent], (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
         break;
       case NSEventTypeScrollWheel:
-        CALL(__scroll_callback, translate_mod([e modifierFlags]), [e deltaX], [e deltaY]);
+        CALL(__scroll_callback, [app getParent], translate_mod([e modifierFlags]), [e deltaX], [e deltaY]);
         break;
       case NSEventTypeLeftMouseDragged:
       case NSEventTypeRightMouseDragged:
       case NSEventTypeOtherMouseDragged:
         if (cursor_in_win && app) {
-          CALL(__mouse_btn_callback, (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
-          CALL(__mouse_move_callback, [e locationInWindow].x, [app frame].size.height - border_off - [e locationInWindow].y, 0, 0);
+          CALL(__mouse_btn_callback, [app getParent], (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
+          CALL(__mouse_move_callback, [app getParent], [e locationInWindow].x, [app frame].size.height - border_off - [e locationInWindow].y, 0, 0);
         }
         break;
       case NSEventTypeMouseMoved:
         if (cursor_in_win && app)
-          CALL(__mouse_move_callback, [e locationInWindow].x, [app frame].size.height - border_off - [e locationInWindow].y, 0, 0);
+          CALL(__mouse_move_callback, [app getParent], [e locationInWindow].x, [app frame].size.height - border_off - [e locationInWindow].y, 0, 0);
         break;
     }
     [NSApp sendEvent:e];

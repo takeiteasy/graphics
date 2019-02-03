@@ -604,18 +604,18 @@ extern "C" {
   } KEYMOD;
 
   void sgl_screen_callbacks(
-    void(*kb_cb)(void*, KEYSYM, KEYMOD, bool),
-    void(*mouse_btn_cb)(void*, MOUSEBTN, KEYMOD, bool),
-    void(*mouse_move_cb)(void*, int, int, int, int),
-    void(*scroll_cb)(void*, KEYMOD, float, float),
-    void(*active_cb)(void*, bool),
-    void(*resize_cb)(void*, int, int));
-  void sgl_keyboard_callback(void(*kb_cb)(void*, KEYSYM, KEYMOD, bool));
-  void sgl_mouse_button_callback(void(*mouse_btn_cb)(void*, MOUSEBTN, KEYMOD, bool));
-  void sgl_mouse_move_callback(void(*mouse_move_cb)(void*, int, int, int, int));
-  void sgl_scroll_callback(void(*scroll_cb)(void*, KEYMOD, float, float));
-  void sgl_active_callback(void(*active_cb)(void*, bool));
-  void sgl_resize_callback(void(*resize_cb)(void*, int, int));
+    void(*kb_cb)(void*, screen_t*, KEYSYM, KEYMOD, bool),
+    void(*mouse_btn_cb)(void*, screen_t*, MOUSEBTN, KEYMOD, bool),
+    void(*mouse_move_cb)(void*, screen_t*, int, int, int, int),
+    void(*scroll_cb)(void*, screen_t*, KEYMOD, float, float),
+    void(*active_cb)(void*, screen_t*, bool),
+    void(*resize_cb)(void*, screen_t*, int, int));
+  void sgl_keyboard_callback(void(*kb_cb)(void*, screen_t*, KEYSYM, KEYMOD, bool));
+  void sgl_mouse_button_callback(void(*mouse_btn_cb)(void*, screen_t*, MOUSEBTN, KEYMOD, bool));
+  void sgl_mouse_move_callback(void(*mouse_move_cb)(void*, screen_t*, int, int, int, int));
+  void sgl_scroll_callback(void(*scroll_cb)(void*, screen_t*, KEYMOD, float, float));
+  void sgl_active_callback(void(*active_cb)(void*, screen_t*, bool));
+  void sgl_resize_callback(void(*resize_cb)(void*, screen_t*, int, int));
 
 #define DEFAULT 0
 

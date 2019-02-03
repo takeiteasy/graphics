@@ -29,9 +29,9 @@ static bool grey = false;
 #define printf(fmt, ...) (0)
 #endif
 
-void on_keyboard(void* data, KEYSYM sym, KEYMOD mod, bool down) {
+void on_keyboard(void* data, screen_t* s, KEYSYM sym, KEYMOD mod, bool down) {
   if (down) {
-    printf("kb: key %d is down\n", sym);
+    printf("window (%d):kb: key %d is down\n", s->id, sym);
     switch (sym) {
 #if defined(__APPLE__)
       case KB_KEY_Q:
@@ -50,7 +50,7 @@ void on_keyboard(void* data, KEYSYM sym, KEYMOD mod, bool down) {
         break;
     }
   } else {
-    printf("kb: key %d is up\n", sym);
+    printf("window (%d):kb: key %d is up\n", s->id, sym);
     switch (sym) {
       case KB_KEY_SPACE:
         grey = false;
@@ -67,11 +67,11 @@ void on_keyboard(void* data, KEYSYM sym, KEYMOD mod, bool down) {
   }
 }
 
-void on_mouse_btn(void* data, MOUSEBTN btn, KEYMOD mod, bool down) {
-  printf("mouse btn: %d is %s\n", (int)btn, (down ? "down" : "up"));
+void on_mouse_btn(void* data, screen_t* s, MOUSEBTN btn, KEYMOD mod, bool down) {
+  printf("window (%d):mouse btn: %d is %s\n", s->id, (int)btn, (down ? "down" : "up"));
 }
 
-void on_mouse_move(void* data, int x, int y, int dx, int dy) {
+void on_mouse_move(void* data, screen_t* s, int x, int y, int dx, int dy) {
 #if !SKIP_RESIZE
   mx = x;
   my = y;
@@ -81,18 +81,18 @@ void on_mouse_move(void* data, int x, int y, int dx, int dy) {
 #endif
 }
 
-void on_scroll(void* data, KEYMOD mod, float dx, float dy) {
-  printf("scroll: %f %f\n", dx, dy);
+void on_scroll(void* data, screen_t* s, KEYMOD mod, float dx, float dy) {
+  printf("window (%d):scroll: %f %f\n", s->id, dx, dy);
 }
 
-void on_focus(void* data, bool focused) {
-  printf("%s\n", (focused ? "FOCUSED" : "UNFOCUSED"));
+void on_focus(void* data, screen_t* s, bool focused) {
+  printf("window (%d):%s\n", s->id, (focused ? "FOCUSED" : "UNFOCUSED"));
 }
 
-void on_resize(void* data, int w, int h) {
+void on_resize(void* data, screen_t* s, int w, int h) {
 #if !SKIP_RESIZE
   sgl_reset(&buf, w, h);
-  printf("%d %d\n", buf.w, buf.h);
+  printf("window (%d):%d %d\n", s->id, buf.w, buf.h);
 #else
   sgl_cls(&buf);
 #endif

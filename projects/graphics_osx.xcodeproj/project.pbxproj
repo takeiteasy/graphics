@@ -55,6 +55,7 @@
 		88B0A65420EC6E7600CE1317 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		88B0A65520EC6E7600CE1317 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		88CC7A18210CDAD600392B08 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		98181A1B220799D9001B510C /* freetype */ = {isa = PBXFileReference; lastKnownFileType = folder; path = freetype; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,6 +78,7 @@
 		88B0254F20F5D1500007849F /* 3rdparty */ = {
 			isa = PBXGroup;
 			children = (
+				98181A1B220799D9001B510C /* freetype */,
 				88B0255020F5D1500007849F /* stb_image_write.h */,
 				88B0255120F5D1500007849F /* stb_image.h */,
 			);
