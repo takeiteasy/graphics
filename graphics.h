@@ -635,6 +635,41 @@ extern "C" {
     CURSOR_HAND,      // Hand
     CURSOR_CUSTOM     // Use your own
   } CURSORTYPE;
+  
+  typedef enum {
+    DIALOG_INFO,
+    DIALOG_WARNING,
+    DIALOG_ERROR
+  } DIALOG_MSG_LVL;
+  
+  typedef enum {
+    DIALOG_OK,
+    DIALOG_OK_CANCEL,
+    DIALOG_YES_NO
+  } DIALOG_BTNS;
+  
+  typedef enum {
+    DIALOG_OPEN,
+    DIALOG_OPEN_DIR,
+    DIALOG_SAVE
+  } DIALOG_FILE_ACTION;
+  
+  typedef struct dialog_filter_patterns {
+    char *pattern;
+    struct dialog_filter_patterns *next;
+  } dialog_filter_patterns;
+  
+  typedef struct dialog_filters {
+    char *name;
+    dialog_filter_patterns *patterns;
+    struct dialog_filters *next;
+  } dialog_filters;
+
+  int sgl_dialog(DIALOG_MSG_LVL lvl, DIALOG_BTNS btns, const char* msg);
+  char* sgl_dialog_file(DIALOG_FILE_ACTION action, const char* path, const char* fname, dialog_filters* filters);
+  dialog_filters* sgl_parse_dialog_filters(const char* str);
+  void sgl_dialog_filters_destroy(dialog_filters* filters);
+  int sgl_dialog_color_picker(int* color, int opacity);
 
 #define SHOWN true
 #define HIDDEN false

@@ -37,7 +37,8 @@ void on_keyboard(void* data, screen_t* s, KEYSYM sym, KEYMOD mod, bool down) {
       case KB_KEY_Q:
       case KB_KEY_W:
         if (mod & KB_MOD_SUPER)
-          running = 0;
+          if (sgl_dialog(DIALOG_INFO, DIALOG_YES_NO, "Do you want to quit?"))
+            running = 0;
         break;
   #else
       case KB_KEY_F4:
@@ -55,13 +56,37 @@ void on_keyboard(void* data, screen_t* s, KEYSYM sym, KEYMOD mod, bool down) {
       case KB_KEY_SPACE:
         grey = false;
         break;
-      case KB_KEY_F1:
-        sgl_save_bmp(&buf, "test.bmp");
+      case KB_KEY_F1: {
+        dialog_filters* filters = sgl_parse_dialog_filters("BMP:bmp");
+        char* path = sgl_dialog_file(DIALOG_SAVE, ".", "test", filters);
+        if (path) {
+          sgl_save_bmp(&buf, path);
+          free(path);
+        }
+        sgl_dialog_filters_destroy(filters);
         break;
+      }
 #if defined(SGL_ENABLE_STB_IMAGE)
-      case KB_KEY_F2:
-        sgl_save_image(&buf, "test.png", PNG);
+      case KB_KEY_F2: {
+        dialog_filters* filters = sgl_parse_dialog_filters("PNG:png;TGA:tga;BMP:bmp;JPEG:jpg");
+        char* path = sgl_dialog_file(DIALOG_SAVE, ".", "test", filters);
+        if (path) {
+          SAVEFORMAT fmt = PNG;
+          const char* dot = strrchr(path, '.');
+          if (dot)
+            dot += 1;
+          if (!strcmp("tga", dot))
+            fmt = TGA;
+          else if (!strcmp("tga", dot))
+            fmt = BMP;
+          else if (!strcmp("tga", dot))
+            fmt = JPG;
+          sgl_save_image(&buf, path, fmt);
+          free(path);
+        }
+        sgl_dialog_filters_destroy(filters);
         break;
+      }
 #endif
     }
   }
@@ -114,8 +139,19 @@ void on_resize(void* data, screen_t* s, int w, int h) {
 
 void on_error(void* data, ERRORLVL lvl, ERRORTYPE type, const char* msg, const char* file, const char* func, int line) {
   fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
-  if (lvl == HIGH_PRIORITY || lvl == NORMAL_PRIORITY)
-    abort();
+  switch (lvl) {
+    case LOW_PRIORITY:
+      sgl_dialog(DIALOG_INFO, DIALOG_OK, "MINOR ERROR: See logs for info");
+      break;
+    case NORMAL_PRIORITY:
+      if (sgl_dialog(DIALOG_WARNING, DIALOG_YES_NO, "ERROR! Do you want to continue? See logs for info"))
+        abort();
+      break;
+    case HIGH_PRIORITY:
+      sgl_dialog(DIALOG_ERROR, DIALOG_OK, "SERIOUS ERROR! See logs for info");
+      abort();
+      break;
+  }
 }
 
 #if defined(SGL_ENABLE_JOYSTICKS)

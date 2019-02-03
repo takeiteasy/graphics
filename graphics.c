@@ -3910,6 +3910,73 @@ void sgl_resize_callback(void(*resize_cb)(void*, screen_t*, int, int)) {
   __resize_callback = resize_cb;
 }
 
+dialog_filters* sgl_parse_dialog_filters(const char *str) {
+  dialog_filters* filters_head = malloc(sizeof(dialog_filters));
+  filters_head->next = NULL;
+  
+  dialog_filters *filters = filters_head;
+  dialog_filter_patterns *patterns = NULL;
+  
+  const char *text = str;
+  while (1) {
+    switch (*str) {
+      case ':': {
+        filters->name = strndup(text, str - text);
+        filters->patterns = malloc(sizeof(dialog_filter_patterns));
+        patterns = filters->patterns;
+        patterns->next = NULL;
+        text = str + 1;
+      } break;
+      case ',': {
+        assert(patterns);
+        patterns->pattern = strndup(text, str - text);
+        patterns->next = malloc(sizeof(dialog_filter_patterns));
+        patterns = patterns->next;
+        patterns->next = NULL;
+        text = str + 1;
+      } break;
+      case ';': {
+        assert(patterns);
+        patterns->pattern = strndup(text, str - text);
+        filters->next = malloc(sizeof(dialog_filters));
+        filters = filters->next;
+        filters->next = NULL;
+        patterns = NULL;
+        text = str + 1;
+      } break;
+      case '\0': {
+        assert(patterns);
+        patterns->pattern = strndup(text, str - text);
+      } break;
+      default: break;
+    }
+    if (!*str)
+      break;
+    str++;
+  }
+  
+  return filters_head;
+}
+
+static void patterns_free(dialog_filter_patterns *patterns) {
+  if (!patterns)
+    return;
+  free(patterns->pattern);
+  dialog_filter_patterns *next = patterns->next;
+  free(patterns);
+  patterns_free(next);
+}
+
+void sgl_dialog_filters_destroy(dialog_filters *filters) {
+  if (!filters)
+    return;
+  free(filters->name);
+  patterns_free(filters->patterns);
+  dialog_filters *next = filters->next;
+  free(filters);
+  sgl_dialog_filters_destroy(next);
+}
+
 #if defined(SGL_ENABLE_OPENGL)
 #if defined(SGL_OSX)
 #include <OpenGL/gl3.h>
@@ -4703,6 +4770,142 @@ void sgl_joystick_poll() {
   processing_events = false;
 }
 #endif
+
+int sgl_dialog(DIALOG_MSG_LVL lvl, DIALOG_BTNS btns, const char* msg) {
+  NSAlert *alert = [[NSAlert alloc] init];
+  
+  switch (lvl) {
+    default:
+#ifdef __MAC_10_12
+    case DIALOG_INFO:
+      [alert setAlertStyle:NSAlertStyleInformational];
+      break;
+    case DIALOG_WARNING:
+      [alert setAlertStyle:NSAlertStyleWarning];
+      break;
+    case DIALOG_ERROR:
+      [alert setAlertStyle:NSAlertStyleCritical];
+      break;
+#else
+    case DIALOG_INFO:
+      [alert setAlertStyle:NSInformationalAlertStyle];
+      break;
+    case DIALOG_WARNING:
+      [alert setAlertStyle:NSWarningAlertStyle];
+      break;
+    case DIALOG_ERROR:
+      [alert setAlertStyle:NSCriticalAlertStyle];
+      break;
+#endif
+  }
+  
+  switch (btns) {
+    default:
+    case DIALOG_OK:
+      [alert addButtonWithTitle:@"OK"];
+      break;
+    case DIALOG_OK_CANCEL:
+      [alert addButtonWithTitle:@"OK"];
+      [alert addButtonWithTitle:@"Cancel"];
+      break;
+    case DIALOG_YES_NO:
+      [alert addButtonWithTitle:@"Yes"];
+      [alert addButtonWithTitle:@"No"];
+      break;
+  }
+  
+  NSString *messageString = [NSString stringWithUTF8String:msg];
+  // [alert setInformativeText:messageString];
+  [alert setMessageText:messageString];
+  
+  int result;
+  if ([alert runModal] == NSAlertFirstButtonReturn) {
+    result = 1;
+  }
+  else {
+    result = 0;
+  }
+  
+  [alert release];
+  return result;
+}
+
+
+char* sgl_dialog_file(DIALOG_FILE_ACTION action, const char* path, const char* fname, dialog_filters* filters) {
+  NSSavePanel* panel = nil;
+  NSOpenPanel* open_panel = nil;
+  
+  // No idea how to manage memory with Objective C. Please help!
+  NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
+  
+  if (action == DIALOG_OPEN || action == DIALOG_OPEN_DIR) {
+    open_panel = [NSOpenPanel openPanel];
+    panel = open_panel;
+  } else
+    panel = [NSSavePanel savePanel];
+  
+  // Bring dialog to front
+  // https://stackoverflow.com/a/2402069
+  // Thanks Dave!
+  [panel setLevel:CGShieldingWindowLevel()];
+  
+  if (filters) {
+    NSMutableArray *fileTypes = [[NSMutableArray alloc] init];
+    
+    for (; filters; filters = filters->next) {
+      for (dialog_filter_patterns* patterns = filters->patterns; patterns; patterns = patterns->next) {
+        NSString *fileType = [NSString stringWithUTF8String:patterns->pattern];
+        [fileTypes addObject:fileType];
+      }
+    }
+    
+    [panel setAllowedFileTypes:fileTypes];
+    // [fileTypes release];
+  }
+  
+  if (action == DIALOG_OPEN || action == DIALOG_OPEN_DIR)
+    open_panel.allowsMultipleSelection = NO;
+  if (action == DIALOG_OPEN) {
+    open_panel.canChooseDirectories = NO;
+    open_panel.canChooseFiles = YES;
+  }
+  if (action == DIALOG_OPEN_DIR) {
+    open_panel.canCreateDirectories = YES;
+    open_panel.canChooseDirectories = YES;
+    open_panel.canChooseFiles = NO;
+  }
+  
+  if (path) {
+    NSString *path_str = [NSString stringWithUTF8String:path];
+    NSURL *path_url = [NSURL fileURLWithPath:path_str];
+    panel.directoryURL = path_url;
+    // [path_url release];
+    // [path_str release];
+  }
+  
+  if (fname) {
+    NSString *filenameString = [NSString stringWithUTF8String:fname];
+    panel.nameFieldStringValue = filenameString;
+    // [filenameString release];
+  }
+  
+  char *result = NULL;
+  
+#ifdef __MAC_10_9
+#define OK NSModalResponseOK
+#else
+#define OK NSOKButton
+#endif
+  if ([panel runModal] == OK) {
+    NSURL *result_url = [panel URL];
+    result = strdup([[result_url path] UTF8String]);
+    // [result_url release];
+  }
+  
+  // [panel release];
+  [pool release];
+  return result;
+}
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_12
 #define NSWindowStyleMaskBorderless NSBorderlessWindowMask

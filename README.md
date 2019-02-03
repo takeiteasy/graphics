@@ -15,6 +15,7 @@ Designed to be a drop-in and use with little hassle sort of deal. I don't know i
 - Text rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
 - Joystick handling (adapted from [ThemsAllTook/libstem_gamepad](https://github.com/ThemsAllTook/libstem_gamepad))
 - GIF loading (adapted from [hidefromkgb/gif_load](https://github.com/hidefromkgb/gif_load)) and saving (adapted from [lecram/gifenc](https://github.com/lecram/gifenc))
+- Message box & dialog support (adapted from [AndrewBelt/osdialog](https://github.com/AndrewBelt/osdialog))
 - Optional OpenGL & Metal backends (Just for rendering to screen)
 - Optional extras (AA primitives, BDF font rendering, Freetype rendering, image loader (adapted from  [stb_image](https://github.com/nothings/stb)))
 
@@ -36,9 +37,9 @@ On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're usin
 On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line options or unicode decoding won't work properly. I don't know why, but it doesn't.
 
 Tested on:
-- OS X 10.12, 10.13 & 10.14
-- Windows 7 x64
--  Ubuntu 19 x86_64 (Linux 4.13.0-16) (Inside VM only)
+- OS X 10.12, 10.13 & 10.14 (clang)
+- Windows 7 x64 (MSVC)
+-  Ubuntu 19 x86_64 (Linux 4.13.0-16) (Inside VM only) (clang)
 
 
 ## Screenshots
@@ -64,9 +65,14 @@ Tested on:
 - Sort out joysticks
   - General clean up
   - Remove redundant stuff
-  - Make joystick_t a private struct in source
+  - Make joystick_t a private struct in s ource
   - Fix crashes
   - Linux joysticks totally untested
+- Message box support (~OS X~/Windows/Linux)
+- Multiple Windows (~OS X~/Windows/Linux)
+- Window icon support?
+- Cursor loading from surface
+- Set cursor position function
 - Make a CMake build file
 - Port new stuff to Windows & Linux
 
@@ -77,26 +83,21 @@ Tested on:
 - Add fill option for ```ellipse_rotated()``` and other functions
 - Add line width option to primitives
 - 1 & 4 bpp, RLE compressed and OS/2 BMP support
-- Message box support
-- Window icon support
-- Cursor loading from surface
-- Set cursor position function
 
 ### At some point
 
 - Keyboard scancodes
 - Make thread safe (surface locks)
 - Vulkan/DirectX/~~Metal~~/SIXEL backends
-- Multiple Windows (~OS X~/Windows/Linux)
 - Wayland window code
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples/tests
 - More extras (~gif load/save~, ~FreeType fonts~, C++ OOP wrapper)
-- Optional OpenCL for processing stuff
+- Optional OpenCL for processing
 - Pixel shader support
 - Audio playback (wav files)
-- Other language bindings (Wren/Lua/Ruby probably)
+- Other language bindings (Either Wren/Lua/Ruby probably)
 
 ### Investigate
 
