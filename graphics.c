@@ -4995,102 +4995,11 @@ typedef struct {
 static osx_app_t* app;
 static int border_off = 22;
 
-static NSCursor *__custom_cursor = nil, *__cursor = nil;
+static NSCursor *__custom_cursor = nil,
+                *__current_curor = nil,
+                *__cursor = nil;
 static bool cursor_locked = false, cursor_in_win = false;
 static CGFloat lmx = 0, lmy = 0, wdx = 0, wdy = 0;
-
-NSPoint cursor_pos_abs() {
-  const NSPoint p = [NSEvent mouseLocation];
-  return (NSPoint){ p.x, [app screen].frame.size.height - p.y };
-}
-
-void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
-  if (!app) {
-    error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "cursor() failed: Called before screen is set up");
-    return;
-  }
-  
-  if (shown)
-    [NSCursor unhide];
-  else
-    [NSCursor hide];
-  cursor_locked = locked;
-
-  NSCursor* tmp = NULL;
-  switch (type) {
-    default:
-    case CURSOR_ARROW:
-    case CURSOR_WAIT:
-    case CURSOR_WAITARROW:
-      tmp = [NSCursor arrowCursor];
-      break;
-    case CURSOR_IBEAM:
-      tmp = [NSCursor IBeamCursor];
-      break;
-    case CURSOR_CROSSHAIR:
-      tmp = [NSCursor crosshairCursor];
-      break;
-    case CURSOR_SIZENWSE:
-    case CURSOR_SIZENESW:
-      tmp = [NSCursor closedHandCursor];
-      break;
-    case CURSOR_SIZEWE:
-      tmp = [NSCursor resizeLeftRightCursor];
-      break;
-    case CURSOR_SIZENS:
-      tmp = [NSCursor resizeUpDownCursor];
-      break;
-    case CURSOR_SIZEALL:
-      tmp = [NSCursor closedHandCursor];
-      break;
-    case CURSOR_NO:
-      tmp = [NSCursor operationNotAllowedCursor];
-      break;
-    case CURSOR_HAND:
-      tmp = [NSCursor pointingHandCursor];
-      break;
-    case CURSOR_CUSTOM:
-      if (!__custom_cursor) {
-        error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "cursor() failed: Custom cursor not loaded");
-        return;
-      }
-  }
-  
-  if (__cursor && __cursor != __custom_cursor)
-    [__cursor release];
-
-  __cursor = (tmp ? tmp : __custom_cursor);
-  [__cursor retain];
-
-  if (app && [app contentView])
-    [[app contentView] resetCursorRects];
-}
-
-static inline NSImage* create_cocoa_image(surface_t* s) {
-  NSImage* nsi = [[[NSImage alloc] initWithSize: NSMakeSize(s->w, s->h)] autorelease];
-  NSBitmapImageRep* nsbir = nil;
-
-  if (nsi && nsbir)
-    [nsi addRepresentation:nsbir];
-  return nsi;
-}
-
-void sgl_custom_cursor(surface_t* s) {
-  NSImage* nsi = create_cocoa_image(s);
-  if (!nsi)
-    return;
-
-  if (__custom_cursor)
-    [__custom_cursor release];
-
-  __custom_cursor = [[NSCursor alloc] initWithImage:nsi
-                                            hotSpot:NSMakePoint(0, 0)];
-  if (!__custom_cursor) {
-    __custom_cursor = nil;
-    return;
-  }
-  [__custom_cursor retain];
-}
 
 @implementation osx_view_t
 -(id)initWithFrame:(CGRect)r {
@@ -5211,7 +5120,7 @@ void sgl_custom_cursor(surface_t* s) {
   }
 
   track = [[NSTrackingArea alloc] initWithRect:[self visibleRect]
-                                       options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow | NSTrackingEnabledDuringMouseDrag | NSTrackingCursorUpdate | NSTrackingInVisibleRect | NSTrackingAssumeInside | NSTrackingActiveInActiveApp
+                                       options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow | NSTrackingEnabledDuringMouseDrag | NSTrackingCursorUpdate | NSTrackingInVisibleRect | NSTrackingAssumeInside | NSTrackingActiveInActiveApp | NSTrackingActiveAlways
                                          owner:self
                                       userInfo:nil];
 
@@ -5221,14 +5130,9 @@ void sgl_custom_cursor(surface_t* s) {
 
 -(void)resetCursorRects {
   [super resetCursorRects];
-  [self addCursorRect:[self visibleRect] cursor:(__custom_cursor ? __custom_cursor : [NSCursor arrowCursor])];
+  [self addCursorRect:[self visibleRect] cursor:(__cursor ? __cursor : [NSCursor arrowCursor])];
 }
-
--(void)cursorUpdate:(NSEvent*)event {
-  if (__cursor)
-    [__cursor set];
-}
-
+  
 -(BOOL)acceptsFirstResponder {
   return YES;
 }
@@ -5244,7 +5148,15 @@ void sgl_custom_cursor(surface_t* s) {
 
 -(void)mouseExited: (NSEvent*)event {
   cursor_in_win = false;
+  __current_curor = nil;
 #pragma TODO(Add mouse exited event cb)
+}
+  
+-(void)mouseMoved:(NSEvent *)event {
+  if (__cursor && cursor_in_win && __cursor != __current_curor) {
+    [__cursor set];
+    __current_curor = __cursor;
+  }
 }
 
 -(void)updateBufPtr:(surface_t*)b {
@@ -5474,6 +5386,130 @@ void sgl_custom_cursor(surface_t* s) {
 }
 @end
 
+NSPoint cursor_pos_abs() {
+  const NSPoint p = [NSEvent mouseLocation];
+  return (NSPoint){ p.x, [app screen].frame.size.height - p.y };
+}
+
+void sgl_cursor(screen_t* s, bool shown, bool locked, CURSORTYPE type) {
+  osx_screen_t* _s = (osx_screen_t*)s->__private;
+  if (!_s) {
+    error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "cursor() failed: Called before screen is set up");
+    return;
+  }
+  
+  if (shown)
+    [NSCursor unhide];
+  else
+    [NSCursor hide];
+  cursor_locked = locked;
+  
+  NSCursor* tmp = NULL;
+  switch (type) {
+    default:
+    case CURSOR_ARROW:
+    case CURSOR_WAIT:
+    case CURSOR_WAITARROW:
+      tmp = [NSCursor arrowCursor];
+      break;
+    case CURSOR_IBEAM:
+      tmp = [NSCursor IBeamCursor];
+      break;
+    case CURSOR_CROSSHAIR:
+      tmp = [NSCursor crosshairCursor];
+      break;
+    case CURSOR_SIZENWSE:
+    case CURSOR_SIZENESW:
+      tmp = [NSCursor closedHandCursor];
+      break;
+    case CURSOR_SIZEWE:
+      tmp = [NSCursor resizeLeftRightCursor];
+      break;
+    case CURSOR_SIZENS:
+      tmp = [NSCursor resizeUpDownCursor];
+      break;
+    case CURSOR_SIZEALL:
+      tmp = [NSCursor closedHandCursor];
+      break;
+    case CURSOR_NO:
+      tmp = [NSCursor operationNotAllowedCursor];
+      break;
+    case CURSOR_HAND:
+      tmp = [NSCursor pointingHandCursor];
+      break;
+    case CURSOR_CUSTOM:
+      if (!__custom_cursor) {
+        error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "cursor() failed: Custom cursor not loaded");
+        return;
+      }
+      tmp = __custom_cursor;
+  }
+  
+  if (__cursor && __cursor != __custom_cursor)
+    [__cursor release];
+  
+  __cursor = tmp;
+  [__cursor retain];
+  
+  if (_s && [_s->app subView])
+    [[_s->app subView] resetCursorRects];
+}
+
+static inline NSImage* create_cocoa_image(surface_t* s) {
+  NSImage* nsi = [[[NSImage alloc] initWithSize:NSMakeSize(s->w, s->h)] autorelease];
+  if (!nsi)
+    return nil;
+  
+  NSBitmapImageRep* nsbir = [[[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
+                                                                     pixelsWide:s->w
+                                                                     pixelsHigh:s->h
+                                                                  bitsPerSample:8
+                                                                samplesPerPixel:4
+                                                                       hasAlpha:YES
+                                                                       isPlanar:NO
+                                                                 colorSpaceName:NSDeviceRGBColorSpace
+                                                                   bitmapFormat:NSAlphaNonpremultipliedBitmapFormat
+                                                                    bytesPerRow:0
+                                                                   bitsPerPixel:0] autorelease];
+  if (!nsbir)
+    return nil;
+  
+  char* rgba = (char*)malloc(s->w * s->h * 4);
+  int offset = 0, c;
+  for(int i = 0; i < s->h; ++i) {
+    for (int j = 0; j < s->w; j++) {
+      c = XYGET(s, j, i);
+      rgba[4 * offset]     = R(c);
+      rgba[4 * offset + 1] = G(c);
+      rgba[4 * offset + 2] = B(c);
+      rgba[4 * offset + 3] = A(c);
+      offset++;
+    }
+  }
+  memcpy([nsbir bitmapData], rgba, s->w * s->h * sizeof(char) * 4);
+  free(rgba);
+  
+  [nsi addRepresentation:nsbir];
+  return nsi;
+}
+
+void sgl_cursor_load_custom(surface_t* s) {
+  NSImage* nsi = create_cocoa_image(s);
+  if (!nsi)
+    return;
+  
+  if (__custom_cursor)
+    [__custom_cursor release];
+  
+  __custom_cursor = [[NSCursor alloc] initWithImage:nsi
+                                            hotSpot:NSMakePoint(0, 0)];
+  if (!__custom_cursor) {
+    __custom_cursor = nil;
+    return;
+  }
+  [__custom_cursor retain];
+}
+
 bool sgl_screen(screen_t* s, const char* t, int w, int h, short flags) {
   if (!keycodes_init) {
     memset(keycodes,  -1, sizeof(keycodes));
@@ -5676,13 +5712,31 @@ bool sgl_screen(screen_t* s, const char* t, int w, int h, short flags) {
   
   return true;
 }
+
+void sgl_screen_icon(screen_t* s, surface_t* b) {
+  if (!b || !b->buf)
+    [NSApp setApplicationIconImage:[NSImage imageNamed:@"NSApplicationIcon"]];
+  NSImage* img = create_cocoa_image(b);
+  if (img) {
+    [NSApp setApplicationIconImage:img];
+  }
+}
+
+void sgl_screen_title(screen_t* s, const char* t) {
+  osx_screen_t* tmp = (osx_screen_t*)s->__private;
+  const char* _t = t ? t : "";
+  NSString* title = [[NSString alloc] initWithUTF8String:_t];
+  [tmp->app setTitle:title];
+  [title release];
+}
   
 void sgl_screen_destroy(screen_t* s) {
-  osx_screen_t* tmp = (osx_screen_t*)s->__private;
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
+  osx_screen_t* tmp = (osx_screen_t*)s->__private;
   [[tmp->app subView] dealloc];
   if (tmp->app)
     [tmp->app close];
+  free(tmp);
   [pool drain];
 }
 

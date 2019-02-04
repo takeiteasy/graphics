@@ -676,8 +676,8 @@ extern "C" {
 #define LOCKED true
 #define UNLOCKED false
 
-  void sgl_cursor(bool shown, bool locked, CURSORTYPE cursor);
-  void sgl_custom_cursor(surface_t* s);
+  void sgl_cursor(screen_t* s, bool shown, bool locked, CURSORTYPE cursor);
+  void sgl_cursor_load_custom(surface_t* s);
 
   typedef enum {
     RESIZABLE = 0x01,
@@ -688,6 +688,8 @@ extern "C" {
   } WINDOWFLAGS;
 
   bool sgl_screen(screen_t* s, const char* t, int w, int h, short flags);
+  void sgl_screen_icon(screen_t* s, surface_t* b);
+  void sgl_screen_title(screen_t* s, const char* t);
   void sgl_screen_destroy(screen_t* s);
   void sgl_poll(void);
   void sgl_flush(screen_t* s, surface_t* b);

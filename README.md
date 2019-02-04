@@ -70,9 +70,9 @@ Tested on:
   - Linux joysticks totally untested
 - Message box support (~OS X~/Windows/Linux)
 - Multiple Windows (~OS X~/Windows/Linux)
-- Window icon support?
-- Cursor loading from surface
-- Set cursor position function
+- Window icon support (~OS X~/Windows/Linux)
+- Cursor loading from surface (~OS X~/Windows/Linux)
+- Set cursor position function (~OS X~/Windows/Linux)
 - Make a CMake build file
 - Port new stuff to Windows & Linux
 

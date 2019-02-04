@@ -180,7 +180,18 @@ int main(int argc, const char* argv[]) {
 
   sgl_screen(&win, "test",  WIN_W, WIN_H, RESIZABLE);
   sgl_screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize);
-  sgl_cursor(SHOWN, LOCKED, CURSOR_HAND);
+  
+  surface_t test_icon;
+#define TEST_ICON_SIZE 32
+#define TEST_ICON_SIZE_4 (TEST_ICON_SIZE / 4)
+  sgl_surface(&test_icon, TEST_ICON_SIZE, TEST_ICON_SIZE);
+  sgl_rect(&test_icon, 0, 0, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, RED, true);
+  sgl_rect(&test_icon, 0, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, BLUE, true);
+  sgl_rect(&test_icon, TEST_ICON_SIZE_4, 0, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, YELLOW, true);
+  sgl_rect(&test_icon, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, RGBA(0, 255, 1, 255), true);
+  sgl_screen_icon(NULL, &test_icon);
+  sgl_cursor_load_custom(&test_icon);
+  sgl_cursor(&win, SHOWN, LOCKED, CURSOR_CUSTOM);
   
   sgl_surface(&buf, WIN_W, WIN_H);
 
