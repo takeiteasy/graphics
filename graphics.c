@@ -5386,11 +5386,6 @@ static CGFloat lmx = 0, lmy = 0, wdx = 0, wdy = 0;
 }
 @end
 
-NSPoint cursor_pos_abs() {
-  const NSPoint p = [NSEvent mouseLocation];
-  return (NSPoint){ p.x, [app screen].frame.size.height - p.y };
-}
-
 void sgl_cursor(screen_t* s, bool shown, bool locked, CURSORTYPE type) {
   osx_screen_t* _s = (osx_screen_t*)s->__private;
   if (!_s) {
@@ -5495,8 +5490,10 @@ static inline NSImage* create_cocoa_image(surface_t* s) {
 
 void sgl_cursor_load_custom(surface_t* s) {
   NSImage* nsi = create_cocoa_image(s);
-  if (!nsi)
+  if (!nsi) {
+    error_handle(LOW_PRIORITY, CUSTOM_CURSOR_NOT_CREATED, "sgl_cursor_load_custom() failed: Couldn't create custom cursor");
     return;
+  }
   
   if (__custom_cursor)
     [__custom_cursor release];
@@ -5505,9 +5502,23 @@ void sgl_cursor_load_custom(surface_t* s) {
                                             hotSpot:NSMakePoint(0, 0)];
   if (!__custom_cursor) {
     __custom_cursor = nil;
+    error_handle(LOW_PRIORITY, CUSTOM_CURSOR_NOT_CREATED, "sgl_cursor_load_custom() failed: Couldn't create custom cursor");
     return;
   }
   [__custom_cursor retain];
+}
+  
+void sgl_cursor_pos(point_t* p) {
+  const NSPoint _p = [NSEvent mouseLocation];
+  p->x = _p.x;
+  p->y = [app screen].frame.size.height - _p.y;
+}
+
+void sgl_cursor_set_pos(point_t* p) {
+  CGPoint _p;
+  _p.x = p->x;
+  _p.y = p->y;
+  CGWarpMouseCursorPosition(_p);
 }
 
 bool sgl_screen(screen_t* s, const char* t, int w, int h, short flags) {
@@ -5717,9 +5728,11 @@ void sgl_screen_icon(screen_t* s, surface_t* b) {
   if (!b || !b->buf)
     [NSApp setApplicationIconImage:[NSImage imageNamed:@"NSApplicationIcon"]];
   NSImage* img = create_cocoa_image(b);
-  if (img) {
-    [NSApp setApplicationIconImage:img];
+  if (!img)  {
+    error_handle(LOW_PRIORITY, WINDOW_ICON_FAILED, "sgl_screen_icon() failed: Couldn't set window icon");
+    return;
   }
+  [NSApp setApplicationIconImage:img];
 }
 
 void sgl_screen_title(screen_t* s, const char* t) {

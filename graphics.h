@@ -23,9 +23,9 @@ extern "C" {
 #endif
 
 #if defined(SGL_OSX)
-# if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_13
+# if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_14
 #   if !defined(SGL_ENABLE_OPENGL)
-#     define SGL_ENABLE_METAL // Force Metal on 10.13
+#     define SGL_ENABLE_METAL // Force Metal on 10.14
 #   endif
 # else
 #   if defined(SGL_ENABLE_METAL) && defined(SGL_ENABLE_OPENGL)
@@ -321,6 +321,7 @@ extern "C" {
 #endif
     NIX_WINDOW_CREATION_FAILED,
 #endif
+    WINDOW_ICON_FAILED,
     CUSTOM_CURSOR_NOT_CREATED
   } ERRORTYPE;
 
@@ -678,6 +679,8 @@ extern "C" {
 
   void sgl_cursor(screen_t* s, bool shown, bool locked, CURSORTYPE cursor);
   void sgl_cursor_load_custom(surface_t* s);
+  void sgl_cursor_pos(point_t* p);
+  void sgl_cursor_set_pos(point_t* p);
 
   typedef enum {
     RESIZABLE = 0x01,
