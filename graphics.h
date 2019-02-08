@@ -13,19 +13,19 @@ extern "C" {
 #endif
 
 #if defined(__gnu_linux__) || defined(__linux__) || defined(__unix__)
-#define SGL_LINUX
+# define SGL_LINUX
 #elif defined(macintosh) || defined(Macintosh) || (defined(__APPLE__) && defined(__MACH__))
-#define SGL_OSX
+# define SGL_OSX
 #elif defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(__WINDOWS__)
-#define SGL_WINDOWS
+# define SGL_WINDOWS
 #else
-#error Unsupported operating system
+# error Unsupported operating system
 #endif
 
 #if defined(SGL_OSX)
 # if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_14
 #   if !defined(SGL_ENABLE_OPENGL)
-#     define SGL_ENABLE_METAL // Force Metal on 10.14
+#     define SGL_ENABLE_METAL // Force Metal on 10.14 until CoreGraphics works again
 #   endif
 # else
 #   if defined(SGL_ENABLE_METAL) && defined(SGL_ENABLE_OPENGL)
@@ -343,6 +343,7 @@ extern "C" {
   void sgl_filter(surface_t* s, int(*fn)(int x, int y, int col));
   bool sgl_resize(surface_t* in, int nw, int nh, surface_t* out);
   bool sgl_rotate(surface_t* in, float angle, surface_t* out);
+  void sgl_quantization(surface_t* in, int n_colors, surface_t* out);
 
   void sgl_vline(surface_t* s, int x, int y0, int y1, int col);
   void sgl_hline(surface_t* s, int y, int x0, int x1, int col);

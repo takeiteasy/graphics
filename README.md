@@ -68,6 +68,7 @@ Tested on:
   - Make joystick_t a private struct in s ource
   - Fix crashes
   - Linux joysticks totally untested
+  - Move outside of os specific code block
 - Message box support (~OS X~/Windows/Linux)
 - Multiple Windows (~OS X~/Windows/Linux)
 - Window icon support (~OS X~/Windows/Linux)
@@ -86,6 +87,7 @@ Tested on:
 
 ### At some point
 
+- Fix color pallete for GIF save
 - Keyboard scancodes
 - Make thread safe (surface locks)
 - Vulkan/DirectX/~~Metal~~/SIXEL backends

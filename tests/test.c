@@ -175,6 +175,7 @@ void on_joystick_axis(void* data, joystick_t* d, int axis, float v, float lv, lo
 #define WIN_W 575
 #define WIN_H 500
 
+
 int main(int argc, const char* argv[]) {
   sgl_error_callback(on_error);
 
@@ -268,7 +269,7 @@ int main(int argc, const char* argv[]) {
 #if defined(SGL_ENABLE_GIF)
   gif_t ok_hand;
   sgl_gif(&ok_hand, RES("ok.gif"));
-  // sgl_save_gif(&ok_hand, RES("ok_2.gif"));
+  sgl_save_gif(&ok_hand, RES("ok_2.gif"));
 #endif
   
   float theta = 1.f;

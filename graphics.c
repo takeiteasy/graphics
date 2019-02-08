@@ -400,6 +400,220 @@ bool sgl_rotate(surface_t* in, float angle, surface_t* out) {
   return true;
 }
 
+typedef struct oct_node_t{
+  int64_t r, g, b; /* sum of all child node colors */
+  int count, heap_idx;
+  unsigned char n_kids, kid_idx, flags, depth;
+  struct oct_node_t *kids[8], *parent;
+} oct_node_t;
+
+typedef struct {
+  int alloc, n;
+  oct_node_t** buf;
+} node_heap;
+
+typedef struct {
+  oct_node_t* pool;
+  int len;
+} oct_node_pool_t;
+
+int cmp_node(oct_node_t* a, oct_node_t* b) {
+  if (a->n_kids < b->n_kids)
+    return -1;
+  if (a->n_kids > b->n_kids)
+    return 1;
+  
+  int ac = a->count >> a->depth;
+  int bc = b->count >> b->depth;
+  return ac < bc ? -1 : ac > bc;
+}
+
+void down_heap(node_heap* h, oct_node_t* p) {
+  int n = p->heap_idx, m;
+  
+  while (1) {
+    m = n * 2;
+    if (m >= h->n)
+      break;
+    if (m + 1 < h->n && cmp_node(h->buf[m], h->buf[m + 1]) > 0)
+      m++;
+    
+    if (cmp_node(p, h->buf[m]) <= 0)
+      break;
+    
+    h->buf[n] = h->buf[m];
+    h->buf[n]->heap_idx = n;
+    n = m;
+  }
+  
+  h->buf[n] = p;
+  p->heap_idx = n;
+}
+
+void up_heap(node_heap* h, oct_node_t* p) {
+  int n = p->heap_idx;
+  oct_node_t* prev;
+  
+  while (n > 1) {
+    prev = h->buf[n / 2];
+    if (cmp_node(p, prev) >= 0)
+      break;
+    
+    h->buf[n] = prev;
+    prev->heap_idx = n;
+    n /= 2;
+  }
+  
+  h->buf[n] = p;
+  p->heap_idx = n;
+}
+
+void heap_add(node_heap* h, oct_node_t* p) {
+  if ((p->flags & 1)) {
+    down_heap(h, p);
+    up_heap(h, p);
+    return;
+  }
+  
+  p->flags |= 1;
+  if (!h->n) h->n = 1;
+  if (h->n >= h->alloc) {
+    while (h->n >= h->alloc)
+      h->alloc += 1024;
+    h->buf = realloc(h->buf, sizeof(oct_node_t*) * h->alloc);
+  }
+  
+  p->heap_idx = h->n;
+  h->buf[h->n++] = p;
+  up_heap(h, p);
+}
+
+oct_node_t* pop_heap(node_heap* h) {
+  if (h->n <= 1)
+    return 0;
+  
+  oct_node_t* ret = h->buf[1];
+  h->buf[1] = h->buf[--h->n];
+  
+  h->buf[h->n] = 0;
+  
+  h->buf[1]->heap_idx = 1;
+  down_heap(h, h->buf[1]);
+  
+  return ret;
+}
+
+oct_node_t* node_new(oct_node_pool_t* pool, unsigned char idx, unsigned char depth, oct_node_t* p) {
+  if (pool->len <= 1) {
+    oct_node_t* p = calloc(sizeof(oct_node_t), 2048);
+    p->parent = pool->pool;
+    pool->pool = p;
+    pool->len  = 2047;
+  }
+  
+  oct_node_t* x = pool->pool + pool->len--;
+  x->kid_idx = idx;
+  x->depth = depth;
+  x->parent = p;
+  if (p)
+    p->n_kids++;
+  return x;
+}
+
+void node_free(oct_node_pool_t* pool) {
+  oct_node_t* p;
+  while (pool->pool) {
+    p = pool->pool->parent;
+    free(pool->pool);
+    pool->pool = p;
+  }
+}
+
+oct_node_t* node_insert(oct_node_pool_t* pool, oct_node_t* root, int* buf) {
+  unsigned char i, bit, depth = 0;
+  int c = *buf;
+  int r = R(c), g = G(c), b = B(c);
+  
+  for (bit = 1 << 7; ++depth < 8; bit >>= 1) {
+    i = !!(r & bit) * 4 + !!(g & bit) * 2 + !!(b & bit);
+    if (!root->kids[i])
+      root->kids[i] = node_new(pool, i, depth, root);
+    root = root->kids[i];
+  }
+  
+  root->r += r;
+  root->g += g;
+  root->b += b;;
+  root->count++;
+  return root;
+}
+
+oct_node_t* node_fold(oct_node_t* p) {
+  if (p->n_kids)
+    abort(); // CHANGE ME
+  
+  oct_node_t* q = p->parent;
+  q->count += p->count;
+  
+  q->r += p->r;
+  q->g += p->g;
+  q->b += p->b;
+  q->n_kids --;
+  q->kids[p->kid_idx] = 0;
+  return q;
+}
+
+void color_replace(oct_node_t* root, int* buf) {
+  unsigned char i, bit;
+  int c = *buf;
+  int r = R(c), g = G(c), b = B(c);
+  
+  for (bit = 1 << 7; bit; bit >>= 1) {
+    i = !!(r & bit) * 4 + !!(g & bit) * 2 + !!(b & bit);
+    if (!root->kids[i])
+      break;
+    root = root->kids[i];
+  }
+  
+  *buf = RGB((int)root->r, (int)root->g, (int)root->b);
+}
+
+void sgl_quantization(surface_t* in, int n_colors, surface_t* out) {
+  if (!out)
+    out = in;
+  if (out && in != out) {
+    sgl_surface(out, in->w, in->h);
+    sgl_copy(in, out);
+  }
+  
+  int i, *buf = in->buf;
+  node_heap heap = { 0, 0, 0 };
+  oct_node_pool_t pool = { NULL, 0 };
+  
+  oct_node_t *root = node_new(&pool, 0, 0, 0), *got;
+  for (i = 0, buf = out->buf; i < out->w * out->h; i++, buf++)
+    heap_add(&heap, node_insert(&pool, root, buf));
+  
+  while (heap.n > n_colors + 1)
+    heap_add(&heap, node_fold(pop_heap(&heap)));
+  
+  double c;
+  for (i = 1; i < heap.n; i++) {
+    got = heap.buf[i];
+    c = got->count;
+    got->r = got->r / c + .5;
+    got->g = got->g / c + .5;
+    got->b = got->b / c + .5;
+  }
+  
+  buf = out->buf;
+  for (i = 0, buf = out->buf; i < out->w * out->h; i++, buf++)
+    color_replace(root, buf);
+  
+  node_free(&pool);
+  free(heap.buf);
+}
+
 void sgl_vline(surface_t* s, int x, int y0, int y1, int col) {
   if (y1 < y0) {
     y0 += y1;
@@ -3732,56 +3946,94 @@ void ge_close_gif(ge_GIF* gif) {
 }
 
 bool sgl_save_gif(gif_t* _g, const char* path) {
-  int w = _g->w, h = _g->h, i, x, y, j, c, cp;
+  int i, x, y, j, k, c, cp;
   uint8_t r, g, b;
   
   for (i = 0; i < _g->frames; ++i) {
-    if (_g->surfaces[i].w != w || _g->surfaces[i].h != h) {
+    if (_g->surfaces[i].w != _g->w || _g->surfaces[i].h != _g->h) {
       error_handle(NORMAL_PRIORITY, GIF_SAVE_INVALID_SIZE, "Sizes of surfaces in GIF don't match");
       return false;
     }
   }
   
-  int** frames = malloc(sizeof(int*) * _g->frames);
   uint8_t* pallet = NULL;
   for (i = 0; i < _g->frames; ++i) {
-    frames[i] = malloc(sizeof(int) * w * h);
-    for (x = 0; x < w; ++x) {
-      for (y = 0; y < h; ++y) {
-        c = sgl_pget(&_g->surfaces[i], x, y);
-        r = (uint8_t)R(c);
-        g = (uint8_t)G(c);
-        b = (uint8_t)B(c);
-        
-        cp = -1;
-        for (j = 0; j < stb_sb_count(pallet); j += 3) {
-          if (r == pallet[j] && g == pallet[j + 1] && b == pallet[j + 2]) {
-            cp = j;
-            break;
-          }
+    for (j = 0; j < _g->w * _g->h; ++j) {
+      c = _g->surfaces[i].buf[j];
+      r = (uint8_t)R(c);
+      g = (uint8_t)G(c);
+      b = (uint8_t)B(c);
+      
+      cp = -1;
+      for (k = 0; k < stb_sb_count(pallet); k += 3) {
+        if (r == pallet[k] && g == pallet[k + 1] && b == pallet[k + 2]) {
+          cp = k;
+          break;
         }
-        
-        if (cp < 0) {
-          cp = stb_sb_count(pallet);
-          stb_sb_push(pallet, r);
-          stb_sb_push(pallet, g);
-          stb_sb_push(pallet, b);
-        }
-        
-        frames[i][y * w + x] = cp / 3;
+      }
+      
+      if (cp < 0) {
+        cp = stb_sb_count(pallet);
+        stb_sb_push(pallet, r);
+        stb_sb_push(pallet, g);
+        stb_sb_push(pallet, b);
       }
     }
   }
   
   int depth = (int)log2((double)(stb_sb_count(pallet) / 3));
-  ge_GIF* out = ge_new_gif(path, w, h, pallet, (depth > 8 ? 8 : depth), 0);
+  if (!depth) {
+    error_handle(LOW_PRIORITY, GIF_SAVE_FAILED, "sgl_save_gif() failed: Couldn't get depth of the image?");
+    return false;
+  }
+  else if (depth > 8) {
+    surface_t tmp_s;
+    sgl_surface(&tmp_s, _g->w, _g->h * _g->frames);
+
+    point_t tmp_p = {0};
+    for (i = 0; i < _g->frames; ++i) {
+      tmp_p.y = _g->h * i;
+      sgl_blit(&tmp_s, &tmp_p, &_g->surfaces[i], NULL);
+    }
+
+    sgl_quantization(&tmp_s, 256, NULL);
+
+    rect_t tmp_r = { 0, 0, _g->w, _g->h };
+    for (i = 0; i < _g->frames; ++i) {
+      tmp_r.y = _g->h * i;
+      sgl_blit(&_g->surfaces[i], NULL, &tmp_s, &tmp_r);
+    }
+    sgl_destroy(&tmp_s);
+    
+    return sgl_save_gif(_g, path);
+  }
+  
+  int** frames = malloc(sizeof(int*) * _g->frames);
+  for (i = 0; i < _g->frames; ++i) {
+    frames[i] = malloc(_g->w * _g->h * sizeof(int));
+    for (j = 0; j < _g->w * _g->h; ++j) {
+      c = _g->surfaces[i].buf[j];
+      r = (uint8_t)R(c);
+      g = (uint8_t)G(c);
+      b = (uint8_t)B(c);
+      
+      for (k = 0; k < stb_sb_count(pallet); k += 3) {
+        if (r == pallet[k] && g == pallet[k + 1] && b == pallet[k + 2]) {
+          frames[i][j] = k / 3;
+          break;
+        }
+      }
+    }
+  }
+  
+  ge_GIF* out = ge_new_gif(path, _g->w, _g->h, pallet, depth, 0);
   if (!out) {
     error_handle(HIGH_PRIORITY, GIF_SAVE_FAILED, "Failed to create GIF");
     return false;
   }
   
   for (i = 0; i < _g->frames; ++i) {
-    for (j = 0; j < w * h; ++j)
+    for (j = 0; j < _g->w * _g->h; ++j)
       out->frame[j] = frames[i][j];
     ge_add_frame(out, _g->delay);
   }
@@ -3928,7 +4180,6 @@ dialog_filters* sgl_parse_dialog_filters(const char *str) {
         text = str + 1;
       } break;
       case ',': {
-        assert(patterns);
         patterns->pattern = strndup(text, str - text);
         patterns->next = malloc(sizeof(dialog_filter_patterns));
         patterns = patterns->next;
@@ -3936,7 +4187,6 @@ dialog_filters* sgl_parse_dialog_filters(const char *str) {
         text = str + 1;
       } break;
       case ';': {
-        assert(patterns);
         patterns->pattern = strndup(text, str - text);
         filters->next = malloc(sizeof(dialog_filters));
         filters = filters->next;
@@ -3945,7 +4195,6 @@ dialog_filters* sgl_parse_dialog_filters(const char *str) {
         text = str + 1;
       } break;
       case '\0': {
-        assert(patterns);
         patterns->pattern = strndup(text, str - text);
       } break;
       default: break;
@@ -4264,7 +4513,131 @@ void free_gl() {
 }
 #endif
 
-#if defined(SGL_OSX)
+#if defined(SGL_FORCE_SIXEL)
+#include <sys/termios.h>
+
+static struct termios orig_termios;
+static bool screen_init = false;
+
+bool sgl_joystick_init(bool scan_too) {
+  return false;
+}
+
+bool sgl_joystick_scan() {
+  return false;
+}
+
+void sgl_joystick_release() {
+  return;
+}
+
+bool sgl_joystick_remove(int id) {
+  return false;
+}
+
+void sgl_joystick_poll() {
+  return;
+}
+
+int sgl_dialog(DIALOG_MSG_LVL lvl, DIALOG_BTNS btns, const char* msg) {
+  return 0;
+}
+
+char* sgl_dialog_file(DIALOG_FILE_ACTION action, const char* path, const char* fname, dialog_filters* filters) {
+  return NULL;
+}
+
+int sgl_dialog_color_picker(int* color, int opacity) {
+  *color = 0;
+  return 0;
+}
+
+void sgl_cursor(screen_t* s, bool shown, bool locked, CURSORTYPE cursor) {
+  return;
+}
+
+void sgl_cursor_load_custom(surface_t* s) {
+  return;
+}
+
+void sgl_cursor_pos(point_t* p) {
+  return;
+}
+
+void sgl_cursor_set_pos(point_t* p) {
+  return;
+}
+
+bool sgl_screen(screen_t* s, const char* t, int w, int h, short flags) {
+  if (screen_init) {
+    // ERROR: Only one screen allowed
+    return false;
+  }
+  
+  struct termios raw;
+  tcgetattr(fileno(stdin), &orig_termios);
+  raw = orig_termios;
+  raw.c_iflag &= ~(/*BRKINT |*/ ICRNL /*| INPCK | ISTRIP | IXON*/);
+  raw.c_lflag &= ~(ECHO | ICANON /*| IEXTEN | ISIG*/);
+  raw.c_cc[VMIN] = 0; raw.c_cc[VTIME] = 0;
+  raw.c_cc[VINTR] = 0; raw.c_cc[VKILL] = 0; raw.c_cc[VQUIT] = 0;
+  raw.c_cc[VSTOP] = 0; raw.c_cc[VSUSP] = 0;
+  tcsetattr(fileno(stdin), TCSAFLUSH, &raw);
+  
+  printf("\033c");
+  printf("\033[?25l");
+  printf("\033[?1003h");
+  printf("\033[?1006h");
+  printf("\033[>2p");
+#if 1
+  printf("\033[1;1'z\033[3'{\033[1'{");
+  printf("\033['|");
+#endif
+  printf("\033[14t\033[18t\n");
+  
+  screen_init = true;
+  return true;
+}
+
+void sgl_screen_icon(screen_t* s, surface_t* b) {
+  //printf("\033]1;%s\033\\", icon);
+  return;
+}
+
+void sgl_screen_title(screen_t* s, const char* t) {
+  printf("\033]2;%s\033\\", t);
+}
+
+void sgl_screen_destroy(screen_t* s) {
+  return;
+}
+
+void sgl_poll() {
+  
+}
+
+void sgl_flush(screen_t* s, surface_t* b) {
+  printf("\033[%d;%dH", 1, 1);
+  // Draw SIXEL image
+  fflush(stdout);
+}
+
+void sgl_release() {
+  tcsetattr(fileno(stdin), TCSAFLUSH, &orig_termios);
+  printf("\033\\");
+#if USE_DECMOUSE
+#else
+  printf("\033[?1006l");
+#endif
+  printf("\033[>0p");
+  printf("\033[?1003l");
+  printf("\033[?25h");
+}
+
+bool sgl_closed(screen_t* s) {
+  return false;
+}
+#elif defined(SGL_OSX)
 #include <Cocoa/Cocoa.h>
 #if defined(SGL_ENABLE_METAL)
 #include <MetalKit/MetalKit.h>
