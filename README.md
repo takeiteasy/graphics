@@ -87,7 +87,7 @@ Tested on:
 
 ### At some point
 
-- Fix color pallete for GIF save
+- ~Fix color pallete for GIF save~
 - Keyboard scancodes
 - Make thread safe (surface locks)
 - Vulkan/DirectX/~~Metal~~/SIXEL backends

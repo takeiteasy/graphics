@@ -3946,7 +3946,7 @@ void ge_close_gif(ge_GIF* gif) {
 }
 
 bool sgl_save_gif(gif_t* _g, const char* path) {
-  int i, x, y, j, k, c, cp;
+  int i, j, k, c, cp;
   uint8_t r, g, b;
   
   for (i = 0; i < _g->frames; ++i) {
@@ -3956,7 +3956,7 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
     }
   }
   
-  uint8_t* pallet = NULL;
+  uint8_t* palette = NULL;
   for (i = 0; i < _g->frames; ++i) {
     for (j = 0; j < _g->w * _g->h; ++j) {
       c = _g->surfaces[i].buf[j];
@@ -3965,23 +3965,23 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
       b = (uint8_t)B(c);
       
       cp = -1;
-      for (k = 0; k < stb_sb_count(pallet); k += 3) {
-        if (r == pallet[k] && g == pallet[k + 1] && b == pallet[k + 2]) {
+      for (k = 0; k < stb_sb_count(palette); k += 3) {
+        if (r == palette[k] && g == palette[k + 1] && b == palette[k + 2]) {
           cp = k;
           break;
         }
       }
       
       if (cp < 0) {
-        cp = stb_sb_count(pallet);
-        stb_sb_push(pallet, r);
-        stb_sb_push(pallet, g);
-        stb_sb_push(pallet, b);
+        cp = stb_sb_count(palette);
+        stb_sb_push(palette, r);
+        stb_sb_push(palette, g);
+        stb_sb_push(palette, b);
       }
     }
   }
   
-  int depth = (int)log2((double)(stb_sb_count(pallet) / 3));
+  int depth = (int)log2((double)(stb_sb_count(palette) / 3));
   if (!depth) {
     error_handle(LOW_PRIORITY, GIF_SAVE_FAILED, "sgl_save_gif() failed: Couldn't get depth of the image?");
     return false;
@@ -3996,7 +3996,7 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
       sgl_blit(&tmp_s, &tmp_p, &_g->surfaces[i], NULL);
     }
 
-    sgl_quantization(&tmp_s, 256, NULL);
+    sgl_quantization(&tmp_s, 257, NULL);
 
     rect_t tmp_r = { 0, 0, _g->w, _g->h };
     for (i = 0; i < _g->frames; ++i) {
@@ -4004,6 +4004,7 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
       sgl_blit(&_g->surfaces[i], NULL, &tmp_s, &tmp_r);
     }
     sgl_destroy(&tmp_s);
+    stb_sb_free(palette);
     
     return sgl_save_gif(_g, path);
   }
@@ -4017,8 +4018,8 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
       g = (uint8_t)G(c);
       b = (uint8_t)B(c);
       
-      for (k = 0; k < stb_sb_count(pallet); k += 3) {
-        if (r == pallet[k] && g == pallet[k + 1] && b == pallet[k + 2]) {
+      for (k = 0; k < stb_sb_count(palette); k += 3) {
+        if (r == palette[k] && g == palette[k + 1] && b == palette[k + 2]) {
           frames[i][j] = k / 3;
           break;
         }
@@ -4026,7 +4027,7 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
     }
   }
   
-  ge_GIF* out = ge_new_gif(path, _g->w, _g->h, pallet, depth, 0);
+  ge_GIF* out = ge_new_gif(path, _g->w, _g->h, palette, depth, 0);
   if (!out) {
     error_handle(HIGH_PRIORITY, GIF_SAVE_FAILED, "Failed to create GIF");
     return false;
@@ -4042,7 +4043,7 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
   for (i = 0; i < _g->frames; ++i)
     free(frames[i]);
   free(frames);
-  stb_sb_free(pallet);
+  stb_sb_free(palette);
   return true;
 }
 
