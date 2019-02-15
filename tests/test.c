@@ -23,7 +23,7 @@ static bool grey = false;
 
 #define SKIP_RESIZE 1
 #define SKIP_PRINTF 0
-#define SKIP_RENDING 0
+#define SKIP_RENDING 1
 
 #if SKIP_PRINTF
 #define printf(fmt, ...) (0)
@@ -127,7 +127,7 @@ void on_resize(void* data, screen_t* s, int w, int h) {
 // Define RES_PATH or it will use my paths
 #if !defined(RES_PATH)
 #if defined(__APPLE__)
-#define RES_PATH "/Users/rory/git/graphics.h/tests/"
+#define RES_PATH "/Users/roryb/git/graphics.h/tests/"
 #elif defined(_WIN32)
 #define RES_PATH "C:\\Users\\DESKTOP\\Documents\\graphics.h\\tests\\"
 #else
@@ -269,7 +269,7 @@ int main(int argc, const char* argv[]) {
 #if defined(SGL_ENABLE_GIF)
   gif_t ok_hand;
   sgl_gif(&ok_hand, RES("ok.gif"));
-  sgl_save_gif(&ok_hand, RES("ok_2.gif"));
+//  sgl_save_gif(&ok_hand, RES("ok_2.gif"));
 #endif
   
   float theta = 1.f;

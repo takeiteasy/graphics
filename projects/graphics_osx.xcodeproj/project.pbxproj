@@ -100,7 +100,7 @@
 			children = (
 				88B0254F20F5D1500007849F /* 3rdparty */,
 				88B0A62D20EC6B9400CE1317 /* tests */,
-				88B0A62720EC6B6E00CE1317 /* graphics */,
+				88B0A62720EC6B6E00CE1317 /* sgl */,
 				88B0A61E20EC6B5100CE1317 /* Products */,
 				88B0A64F20EC6E6D00CE1317 /* Frameworks */,
 			);
@@ -115,14 +115,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		88B0A62720EC6B6E00CE1317 /* graphics */ = {
+		88B0A62720EC6B6E00CE1317 /* sgl */ = {
 			isa = PBXGroup;
 			children = (
 				88B0A62820EC6B8000CE1317 /* graphics.c */,
 				88B0A62920EC6B8000CE1317 /* graphics.h */,
 				88B0A62A20EC6B8000CE1317 /* README.md */,
 			);
-			name = graphics;
+			name = sgl;
 			sourceTree = "<group>";
 		};
 		88B0A62D20EC6B9400CE1317 /* tests */ = {
@@ -391,12 +391,11 @@
 					SGL_ENABLE_JOYSTICKS,
 					SGL_ENABLE_FREETYPE,
 					SGL_ENABLE_GIF,
-					SGL_FORCE_SIXELno,
 				);
 				GCC_WARN_PEDANTIC = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/rory/git/graphics.h/3rdparty,
-					/Users/rory/git/graphics.h/3rdparty/freetype,
+					/Users/roryb/git/graphics.h/3rdparty,
+					/Users/roryb/git/graphics.h/3rdparty/freetype,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -418,8 +417,8 @@
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_WARN_PEDANTIC = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/rory/git/graphics.h/3rdparty,
-					/Users/rory/git/graphics.h/3rdparty/freetype,
+					/Users/roryb/git/graphics.h/3rdparty,
+					/Users/roryb/git/graphics.h/3rdparty/freetype,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",

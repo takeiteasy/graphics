@@ -68,7 +68,8 @@ Tested on:
   - Make joystick_t a private struct in s ource
   - Fix crashes
   - Linux joysticks totally untested
-  - Move outside of os specific code block
+  - Move outside of os specific code blocks
+- Move dialog code outside of os specific code blocks
 - Message box support (~OS X~/Windows/Linux)
 - Multiple Windows (~OS X~/Windows/Linux)
 - Window icon support (~OS X~/Windows/Linux)
@@ -88,9 +89,11 @@ Tested on:
 ### At some point
 
 - ~Fix color pallete for GIF save~
+- Fix unicode FreeType hang
+- Fix SGL_DISABLE_RGBA
 - Keyboard scancodes
 - Make thread safe (surface locks)
-- Vulkan/DirectX/~~Metal~~/SIXEL backends
+- Vulkan/DirectX/~~Metal~~ backends
 - Wayland window code
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))

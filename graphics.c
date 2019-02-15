@@ -520,7 +520,7 @@ oct_node_t* node_new(oct_node_pool_t* pool, unsigned char idx, unsigned char dep
   return x;
 }
 
-void node_free(oct_node_pool_t* pool) {
+void free_node(oct_node_pool_t* pool) {
   oct_node_t* p;
   while (pool->pool) {
     p = pool->pool->parent;
@@ -582,7 +582,10 @@ void sgl_quantization(surface_t* in, int n_colors, surface_t* out) {
   if (!out)
     out = in;
   if (out && in != out) {
-    sgl_surface(out, in->w, in->h);
+    if (out->w != in->w || out->h != in->h)
+      sgl_reset(out, in->w, in->h);
+    if (!out->buf)
+      sgl_surface(out, in->w, in->h);
     sgl_copy(in, out);
   }
   
@@ -606,11 +609,10 @@ void sgl_quantization(surface_t* in, int n_colors, surface_t* out) {
     got->b = got->b / c + .5;
   }
   
-  buf = out->buf;
   for (i = 0, buf = out->buf; i < out->w * out->h; i++, buf++)
     color_replace(root, buf);
   
-  node_free(&pool);
+  free_node(&pool);
   free(heap.buf);
 }
 
@@ -4514,131 +4516,7 @@ void free_gl() {
 }
 #endif
 
-#if defined(SGL_FORCE_SIXEL)
-#include <sys/termios.h>
-
-static struct termios orig_termios;
-static bool screen_init = false;
-
-bool sgl_joystick_init(bool scan_too) {
-  return false;
-}
-
-bool sgl_joystick_scan() {
-  return false;
-}
-
-void sgl_joystick_release() {
-  return;
-}
-
-bool sgl_joystick_remove(int id) {
-  return false;
-}
-
-void sgl_joystick_poll() {
-  return;
-}
-
-int sgl_dialog(DIALOG_MSG_LVL lvl, DIALOG_BTNS btns, const char* msg) {
-  return 0;
-}
-
-char* sgl_dialog_file(DIALOG_FILE_ACTION action, const char* path, const char* fname, dialog_filters* filters) {
-  return NULL;
-}
-
-int sgl_dialog_color_picker(int* color, int opacity) {
-  *color = 0;
-  return 0;
-}
-
-void sgl_cursor(screen_t* s, bool shown, bool locked, CURSORTYPE cursor) {
-  return;
-}
-
-void sgl_cursor_load_custom(surface_t* s) {
-  return;
-}
-
-void sgl_cursor_pos(point_t* p) {
-  return;
-}
-
-void sgl_cursor_set_pos(point_t* p) {
-  return;
-}
-
-bool sgl_screen(screen_t* s, const char* t, int w, int h, short flags) {
-  if (screen_init) {
-    // ERROR: Only one screen allowed
-    return false;
-  }
-  
-  struct termios raw;
-  tcgetattr(fileno(stdin), &orig_termios);
-  raw = orig_termios;
-  raw.c_iflag &= ~(/*BRKINT |*/ ICRNL /*| INPCK | ISTRIP | IXON*/);
-  raw.c_lflag &= ~(ECHO | ICANON /*| IEXTEN | ISIG*/);
-  raw.c_cc[VMIN] = 0; raw.c_cc[VTIME] = 0;
-  raw.c_cc[VINTR] = 0; raw.c_cc[VKILL] = 0; raw.c_cc[VQUIT] = 0;
-  raw.c_cc[VSTOP] = 0; raw.c_cc[VSUSP] = 0;
-  tcsetattr(fileno(stdin), TCSAFLUSH, &raw);
-  
-  printf("\033c");
-  printf("\033[?25l");
-  printf("\033[?1003h");
-  printf("\033[?1006h");
-  printf("\033[>2p");
-#if 1
-  printf("\033[1;1'z\033[3'{\033[1'{");
-  printf("\033['|");
-#endif
-  printf("\033[14t\033[18t\n");
-  
-  screen_init = true;
-  return true;
-}
-
-void sgl_screen_icon(screen_t* s, surface_t* b) {
-  //printf("\033]1;%s\033\\", icon);
-  return;
-}
-
-void sgl_screen_title(screen_t* s, const char* t) {
-  printf("\033]2;%s\033\\", t);
-}
-
-void sgl_screen_destroy(screen_t* s) {
-  return;
-}
-
-void sgl_poll() {
-  
-}
-
-void sgl_flush(screen_t* s, surface_t* b) {
-  printf("\033[%d;%dH", 1, 1);
-  // Draw SIXEL image
-  fflush(stdout);
-}
-
-void sgl_release() {
-  tcsetattr(fileno(stdin), TCSAFLUSH, &orig_termios);
-  printf("\033\\");
-#if USE_DECMOUSE
-#else
-  printf("\033[?1006l");
-#endif
-  printf("\033[>0p");
-  printf("\033[?1003l");
-  printf("\033[?25h");
-}
-
-bool sgl_closed(screen_t* s) {
-  return false;
-}
-#elif defined(SGL_OSX)
+#if defined(SGL_OSX)
 #include <Cocoa/Cocoa.h>
 #if defined(SGL_ENABLE_METAL)
 #include <MetalKit/MetalKit.h>
