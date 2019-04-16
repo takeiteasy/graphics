@@ -23,9 +23,9 @@ extern "C" {
 #endif
 
 #if defined(SGL_OSX)
-# if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_14
+# if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_13
 #   if !defined(SGL_ENABLE_OPENGL)
-#     define SGL_ENABLE_METAL // Force Metal on 10.14 until CoreGraphics works again
+#     define SGL_ENABLE_METAL // Force Metal on 10.13 until CoreGraphics works again
 #   endif
 # else
 #   if defined(SGL_ENABLE_METAL) && defined(SGL_ENABLE_OPENGL)
@@ -77,10 +77,10 @@ extern "C" {
 #define RGB(r, g, b) ((((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b))
 #define RGBA(r, g, b, a) (RGB(r, g, b))
 #endif
-#define R(v) ((v >> 16) & 0xFF)
-#define G(v) ((v >>  8) & 0xFF)
-#define B(v) ( v        & 0xFF)
-#define A(v) ((v >> 24) & 0xFF)
+#define R(v) (((v) >> 16) & 0xFF)
+#define G(v) (((v) >>  8) & 0xFF)
+#define B(v) ( (v)        & 0xFF)
+#define A(v) (((v) >> 24) & 0xFF)
 #define RCHAN(a, b) (((a) & ~0x00FF0000) | ((b) << 16))
 #define GCHAN(a, b) (((a) & ~0x0000FF00) | ((b) << 8))
 #define BCHAN(a, b) (((a) & ~0x000000FF) |  (b))
@@ -413,32 +413,36 @@ extern "C" {
   bool sgl_save_gif(gif_t* g, const char* path);
   void sgl_gif_destroy(gif_t* g);
 #endif
-
-#if !defined(SGL_DISABLE_WINDOW)
-  typedef struct {
-    int id, w, h;
-    void* __private;
-  } screen_t;
   
 #if defined(SGL_ENABLE_JOYSTICKS)
   typedef struct __joystick_t {
     const char* description;
     int device_id, vendor_id, product_id;
-
+    
     unsigned int n_axes, n_buttons;
     float* axes;
     int* buttons;
-
+    
     struct __joystick_t* next;
-
+    
     void* __private;
   } joystick_t;
-
-  void sgl_joystick_callbacks(
-    void(*connect_cb)(void*, joystick_t*, int),
-    void(*remove_cb)(void*, joystick_t*, int),
-    void(*btn_cb)(void*, joystick_t*, int, bool, long),
-    void(*axis_cb)(void*, joystick_t*, int, float, float, long));
+  
+#define XMAP_JOYSTICK_CB \
+  X(connect, (void*, joystick_t*, int), connect) \
+  X(removed, (void*, joystick_t*, int), remove) \
+  X(btn, (void*, joystick_t*, int, bool, long), button) \
+  X(axis, (void*, joystick_t*, int, float, float, long), axis)
+  
+#define X(a, b, c) \
+void(*a##_cb)b,
+  void sgl_joystick_callbacks(XMAP_JOYSTICK_CB int dummy);
+#undef X
+#define X(a, b, c) \
+void sgl_##c##_callback(void(*a##_cb)b);
+  XMAP_JOYSTICK_CB
+#undef X
+  
   joystick_t* sgl_joystick(int id);
   bool sgl_joystick_init(bool scan_too);
   bool sgl_joystick_scan(void);
@@ -446,7 +450,31 @@ extern "C" {
   bool sgl_joystick_remove(int id);
   void sgl_joystick_poll(void);
 #endif
+  
+#if defined(SGL_ENABLE_DIALOGS)
+  typedef enum {
+    ALERT_INFO,
+    ALERT_WARNING,
+    ALERT_ERROR
+  } ALERTLVL;
+  
+  typedef enum {
+    ALERT_OK,
+    ALERT_OK_CANCEL,
+    ALERT_YES_NO
+  } ALERTBTNS;
+  
+  typedef enum {
+    DIALOG_OPEN,
+    DIALOG_OPEN_DIR,
+    DIALOG_SAVE
+  } DIALOGACTION;
 
+  bool sgl_alert(ALERTLVL lvl, ALERTBTNS btns, const char* fmt, ...);
+  char* sgl_dialog(DIALOGACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...);
+#endif
+
+#if !defined(SGL_DISABLE_WINDOW)
   typedef enum {
     MOUSE_BTN_0, // No mouse button
     MOUSE_BTN_1,
@@ -598,25 +626,29 @@ extern "C" {
     KB_MOD_CAPS_LOCK = 0x0010,
     KB_MOD_NUM_LOCK = 0x0020
   } KEYMOD;
+  
+  typedef struct screen_t* screen_t;
+  
+#define XMAP_SCREEN_CB \
+  X(keyboard, (void*, KEYSYM, KEYMOD, bool)) \
+  X(mouse_button, (void*, MOUSEBTN, KEYMOD, bool)) \
+  X(mouse_move, (void*, int, int, int, int)) \
+  X(scroll, (void*, KEYMOD, float, float)) \
+  X(focus, (void*, bool)) \
+  X(resize, (void*, int, int))
 
-  void sgl_screen_callbacks(
-    void(*kb_cb)(void*, screen_t*, KEYSYM, KEYMOD, bool),
-    void(*mouse_btn_cb)(void*, screen_t*, MOUSEBTN, KEYMOD, bool),
-    void(*mouse_move_cb)(void*, screen_t*, int, int, int, int),
-    void(*scroll_cb)(void*, screen_t*, KEYMOD, float, float),
-    void(*active_cb)(void*, screen_t*, bool),
-    void(*resize_cb)(void*, screen_t*, int, int));
-  void sgl_keyboard_callback(void(*kb_cb)(void*, screen_t*, KEYSYM, KEYMOD, bool));
-  void sgl_mouse_button_callback(void(*mouse_btn_cb)(void*, screen_t*, MOUSEBTN, KEYMOD, bool));
-  void sgl_mouse_move_callback(void(*mouse_move_cb)(void*, screen_t*, int, int, int, int));
-  void sgl_scroll_callback(void(*scroll_cb)(void*, screen_t*, KEYMOD, float, float));
-  void sgl_active_callback(void(*active_cb)(void*, screen_t*, bool));
-  void sgl_resize_callback(void(*resize_cb)(void*, screen_t*, int, int));
+#define X(a, b) \
+void(*a##_cb)b,
+  void sgl_screen_callbacks(XMAP_SCREEN_CB screen_t screen);
+#undef X
+#define X(a, b) \
+void sgl_##a##_callback(screen_t screen, void(*a##_cb)b);
+  XMAP_SCREEN_CB
+#undef X
 
 #define DEFAULT 0
 
   typedef enum {
-    CURSOR_NO_CHANGE,
     CURSOR_ARROW,     // Arrow
     CURSOR_IBEAM,     // I-beam
     CURSOR_WAIT,      // Wait
@@ -628,54 +660,13 @@ extern "C" {
     CURSOR_SIZENS,    // Double arrow pointing north and south
     CURSOR_SIZEALL,   // Four pointed arrow pointing north, south, east, and west
     CURSOR_NO,        // Slashed circle or crossbones
-    CURSOR_HAND,      // Hand
-    CURSOR_CUSTOM     // Use your own
+    CURSOR_HAND       // Hand
   } CURSORTYPE;
-  
-  typedef enum {
-    DIALOG_INFO,
-    DIALOG_WARNING,
-    DIALOG_ERROR
-  } DIALOG_MSG_LVL;
-  
-  typedef enum {
-    DIALOG_OK,
-    DIALOG_OK_CANCEL,
-    DIALOG_YES_NO
-  } DIALOG_BTNS;
-  
-  typedef enum {
-    DIALOG_OPEN,
-    DIALOG_OPEN_DIR,
-    DIALOG_SAVE
-  } DIALOG_FILE_ACTION;
-  
-  typedef struct dialog_filter_patterns {
-    char *pattern;
-    struct dialog_filter_patterns *next;
-  } dialog_filter_patterns;
-  
-  typedef struct dialog_filters {
-    char *name;
-    dialog_filter_patterns *patterns;
-    struct dialog_filters *next;
-  } dialog_filters;
-
-  int sgl_dialog(DIALOG_MSG_LVL lvl, DIALOG_BTNS btns, const char* msg);
-  char* sgl_dialog_file(DIALOG_FILE_ACTION action, const char* path, const char* fname, dialog_filters* filters);
-  dialog_filters* sgl_parse_dialog_filters(const char* str);
-  void sgl_dialog_filters_destroy(dialog_filters* filters);
-  int sgl_dialog_color_picker(int* color, int opacity);
 
 #define SHOWN true
 #define HIDDEN false
 #define LOCKED true
 #define UNLOCKED false
-
-  void sgl_cursor(screen_t* s, bool shown, bool locked, CURSORTYPE cursor);
-  void sgl_cursor_load_custom(surface_t* s);
-  void sgl_cursor_pos(point_t* p);
-  void sgl_cursor_set_pos(point_t* p);
 
   typedef enum {
     RESIZABLE = 0x01,
@@ -686,13 +677,25 @@ extern "C" {
   } WINDOWFLAGS;
 
   bool sgl_screen(screen_t* s, const char* t, int w, int h, short flags);
-  void sgl_screen_icon(screen_t* s, surface_t* b);
-  void sgl_screen_title(screen_t* s, const char* t);
+  void sgl_screen_icon_buf(screen_t s, surface_t* b);
+  void sgl_screen_icon(screen_t s, const char* p);
+  void sgl_screen_title(screen_t s, const char* t);
   void sgl_screen_destroy(screen_t* s);
+  int  sgl_screen_id(screen_t s);
+  void sgl_screen_size(screen_t s, int* w, int* h);
+  bool sgl_closed(screen_t s);
+  
+  void sgl_cursor_lock(bool locked);
+  void sgl_cursor_visible(bool show);
+  void sgl_cursor_icon(screen_t s, CURSORTYPE t);
+  void sgl_cursor_icon_custom(screen_t s, const char* p);
+  void sgl_cursor_icon_custom_buf(screen_t s, surface_t* b);
+  void sgl_cursor_pos(point_t* p);
+  void sgl_cursor_set_pos(point_t* p);
+  
   void sgl_poll(void);
-  void sgl_flush(screen_t* s, surface_t* b);
+  void sgl_flush(screen_t s, surface_t* b);
   void sgl_release(void);
-  bool sgl_closed(screen_t* s);
 #endif
 
 #if defined(__cplusplus)

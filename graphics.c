@@ -77,31 +77,12 @@ void error_handle(ERRORLVL pri, ERRORTYPE type, const char* msg, ...) {
   static char error[1024];
   vsprintf(error, msg, args);
 
+  fprintf(stderr, "[%s:%d] from %s in %s() at %d -- %s\n", errprio_str(pri), (int)type, __FILE__, __FUNCTION__, __LINE__, error);
   if (__error_callback)
     __error_callback(userdata, pri, type, error, __FILE__, __FUNCTION__, __LINE__);
-  else
-    fprintf(stderr, "[%s:%d] from %s in %s() at %d -- %s\n", errprio_str(pri), (int)type, __FILE__, __FUNCTION__, __LINE__, error);
 
   va_end(args);
 }
-
-#define _QUOTE(x) # x
-#define QUOTE(x) _QUOTE(x)
-#define __FILE__LINE__ __FILE__ "(" QUOTE(__LINE__) ") : "
-
-#define NOTE(x)  message(x)
-#define FILE_LINE  message(__FILE__LINE__)
-
-#define TODO(x)  message(__FILE__LINE__"\n" \
-" ------------------------------------------------\n" \
-"|  TODO " __FUNCTION__ "() -> " #x "\n" \
-" ------------------------------------------------")
-#define FIXME(x) message(__FILE__LINE__"\n" \
-" ------------------------------------------------\n" \
-"|  FIXME " __FUNCTION__ "() -> " #x "\n" \
-" ------------------------------------------------")
-#define todo(x) message(__FILE__LINE__" TODO " __FUNCTION__ "() -> " #x)
-#define fixme(x) message(__FILE__LINE__" FIXME " __FUNCTION__ "() -> " #x)
 
 #define stb_sb_free(a)         ((a) ? free(stb__sbraw(a)),0 : 0)
 #define stb_sb_push(a,v)       (stb__sbmaybegrow(a,1), (a)[stb__sbn(a)++] = (v))
@@ -800,7 +781,7 @@ void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
 
 void sgl_ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
 #if defined(SGL_ENABLE_AA)
-#pragma TODO(Add AA option);
+#warning TODO: Add AA option
 #endif
 
   int x = -rx, y = 0;
@@ -831,8 +812,8 @@ void sgl_ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill
 }
 
 void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill) {
-#pragma FIXME(This is borked without AA)
-#pragma FIXME(Arithmic error when too big with AA)
+#warning FIXME: This is borked without AA
+#warning FIXME: Arithmic error when too big with AA
 
   long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
   float dx = 4 * (a - 1.) * b * b, dy = 4 * (b1 + 1) * a * a;
@@ -1019,27 +1000,26 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
       }
     } while (dy < dx);
 #else
-    pset_fn(s, x0, y0, col);
-    if (x0 == x2 && y0 == y2)
-      return;
+      pset_fn(s, x0, y0, col);
+      if (x0 == x2 && y0 == y2)
+        return;
 
-    y1 = 2 * err < dx;
-    if (2 * err > dy) {
-      x0 += sx;
-      dx -= xy;
-      err += dy += yy;
-    }
+      y1 = 2 * err < dx;
+      if (2 * err > dy) {
+        x0 += sx;
+        dx -= xy;
+        err += dy += yy;
+      }
 
-    if (y1) {
-      y0 += sy;
-      dy -= xy;
-      err += dx += xx;
-    }
-  } while (dy < 0 && dx > 0);
+      if (y1) {
+        y0 += sy;
+        dy -= xy;
+        err += dx += xx;
+      }
+    } while (dy < 0 && dx > 0);
 #endif
-}
-
-sgl_line(s, x0, y0, x2, y2, col);
+  }
+  sgl_line(s, x0, y0, x2, y2, col);
 }
 
 void sgl_bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
@@ -1262,7 +1242,7 @@ void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, i
 }
 
 void sgl_ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col) {
-#pragma TODO(Add fill option);
+#warning TODO: Add fill option
   int xd = x1 - x0, yd = y1 - y0;
   float w = xd * (long)yd;
   if (zd == 0)
@@ -1280,7 +1260,7 @@ void sgl_ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long
 }
 
 void sgl_ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col) {
-#pragma TODO(Add fill option);
+#warning TODO: Add fill option
   float xd = (long)a * a, yd = (long)b * b;
   float q = sinf(angle), zd = (xd - yd) * q;
   xd = sqrtf(xd - zd * q);
@@ -1662,7 +1642,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
     return false;
   }
 
-#pragma TODO(Add support for OS/2 bitmaps)
+#warning TODO: Add support for OS/2 bitmaps
 
   unsigned char* color_map = NULL;
   int color_map_size = 0;
@@ -1690,7 +1670,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
       switch (info.bits) { // BPP
         case 1:
         case 4:
-#pragma TODO(Add 1 & 4 bpp support);
+#warning TODO: Add 1 & 4 bpp support
           error_handle(NORMAL_PRIORITY, UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
           sgl_destroy(s);
           break;
@@ -1715,7 +1695,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
     case 1: // RLE8
     case 2: // RLE4
     default:
-#pragma TODO(Add RLE support);
+#warning TODO: Add RLE support
       error_handle(NORMAL_PRIORITY, UNSUPPORTED_BMP, "bmp() failed. Unsupported compression: %d", info.compression);
       FREE_SAFE(color_map);
       sgl_destroy(s);
@@ -1793,7 +1773,7 @@ bool sgl_save_bmp(surface_t* s, const char* path) {
 
 #if !defined(SGL_DISABLE_TEXT) || defined(SGL_ENABLE_BDF) || defined(SGL_ENABLE_FREETYPE)
 int read_color(const char* str, int* col, int* len) {
-#pragma FIXME(Alpha value wrong?)
+#warning FIXME: Alpha value wrong?
   const char* c = str;
   if (*c != '(')
     return 0;
@@ -2545,7 +2525,6 @@ int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
   return l;
 }
 
-#pragma TODO(All writeln/string functions similar, combine somehow)
 void sgl_writeln(surface_t* s, int x, int y, int fg, int bg, const char* str) {
   const char* c = str;
   int u = x, v = y, col, len;
@@ -2973,7 +2952,8 @@ void sgl_bdf_stringf(surface_t* out, struct bdf_t* f, int fg, int bg, const char
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-#pragma TODO(Add error handling to Freetype stuff)
+#warning TODO: Add error handling to FreeType
+#warning TODO: Fixed unicode for FreeType
 
 static FT_Library ft_library;
 
@@ -3082,8 +3062,8 @@ int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y,
   for (i = 0; i < c->size.x; ++i) {
     for (j = 0; j < c->size.y; ++j) {
       pset_fn(s, x + i, y + j, bg);
-#pragma TODO(Find better solution than called pset twice)
-#pragma TODO(Update other font renderers to fix alpha)
+#warning TODO: Find better solution than called pset twice
+#warning TODO: Update other font renderers to fix alpha
       pset_fn(s, x + i, y + j, ACHAN(fg, CLAMP(A(fg) - (255 - A(XYGET((&(c->buffer)), i, j))), 0, 255)));
     }
   }
@@ -3196,6 +3176,7 @@ void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* s
       index = ftfont_char_index(f, c);
       if (index == -1)
         index = load_ftfont_char(f, s);
+      // TODO
     }
   }
   if (nn > n)
@@ -3593,11 +3574,11 @@ void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
   gif_data_t* gif = (gif_data_t*)data;
   
 #define BGRA(i) \
-((whdr->bptr[i] == whdr->tran)? 0 : \
-((uint32_t)(whdr->cpal[whdr->bptr[i]].R << ((GIF_BIGE)? 8 : 16)) \
-| (uint32_t)(whdr->cpal[whdr->bptr[i]].G << ((GIF_BIGE)? 16 : 8)) \
-| (uint32_t)(whdr->cpal[whdr->bptr[i]].B << ((GIF_BIGE)? 24 : 0)) \
-| ((GIF_BIGE)? 0xFF : 0xFF000000)))
+  ((whdr->bptr[i] == whdr->tran)? 0 : \
+    ((uint32_t)(whdr->cpal[whdr->bptr[i]].R << ((GIF_BIGE)? 8 : 16)) \
+  |  (uint32_t)(whdr->cpal[whdr->bptr[i]].G << ((GIF_BIGE)? 16 : 8)) \
+  |  (uint32_t)(whdr->cpal[whdr->bptr[i]].B << ((GIF_BIGE)? 24 : 0)) \
+  |  ((GIF_BIGE)? 0xFF : 0xFF000000)))
   
   if (!whdr->ifrm) {
     gif->out->delay = (int)whdr->time;
@@ -4031,6 +4012,9 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
   
   ge_GIF* out = ge_new_gif(path, _g->w, _g->h, palette, depth, 0);
   if (!out) {
+    for (i = 0; i < _g->frames; ++i)
+      free(frames[i]);
+    free(frames);
     error_handle(HIGH_PRIORITY, GIF_SAVE_FAILED, "Failed to create GIF");
     return false;
   }
@@ -4057,11 +4041,6 @@ void sgl_gif_destroy(gif_t* g) {
 }
 #endif
 
-#if !defined(SGL_DISABLE_WINDOW)
-static short int keycodes[512];
-static bool keycodes_init = false;
-static int mx = 0, my = 0;
-
 #if defined(SGL_ENABLE_JOYSTICKS)
 static struct {
   int size;
@@ -4069,27 +4048,32 @@ static struct {
 } joy_devices;
 static int next_device_id = 0;
 
-static void(*joy_removed_callback)(void*, joystick_t*, int) = NULL;
-static void(*joy_connect_callback)(void*, joystick_t*, int) = NULL;
-static void(*joy_btn_callback)(void*, joystick_t*, int, bool, long) = NULL;
-static void(*joy_axis_callback)(void*, joystick_t*, int, float, float, long) = NULL;
+#define X(a, b, c) \
+static void(*joy_##a##_callback)b = NULL;
+XMAP_JOYSTICK_CB
+#undef X
 
-void sgl_joystick_callbacks(
-    void(*connect_cb)(void*, joystick_t*, int),
-    void(*remove_cb)(void*, joystick_t*, int),
-    void(*btn_cb)(void*, joystick_t*, int, bool, long),
-    void(*axis_cb)(void*, joystick_t*, int, float, float, long)) {
-  joy_connect_callback = connect_cb;
-  joy_removed_callback = remove_cb;
-  joy_btn_callback = btn_cb;
-  joy_axis_callback = axis_cb;
+#define X(a, b, c) \
+void(*a##_cb)b,
+void sgl_joystick_callbacks(XMAP_JOYSTICK_CB int dummy) {
+#undef X
+#define X(a, b, c) \
+joy_##a##_callback = a##_cb;
+  XMAP_JOYSTICK_CB
+#undef X
 }
 
-#if defined(SGL_WINDOWS) || defined(SGL_OSX)
+#define X(a, b, c)\
+void sgl_##c##_callback(void(*a##_cb)b) { \
+joy_##a##_callback = a##_cb; \
+}
+XMAP_JOYSTICK_CB
+#undef X
+
 joystick_t* sgl_joystick(int id) {
   if (id < 0 || !joy_devices.head)
     return NULL;
-
+  
   joystick_t* current = joy_devices.head;
   while (current) {
     if (current->device_id == id)
@@ -4098,11 +4082,10 @@ joystick_t* sgl_joystick(int id) {
   }
   return NULL;
 }
-#endif
 
 static inline void add_joystick(joystick_t* d) {
   CALL(joy_connect_callback, d, d->device_id);
-
+  
   joystick_t* current = joy_devices.head;
   if (!current)
     joy_devices.head = d;
@@ -4114,442 +4097,6 @@ static inline void add_joystick(joystick_t* d) {
   joy_devices.size++;
 }
 
-#if defined(SGL_ENABLE_FORCE_MM)
-#define SGL_DISABLE_DIRECTINPUT
-#endif
-#endif
-
-static void(*__kb_callback)(void*, screen_t*, KEYSYM, KEYMOD, bool) = NULL;
-static void(*__mouse_btn_callback)(void*, screen_t*, MOUSEBTN, KEYMOD, bool) = NULL;
-static void(*__mouse_move_callback)(void*, screen_t*, int, int, int, int) = NULL;
-static void(*__scroll_callback)(void*, screen_t*, KEYMOD, float, float) = NULL;
-static void(*__focus_callback)(void*, screen_t*, bool) = NULL;
-static void(*__resize_callback)(void*, screen_t*, int, int) = NULL;
-
-void sgl_screen_callbacks(
-    void(*kb_cb)(void*, screen_t*, KEYSYM, KEYMOD, bool),
-    void(*mouse_btn_cb)(void*, screen_t*, MOUSEBTN, KEYMOD, bool),
-    void(*mouse_move_cb)(void*, screen_t*, int, int, int, int),
-    void(*scroll_cb)(void*, screen_t*, KEYMOD, float, float),
-    void(*focus_cb)(void*, screen_t*, bool),
-    void(*resize_cb)(void*, screen_t*, int, int)) {
-  __kb_callback = kb_cb;
-  __mouse_btn_callback = mouse_btn_cb;
-  __mouse_move_callback = mouse_move_cb;
-  __scroll_callback = scroll_cb;
-  __focus_callback = focus_cb;
-  __resize_callback = resize_cb;
-}
-
-void sgl_keyboard_callback(void(*kb_cb)(void*, screen_t*, KEYSYM, KEYMOD, bool)) {
-  __kb_callback = kb_cb;
-}
-
-void sgl_mouse_button_callback(void(*mouse_btn_cb)(void*, screen_t*, MOUSEBTN, KEYMOD, bool)) {
-  __mouse_btn_callback = mouse_btn_cb;
-}
-
-void sgl_mouse_move_callback(void(*mouse_move_cb)(void*, screen_t*, int, int, int, int)) {
-  __mouse_move_callback = mouse_move_cb;
-}
-
-void sgl_scroll_callback(void(*scroll_cb)(void*, screen_t*, KEYMOD, float, float)) {
-  __scroll_callback = scroll_cb;
-}
-
-void sgl_active_callback(void(*active_cb)(void*, screen_t*, bool)) {
-  __focus_callback = active_cb;
-}
-
-void sgl_resize_callback(void(*resize_cb)(void*, screen_t*, int, int)) {
-  __resize_callback = resize_cb;
-}
-
-dialog_filters* sgl_parse_dialog_filters(const char *str) {
-  dialog_filters* filters_head = malloc(sizeof(dialog_filters));
-  filters_head->next = NULL;
-  
-  dialog_filters *filters = filters_head;
-  dialog_filter_patterns *patterns = NULL;
-  
-  const char *text = str;
-  while (1) {
-    switch (*str) {
-      case ':': {
-        filters->name = strndup(text, str - text);
-        filters->patterns = malloc(sizeof(dialog_filter_patterns));
-        patterns = filters->patterns;
-        patterns->next = NULL;
-        text = str + 1;
-      } break;
-      case ',': {
-        patterns->pattern = strndup(text, str - text);
-        patterns->next = malloc(sizeof(dialog_filter_patterns));
-        patterns = patterns->next;
-        patterns->next = NULL;
-        text = str + 1;
-      } break;
-      case ';': {
-        patterns->pattern = strndup(text, str - text);
-        filters->next = malloc(sizeof(dialog_filters));
-        filters = filters->next;
-        filters->next = NULL;
-        patterns = NULL;
-        text = str + 1;
-      } break;
-      case '\0': {
-        patterns->pattern = strndup(text, str - text);
-      } break;
-      default: break;
-    }
-    if (!*str)
-      break;
-    str++;
-  }
-  
-  return filters_head;
-}
-
-static void patterns_free(dialog_filter_patterns *patterns) {
-  if (!patterns)
-    return;
-  free(patterns->pattern);
-  dialog_filter_patterns *next = patterns->next;
-  free(patterns);
-  patterns_free(next);
-}
-
-void sgl_dialog_filters_destroy(dialog_filters *filters) {
-  if (!filters)
-    return;
-  free(filters->name);
-  patterns_free(filters->patterns);
-  dialog_filters *next = filters->next;
-  free(filters);
-  sgl_dialog_filters_destroy(next);
-}
-
-#if defined(SGL_ENABLE_OPENGL)
-#if defined(SGL_OSX)
-#include <OpenGL/gl3.h>
-#endif
-
-#if defined(SGL_LINUX)
-#define GLDECL // Empty define
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glx.h>
-#include <dlfcn.h>
-#endif
-
-#if defined(SGL_WINDOWS)
-#define GLDECL WINAPI
-
-#define GL_ARRAY_BUFFER                   0x8892
-#define GL_COMPILE_STATUS                 0x8B81
-#define GL_ELEMENT_ARRAY_BUFFER           0x8893
-#define GL_FRAGMENT_SHADER                0x8B30
-#define GL_MAJOR_VERSION                  0x821B
-#define GL_MINOR_VERSION                  0x821C
-#define GL_STATIC_DRAW                    0x88E4
-#define GL_TEXTURE0                       0x84C0
-#define GL_VERTEX_SHADER                  0x8B31
-#define GL_INFO_LOG_LENGTH                0x8B84
-#define GL_BGRA                           0x80E1
-#define GL_UNSIGNED_INT_8_8_8_8_REV       0x8367
-
-typedef char GLchar;
-typedef ptrdiff_t GLintptr;
-typedef ptrdiff_t GLsizeiptr;
-
-#include <gl/GL.h>
-#include <gl/GLU.h>
-
-#pragma comment(lib, "opengl32.lib")
-#endif
-
-#if defined(SGL_WINDOWS) || defined(SGL_LINUX)
-#define GL_LIST \
-    /* ret, name, params */ \
-    GLE(void,      AttachShader,            GLuint program, GLuint shader) \
-    GLE(void,      BindBuffer,              GLenum target, GLuint buffer) \
-    GLE(void,      BufferData,              GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage) \
-    GLE(void,      BufferSubData,           GLenum target, GLintptr offset, GLsizeiptr size, const GLvoid * data) \
-    GLE(void,      CompileShader,           GLuint shader) \
-    GLE(GLuint,    CreateProgram,           void) \
-    GLE(GLuint,    CreateShader,            GLenum type) \
-    GLE(void,      DeleteBuffers,           GLsizei n, const GLuint *buffers) \
-    GLE(void,      EnableVertexAttribArray, GLuint index) \
-    GLE(void,      FramebufferTexture2D,    GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level) \
-    GLE(void,      GenBuffers,              GLsizei n, GLuint *buffers) \
-    GLE(GLint,     GetAttribLocation,       GLuint program, const GLchar *name) \
-    GLE(void,      GetShaderInfoLog,        GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog) \
-    GLE(void,      GetShaderiv,             GLuint shader, GLenum pname, GLint *params) \
-    GLE(void,      LinkProgram,             GLuint program) \
-    GLE(void,      ShaderSource,            GLuint shader, GLsizei count, const GLchar* const *string, const GLint *length) \
-    GLE(void,      UseProgram,              GLuint program) \
-    GLE(void,      VertexAttribPointer,     GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer) \
-    GLE(GLboolean, IsShader,                GLuint shader) \
-    GLE(void,      DeleteProgram,           GLuint program) \
-    GLE(void,      DeleteShader,            GLuint shader) \
-    GLE(void,      BindVertexArray,         GLuint array) \
-    GLE(void,      GenVertexArrays,         GLsizei n, GLuint *arrays) \
-    GLE(void,      DeleteVertexArrays,      GLsizei n, const GLuint *arrays) \
-    /* end */
-
-#define GLE(ret, name, ...) typedef ret GLDECL name##proc(__VA_ARGS__); extern name##proc * gl##name;
-GL_LIST
-#undef GLE
-
-#define GLE(ret, name, ...) name##proc * gl##name;
-GL_LIST
-#undef GLE
-#endif
-
-void print_shader_log(GLuint s) {
-  if (glIsShader(s)) {
-    int log_len = 0, max_len = 0;
-    glGetShaderiv(s, GL_INFO_LOG_LENGTH, &max_len);
-    char* log = malloc(sizeof(char) * max_len);
-
-    glGetShaderInfoLog(s, max_len, &log_len, log);
-    if (log_len > 0)
-      error_handle(HIGH_PRIORITY, GL_SHADER_ERROR, "load_shader() failed: %s", log);
-
-    free(log);
-  }
-}
-
-GLuint load_shader(const GLchar* src, GLenum type) {
-  GLuint s = glCreateShader(type);
-  glShaderSource(s, 1, &src, NULL);
-  glCompileShader(s);
-
-  GLint res = GL_FALSE;
-  glGetShaderiv(s, GL_COMPILE_STATUS, &res);
-  if (!res) {
-    print_shader_log(s);
-    return 0;
-  }
-
-  return s;
-}
-
-GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
-  GLuint sp = glCreateProgram();
-  GLuint vs = load_shader(vs_src, GL_VERTEX_SHADER);
-  GLuint fs = load_shader(fs_src, GL_FRAGMENT_SHADER);
-  glAttachShader(sp, vs);
-  glAttachShader(sp, fs);
-  glLinkProgram(sp);
-  glDeleteShader(vs);
-  glDeleteShader(fs);
-  return sp;
-}
-
-static GLuint vao, shader, texture;
-static int gl3_available = 1;
-
-bool init_gl(int w, int h) {
-#if defined(SGL_WINDOWS)
-  HINSTANCE dll = LoadLibraryA("opengl32.dll");
-  typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
-  if (!dll) {
-    sgl_release();
-    error_handle(LOW_PRIORITY, GL_LOAD_DL_FAILED, "LoadLibraryA() failed: opengl32.dll not found");
-    return false;
-  }
-  wglGetProcAddressproc* wglGetProcAddress = (wglGetProcAddressproc*)GetProcAddress(dll, "wglGetProcAddress");
-
-#define GLE(ret, name, ...) \
-  gl##name = (name##proc*)wglGetProcAddress("gl" #name); \
-  if (!gl##name) { \
-    error_handle(LOW_PRIORITY, GL_GET_PROC_ADDR_FAILED, "wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
-    gl3_available -= 1; \
-  }
-  GL_LIST
-#undef GLE
-#elif defined(SGL_LINUX)
-  void* libGL = dlopen("libGL.so", RTLD_LAZY);
-  if (!libGL) {
-    sgl_release();
-    error_handle(LOW_PRIORITY, GL_LOAD_DL_FAILED, "dlopen() failed: libGL.so couldn't be loaded");
-    return false;
-  }
-
-#define GLE(ret, name, ...) \
-  gl##name = (name##proc *) dlsym(libGL, "gl" #name); \
-  if (!gl##name) { \
-    error_handle(LOW_PRIORITY, GL_GET_PROC_ADDR_FAILED, "dlsym() failed: Function gl" #name " couldn't be loaded from libGL.so"); \
-    gl3_available -= 1; \
-  }
-  GL_LIST
-#undef GLE
-#endif
-
-  glClearColor(0.f, 0.f, 0.f, 1.f);
-
-#if !defined(SGL_OSX)
-  if (gl3_available < 0) {
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    glOrtho(0.f, w, 0.f, h, -1.f, 1.f);
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-
-    glLoadIdentity();
-    glDisable(GL_LIGHTING);
-    glEnable(GL_TEXTURE_2D);
-  } else {
-#endif
-    glViewport(0, 0, w, h);
-
-    GLfloat vertices_position[8] = {
-      -1., -1.,
-       1., -1.,
-       1.,  1.,
-      -1.,  1.,
-    };
-
-    GLfloat texture_coord[8] = {
-      .0,  .0,
-       1., .0,
-       1., 1.,
-      .0,  1.,
-    };
-
-    GLuint indices[6] = {
-      0, 1, 2,
-      2, 3, 0
-    };
-
-    const char* vs_src =
-      "#version 150\n"
-      "in vec4 position;"
-      "in vec2 texture_coord;"
-      "out vec2 texture_coord_from_vshader;"
-      "void main() {"
-      "  gl_Position = position;"
-      "  texture_coord_from_vshader = vec2(texture_coord.s, 1.f - texture_coord.t);"
-      "}";
-
-    const char* fs_src =
-      "#version 150\n"
-      "in vec2 texture_coord_from_vshader;"
-      "out vec4 out_color;"
-      "uniform sampler2D texture_sampler;"
-      "void main() {"
-      "  out_color = texture(texture_sampler, texture_coord_from_vshader);"
-      "}";
-
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_position) + sizeof(texture_coord), NULL, GL_STATIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position);
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
-
-    GLuint ebo;
-    glGenBuffers(1, &ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    shader = create_shader(vs_src, fs_src);
-    glUseProgram(shader);
-
-    GLint position_attribute = glGetAttribLocation(shader, "position");
-    glVertexAttribPointer(position_attribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(position_attribute);
-
-    GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
-    glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
-    glEnableVertexAttribArray(texture_coord_attribute);
-#if !defined(SGL_OSX)
-  }
-#endif
-
-  glGenTextures(1, &texture);
-
-  return true;
-}
-
-void draw_gl() {
-  glBindTexture(GL_TEXTURE_2D, texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, (GLvoid*)buffer->buf);
-
-  glClear(GL_COLOR_BUFFER_BIT);
-
-#if !defined(SGL_OSX)
-  if (gl3_available < 0) {
-    glBegin(GL_QUADS);
-      glTexCoord2f(0, 1); glVertex3f(0, 0, 0);
-      glTexCoord2f(0, 0); glVertex3f(0, buffer->h, 0);
-      glTexCoord2f(1, 0); glVertex3f(buffer->w, buffer->h, 0);
-      glTexCoord2f(1, 1); glVertex3f(buffer->w, 0, 0);
-    glEnd();
-  } else {
-#endif
-    glBindVertexArray(vao);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-#if !defined(SGL_OSX)
-  }
-
-  glFlush();
-#endif
-}
-
-void free_gl() {
-  if (texture)
-    glDeleteTextures(1, &texture);
-  if (!gl3_available) {
-    if (shader)
-      glDeleteProgram(shader);
-    if (vao)
-      glDeleteVertexArrays(1, &vao);
-  }
-}
-#endif
-
-#if defined(SGL_OSX)
-#include <Cocoa/Cocoa.h>
-#if defined(SGL_ENABLE_METAL)
-#include <MetalKit/MetalKit.h>
-#include <simd/simd.h>
-
-typedef enum AAPLVertexInputIndex {
-  AAPLVertexInputIndexVertices     = 0,
-  AAPLVertexInputIndexViewportSize = 1,
-} AAPLVertexInputIndex;
-
-typedef enum AAPLTextureIndex {
-  AAPLTextureIndexBaseColor = 0,
-} AAPLTextureIndex;
-
-typedef struct {
-  vector_float2 position;
-  vector_float2 textureCoordinate;
-} AAPLVertex;
-
-static const AAPLVertex quad_vertices[] = {
-  {{  1.f,  -1.f  }, { 1.f, 0.f }},
-  {{ -1.f,  -1.f  }, { 0.f, 0.f }},
-  {{ -1.f,   1.f  }, { 0.f, 1.f }},
-  {{  1.f,  -1.f  }, { 1.f, 0.f }},
-  {{ -1.f,   1.f  }, { 0.f, 1.f }},
-  {{  1.f,   1.f  }, { 1.f, 1.f }},
-};
-
-static vector_uint2 mtk_viewport;
-static CGFloat scale_f = 1.;
-#endif
-
-#if defined(SGL_ENABLE_JOYSTICKS)
 #include <IOKit/hid/IOHIDLib.h>
 #include <limits.h>
 #include <mach/mach.h>
@@ -4665,7 +4212,7 @@ static void device_val_changed(void* ctx, IOReturn result, void* sender, IOHIDVa
   
   for (int a = 0; a < device->n_axes; ++a) {
     if (!private->axes[a].is_hat_switch_2nd_axis &&
-         private->axes[a].cookie == cookie) {
+        private->axes[a].cookie == cookie) {
       if (IOHIDValueGetLength(value) > 4)
         continue;
       
@@ -4814,7 +4361,7 @@ static void device_removed(void* ctx, IOReturn result, void* sender, IOHIDDevice
   q_event->event = JOY_DEVICE_REMOVED;
   q_event->data = (void*)current;
   q_event->next = NULL;
-
+  
   joystick_queued_event_t* e_current = device_event_q.head;
   if (!e_current)
     device_event_q.head = q_event;
@@ -5023,141 +4570,491 @@ void sgl_joystick_poll() {
 }
 #endif
 
-int sgl_dialog(DIALOG_MSG_LVL lvl, DIALOG_BTNS btns, const char* msg) {
-  NSAlert *alert = [[NSAlert alloc] init];
+#if defined(SGL_ENABLE_DIALOGS)
+#include <AppKit/AppKit.h>
+
+#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_12
+#define NSAlertStyleInformational NSInformationalAlertStyle
+#define NSAlertStyleWarning NSWarningAlertStyle
+#define NSAlertStyleCritical NSCriticalAlertStyle
+#endif
+
+bool sgl_alert(ALERTLVL lvl, ALERTBTNS btns, const char* fmt, ...) {
+  NSAlert* alert = [[NSAlert alloc] init];
   
   switch (lvl) {
     default:
-#ifdef __MAC_10_12
-    case DIALOG_INFO:
+    case ALERT_INFO:
       [alert setAlertStyle:NSAlertStyleInformational];
       break;
-    case DIALOG_WARNING:
+    case ALERT_WARNING:
       [alert setAlertStyle:NSAlertStyleWarning];
       break;
-    case DIALOG_ERROR:
+    case ALERT_ERROR:
       [alert setAlertStyle:NSAlertStyleCritical];
       break;
-#else
-    case DIALOG_INFO:
-      [alert setAlertStyle:NSInformationalAlertStyle];
-      break;
-    case DIALOG_WARNING:
-      [alert setAlertStyle:NSWarningAlertStyle];
-      break;
-    case DIALOG_ERROR:
-      [alert setAlertStyle:NSCriticalAlertStyle];
-      break;
-#endif
   }
   
   switch (btns) {
     default:
-    case DIALOG_OK:
+    case ALERT_OK:
       [alert addButtonWithTitle:@"OK"];
       break;
-    case DIALOG_OK_CANCEL:
+    case ALERT_OK_CANCEL:
       [alert addButtonWithTitle:@"OK"];
       [alert addButtonWithTitle:@"Cancel"];
       break;
-    case DIALOG_YES_NO:
+    case ALERT_YES_NO:
       [alert addButtonWithTitle:@"Yes"];
       [alert addButtonWithTitle:@"No"];
       break;
   }
   
-  NSString *messageString = [NSString stringWithUTF8String:msg];
-  // [alert setInformativeText:messageString];
-  [alert setMessageText:messageString];
+  char buffer[BUFSIZ];
+  va_list args;
+  va_start(args, fmt);
+  vsprintf(buffer, fmt, args);
+  va_end(args);
+  [alert setMessageText:@(buffer)];
   
-  int result;
-  if ([alert runModal] == NSAlertFirstButtonReturn) {
-    result = 1;
-  }
-  else {
-    result = 0;
-  }
-  
+  bool result = ([alert runModal] == NSAlertFirstButtonReturn);
   [alert release];
   return result;
 }
 
-
-char* sgl_dialog_file(DIALOG_FILE_ACTION action, const char* path, const char* fname, dialog_filters* filters) {
+char* sgl_dialog(DIALOGACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
   NSSavePanel* panel = nil;
   NSOpenPanel* open_panel = nil;
+  NSMutableArray* file_types = nil;
   
-  // No idea how to manage memory with Objective C. Please help!
-  NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-  
-  if (action == DIALOG_OPEN || action == DIALOG_OPEN_DIR) {
-    open_panel = [NSOpenPanel openPanel];
-    panel = open_panel;
-  } else
-    panel = [NSSavePanel savePanel];
-  
-  // Bring dialog to front
-  // https://stackoverflow.com/a/2402069
-  // Thanks Dave!
+  switch (action) {
+    case DIALOG_OPEN:
+    case DIALOG_OPEN_DIR:
+      open_panel = [NSOpenPanel openPanel];
+      panel = open_panel;
+      break;
+    case DIALOG_SAVE:
+      panel = [NSSavePanel savePanel];
+      break;
+    default:
+      // Error message here
+      return NULL;
+  }
   [panel setLevel:CGShieldingWindowLevel()];
   
-  if (filters) {
-    NSMutableArray *fileTypes = [[NSMutableArray alloc] init];
-    
-    for (; filters; filters = filters->next) {
-      for (dialog_filter_patterns* patterns = filters->patterns; patterns; patterns = patterns->next) {
-        NSString *fileType = [NSString stringWithUTF8String:patterns->pattern];
-        [fileTypes addObject:fileType];
-      }
-    }
-    
-    [panel setAllowedFileTypes:fileTypes];
-    // [fileTypes release];
+  if (!nfilters || action == DIALOG_SAVE)
+    goto SKIP_FILTERS;
+  
+  file_types = [[NSMutableArray alloc] init];
+  va_list args;
+  va_start(args, nfilters);
+  for (int i = 0; i < nfilters; ++i)
+    [file_types addObject:@(va_arg(args, const char*))];
+  va_end(args);
+  [panel setAllowedFileTypes:file_types];
+  
+SKIP_FILTERS:
+  if (path)
+    panel.directoryURL = [NSURL fileURLWithPath:@(path)];
+  
+  if (fname)
+    panel.nameFieldStringValue = @(fname);
+  
+  switch (action) {
+    case DIALOG_OPEN:
+      open_panel.allowsMultipleSelection = allow_multiple;
+      open_panel.canChooseDirectories = NO;
+      open_panel.canChooseFiles = YES;
+      break;
+    case DIALOG_OPEN_DIR:
+      open_panel.allowsMultipleSelection = allow_multiple;
+      open_panel.canCreateDirectories = YES;
+      open_panel.canChooseDirectories = YES;
+      open_panel.canChooseFiles = NO;
+      break;
+    case DIALOG_SAVE:
+      break;
   }
   
-  if (action == DIALOG_OPEN || action == DIALOG_OPEN_DIR)
-    open_panel.allowsMultipleSelection = NO;
-  if (action == DIALOG_OPEN) {
-    open_panel.canChooseDirectories = NO;
-    open_panel.canChooseFiles = YES;
-  }
-  if (action == DIALOG_OPEN_DIR) {
-    open_panel.canCreateDirectories = YES;
-    open_panel.canChooseDirectories = YES;
-    open_panel.canChooseFiles = NO;
-  }
-  
-  if (path) {
-    NSString *path_str = [NSString stringWithUTF8String:path];
-    NSURL *path_url = [NSURL fileURLWithPath:path_str];
-    panel.directoryURL = path_url;
-    // [path_url release];
-    // [path_str release];
-  }
-  
-  if (fname) {
-    NSString *filenameString = [NSString stringWithUTF8String:fname];
-    panel.nameFieldStringValue = filenameString;
-    // [filenameString release];
-  }
-  
-  char *result = NULL;
-  
-#ifdef __MAC_10_9
-#define OK NSModalResponseOK
-#else
-#define OK NSOKButton
-#endif
-  if ([panel runModal] == OK) {
-    NSURL *result_url = [panel URL];
-    result = strdup([[result_url path] UTF8String]);
-    // [result_url release];
-  }
-  
-  // [panel release];
-  [pool release];
+  char* result = ([panel runModal] == NSModalResponseOK ? strdup(action == DIALOG_SAVE || !allow_multiple ? [[[panel URL] path] UTF8String] : [[[open_panel URLs] componentsJoinedByString:@","] UTF8String]) : NULL);
+  if (file_types)
+    [file_types release];
   return result;
 }
+#endif
+
+#if !defined(SGL_DISABLE_WINDOW)
+static short int keycodes[512];
+static bool keycodes_init = false;
+
+struct screen_t {
+  int id, w, h;
+  
+#define X(a, b) \
+void(*a##_callback)b;
+  XMAP_SCREEN_CB
+#undef X
+  
+  void* window;
+};
+
+#define X(a, b) \
+void(*a##_cb)b,
+void sgl_screen_callbacks(XMAP_SCREEN_CB screen_t screen) {
+#undef X
+#define X(a, b) \
+  screen->a##_callback = a##_cb;
+  XMAP_SCREEN_CB
+#undef X
+}
+
+#define X(a, b)\
+void sgl_##a##_callback(screen_t screen, void(*a##_cb)b) { \
+  screen->a##_callback = a##_cb; \
+}
+XMAP_SCREEN_CB
+#undef X
+
+int sgl_screen_id(screen_t s) {
+  return s->id;
+}
+
+void sgl_screen_size(screen_t s, int* w, int* h) {
+  if (w)
+    *w = s->w;
+  if (h)
+    *h = s->h;
+}
+
+#define CBCALL(x, ...) \
+  if (active_window && active_window->x) \
+    active_window->x(userdata, __VA_ARGS__);
+
+#if defined(SGL_ENABLE_OPENGL)
+#if defined(SGL_OSX)
+#include <OpenGL/gl3.h>
+#endif
+
+#if defined(SGL_LINUX)
+#define GLDECL // Empty define
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glx.h>
+#include <dlfcn.h>
+#endif
+
+#if defined(SGL_WINDOWS)
+#define GLDECL WINAPI
+
+#define GL_ARRAY_BUFFER                   0x8892
+#define GL_COMPILE_STATUS                 0x8B81
+#define GL_ELEMENT_ARRAY_BUFFER           0x8893
+#define GL_FRAGMENT_SHADER                0x8B30
+#define GL_MAJOR_VERSION                  0x821B
+#define GL_MINOR_VERSION                  0x821C
+#define GL_STATIC_DRAW                    0x88E4
+#define GL_TEXTURE0                       0x84C0
+#define GL_VERTEX_SHADER                  0x8B31
+#define GL_INFO_LOG_LENGTH                0x8B84
+#define GL_BGRA                           0x80E1
+#define GL_UNSIGNED_INT_8_8_8_8_REV       0x8367
+
+typedef char GLchar;
+typedef ptrdiff_t GLintptr;
+typedef ptrdiff_t GLsizeiptr;
+
+#include <gl/GL.h>
+#include <gl/GLU.h>
+
+#pragma comment(lib, "opengl32.lib")
+#endif
+
+#if defined(SGL_WINDOWS) || defined(SGL_LINUX)
+#define GL_LIST \
+    /* ret, name, params */ \
+    GLE(void,      AttachShader,            GLuint program, GLuint shader) \
+    GLE(void,      BindBuffer,              GLenum target, GLuint buffer) \
+    GLE(void,      BufferData,              GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage) \
+    GLE(void,      BufferSubData,           GLenum target, GLintptr offset, GLsizeiptr size, const GLvoid * data) \
+    GLE(void,      CompileShader,           GLuint shader) \
+    GLE(GLuint,    CreateProgram,           void) \
+    GLE(GLuint,    CreateShader,            GLenum type) \
+    GLE(void,      DeleteBuffers,           GLsizei n, const GLuint *buffers) \
+    GLE(void,      EnableVertexAttribArray, GLuint index) \
+    GLE(void,      FramebufferTexture2D,    GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level) \
+    GLE(void,      GenBuffers,              GLsizei n, GLuint *buffers) \
+    GLE(GLint,     GetAttribLocation,       GLuint program, const GLchar *name) \
+    GLE(void,      GetShaderInfoLog,        GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog) \
+    GLE(void,      GetShaderiv,             GLuint shader, GLenum pname, GLint *params) \
+    GLE(void,      LinkProgram,             GLuint program) \
+    GLE(void,      ShaderSource,            GLuint shader, GLsizei count, const GLchar* const *string, const GLint *length) \
+    GLE(void,      UseProgram,              GLuint program) \
+    GLE(void,      VertexAttribPointer,     GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer) \
+    GLE(GLboolean, IsShader,                GLuint shader) \
+    GLE(void,      DeleteProgram,           GLuint program) \
+    GLE(void,      DeleteShader,            GLuint shader) \
+    GLE(void,      BindVertexArray,         GLuint array) \
+    GLE(void,      GenVertexArrays,         GLsizei n, GLuint *arrays) \
+    GLE(void,      DeleteVertexArrays,      GLsizei n, const GLuint *arrays) \
+    /* end */
+
+#define GLE(ret, name, ...) typedef ret GLDECL name##proc(__VA_ARGS__); extern name##proc * gl##name;
+GL_LIST
+#undef GLE
+
+#define GLE(ret, name, ...) name##proc * gl##name;
+GL_LIST
+#undef GLE
+#endif
+
+void print_shader_log(GLuint s) {
+  if (glIsShader(s)) {
+    int log_len = 0, max_len = 0;
+    glGetShaderiv(s, GL_INFO_LOG_LENGTH, &max_len);
+    char* log = malloc(sizeof(char) * max_len);
+
+    glGetShaderInfoLog(s, max_len, &log_len, log);
+    if (log_len > 0)
+      error_handle(HIGH_PRIORITY, GL_SHADER_ERROR, "load_shader() failed: %s", log);
+
+    free(log);
+  }
+}
+
+GLuint load_shader(const GLchar* src, GLenum type) {
+  GLuint s = glCreateShader(type);
+  glShaderSource(s, 1, &src, NULL);
+  glCompileShader(s);
+
+  GLint res = GL_FALSE;
+  glGetShaderiv(s, GL_COMPILE_STATUS, &res);
+  if (!res) {
+    print_shader_log(s);
+    return 0;
+  }
+
+  return s;
+}
+
+GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
+  GLuint sp = glCreateProgram();
+  GLuint vs = load_shader(vs_src, GL_VERTEX_SHADER);
+  GLuint fs = load_shader(fs_src, GL_FRAGMENT_SHADER);
+  glAttachShader(sp, vs);
+  glAttachShader(sp, fs);
+  glLinkProgram(sp);
+  glDeleteShader(vs);
+  glDeleteShader(fs);
+  return sp;
+}
+
+static int gl3_available = 1;
+static bool dll_loaded = false;
+
+bool init_gl(int w, int h, GLuint* _vao, GLuint* _shader, GLuint* _texture) {
+  if (!dll_loaded) {
+#if defined(SGL_WINDOWS)
+    HINSTANCE dll = LoadLibraryA("opengl32.dll");
+    typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
+    if (!dll) {
+      sgl_release();
+      error_handle(LOW_PRIORITY, GL_LOAD_DL_FAILED, "LoadLibraryA() failed: opengl32.dll not found");
+      return false;
+    }
+    wglGetProcAddressproc* wglGetProcAddress = (wglGetProcAddressproc*)GetProcAddress(dll, "wglGetProcAddress");
+    
+#define GLE(ret, name, ...) \
+    gl##name = (name##proc*)wglGetProcAddress("gl" #name); \
+    if (!gl##name) { \
+    error_handle(LOW_PRIORITY, GL_GET_PROC_ADDR_FAILED, "wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
+    gl3_available -= 1; \
+    }
+    GL_LIST
+#undef GLE
+#elif defined(SGL_LINUX)
+    void* libGL = dlopen("libGL.so", RTLD_LAZY);
+    if (!libGL) {
+      sgl_release();
+      error_handle(LOW_PRIORITY, GL_LOAD_DL_FAILED, "dlopen() failed: libGL.so couldn't be loaded");
+      return false;
+    }
+    
+#define GLE(ret, name, ...) \
+    gl##name = (name##proc *) dlsym(libGL, "gl" #name); \
+    if (!gl##name) { \
+    error_handle(LOW_PRIORITY, GL_GET_PROC_ADDR_FAILED, "dlsym() failed: Function gl" #name " couldn't be loaded from libGL.so"); \
+    gl3_available -= 1; \
+    }
+    GL_LIST
+#undef GLE
+#endif
+    dll_loaded = true;
+  }
+
+  glClearColor(0.f, 0.f, 0.f, 1.f);
+
+#if !defined(SGL_OSX)
+  if (gl3_available < 0) {
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0.f, w, 0.f, h, -1.f, 1.f);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+
+    glLoadIdentity();
+    glDisable(GL_LIGHTING);
+    glEnable(GL_TEXTURE_2D);
+  } else {
+#endif
+    glViewport(0, 0, w, h);
+
+    static GLfloat vertices_position[8] = {
+      -1., -1.,
+       1., -1.,
+       1.,  1.,
+      -1.,  1.,
+    };
+
+    static GLfloat texture_coord[8] = {
+      .0,  .0,
+       1., .0,
+       1., 1.,
+      .0,  1.,
+    };
+
+    static GLuint indices[6] = {
+      0, 1, 2,
+      2, 3, 0
+    };
+
+    static const char* vs_src =
+      "#version 150\n"
+      "in vec4 position;"
+      "in vec2 texture_coord;"
+      "out vec2 texture_coord_from_vshader;"
+      "void main() {"
+      "  gl_Position = position;"
+      "  texture_coord_from_vshader = vec2(texture_coord.s, 1.f - texture_coord.t);"
+      "}";
+
+    static const char* fs_src =
+      "#version 150\n"
+      "in vec2 texture_coord_from_vshader;"
+      "out vec4 out_color;"
+      "uniform sampler2D texture_sampler;"
+      "void main() {"
+      "  out_color = texture(texture_sampler, texture_coord_from_vshader);"
+      "}";
+    
+    static GLuint vao, shader, texture;
+    
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    GLuint vbo;
+    glGenBuffers(1, &vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_position) + sizeof(texture_coord), NULL, GL_STATIC_DRAW);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position);
+    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
+
+    GLuint ebo;
+    glGenBuffers(1, &ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    shader = create_shader(vs_src, fs_src);
+    glUseProgram(shader);
+
+    GLint position_attribute = glGetAttribLocation(shader, "position");
+    glVertexAttribPointer(position_attribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(position_attribute);
+
+    GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
+    glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
+    glEnableVertexAttribArray(texture_coord_attribute);
+    
+    *_vao = vao;
+    *_shader = shader;
+#if !defined(SGL_OSX)
+  }
+#endif
+
+  glGenTextures(1, &texture);
+  *_texture = texture;
+  
+  return true;
+}
+
+void draw_gl(GLuint vao, GLuint texture, surface_t* buffer) {
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, (GLvoid*)buffer->buf);
+
+  glClear(GL_COLOR_BUFFER_BIT);
+
+#if !defined(SGL_OSX)
+  if (gl3_available < 0) {
+    glBegin(GL_QUADS);
+      glTexCoord2f(0, 1); glVertex3f(0, 0, 0);
+      glTexCoord2f(0, 0); glVertex3f(0, buffer->h, 0);
+      glTexCoord2f(1, 0); glVertex3f(buffer->w, buffer->h, 0);
+      glTexCoord2f(1, 1); glVertex3f(buffer->w, 0, 0);
+    glEnd();
+  } else {
+#endif
+    glBindVertexArray(vao);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+#if !defined(SGL_OSX)
+  }
+
+  glFlush();
+#endif
+}
+
+void free_gl(GLuint vao, GLuint shader, GLuint texture) {
+  if (texture)
+    glDeleteTextures(1, &texture);
+  if (!gl3_available) {
+    if (shader)
+      glDeleteProgram(shader);
+    if (vao)
+      glDeleteVertexArrays(1, &vao);
+  }
+}
+#endif
+
+#if defined(SGL_OSX)
+#include <Cocoa/Cocoa.h>
+#if defined(SGL_ENABLE_METAL)
+#include <MetalKit/MetalKit.h>
+#include <simd/simd.h>
+
+typedef enum AAPLVertexInputIndex {
+  AAPLVertexInputIndexVertices     = 0,
+  AAPLVertexInputIndexViewportSize = 1,
+} AAPLVertexInputIndex;
+
+typedef enum AAPLTextureIndex {
+  AAPLTextureIndexBaseColor = 0,
+} AAPLTextureIndex;
+
+typedef struct {
+  vector_float2 position;
+  vector_float2 textureCoordinate;
+} AAPLVertex;
+
+static const AAPLVertex quad_vertices[] = {
+  {{  1.f,  -1.f  }, { 1.f, 0.f }},
+  {{ -1.f,  -1.f  }, { 0.f, 0.f }},
+  {{ -1.f,   1.f  }, { 0.f, 1.f }},
+  {{  1.f,  -1.f  }, { 1.f, 0.f }},
+  {{ -1.f,   1.f  }, { 0.f, 1.f }},
+  {{  1.f,   1.f  }, { 1.f, 1.f }},
+};
+#endif
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_12
 #define NSWindowStyleMaskBorderless NSBorderlessWindowMask
@@ -5194,512 +5091,6 @@ static int translate_mod(NSUInteger flags) {
 
 static int translate_key(unsigned int key) {
   return (key >= sizeof(keycodes) / sizeof(keycodes[0]) ?  KB_KEY_UNKNOWN : keycodes[key]);
-}
-
-#if defined(SGL_ENABLE_OPENGL)
-@interface osx_view_t : NSOpenGLView {
-#elif defined(SGL_ENABLE_METAL)
-@interface osx_view_t : MTKView {
-  id<MTLDevice> _device;
-  id<MTLRenderPipelineState> _pipeline;
-  id<MTLCommandQueue> _cmd_queue;
-  id<MTLLibrary> _library;
-  id<MTLTexture> _texture;
-  id<MTLBuffer> _vertices;
-  NSUInteger _n_vertices;
-#else
-@interface osx_view_t : NSView {
-#endif
-  NSTrackingArea* track;
-  surface_t* buf;
-}
-@end
-  
-@interface osx_app_t : NSWindow {
-  NSView* view;
-  osx_view_t* subview;
-  screen_t* parent;
-  bool closed;
-}
-@end
-
-@interface AppDelegate : NSApplication {}
-@end
-
-@implementation AppDelegate
--(BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication*)theApplication {
-  (void)theApplication;
-  return YES;
-}
-
--(void)sendEvent:(NSEvent *)event {
-  if ([event type] == NSEventTypeKeyUp && ([event modifierFlags] & NSEventModifierFlagCommand))
-    [[self keyWindow] sendEvent:event];
-  else
-    [super sendEvent:event];
-}
-@end
-
-typedef struct {
-  osx_app_t* app;
-} osx_screen_t;
-
-static osx_app_t* app;
-static int border_off = 22;
-
-static NSCursor *__custom_cursor = nil,
-                *__current_curor = nil,
-                *__cursor = nil;
-static bool cursor_locked = false, cursor_in_win = false;
-static CGFloat lmx = 0, lmy = 0, wdx = 0, wdy = 0;
-
-@implementation osx_view_t
--(id)initWithFrame:(CGRect)r {
-#if defined(SGL_ENABLE_OPENGL)
-  NSOpenGLPixelFormatAttribute pixelFormatAttributes[] = {
-    NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
-    NSOpenGLPFAColorSize, 24,
-    NSOpenGLPFAAlphaSize, 8,
-    NSOpenGLPFADoubleBuffer,
-    NSOpenGLPFAAccelerated,
-    NSOpenGLPFANoRecovery,
-    0
-  };
-  NSOpenGLPixelFormat *pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:pixelFormatAttributes];
-  self = [super initWithFrame:r pixelFormat:pixelFormat];
-
-  if (self != nil) {
-    track = nil;
-    [self updateTrackingAreas];
-    [[self openGLContext] makeCurrentContext];
-
-    init_gl(r.size.width, r.size.height);
-  }
-#elif defined(SGL_ENABLE_METAL)
-  _device = MTLCreateSystemDefaultDevice();
-  self = [super initWithFrame:r device:_device];
-  if (self != nil) {
-    track = nil;
-    [self updateTrackingAreas];
-
-    self.clearColor =  MTLClearColorMake(0., 0., 0., 0.);
-    NSScreen *screen = [NSScreen mainScreen];
-    scale_f = [screen backingScaleFactor];
-    mtk_viewport.x = r.size.width * scale_f;
-    mtk_viewport.y = ((r.size.height - border_off) * scale_f) + (4 * scale_f);
-    _cmd_queue = [_device newCommandQueue];
-    _vertices  = [_device newBufferWithBytes:quad_vertices
-                                      length:sizeof(quad_vertices)
-                                     options:MTLResourceStorageModeShared];
-    _n_vertices = sizeof(quad_vertices) / sizeof(AAPLVertex);
-
-    NSString *library = @""
-      "#include <metal_stdlib>\n"
-      "#include <simd/simd.h>\n"
-      "using namespace metal;"
-      "typedef struct {"
-      " float4 clipSpacePosition [[position]];"
-      " float2 textureCoordinate;"
-      "} RasterizerData;"
-      "typedef enum AAPLVertexInputIndex {"
-      " AAPLVertexInputIndexVertices     = 0,"
-      " AAPLVertexInputIndexViewportSize = 1,"
-      "} AAPLVertexInputIndex;"
-      "typedef enum AAPLTextureIndex {"
-      "  AAPLTextureIndexBaseColor = 0,"
-      "} AAPLTextureIndex;"
-      "typedef struct {"
-      "  vector_float2 position;"
-      "  vector_float2 textureCoordinate;"
-      "} AAPLVertex;"
-      "vertex RasterizerData vertexShader(uint vertexID [[ vertex_id ]], constant AAPLVertex *vertexArray [[ buffer(AAPLVertexInputIndexVertices) ]], constant vector_uint2 *viewportSizePointer  [[ buffer(AAPLVertexInputIndexViewportSize) ]]) {"
-      " RasterizerData out;"
-      " float2 pixelSpacePosition = float2(vertexArray[vertexID].position.x, -vertexArray[vertexID].position.y);"
-      " out.clipSpacePosition.xy = pixelSpacePosition;"
-      " out.clipSpacePosition.z = .0;"
-      " out.clipSpacePosition.w = 1.;"
-      " out.textureCoordinate = vertexArray[vertexID].textureCoordinate;"
-      " return out;"
-      "}"
-      "fragment float4 samplingShader(RasterizerData in [[stage_in]], texture2d<half> colorTexture [[ texture(AAPLTextureIndexBaseColor) ]]) {"
-      " constexpr sampler textureSampler(mag_filter::nearest, min_filter::linear);"
-      " const half4 colorSample = colorTexture.sample(textureSampler, in.textureCoordinate);"
-      " return float4(colorSample);"
-      "}";
-
-    NSError *err = nil;
-    _library = [_device newLibraryWithSource:library
-                                     options:nil
-                                       error:&err];
-    if (err || !_library) {
-      sgl_release();
-      error_handle(HIGH_PRIORITY, MTK_LIBRARY_ERROR, "[device newLibraryWithSource] failed: %s", [[err localizedDescription] UTF8String]);
-      return nil;
-    }
-
-    id<MTLFunction> vs = [_library newFunctionWithName:@"vertexShader"];
-    id<MTLFunction> fs = [_library newFunctionWithName:@"samplingShader"];
-
-    MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
-    pipelineStateDescriptor.label = @"[Texturing Pipeline]";
-    pipelineStateDescriptor.vertexFunction = vs;
-    pipelineStateDescriptor.fragmentFunction = fs;
-    pipelineStateDescriptor.colorAttachments[0].pixelFormat = [self colorPixelFormat];
-
-    _pipeline = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor
-                                                        error:&err];
-    if (err || !_pipeline) {
-      sgl_release();
-      error_handle(HIGH_PRIORITY, MTK_CREATE_PIPELINE_FAILED, "[device newRenderPipelineStateWithDescriptor] failed: %s", [[err localizedDescription] UTF8String]);
-      return nil;
-    }
-  }
-#else
-  self = [super initWithFrame:r];
-  if (self != nil) {
-    track = nil;
-    [self updateTrackingAreas];
-  }
-#endif
-
-  return self;
-}
-
--(void)updateTrackingAreas {
-  if (track != nil) {
-    [self removeTrackingArea:track];
-    [track release];
-  }
-
-  track = [[NSTrackingArea alloc] initWithRect:[self visibleRect]
-                                       options:NSTrackingMouseEnteredAndExited | NSTrackingActiveInKeyWindow | NSTrackingEnabledDuringMouseDrag | NSTrackingCursorUpdate | NSTrackingInVisibleRect | NSTrackingAssumeInside | NSTrackingActiveInActiveApp | NSTrackingActiveAlways
-                                         owner:self
-                                      userInfo:nil];
-
-  [self addTrackingArea:track];
-  [super updateTrackingAreas];
-}
-
--(void)resetCursorRects {
-  [super resetCursorRects];
-  [self addCursorRect:[self visibleRect] cursor:(__cursor ? __cursor : [NSCursor arrowCursor])];
-}
-  
--(BOOL)acceptsFirstResponder {
-  return YES;
-}
-
--(BOOL)performKeyEquivalent:(NSEvent*)event {
-  return YES;
-}
-
--(void)mouseEntered: (NSEvent*)event {
-  cursor_in_win = true;
-#pragma TODO(Add mouse entered event cb)
-}
-
--(void)mouseExited: (NSEvent*)event {
-  cursor_in_win = false;
-  __current_curor = nil;
-#pragma TODO(Add mouse exited event cb)
-}
-  
--(void)mouseMoved:(NSEvent *)event {
-  if (__cursor && cursor_in_win && __cursor != __current_curor) {
-    [__cursor set];
-    __current_curor = __cursor;
-  }
-}
-
--(void)updateBufPtr:(surface_t*)b {
-  if (!b || !b->buf)
-    return;
-  buf = b;
-}
-
--(void)drawRect:(NSRect)r {
-  if (!buf || !buf->buf)
-    return;
-  
-#if defined(SGL_ENABLE_OPENGL)
-  [super drawRect: r];
-  draw_gl();
-  [[self openGLContext] flushBuffer];
-#elif defined(SGL_ENABLE_METAL)
-  [super drawRect: r];
-
-  MTLTextureDescriptor* td = [[MTLTextureDescriptor alloc] init];
-  td.pixelFormat = MTLPixelFormatBGRA8Unorm;
-  td.width = buf->w;
-  td.height = buf->h;
-
-  _texture = [_device newTextureWithDescriptor:td];
-  [_texture replaceRegion:(MTLRegion){{ 0, 0, 0 }, { buf->w, buf->h, 1 }}
-              mipmapLevel:0
-                withBytes:buf->buf
-              bytesPerRow:buf->w * 4];
-
-  id <MTLCommandBuffer> cmd_buf = [_cmd_queue commandBuffer];
-  cmd_buf.label = @"[Command Buffer]";
-  MTLRenderPassDescriptor* rpd = [self currentRenderPassDescriptor];
-  if (rpd) {
-    id<MTLRenderCommandEncoder> re = [cmd_buf renderCommandEncoderWithDescriptor:rpd];
-    re.label = @"[Render Encoder]";
-
-    [re setViewport:(MTLViewport){ .0, .0, mtk_viewport.x, mtk_viewport.y, -1., 1. }];
-    [re setRenderPipelineState:_pipeline];
-    [re setVertexBuffer:_vertices
-                 offset:0
-                atIndex:AAPLVertexInputIndexVertices];
-    [re setVertexBytes:&mtk_viewport
-                length:sizeof(mtk_viewport)
-               atIndex:AAPLVertexInputIndexViewportSize];
-    [re setFragmentTexture:_texture
-                   atIndex:AAPLTextureIndexBaseColor];
-    [re drawPrimitives:MTLPrimitiveTypeTriangle
-           vertexStart:0
-           vertexCount:_n_vertices];
-    [re endEncoding];
-
-    [cmd_buf presentDrawable:[self currentDrawable]];
-  }
-
-  [_texture release];
-  [td release];
-  [cmd_buf commit];
-#else
-  CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
-
-  CGColorSpaceRef s = CGColorSpaceCreateDeviceRGB();
-  CGDataProviderRef p = CGDataProviderCreateWithData(NULL, buffer->buf, buffer->w * buffer->h * 3, NULL);
-  CGImageRef img = CGImageCreate(buffer->w, buffer->h, 8, 32, buffer->w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, 0, kCGRenderingIntentDefault);
-
-  CGColorSpaceRelease(s);
-  CGDataProviderRelease(p);
-
-  CGContextDrawImage(ctx, CGRectMake(0, 0, win_w, win_h), img);
-
-  CGImageRelease(img);
-#endif
-}
-
--(void)dealloc {
-#if defined(SGL_ENABLE_OPENGL)
-  free_gl();
-#elif defined(SGL_ENABLE_METAL)
-  [_device release];
-  [_pipeline release];
-  [_cmd_queue release];
-  [_library release];
-  [_vertices release];
-#endif
-  [track release];
-}
-@end
-
-@implementation osx_app_t
--(id)initWithContentRect:(NSRect)r styleMask:(NSWindowStyleMask)s backing:(NSBackingStoreType)t defer:(BOOL)d {
-  self = [super initWithContentRect:r
-                          styleMask:s
-                            backing:t
-                              defer:d];
-  if (self) {
-    [self setOpaque:YES];
-    [self setBackgroundColor:[NSColor clearColor]];
-
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(win_changed:)
-                                                 name:NSWindowDidBecomeKeyNotification
-                                               object:self];
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(win_changed:)
-                                                 name:NSWindowDidResignMainNotification
-                                               object:self];
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(win_close)
-                                                 name:NSWindowWillCloseNotification
-                                               object:self];
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(win_resize:)
-                                                 name:NSWindowDidResizeNotification
-                                               object:self];
-
-    closed = false;
-  }
-  return self;
-}
-
--(void)dealloc {
-  [[NSNotificationCenter defaultCenter] removeObserver:self];
-  [super dealloc];
-}
-
--(void)setContentSize:(NSSize)s {
-  NSSize sizeDelta = s;
-  NSSize childBoundsSize = [view bounds].size;
-  sizeDelta.width -= childBoundsSize.width;
-  sizeDelta.height -= childBoundsSize.height;
-
-  osx_view_t* fv = [super contentView];
-  NSSize ns  = [fv bounds].size;
-  ns.width  += sizeDelta.width;
-  ns.height += sizeDelta.height;
-
-  [super setContentSize:ns];
-}
-
--(void)setContentView:(NSView *)v {
-  if ([view isEqualTo:v])
-    return;
-
-  NSRect b = [self frame];
-  b.origin = NSZeroPoint;
-  osx_view_t* fv = [super contentView];
-  if (!fv) {
-    fv = [[[osx_view_t alloc] initWithFrame:b] autorelease];
-    [super setContentView:fv];
-    [super makeFirstResponder:fv];
-  }
-
-  if (view)
-    [view removeFromSuperview];
-
-  view = v;
-  [view setFrame:[self contentRectForFrameRect:b]];
-  [view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-  [fv addSubview:view];
-  subview = fv;
-}
-
--(void)win_changed:(NSNotification *)n {
-  CALL(__focus_callback, [app getParent], false);
-  app = self;
-}
-
--(void)win_close {
-  closed = true;
-}
-  
--(bool)isClosed {
-  return closed;
-}
-
--(void)setParent:(screen_t*)p {
-  if (parent || !p)
-    return;
-  parent = p;
-}
-
--(screen_t*)getParent {
-  return parent;
-}
-
--(void)win_resize:(NSNotification *)n {
-  CGSize size = [app contentRectForFrameRect:[app frame]].size;
-  int h = size.height - border_off;
-#if defined(SGL_ENABLE_OPENGL)
-  glViewport(0, 0, size.width, h);
-#elif defined(SGL_ENABLE_METAL)
-  mtk_viewport.x = size.width * scale_f;
-  mtk_viewport.y = ((h) * scale_f) + (4 * scale_f);
-#endif
-  parent->w = size.width;
-  parent->h = h;
-  CALL(__resize_callback, [app getParent], size.width, h);
-}
-
--(NSView*)contentView {
-  return view;
-}
-
--(osx_view_t*)subView {
-  return subview;
-}
-
--(BOOL)canBecomeKeyWindow {
-  return YES;
-}
-
--(BOOL)canBecomeMainWindow {
-  return YES;
-}
-
--(void)becomeKeyWindow {
-  CALL(__focus_callback, [app getParent], true);
-}
-
--(NSRect)contentRectForFrameRect:(NSRect)f {
-  f.origin = NSZeroPoint;
-  return NSInsetRect(f, 0, 0);
-}
-
-+(NSRect)frameRectForContentRect:(NSRect)r styleMask:(NSWindowStyleMask)s {
-  return NSInsetRect(r, 0, 0);
-}
-@end
-
-void sgl_cursor(screen_t* s, bool shown, bool locked, CURSORTYPE type) {
-  osx_screen_t* _s = (osx_screen_t*)s->__private;
-  if (!_s) {
-    error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "cursor() failed: Called before screen is set up");
-    return;
-  }
-  
-  if (shown)
-    [NSCursor unhide];
-  else
-    [NSCursor hide];
-  cursor_locked = locked;
-  
-  NSCursor* tmp = NULL;
-  switch (type) {
-    default:
-    case CURSOR_ARROW:
-    case CURSOR_WAIT:
-    case CURSOR_WAITARROW:
-      tmp = [NSCursor arrowCursor];
-      break;
-    case CURSOR_IBEAM:
-      tmp = [NSCursor IBeamCursor];
-      break;
-    case CURSOR_CROSSHAIR:
-      tmp = [NSCursor crosshairCursor];
-      break;
-    case CURSOR_SIZENWSE:
-    case CURSOR_SIZENESW:
-      tmp = [NSCursor closedHandCursor];
-      break;
-    case CURSOR_SIZEWE:
-      tmp = [NSCursor resizeLeftRightCursor];
-      break;
-    case CURSOR_SIZENS:
-      tmp = [NSCursor resizeUpDownCursor];
-      break;
-    case CURSOR_SIZEALL:
-      tmp = [NSCursor closedHandCursor];
-      break;
-    case CURSOR_NO:
-      tmp = [NSCursor operationNotAllowedCursor];
-      break;
-    case CURSOR_HAND:
-      tmp = [NSCursor pointingHandCursor];
-      break;
-    case CURSOR_CUSTOM:
-      if (!__custom_cursor) {
-        error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "cursor() failed: Custom cursor not loaded");
-        return;
-      }
-      tmp = __custom_cursor;
-  }
-  
-  if (__cursor && __cursor != __custom_cursor)
-    [__cursor release];
-  
-  __cursor = tmp;
-  [__cursor retain];
-  
-  if (_s && [_s->app subView])
-    [[_s->app subView] resetCursorRects];
 }
 
 static inline NSImage* create_cocoa_image(surface_t* s) {
@@ -5740,40 +5131,454 @@ static inline NSImage* create_cocoa_image(surface_t* s) {
   return nsi;
 }
 
-void sgl_cursor_load_custom(surface_t* s) {
-  NSImage* nsi = create_cocoa_image(s);
-  if (!nsi) {
-    error_handle(LOW_PRIORITY, CUSTOM_CURSOR_NOT_CREATED, "sgl_cursor_load_custom() failed: Couldn't create custom cursor");
-    return;
+static screen_t active_window = NULL;
+
+@protocol AppViewDelegate;
+
+#if defined(SGL_ENABLE_OPENGL)
+@interface AppView : NSOpenGLView
+@property GLuint vao;
+@property GLuint shader;
+@property GLuint texture;
+#elif defined(SGL_ENABLE_METAL)
+@interface AppView : MTKView
+@property (nonatomic, weak) id<MTLDevice> device;
+@property (nonatomic, weak) id<MTLRenderPipelineState> pipeline;
+@property (nonatomic, weak) id<MTLCommandQueue> cmd_queue;
+@property (nonatomic, weak) id<MTLLibrary> library;
+@property (nonatomic, weak) id<MTLTexture> texture;
+@property (nonatomic, weak) id<MTLBuffer> vertices;
+@property NSUInteger n_vertices;
+@property vector_uint2 mtk_viewport;
+@property CGFloat scale_f;
+#else
+@interface AppView : NSView
+#endif
+@property (nonatomic, weak) id<AppViewDelegate> delegate;
+@property (strong) NSTrackingArea* track;
+@property (nonatomic) surface_t* buffer;
+@property BOOL mouse_in_window;
+@property (nonatomic, strong) NSCursor* cursor;
+@property BOOL custom_cursor;
+@end
+
+@implementation AppView
+#if defined(SGL_ENABLE_OPENGL)
+@synthesize vao = _vao;
+@synthesize shader = _shader;
+@synthesize texture = _texture;
+#elif defined(SGL_ENABLE_METAL)
+@synthesize device = _device;
+@synthesize pipeline = _pipeline;
+@synthesize cmd_queue = _cmd_queue;
+@synthesize library = _library;
+@synthesize texture = _texture;
+@synthesize vertices = _vertices;
+@synthesize n_vertices = _n_vertices;
+@synthesize mtk_viewport = _mtk_viewport;
+@synthesize scale_f = _scale_f;
+#endif
+@synthesize delegate = _delegate;
+@synthesize track = _track;
+@synthesize buffer = _buffer;
+@synthesize mouse_in_window = _mouse_in_window;
+@synthesize cursor = _cursor;
+@synthesize custom_cursor = _custom_cursor;
+
+- (id)initWithFrame:(NSRect)frameRect {
+  _mouse_in_window = NO;
+  _cursor = [NSCursor arrowCursor];
+  _custom_cursor = NO;
+  
+#if defined(SGL_ENABLE_OPENGL)
+  NSOpenGLPixelFormatAttribute pixelFormatAttributes[] = {
+    NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
+    NSOpenGLPFAColorSize, 24,
+    NSOpenGLPFAAlphaSize, 8,
+    NSOpenGLPFADoubleBuffer,
+    NSOpenGLPFAAccelerated,
+    NSOpenGLPFANoRecovery,
+    0
+  };
+  NSOpenGLPixelFormat* pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:pixelFormatAttributes];
+  self = [super initWithFrame:frameRect
+                  pixelFormat:pixelFormat];
+  [[self openGLContext] makeCurrentContext];
+  init_gl(frameRect.size.width, frameRect.size.height, &_vao, &_shader, &_texture);
+  [pixelFormat release];
+#elif defined(SGL_ENABLE_METAL)
+  _device = MTLCreateSystemDefaultDevice();
+  self = [super initWithFrame:frameRect device:_device];
+  _track = nil;
+  
+  self.clearColor =  MTLClearColorMake(0., 0., 0., 0.);
+  NSScreen *screen = [NSScreen mainScreen];
+  _scale_f = [screen backingScaleFactor];
+  _mtk_viewport.x = frameRect.size.width * _scale_f;
+  _mtk_viewport.y = ((frameRect.size.height) * _scale_f) + (4 * _scale_f);
+  _cmd_queue = [_device newCommandQueue];
+  _vertices  = [_device newBufferWithBytes:quad_vertices
+                                    length:sizeof(quad_vertices)
+                                   options:MTLResourceStorageModeShared];
+  _n_vertices = sizeof(quad_vertices) / sizeof(AAPLVertex);
+  
+  NSString *library = @""
+  "#include <metal_stdlib>\n"
+  "#include <simd/simd.h>\n"
+  "using namespace metal;"
+  "typedef struct {"
+  "  float4 clipSpacePosition [[position]];"
+  "  float2 textureCoordinate;"
+  "} RasterizerData;"
+  "typedef enum AAPLVertexInputIndex {"
+  "  AAPLVertexInputIndexVertices     = 0,"
+  "  AAPLVertexInputIndexViewportSize = 1,"
+  "} AAPLVertexInputIndex;"
+  "typedef enum AAPLTextureIndex {"
+  "  AAPLTextureIndexBaseColor = 0,"
+  "} AAPLTextureIndex;"
+  "typedef struct {"
+  "  vector_float2 position;"
+  "  vector_float2 textureCoordinate;"
+  "} AAPLVertex;"
+  "vertex RasterizerData vertexShader(uint vertexID [[ vertex_id ]], constant AAPLVertex *vertexArray [[ buffer(AAPLVertexInputIndexVertices) ]], constant vector_uint2 *viewportSizePointer  [[ buffer(AAPLVertexInputIndexViewportSize) ]]) {"
+  " RasterizerData out;"
+  "  float2 pixelSpacePosition = float2(vertexArray[vertexID].position.x, -vertexArray[vertexID].position.y);"
+  "  out.clipSpacePosition.xy = pixelSpacePosition;"
+  "  out.clipSpacePosition.z = .0;"
+  "  out.clipSpacePosition.w = 1.;"
+  "  out.textureCoordinate = vertexArray[vertexID].textureCoordinate;"
+  "  return out;"
+  "}"
+  "fragment float4 samplingShader(RasterizerData in [[stage_in]], texture2d<half> colorTexture [[ texture(AAPLTextureIndexBaseColor) ]]) {"
+  "  constexpr sampler textureSampler(mag_filter::nearest, min_filter::linear);"
+  "  const half4 colorSample = colorTexture.sample(textureSampler, in.textureCoordinate);"
+  "  return float4(colorSample);"
+  "}";
+  
+  NSError *err = nil;
+  _library = [_device newLibraryWithSource:library
+                                   options:nil
+                                     error:&err];
+  if (err || !_library) {
+    sgl_release();
+    error_handle(HIGH_PRIORITY, MTK_LIBRARY_ERROR, "[device newLibraryWithSource] failed: %s", [[err localizedDescription] UTF8String]);
+    return nil;
   }
   
-  if (__custom_cursor)
-    [__custom_cursor release];
+  id<MTLFunction> vs = [_library newFunctionWithName:@"vertexShader"];
+  id<MTLFunction> fs = [_library newFunctionWithName:@"samplingShader"];
   
-  __custom_cursor = [[NSCursor alloc] initWithImage:nsi
-                                            hotSpot:NSMakePoint(0, 0)];
-  if (!__custom_cursor) {
-    __custom_cursor = nil;
-    error_handle(LOW_PRIORITY, CUSTOM_CURSOR_NOT_CREATED, "sgl_cursor_load_custom() failed: Couldn't create custom cursor");
+  MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
+  pipelineStateDescriptor.label = @"[Texturing Pipeline]";
+  pipelineStateDescriptor.vertexFunction = vs;
+  pipelineStateDescriptor.fragmentFunction = fs;
+  pipelineStateDescriptor.colorAttachments[0].pixelFormat = [self colorPixelFormat];
+  
+  _pipeline = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor
+                                                      error:&err];
+  if (err || !_pipeline) {
+    sgl_release();
+    error_handle(HIGH_PRIORITY, MTK_CREATE_PIPELINE_FAILED, "[device newRenderPipelineStateWithDescriptor] failed: %s", [[err localizedDescription] UTF8String]);
+    return nil;
+  }
+#else
+  self = [super initWithFrame:frameRect];
+#endif
+  [self updateTrackingAreas];
+  
+  return self;
+}
+
+- (void)updateTrackingAreas {
+  if (_track) {
+    [self removeTrackingArea:_track];
+    [_track release];
+  }
+  _track = [[NSTrackingArea alloc] initWithRect:[self visibleRect]
+                                        options:NSTrackingMouseEnteredAndExited
+                                               |NSTrackingActiveInKeyWindow
+                                               |NSTrackingEnabledDuringMouseDrag
+                                               |NSTrackingCursorUpdate
+                                               |NSTrackingInVisibleRect
+                                               |NSTrackingAssumeInside
+                                               |NSTrackingActiveInActiveApp
+                                               |NSTrackingActiveAlways
+                                               |NSTrackingMouseMoved
+                                          owner:self
+                                       userInfo:nil];
+  [self addTrackingArea:_track];
+  [super updateTrackingAreas];
+}
+
+- (BOOL)acceptsFirstResponder {
+  return YES;
+}
+
+- (BOOL)performKeyEquivalent:(NSEvent*)event {
+  return YES;
+}
+
+- (void)resetCursorRects {
+  [super resetCursorRects];
+  [self addCursorRect:[self visibleRect] cursor:(_cursor ? _cursor : [NSCursor arrowCursor])];
+}
+
+- (void)setCustomCursor:(NSImage*)img {
+  if (!img) {
+    if (_custom_cursor && _cursor)
+      [_cursor release];
+    _cursor = [NSCursor arrowCursor];
     return;
   }
-  [__custom_cursor retain];
+  if (_custom_cursor && _cursor)
+    [_cursor release];
+  _custom_cursor = YES;
+  _cursor = [[NSCursor alloc] initWithImage:img hotSpot:NSMakePoint(0.f, 0.f)];
+  [_cursor retain];
 }
+
+- (void)setRegularCursor:(CURSORTYPE)type {
+  NSCursor* tmp = nil;
+  switch (type) {
+    default:
+    case CURSOR_ARROW:
+    case CURSOR_WAIT:
+    case CURSOR_WAITARROW:
+      tmp = [NSCursor arrowCursor];
+      break;
+    case CURSOR_IBEAM:
+      tmp = [NSCursor IBeamCursor];
+      break;
+    case CURSOR_CROSSHAIR:
+      tmp = [NSCursor crosshairCursor];
+      break;
+    case CURSOR_SIZENWSE:
+    case CURSOR_SIZENESW:
+      tmp = [NSCursor closedHandCursor];
+      break;
+    case CURSOR_SIZEWE:
+      tmp = [NSCursor resizeLeftRightCursor];
+      break;
+    case CURSOR_SIZENS:
+      tmp = [NSCursor resizeUpDownCursor];
+      break;
+    case CURSOR_SIZEALL:
+      tmp = [NSCursor closedHandCursor];
+      break;
+    case CURSOR_NO:
+      tmp = [NSCursor operationNotAllowedCursor];
+      break;
+    case CURSOR_HAND:
+      tmp = [NSCursor pointingHandCursor];
+      break;
+  }
+  if (_custom_cursor && _cursor)
+    [_cursor release];
+  _custom_cursor = NO;
+  _cursor = tmp;
+  [_cursor retain];
+}
+
+- (void)mouseEntered:(NSEvent*)event {
+  _mouse_in_window = YES;
+}
+
+- (void)mouseExited:(NSEvent*)event {
+  _mouse_in_window = NO;
+}
+
+- (void)mouseMoved:(NSEvent*)event {
+  if (_cursor && _mouse_in_window)
+    [_cursor set];
+}
+
+- (BOOL)preservesContentDuringLiveResize {
+  return NO;
+}
+
+#if defined(SGL_ENABLE_METAL)
+- (void)updateMTKViewport:(CGSize)size {
+  _mtk_viewport.x = size.width * _scale_f;
+  _mtk_viewport.y = (size.height * _scale_f) + (4 * _scale_f);
+}
+#endif
+
+- (void)drawRect:(NSRect)dirtyRect {
+  if (!_buffer)
+    return;
   
-void sgl_cursor_pos(point_t* p) {
-  const NSPoint _p = [NSEvent mouseLocation];
-  p->x = _p.x;
-  p->y = [app screen].frame.size.height - _p.y;
+#if defined(SGL_ENABLE_OPENGL)
+  draw_gl(_vao, _texture, _buffer);
+  [[self openGLContext] flushBuffer];
+#elif defined(SGL_ENABLE_METAL)
+  MTLTextureDescriptor* td = [[MTLTextureDescriptor alloc] init];
+  td.pixelFormat = MTLPixelFormatBGRA8Unorm;
+  td.width = _buffer->w;
+  td.height = _buffer->h;
+  
+  _texture = [_device newTextureWithDescriptor:td];
+  [_texture replaceRegion:(MTLRegion){{ 0, 0, 0 }, { _buffer->w, _buffer->h, 1 }}
+              mipmapLevel:0
+                withBytes:_buffer->buf
+              bytesPerRow:_buffer->w * 4];
+  
+  id <MTLCommandBuffer> cmd_buf = [_cmd_queue commandBuffer];
+  cmd_buf.label = @"[Command Buffer]";
+  MTLRenderPassDescriptor* rpd = [self currentRenderPassDescriptor];
+  if (rpd) {
+    id<MTLRenderCommandEncoder> re = [cmd_buf renderCommandEncoderWithDescriptor:rpd];
+    re.label = @"[Render Encoder]";
+    
+    [re setViewport:(MTLViewport){ .0, .0, _mtk_viewport.x, _mtk_viewport.y, -1., 1. }];
+    [re setRenderPipelineState:_pipeline];
+    [re setVertexBuffer:_vertices
+                 offset:0
+                atIndex:AAPLVertexInputIndexVertices];
+    [re setVertexBytes:&_mtk_viewport
+                length:sizeof(_mtk_viewport)
+               atIndex:AAPLVertexInputIndexViewportSize];
+    [re setFragmentTexture:_texture
+                   atIndex:AAPLTextureIndexBaseColor];
+    [re drawPrimitives:MTLPrimitiveTypeTriangle
+           vertexStart:0
+           vertexCount:_n_vertices];
+    [re endEncoding];
+    
+    [cmd_buf presentDrawable:[self currentDrawable]];
+  }
+  
+  [_texture release];
+  [td release];
+  [cmd_buf commit];
+#else
+  CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
+  CGColorSpaceRef s = CGColorSpaceCreateDeviceRGB();
+  CGDataProviderRef p = CGDataProviderCreateWithData(NULL, _buffer->buf, _buffer->w * _buffer->h * 3, NULL);
+  CGImageRef img = CGImageCreate(_buffer->w, _buffer->h, 8, 32, _buffer->w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, 0, kCGRenderingIntentDefault);
+  CGContextDrawImage(ctx, CGRectMake(0, 0, [self frame].size.width, [self frame].size.height), img);
+  CGColorSpaceRelease(s);
+  CGDataProviderRelease(p);
+  CGImageRelease(img);
+#endif
 }
 
-void sgl_cursor_set_pos(point_t* p) {
-  CGPoint _p;
-  _p.x = p->x;
-  _p.y = p->y;
-  CGWarpMouseCursorPosition(_p);
+-(void)dealloc {
+#if defined(SGL_ENABLE_OPENGL)
+  free_gl(_vao, _shader, _texture);
+#elif defined(SGL_ENABLE_METAL)
+  [_device release];
+  [_pipeline release];
+  [_cmd_queue release];
+  [_library release];
+  [_vertices release];
+#endif
+  [_track release];
+  if (_custom_cursor && _cursor)
+    [_cursor release];
+}
+@end
+
+@protocol AppViewDelegate <NSObject>
+#if defined(SGL_ENABLE_METAL)
+- (void)mtkView:(MTKView*)view drawableSizeWillChange:(CGSize)size;
+#endif
+@end
+
+@interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate, AppViewDelegate>
+@property (unsafe_unretained) NSWindow* window;
+@property (weak) AppView* view;
+@property (nonatomic) screen_t parent;
+@property BOOL closed;
+@end
+
+@implementation AppDelegate
+@synthesize window = _window;
+@synthesize view = _view;
+@synthesize parent = _parent;
+@synthesize closed = _closed;
+
+-(id)initWithSize:(NSSize)windowSize styleMask:(short)flags title:(const char*)windowTitle {
+  NSWindowStyleMask styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
+  NSRect frameRect = NSMakeRect(0, 0, windowSize.width, windowSize.height);
+  
+  _window = [[NSWindow alloc] initWithContentRect:frameRect
+                                        styleMask:styleMask
+                                          backing:NSBackingStoreBuffered
+                                            defer:NO];
+  if (!_window) {
+    sgl_release();
+    error_handle(HIGH_PRIORITY, OSX_WINDOW_CREATION_FAILED, "[_window initWithContentRect] failed");
+    return nil;
+  }
+  
+  [_window setAcceptsMouseMovedEvents:YES];
+  [_window setRestorable:NO];
+  [_window setTitle:(windowTitle ? @(windowTitle) : [[NSProcessInfo processInfo] processName])];
+  [_window setReleasedWhenClosed:NO];
+  
+  if (!active_window)
+    [_window center];
+  else {
+    AppDelegate* tmp = (AppDelegate*)active_window->window;
+    NSPoint tmp_p = [[tmp window] frame].origin;
+    [_window setFrameOrigin:NSMakePoint(tmp_p.x + 20, tmp_p.y - 20 - [tmp titlebarHeight])];
+  }
+  
+  _view = [[AppView alloc] initWithFrame:frameRect];
+  if (!_view) {
+    sgl_release();
+    error_handle(HIGH_PRIORITY, OSX_WINDOW_CREATION_FAILED, "[_view initWithFrame] failed");
+    return nil;
+  }
+  [_view setDelegate:self];
+  [_view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+  
+  [_window setContentView:_view];
+  [_window setDelegate:self];
+  [_window performSelectorOnMainThread:@selector(makeKeyAndOrderFront:) withObject:nil waitUntilDone:YES];
+  
+  _closed = NO;
+  return self;
 }
 
-bool sgl_screen(screen_t* s, const char* t, int w, int h, short flags) {
+- (void)setParent:(screen_t)screen {
+  _parent = screen;
+}
+
+- (CGFloat)titlebarHeight {
+  return _window.frame.size.height - [_window contentRectForFrameRect: _window.frame].size.height;
+}
+
+- (void)windowWillClose:(NSNotification*)notification {
+  _closed = YES;
+}
+
+- (void)windowDidBecomeKey:(NSNotification*)notification {
+  active_window = _parent;
+}
+
+- (void)windowDidResignKey:(NSNotification*)notification {
+  active_window = NULL;
+}
+
+- (void)windowDidResize:(NSNotification*)notification {
+  static CGSize size;
+  size = [_view frame].size;
+#if defined(SGL_ENABLE_METAL)
+  [_view updateMTKViewport:size];
+#endif
+  _parent->w = (int)roundf(size.width);
+  _parent->h = (int)roundf(size.height);
+  CBCALL(resize_callback, _parent->w, _parent->h);
+}
+
+#if defined(SGL_ENABLE_METAL)
+- (void)mtkView:(MTKView*)mtkView drawableSizeWillChange:(CGSize)size; {}
+#endif
+@end
+
+bool sgl_screen(struct screen_t** s, const char* t, int w, int h, short flags) {
   if (!keycodes_init) {
     memset(keycodes,  -1, sizeof(keycodes));
     
@@ -5898,115 +5703,166 @@ bool sgl_screen(screen_t* s, const char* t, int w, int h, short flags) {
   [NSApplication sharedApplication];
   [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
   
-  NSWindowStyleMask _flags = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
-  if (flags & FULLSCREEN)
-    flags |= (BORDERLESS | RESIZABLE | FULLSCREEN_DESKTOP);
-  _flags |= (flags & RESIZABLE ? NSWindowStyleMaskResizable : 0);
-  if (flags & BORDERLESS) {
-    _flags |= NSWindowStyleMaskFullSizeContentView;
-    border_off = 0;
-  }
-  if (flags & FULLSCREEN_DESKTOP) {
-    NSRect f = [[NSScreen mainScreen] frame];
-    w = f.size.width;
-    h = f.size.height - border_off;
-  }
-  
-  id tmp = [[osx_app_t alloc] initWithContentRect:NSMakeRect(0, 0, w, h + border_off)
-                                        styleMask:_flags
-                                          backing:NSBackingStoreBuffered
-                                            defer:NO];
-  if (!tmp) {
+  AppDelegate* app = [[AppDelegate alloc] initWithSize:NSMakeSize(w, h) styleMask:flags title:t];
+  if (!app) {
     sgl_release();
-    error_handle(HIGH_PRIORITY, OSX_WINDOW_CREATION_FAILED, "[osx_app_t initWithContentRect] failed");
+    error_handle(HIGH_PRIORITY, OSX_WINDOW_CREATION_FAILED, "[AppDelegate alloc] failed");
     return false;
   }
   
-  if (flags & ALWAYS_ON_TOP)
-    [tmp setLevel:NSFloatingWindowLevel];
-  
-  id app_del = [AppDelegate alloc];
-  if (!app_del) {
+  struct screen_t* screen = *s = malloc(sizeof(struct screen_t));
+  if (!screen) {
     sgl_release();
-    error_handle(HIGH_PRIORITY, OSX_APPDEL_CREATION_FAILED, "[AppDelegate alloc] failed");
-    [NSApp terminate:nil];
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc failed");
+    return false;
   }
-  
-  if (flags & FULLSCREEN) {
-#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7
-    [tmp toggleFullScreen:nil];
-    [[NSApplication sharedApplication] setPresentationOptions:NSApplicationPresentationFullScreen];
-#else
-    error_handle(LOW_PRIORITY, OSX_FULLSCREEN_FAILED, "screen() failed: Fullscreen flag is only supported on OSX v10.7 and above");
-#endif
-  }
-  
-  [tmp setDelegate:app_del];
-  [tmp setAcceptsMouseMovedEvents:YES];
-  [tmp setRestorable:NO];
-  [tmp setTitle:(t ? [NSString stringWithUTF8String:t] : [[NSProcessInfo processInfo] processName])];
-  [tmp setReleasedWhenClosed:NO];
-  [tmp performSelectorOnMainThread:@selector(makeKeyAndOrderFront:) withObject:nil waitUntilDone:YES];
-  [tmp center];
-  
-  if (!border_off && flags & ~FULLSCREEN) {
-    [tmp setTitle:@""];
-    [tmp setTitlebarAppearsTransparent:YES];
-    [[tmp standardWindowButton:NSWindowZoomButton] setHidden:YES];
-    [[tmp standardWindowButton:NSWindowCloseButton] setHidden:YES];
-    [[tmp standardWindowButton:NSWindowMiniaturizeButton] setHidden:YES];
-  }
-  
-  NSPoint mp = [NSEvent mouseLocation];
-  lmx = mx = mp.x;
-  lmy = my = mp.y;
-  
-  memset(s, 0, sizeof(*s));
-  s->id = (int)[tmp windowNumber];
-  s->w  = w;
-  s->h  = h;
-  osx_screen_t* priv = (void*)malloc(sizeof(osx_screen_t));
-  priv->app = app = tmp;
-  [priv->app setParent:s];
-  s->__private = (void*)priv;
+  memset(screen, 0, sizeof(*screen));
+  screen->id = (int)[[app window] windowNumber];
+  screen->w  = w;
+  screen->h  = h;
+  screen->window = (void*)app;
+  active_window = screen;
+  [app setParent:screen];
   
   [NSApp activateIgnoringOtherApps:YES];
   [pool drain];
-  
   return true;
 }
+  
+#define SET_DEFAULT_APP_ICON [NSApp setApplicationIconImage:[NSImage imageNamed:@"NSApplicationIcon"]]
 
-void sgl_screen_icon(screen_t* s, surface_t* b) {
-  if (!b || !b->buf)
-    [NSApp setApplicationIconImage:[NSImage imageNamed:@"NSApplicationIcon"]];
+void sgl_screen_icon_buf(screen_t s, surface_t* b) {
+  if (!b || !b->buf) {
+    SET_DEFAULT_APP_ICON;
+    return;
+  }
+  
   NSImage* img = create_cocoa_image(b);
   if (!img)  {
-    error_handle(LOW_PRIORITY, WINDOW_ICON_FAILED, "sgl_screen_icon() failed: Couldn't set window icon");
+    error_handle(LOW_PRIORITY, WINDOW_ICON_FAILED, "sgl_screen_icon_b() failed: Couldn't set window icon");
+    SET_DEFAULT_APP_ICON;
     return;
   }
   [NSApp setApplicationIconImage:img];
 }
+  
+void sgl_screen_icon(screen_t s, const char* p) {
+  if (!p) {
+    SET_DEFAULT_APP_ICON;
+    return;
+  }
+  
+  NSImage* img = [[NSImage alloc] initWithContentsOfFile:@(p)];
+  if (!img) {
+    error_handle(LOW_PRIORITY, WINDOW_ICON_FAILED, "sgl_screen_icon() failed: Couldn't set window icon from \"%s\"\n", p);
+    SET_DEFAULT_APP_ICON;
+    return;
+  }
+  [NSApp setApplicationIconImage:img];
+  [img release];
+}
 
-void sgl_screen_title(screen_t* s, const char* t) {
-  osx_screen_t* tmp = (osx_screen_t*)s->__private;
-  const char* _t = t ? t : "";
-  NSString* title = [[NSString alloc] initWithUTF8String:_t];
-  [tmp->app setTitle:title];
-  [title release];
+void sgl_screen_title(screen_t s, const char* t) {
+  [[(AppDelegate*)s->window window] setTitle:@(t)];
 }
   
-void sgl_screen_destroy(screen_t* s) {
+void sgl_screen_destroy(struct screen_t** s) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-  osx_screen_t* tmp = (osx_screen_t*)s->__private;
-  [[tmp->app subView] dealloc];
-  if (tmp->app)
-    [tmp->app close];
-  free(tmp);
+  struct screen_t* screen = *s;
+  AppDelegate* app = (AppDelegate*)screen->window;
+  if (app) {
+    [[app view] dealloc];
+    [[app window] close];
+  }
+  free(app);
+  free(screen);
   [pool drain];
 }
 
-bool sgl_closed(screen_t* s) {
-  return [((osx_screen_t*)(s->__private))->app isClosed];
+bool sgl_closed(screen_t s) {
+  return (bool)[(AppDelegate*)s->window closed];
+}
+  
+void sgl_cursor_lock(bool locked) {
+  // TODO: Figure this out
+}
+
+void sgl_cursor_visible(bool shown) {
+  if (shown)
+    [NSCursor unhide];
+  else
+    [NSCursor hide];
+}
+
+void sgl_cursor_icon(screen_t s, CURSORTYPE t) {
+  if (!s) {
+    error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "sgl_cursor_icon() failed: Invalid screen");
+    return;
+  }
+  
+  AppDelegate* app = (AppDelegate*)s->window;
+  if (!app) {
+    error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "sgl_cursor_icon() failed: Invalid screen");
+    return;
+  }
+  [[app view] setRegularCursor:t];
+}
+
+void sgl_cursor_icon_custom(screen_t s, const char* p) {
+  if (!s || !p) {
+    error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "sgl_cursor_icon_custom() failed: Invalid parameters");
+    return;
+  }
+  
+  NSImage* img = [[NSImage alloc] initWithContentsOfFile:@(p)];
+  if (!img) {
+    error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "sgl_cursor_icon_custom() failed: Couldn't set cursor from \"%s\"\n", p);
+    return;
+  }
+  
+  AppDelegate* app = (AppDelegate*)s->window;
+  if (!app) {
+    [img release];
+    error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "sgl_cursor_icon_custom() failed: Invalid screen");
+    return;
+  }
+  [[app view] setCustomCursor:img];
+  [img release];
+}
+
+void sgl_cursor_icon_custom_buf(screen_t s, surface_t* b) {
+  if (!s || !b) {
+    error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "sgl_cursor_icon_custom_buf() failed: Invalid parameters");
+    return;
+  }
+  
+  NSImage* img = create_cocoa_image(b);
+  if (!img) {
+    error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "sgl_cursor_icon_custom_buf() failed: Couldn't set cursor from buffer");
+    return;
+  }
+  
+  AppDelegate* app = (AppDelegate*)s->window;
+  if (!app) {
+    [img release];
+    error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "sgl_cursor_icon_custom_buf() failed: Invalid screen");
+    return;
+  }
+  [[app view] setCustomCursor:img];
+  [img release];
+}
+
+void sgl_cursor_pos(point_t* p) {
+  const NSPoint _p = [NSEvent mouseLocation];
+  p->x = _p.x;
+  p->y = [[(AppDelegate*)active_window->window window] screen].frame.size.height - _p.y;
+}
+
+void sgl_cursor_set_pos(point_t* p) {
+  CGPoint _p;
+  _p.x = p->x;
+  _p.y = p->y;
+  CGWarpMouseCursorPosition(_p);
 }
 
 void sgl_poll(void) {
@@ -6019,2748 +5875,61 @@ void sgl_poll(void) {
     switch ([e type]) {
       case NSEventTypeKeyUp:
       case NSEventTypeKeyDown:
-        CALL(__kb_callback, [app getParent], translate_key([e keyCode]), translate_mod([e modifierFlags]), ([e type] == NSEventTypeKeyDown));
+        CBCALL(keyboard_callback, translate_key([e keyCode]), translate_mod([e modifierFlags]), ([e type] == NSEventTypeKeyDown));
         break;
       case NSEventTypeLeftMouseUp:
       case NSEventTypeRightMouseUp:
       case NSEventTypeOtherMouseUp:
-        CALL(__mouse_btn_callback, [app getParent], (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), false);
+        CBCALL(mouse_button_callback, (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), false);
         break;
       case NSEventTypeLeftMouseDown:
       case NSEventTypeRightMouseDown:
       case NSEventTypeOtherMouseDown:
-        CALL(__mouse_btn_callback, [app getParent], (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
+        CBCALL(mouse_button_callback, (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
         break;
       case NSEventTypeScrollWheel:
-        CALL(__scroll_callback, [app getParent], translate_mod([e modifierFlags]), [e deltaX], [e deltaY]);
+        CBCALL(scroll_callback, translate_mod([e modifierFlags]), [e deltaX], [e deltaY]);
         break;
       case NSEventTypeLeftMouseDragged:
       case NSEventTypeRightMouseDragged:
       case NSEventTypeOtherMouseDragged:
-        if (cursor_in_win && app) {
-          CALL(__mouse_btn_callback, [app getParent], (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
-          CALL(__mouse_move_callback, [app getParent], [e locationInWindow].x, [app frame].size.height - border_off - [e locationInWindow].y, 0, 0);
-        }
+        CBCALL(mouse_button_callback, (MOUSEBTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
+      case NSEventTypeMouseMoved: {
+        static AppDelegate* app = NULL;
+        if (!active_window)
+          break;
+        app = (AppDelegate*)active_window->window;
+        if ([[app view] mouse_in_window])
+          CBCALL(mouse_move_callback, [e locationInWindow].x, (int)([[app view] frame].size.height - roundf([e locationInWindow].y)), 0, 0);
         break;
-      case NSEventTypeMouseMoved:
-        if (cursor_in_win && app)
-          CALL(__mouse_move_callback, [app getParent], [e locationInWindow].x, [app frame].size.height - border_off - [e locationInWindow].y, 0, 0);
-        break;
+      }
     }
     [NSApp sendEvent:e];
   }
   [pool release];
 }
 
-void sgl_flush(screen_t* s, surface_t* b) {
-  osx_screen_t* tmp = (osx_screen_t*)s->__private;
-  [[tmp->app subView] updateBufPtr:b];
-  [[tmp->app contentView] setNeedsDisplay:YES];
+void sgl_flush(screen_t s, surface_t* b) {
+  if (!s || !b)
+    return;
+  AppDelegate* tmp = (AppDelegate*)s->window;
+  if (!tmp)
+    return;
+  if (b)
+    [tmp view].buffer = b;
+  [[tmp view] setNeedsDisplay:YES];
 }
 
 void sgl_release() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-  if (__cursor)
-    [__cursor release];
-  if (__custom_cursor)
-    [__custom_cursor release];
+  // Felt cute might delete later
   [pool drain];
 }
 #elif defined(SGL_WINDOWS)
-static WNDCLASS wnd;
-static HWND hwnd;
-static HDC hdc = 0;
-#if defined(SGL_ENABLE_OPENGL)
-static PIXELFORMATDESCRIPTOR pfd;
-static HGLRC hrc;
-static PAINTSTRUCT ps;
-#elif defined(SGL_ENABLE_DX9)
-#define COBJMACROS 1
-#include <d3d9.h>
-#pragma comment (lib, "d3d9.lib")
-
-static LPDIRECT3D9 d3d;
-static LPDIRECT3DDEVICE9 d3ddev;
-
-#pragma message("WARNING: DirectX implementation not ready")
+// TODO: Reimplement
+#elif defined(SGL_LINUX)
+// TODO: Reimplement
 #else
-static BITMAPINFO* bmpinfo;
-#endif
-static int adjusted_win_w, adjusted_win_h;
-static BOOL ifuckinghatethewin32api = FALSE; // Should always be true because I do
-static BOOL is_focused = TRUE;
-static HCURSOR __cursor = NULL, ____custom_cursor = NULL;
-static BOOL cursor_locked = FALSE;
-static RECT rc = { 0 };
-static long adjust_flags = WS_POPUP | WS_SYSMENU | WS_CAPTION;
-
-#if defined(SGL_ENABLE_JOYSTICKS)
-#if defined(SGL_DISABLE_DIRECTINPUT)
-#include <regstr.h>
-#include <mmsystem.h>
-#pragma comment(lib, "winmm.lib")
-
-typedef struct {
-  UINT joystick_id;
-  JOYINFOEX last_state;
-  int xAxisIndex;
-  int yAxisIndex;
-  int zAxisIndex;
-  int rAxisIndex;
-  int uAxisIndex;
-  int vAxisIndex;
-  int povXAxisIndex;
-  int povYAxisIndex;
-  UINT(*axis_ranges)[2];
-} joystick_private_t;
-
-#define REG_STRING_MAX 256
-#else
-#if !defined(STRICT)
-#define STRICT
-#endif
-#define INITGUID
-#define DIRECTINPUT_VERSION 0x0800
-#define _CRT_SECURE_NO_DEPRECATE
-#if defined(_MSC_VER)
-#undef UNICODE
-#else
-#define __in
-#define __out
-#define __reserved
-#endif
-#if !defined(_WIN32_DCOM)
-#define _WIN32_DCOM
-#endif
-#if !defined(COBJMACROS)
-#define COBJMACROS 1
-#endif
-
-#include <dinput.h>
-#include <dinputd.h>
-#pragma comment(lib, "dinput8.lib")
-#pragma comment(lib, "dxguid.lib")
-
-#define INPUT_QUEUE_SIZE 32
-
-#if !defined(SGL_DISABLE_XINPUT)
-#if (_WIN32_WINNT >= _WIN32_WINNT_WIN7)
-#include <XInput.h>
-#pragma comment(lib, "xinput.lib")
-#else
-#include <XInput.h>
-#pragma comment(lib, "xinput9_1_0.lib")
-#endif
-
-#define XINPUT_GAMEPAD_GUIDE 0x400
-
-typedef struct {
-  WORD wButtons;
-  BYTE bLeftTrigger;
-  BYTE bRightTrigger;
-  SHORT sThumbLX;
-  SHORT sThumbLY;
-  SHORT sThumbRX;
-  SHORT sThumbRY;
-  DWORD dwPaddingReserved;
-} XINPUT_GAMEPAD_EX;
-
-typedef struct {
-  DWORD dwPacketNumber;
-  XINPUT_GAMEPAD_EX Gamepad;
-} XINPUT_STATE_EX;
-
-#define MAX_XINPUT_DEVICES 4
-static joystick_t* xinput_devices[MAX_XINPUT_DEVICES];
-static const char* xinput_device_names[MAX_XINPUT_DEVICES] = {
-  "XInput Controller 1",
-  "XInput Controller 2",
-  "XInput Controller 3",
-  "XInput Controller 4"
-};
-static DWORD(WINAPI* XInputGetStateEx_proc)(DWORD dwUserIndex, XINPUT_STATE_EX* pState);
-static DWORD(WINAPI* XInputGetState_proc)(DWORD dwUserIndex, XINPUT_STATE* pState);
-static DWORD(WINAPI* XInputGetCapabilities_proc)(DWORD dwUserIndex, DWORD dwFlags, XINPUT_CAPABILITIES* pCapabilities);
-#endif
-
-typedef struct {
-  DWORD offset;
-  BOOL is_pov;
-  BOOL is_pov_2nd_axis;
-} di_axis_info_t;
-
-typedef struct {
-  BOOL is_xinput;
-
-  // DInput only
-  GUID guid;
-  IDirectInputDevice8* di8dev;
-  BOOL buffered;
-  unsigned int slider_c, pov_c;
-  di_axis_info_t* axis_info;
-  DWORD* button_offsets;
-
-  // XInput only
-  unsigned int player_index;
-} joystick_private_t;
-
-static LPDIRECTINPUT8 did;
-
-#if !defined(SGL_DISABLE_XINPUT)
-static bool xinput_available = true;
-
-DEFINE_GUID(IID_ValveStreamingGamepad, MAKELONG(0x28DE, 0x11FF), 0x0000, 0x0000, 0x00, 0x00, 0x50, 0x49, 0x44, 0x56, 0x49, 0x44);
-DEFINE_GUID(IID_X360WiredGamepad, MAKELONG(0x045E, 0x02A1), 0x0000, 0x0000, 0x00, 0x00, 0x50, 0x49, 0x44, 0x56, 0x49, 0x44);
-DEFINE_GUID(IID_X360WirelessGamepad, MAKELONG(0x045E, 0x028E), 0x0000, 0x0000, 0x00, 0x00, 0x50, 0x49, 0x44, 0x56, 0x49, 0x44);
-
-static PRAWINPUTDEVICELIST raw_dev_list = NULL;
-static UINT raw_dev_list_c = 0;
-
-static bool is_xinput_device(const GUID* pGuidProductFromDirectInput) {
-  static const GUID* xinput_product_ids[] = {
-    &IID_ValveStreamingGamepad,
-    &IID_X360WiredGamepad,   // Microsoft's wired X360 controller for Windows
-    &IID_X360WirelessGamepad // Microsoft's wireless X360 controller for Windows
-  };
-
-  for (int i = 0; i < sizeof(xinput_product_ids) / sizeof(xinput_product_ids[0]); ++i)
-    if (!memcmp(pGuidProductFromDirectInput, xinput_product_ids[i], sizeof(GUID)))
-      return true;
-
-  if (!raw_dev_list) {
-    if ((GetRawInputDeviceList(NULL, &raw_dev_list_c, sizeof(RAWINPUTDEVICELIST)) == (UINT)-1) || raw_dev_list_c == 0) {
-      return false;
-    }
-
-    raw_dev_list = malloc(sizeof(RAWINPUTDEVICELIST) * raw_dev_list_c);
-    if (GetRawInputDeviceList(raw_dev_list, &raw_dev_list_c, sizeof(RAWINPUTDEVICELIST)) == (UINT)-1) {
-      free(raw_dev_list);
-      raw_dev_list = NULL;
-      return false;
-    }
-  }
-
-  for (int i = 0; i < raw_dev_list_c; ++i) {
-    RID_DEVICE_INFO rdi;
-    char devName[128];
-    UINT rdiSize = sizeof(rdi);
-    UINT nameSize = sizeof(devName);
-    rdi.cbSize = sizeof(rdi);
-    if (raw_dev_list[i].dwType == RIM_TYPEHID &&
-      GetRawInputDeviceInfoA(raw_dev_list[i].hDevice, RIDI_DEVICEINFO, &rdi, &rdiSize) != (UINT)-1 &&
-      MAKELONG(rdi.hid.dwVendorId, rdi.hid.dwProductId) == (LONG)pGuidProductFromDirectInput->Data1 &&
-      GetRawInputDeviceInfoA(raw_dev_list[i].hDevice, RIDI_DEVICENAME, devName, &nameSize) != (UINT)-1 &&
-      strstr(devName, "IG_"))
-      return true;
-  }
-
-  return false;
-}
-#endif
-
-#if defined(_MSC_VER)
-#if !defined(DIDFT_OPTIONAL)
-#define DIDFT_OPTIONAL      0x80000000
-#endif
-
-DIOBJECTDATAFORMAT dfDIJoystick2[] = {
-  { &GUID_XAxis, DIJOFS_X, DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_YAxis, DIJOFS_Y, DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_ZAxis, DIJOFS_Z, DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_RxAxis, DIJOFS_RX, DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_RyAxis, DIJOFS_RY, DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_RzAxis, DIJOFS_RZ, DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_Slider, DIJOFS_SLIDER(0), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_Slider, DIJOFS_SLIDER(1), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_POV, DIJOFS_POV(0), DIDFT_OPTIONAL | DIDFT_POV | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_POV, DIJOFS_POV(1), DIDFT_OPTIONAL | DIDFT_POV | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_POV, DIJOFS_POV(2), DIDFT_OPTIONAL | DIDFT_POV | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_POV, DIJOFS_POV(3), DIDFT_OPTIONAL | DIDFT_POV | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(0), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(1), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(2), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(3), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(4), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(5), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(6), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(7), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(8), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(9), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(10), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(11), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(12), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(13), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(14), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(15), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(16), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(17), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(18), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(19), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(20), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(21), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(22), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(23), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(24), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(25), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(26), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(27), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(28), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(29), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(30), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(31), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(32), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(33), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(34), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(35), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(36), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(37), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(38), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(39), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(40), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(41), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(42), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(43), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(44), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(45), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(46), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(47), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(48), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(49), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(50), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(51), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(52), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(53), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(54), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(55), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(56), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(57), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(58), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(59), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(60), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(61), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(62), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(63), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(64), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(65), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(66), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(67), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(68), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(69), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(70), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(71), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(72), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(73), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(74), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(75), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(76), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(77), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(78), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(79), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(80), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(81), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(82), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(83), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(84), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(85), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(86), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(87), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(88), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(89), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(90), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(91), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(92), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(93), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(94), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(95), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(96), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(97), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(98), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(99), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(100), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(101), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(102), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(103), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(104), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(105), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(106), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(107), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(108), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(109), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(110), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(111), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(112), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(113), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(114), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(115), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(116), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(117), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(118), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(119), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(120), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(121), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(122), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(123), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(124), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(125), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(126), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { NULL, DIJOFS_BUTTON(127), DIDFT_OPTIONAL | DIDFT_BUTTON | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_XAxis, FIELD_OFFSET(DIJOYSTATE2, lVX), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_YAxis, FIELD_OFFSET(DIJOYSTATE2, lVY), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_ZAxis, FIELD_OFFSET(DIJOYSTATE2, lVZ), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_RxAxis, FIELD_OFFSET(DIJOYSTATE2, lVRx), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_RyAxis, FIELD_OFFSET(DIJOYSTATE2, lVRy), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_RzAxis, FIELD_OFFSET(DIJOYSTATE2, lVRz), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_Slider, FIELD_OFFSET(DIJOYSTATE2, rglVSlider[0]), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_Slider, FIELD_OFFSET(DIJOYSTATE2, rglVSlider[1]), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_XAxis, FIELD_OFFSET(DIJOYSTATE2, lAX), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_YAxis, FIELD_OFFSET(DIJOYSTATE2, lAY), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_ZAxis, FIELD_OFFSET(DIJOYSTATE2, lAZ), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_RxAxis, FIELD_OFFSET(DIJOYSTATE2, lARx), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_RyAxis, FIELD_OFFSET(DIJOYSTATE2, lARy), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_RzAxis, FIELD_OFFSET(DIJOYSTATE2, lARz), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_Slider, FIELD_OFFSET(DIJOYSTATE2, rglASlider[0]), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_Slider, FIELD_OFFSET(DIJOYSTATE2, rglASlider[1]), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_XAxis, FIELD_OFFSET(DIJOYSTATE2, lFX), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_YAxis, FIELD_OFFSET(DIJOYSTATE2, lFY), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_ZAxis, FIELD_OFFSET(DIJOYSTATE2, lFZ), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_RxAxis, FIELD_OFFSET(DIJOYSTATE2, lFRx), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_RyAxis, FIELD_OFFSET(DIJOYSTATE2, lFRy), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_RzAxis, FIELD_OFFSET(DIJOYSTATE2, lFRz), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_Slider, FIELD_OFFSET(DIJOYSTATE2, rglFSlider[0]), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-  { &GUID_Slider, FIELD_OFFSET(DIJOYSTATE2, rglFSlider[1]), DIDFT_OPTIONAL | DIDFT_AXIS | DIDFT_ANYINSTANCE, 0 },
-};
-
-const DIDATAFORMAT c_dfDIJoystick2 = {
-  sizeof(DIDATAFORMAT),
-  sizeof(DIOBJECTDATAFORMAT),
-  DIDF_ABSAXIS,
-  sizeof(DIJOYSTATE2),
-  sizeof(dfDIJoystick2) / sizeof(dfDIJoystick2[0]),
-  dfDIJoystick2
-};
-#endif
-
-static BOOL CALLBACK count_axes_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID context) {
-  joystick_t* device = (joystick_t*)context;
-  device->n_axes++;
-  if (instance->dwType & DIDFT_POV)
-    device->n_axes++;
-  return DIENUM_CONTINUE;
-}
-
-static BOOL CALLBACK count_buttons_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID context) {
-  joystick_t* device = (joystick_t*)context;
-  device->n_buttons++;
-  return DIENUM_CONTINUE;
-}
-
-#define AXIS_MIN -32768
-#define AXIS_MAX 32767
-
-static BOOL CALLBACK enum_axes_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID context) {
-  joystick_t* device = (joystick_t*)context;
-  joystick_private_t* private = (joystick_private_t*)device->__private;
-
-  DWORD offset;
-  device->n_axes++;
-  if (instance->dwType & DIDFT_POV) {
-    offset = DIJOFS_POV(private->pov_c);
-    private->axis_info[device->n_axes - 1].offset = offset;
-    private->axis_info[device->n_axes - 1].is_pov = TRUE;
-    device->n_axes++;
-    private->axis_info[device->n_axes - 1].offset = offset;
-    private->axis_info[device->n_axes - 1].is_pov = TRUE;
-    private->pov_c++;
-  }
-  else {
-    if (!memcmp(&instance->guidType, &GUID_XAxis, sizeof(instance->guidType)))
-      offset = DIJOFS_X;
-    else if (!memcmp(&instance->guidType, &GUID_YAxis, sizeof(instance->guidType)))
-      offset = DIJOFS_Y;
-    else if (!memcmp(&instance->guidType, &GUID_ZAxis, sizeof(instance->guidType)))
-      offset = DIJOFS_Z;
-    else if (!memcmp(&instance->guidType, &GUID_RxAxis, sizeof(instance->guidType)))
-      offset = DIJOFS_RX;
-    else if (!memcmp(&instance->guidType, &GUID_RyAxis, sizeof(instance->guidType)))
-      offset = DIJOFS_RY;
-    else if (!memcmp(&instance->guidType, &GUID_RzAxis, sizeof(instance->guidType)))
-      offset = DIJOFS_RZ;
-    else if (!memcmp(&instance->guidType, &GUID_Slider, sizeof(instance->guidType)))
-      offset = DIJOFS_SLIDER(private->slider_c++);
-    else
-      offset = -1;
-
-    private->axis_info[device->n_axes - 1].offset = offset;
-    private->axis_info[device->n_axes - 1].is_pov = FALSE;
-
-    DIPROPRANGE range;
-    range.diph.dwSize = sizeof(range);
-    range.diph.dwHeaderSize = sizeof(range.diph);
-    range.diph.dwObj = instance->dwType;
-    range.diph.dwHow = DIPH_BYID;
-    range.lMin = AXIS_MIN;
-    range.lMax = AXIS_MAX;
-
-    if (IDirectInputDevice8_SetProperty(private->di8dev, DIPROP_RANGE, &range.diph) != DI_OK)
-      error_handle(LOW_PRIORITY, JOY_DI_SETPROP_FAILED, "IDirectInputDevice8_SetProperty() failed: %s", GetLastError());
-
-    DIPROPDWORD dead_zone;
-    dead_zone.diph.dwSize = sizeof(dead_zone);
-    dead_zone.diph.dwHeaderSize = sizeof(dead_zone.diph);
-    dead_zone.diph.dwObj = instance->dwType;
-    dead_zone.diph.dwHow = DIPH_BYID;
-    dead_zone.dwData = 0;
-
-    if (IDirectInputDevice8_SetProperty(private->di8dev, DIPROP_DEADZONE, &dead_zone.diph) != DI_OK)
-      error_handle(LOW_PRIORITY, JOY_DI_SETPROP_FAILED, "IDirectInputDevice8_SetProperty() failed: %s", GetLastError());
-  }
-  return DIENUM_CONTINUE;
-}
-
-static BOOL CALLBACK enum_buttons_cb(LPCDIDEVICEOBJECTINSTANCE instance, LPVOID context) {
-  joystick_t* device = (joystick_t*)context;
-  joystick_private_t* private = (joystick_private_t*)device->__private;
-  private->button_offsets[device->n_buttons] = DIJOFS_BUTTON(device->n_buttons);
-  device->n_buttons++;
-  return DIENUM_CONTINUE;
-}
-
-static BOOL CALLBACK enum_devices_cb(const DIDEVICEINSTANCE* instance, LPVOID context) {
-  joystick_t* current = joy_devices.head;
-  while (current) {
-    if (!memcmp(&((joystick_private_t*)current->__private)->guid, &instance->guidInstance, sizeof(GUID)))
-      return DIENUM_CONTINUE;
-    current = current->next;
-  }
-
-#if !defined(SGL_DISABLE_XINPUT)
-  if (xinput_available && is_xinput_device(&instance->guidProduct))
-    return DIENUM_CONTINUE;
-#endif
-
-  IDirectInputDevice* didev;
-  IDirectInputDevice8* di8dev;
-
-  if (IDirectInput8_CreateDevice(did, &instance->guidInstance, &didev, NULL) != DI_OK) {
-    error_handle(LOW_PRIORITY, JOY_DI_CREATE_DEVICE_FAILED, "IDirectInput8_CreateDevice() failed: %s", GetLastError());
-    return DIENUM_CONTINUE;
-  }
-  if (IDirectInputDevice8_QueryInterface(didev, &IID_IDirectInputDevice8, (LPVOID *)&di8dev) != DI_OK) {
-    error_handle(LOW_PRIORITY, JOY_DI_SETPROP_FAILED, "IDirectInputDevice8_QueryInterface() failed: %s", GetLastError());
-    return DIENUM_CONTINUE;
-  }
-  IDirectInputDevice8_Release(didev);
-
-  if (IDirectInputDevice8_SetCooperativeLevel(di8dev, GetActiveWindow(), DISCL_NONEXCLUSIVE | DISCL_BACKGROUND) != DI_OK) {
-    error_handle(LOW_PRIORITY, JOY_DI_SETPROP_FAILED, "IDirectInputDevice8_SetCooperativeLevel() failed: %s", GetLastError());
-    return DIENUM_CONTINUE;
-  }
-  if (IDirectInputDevice8_SetDataFormat(di8dev, &c_dfDIJoystick2) != DI_OK) {
-    error_handle(LOW_PRIORITY, JOY_DI_SETPROP_FAILED, "IDirectInputDevice8_SetDataFormat() failed: %s", GetLastError());
-    return DIENUM_CONTINUE;
-  }
-
-  BOOL buffered = TRUE;
-  DIPROPDWORD bufsize_prop;
-  bufsize_prop.diph.dwSize = sizeof(DIPROPDWORD);
-  bufsize_prop.diph.dwHeaderSize = sizeof(DIPROPHEADER);
-  bufsize_prop.diph.dwObj = 0;
-  bufsize_prop.diph.dwHow = DIPH_DEVICE;
-  bufsize_prop.dwData = INPUT_QUEUE_SIZE;
-  HRESULT hr = IDirectInputDevice8_SetProperty(di8dev, DIPROP_BUFFERSIZE, &bufsize_prop.diph);
-  if (hr == DI_POLLEDDEVICE)
-    buffered = FALSE;
-  else if (hr != DI_OK) {
-    error_handle(LOW_PRIORITY, JOY_DI_SETPROP_FAILED, "IDirectInputDevice8_SetProperty() failed: %s", GetLastError());
-    return DIENUM_CONTINUE;
-  }
-
-  joystick_private_t* private = malloc(sizeof(joystick_private_t));
-  private->guid = instance->guidInstance;
-  private->is_xinput = FALSE;
-  private->di8dev = di8dev;
-  private->buffered = buffered;
-  private->slider_c = 0;
-  private->pov_c = 0;
-  private->button_offsets = NULL;
-
-  joystick_t* device = malloc(sizeof(joystick_t));
-  device->__private = (void*)private;
-  device->next = NULL;
-  device->device_id = next_device_id++;
-  device->description = strdup(instance->tszProductName);
-  device->vendor_id = instance->guidProduct.Data1 & 0xFFFF;
-  device->product_id = instance->guidProduct.Data1 >> 16 & 0xFFFF;
-  device->n_axes = 0;
-  IDirectInputDevice_EnumObjects(di8dev, count_axes_cb, (void*)device, DIDFT_AXIS | DIDFT_POV);
-  device->axes = malloc(sizeof(float) * device->n_axes);
-  private->axis_info = malloc(sizeof(di_axis_info_t) * device->n_axes);
-  device->n_buttons = 0;
-  IDirectInputDevice_EnumObjects(di8dev, count_buttons_cb, (void*)device, DIDFT_BUTTON);
-  device->buttons = malloc(sizeof(int) * device->n_buttons);
-  private->button_offsets = malloc(sizeof(DWORD) * device->n_buttons);
-  device->n_axes = 0;
-  IDirectInputDevice_EnumObjects(di8dev, enum_axes_cb, (void*)device, DIDFT_AXIS | DIDFT_POV);
-  device->n_buttons = 0;
-  IDirectInputDevice_EnumObjects(di8dev, enum_buttons_cb, (void*)device, DIDFT_BUTTON);
-
-  add_joystick(device);
-
-  return DIENUM_CONTINUE;
-}
-#endif
-
-bool sgl_joystick_init(bool scan_too) {
-#if !defined(SGL_DISABLE_DIRECTINPUT)
-#if !defined(SGL_DISABLE_XINPUT)
-  HMODULE dll_xi = LoadLibrary("XInput1_4.dll");
-  if (!dll_xi) {
-    dll_xi = LoadLibrary("XInput1_3.dll");
-    if (!dll_xi)
-      dll_xi = LoadLibrary("bin\\XInput1_3.dll");
-  }
-  if (!dll_xi) {
-    xinput_available = false;
-    error_handle(LOW_PRIORITY, JOY_XI_LOADDL_FAILED, "sgl_joystick_init() failed: Couldn't find XInput DLL");
-  } else {
-    XInputGetStateEx_proc = (DWORD(WINAPI*)(DWORD, XINPUT_STATE_EX*)) GetProcAddress(dll_xi, (LPCSTR)100);
-    XInputGetState_proc = (DWORD(WINAPI*)(DWORD, XINPUT_STATE *)) GetProcAddress(dll_xi, "XInputGetState");
-    XInputGetCapabilities_proc = (DWORD(WINAPI*)(DWORD, DWORD, XINPUT_CAPABILITIES*)) GetProcAddress(dll_xi, "XInputGetCapabilities");
-  }
-#endif
-
-  HMODULE dll_di = LoadLibrary("DINPUT8.dll");
-  if (!dll_di) {
-    error_handle(LOW_PRIORITY, JOY_DI_LOADDL_FAILED, "LoadLibrary() failed: DINPUT8.dll not found");
-    return false;
-  }
-  HRESULT(WINAPI* DirectInput8Create_proc)(HINSTANCE, DWORD, REFIID, LPVOID *, LPUNKNOWN) = (HRESULT(WINAPI *)(HINSTANCE, DWORD, REFIID, LPVOID *, LPUNKNOWN)) GetProcAddress(dll_di, "DirectInput8Create");
-  if (DirectInput8Create_proc(GetModuleHandle(NULL), DIRECTINPUT_VERSION, &IID_IDirectInput8, (VOID**)&did, NULL) != DI_OK) {
-    error_handle(LOW_PRIORITY, JOY_DI_INIT_FAILED, "DirectInput8Create() failed: %s", GetLastError());
-    return false;
-  }
-#endif
-  return (scan_too ? sgl_joystick_scan() : true);
-}
-
-#if defined(SGL_DISABLE_DIRECTINPUT)
-static char* get_mm_description(UINT id, JOYCAPS caps) {
-  char sub_key[REG_STRING_MAX];
-  snprintf(sub_key, REG_STRING_MAX, "%s\\%s\\%s", REGSTR_PATH_JOYCONFIG, caps.szRegKey, REGSTR_KEY_JOYCURR);
-  LONG result;
-  HKEY top_key, key;
-  char* description = NULL;
-
-  if ((result = RegOpenKeyEx(top_key = HKEY_LOCAL_MACHINE, sub_key, 0, KEY_READ, &key)) != ERROR_SUCCESS)
-    result = RegOpenKeyEx(top_key = HKEY_CURRENT_USER, sub_key, 0, KEY_READ, &key);
-  if (result == ERROR_SUCCESS) {
-    char value[REG_STRING_MAX];
-    char name[REG_STRING_MAX];
-    snprintf(value, REG_STRING_MAX, "Joystick%d%s", id + 1, REGSTR_VAL_JOYOEMNAME);
-    DWORD name_sz = sizeof(name);
-    result = RegQueryValueEx(key, value, NULL, NULL, (LPBYTE)name, &name_sz);
-    RegCloseKey(key);
-
-    if (result == ERROR_SUCCESS) {
-      snprintf(sub_key, REG_STRING_MAX, "%s\\%s", REGSTR_PATH_JOYOEM, name);
-      result = RegOpenKeyEx(top_key, sub_key, 0, KEY_READ, &key);
-
-      if (result == ERROR_SUCCESS) {
-        name_sz = sizeof(name);
-        result = RegQueryValueEx(key, REGSTR_VAL_JOYOEMNAME, NULL, NULL, NULL, &name_sz);
-
-        if (result == ERROR_SUCCESS) {
-          description = malloc(name_sz);
-          result = RegQueryValueEx(key, REGSTR_VAL_JOYOEMNAME, NULL, NULL, (LPBYTE)description, &name_sz);
-        }
-        RegCloseKey(key);
-
-        if (result == ERROR_SUCCESS)
-          return description;
-        free(description);
-      }
-    }
-  }
-
-  description = malloc(strlen(caps.szPname) + 1);
-  strcpy(description, caps.szPname);
-  return description;
-}
-
-static void handle_btn_change(joystick_t* device, DWORD lv, DWORD v) {
-  for (int b = 0; b < device->n_buttons; ++b) {
-    if (!((lv ^ v) & (1 << b)))
-      continue;
-
-    bool down = !!(v & (1 << b));
-    device->buttons[b] = down;
-    CALL(joy_btn_callback, device, b, down, ticks());
-  }
-}
-
-static void handle_axis_change(joystick_t* device, int index, DWORD iv) {
-  if (index < 0 || index >= device->n_axes)
-    return;
-
-  joystick_private_t* private = (joystick_private_t*)device->__private;
-
-  float v  = (iv - private->axis_ranges[index][0]) / (float)(private->axis_ranges[index][1] - private->axis_ranges[index][0]) * 2.0f - 1.0f;
-  float lv = device->axes[index];
-  device->axes[index] = v;
-
-  CALL(joy_axis_callback, device, index, v, lv, ticks());
-}
-
-static void pov_to_xy(DWORD pov, int* x, int* y) {
-  if (pov == JOY_POVCENTERED)
-    *x = *y = 0;
-  else {
-    if (pov > JOY_POVFORWARD && pov < JOY_POVBACKWARD)
-      *x = 1;
-    else if (pov > JOY_POVBACKWARD)
-      *x = -1;
-    else
-      *x = 0;
-
-    if (pov > JOY_POVLEFT || pov < JOY_POVRIGHT)
-      *y = -1;
-    else if (pov > JOY_POVRIGHT && pov < JOY_POVLEFT)
-      *y = 1;
-    else
-      *y = 0;
-  }
-}
-
-static void handle_pov_change(joystick_t* device, DWORD lv, DWORD v) {
-  joystick_private_t* private = (joystick_private_t*)device->__private;
-  if (private->povXAxisIndex == -1 || private->povYAxisIndex == -1)
-    return;
-
-  int lx, ly, nx, ny;
-  pov_to_xy(lv, &lx, &ly);
-  pov_to_xy(v, &nx, &ny);
-
-  if (nx != lx) {
-    device->axes[private->povXAxisIndex] = nx;
-    CALL(joy_axis_callback, device, private->povXAxisIndex, nx, lx, ticks());
-  }
-  if (ny != ly) {
-    device->axes[private->povYAxisIndex] = ny;
-    CALL(joy_axis_callback, device, private->povYAxisIndex, ny, ly, ticks());
-  }
-}
-#else
-static void update_btn(joystick_t* device, unsigned int index, bool down, long time) {
-  device->buttons[index] = down;
-  CALL(joy_btn_callback, device, index, down, time);
-}
-
-static void update_axis_float(joystick_t* device, unsigned int index, float val, long time) {
-  float last_val = device->axes[index];
-  device->axes[index] = val;
-  CALL(joy_axis_callback, device, index, val, last_val, time);
-}
-
-#define UPDATE_AXIS_IVAL(d, i, iv, t) (update_axis_float((d), (i), ((iv) - AXIS_MIN) / (float)(AXIS_MAX - AXIS_MIN) * 2.0f - 1.0f, (t)))
-
-#define POV_UP 0
-#define POV_RIGHT 9000
-#define POV_DOWN 18000
-#define POV_LEFT 27000
-
-static void update_axis_pov(joystick_t* device, unsigned int index, DWORD iv, long time) {
-  float x = 0.0f, y = 0.0f;
-  if (LOWORD(iv) == 0xFFFF)
-    x = y = 0.0f;
-  else {
-    if (iv > POV_UP && iv < POV_DOWN)
-      x = 1.0f;
-    else if (iv > POV_DOWN)
-      x = -1.0f;
-    else
-      x = 0.0f;
-
-    if (iv > POV_LEFT || iv < POV_RIGHT)
-      y = -1.0f;
-    else if (iv > POV_RIGHT && iv < POV_LEFT)
-      y = 1.0f;
-    else
-      y = 0.0f;
-  }
-  update_axis_float(device, index, x, time);
-  update_axis_float(device, index + 1, y, time);
-}
-#endif
-
-bool sgl_joystick_scan() {
-#if defined(SGL_DISABLE_DIRECTINPUT)
-  unsigned int n_supported = joyGetNumDevs();
-  JOYINFOEX info;
-  JOYCAPS caps;
-
-  for (int i = 0; i < n_supported; ++i) {
-    info.dwSize = sizeof(info);
-    info.dwFlags = JOY_RETURNALL;
-    int id = JOYSTICKID1 + i;
-    if (joyGetPosEx(id, &info) == JOYERR_NOERROR && joyGetDevCaps(id, &caps, sizeof(JOYCAPS)) == JOYERR_NOERROR) {
-      bool is_dupe = false;
-      joystick_t* current = joy_devices.head;
-      while (current) {
-        if (((joystick_private_t*)current->__private)->joystick_id == id) {
-          is_dupe = true;
-          break;
-        }
-        current = current->next;
-      }
-      if (is_dupe)
-        continue;
-
-      joystick_private_t* private = malloc(sizeof(joystick_private_t));
-      private->joystick_id = id;
-      private->last_state = info;
-      private->xAxisIndex = 0;
-      private->yAxisIndex = 1;
-      int a = 2;
-      private->zAxisIndex = (caps.wCaps & JOYCAPS_HASZ) ? a++ : -1;
-      private->rAxisIndex = (caps.wCaps & JOYCAPS_HASR) ? a++ : -1;
-      private->uAxisIndex = (caps.wCaps & JOYCAPS_HASU) ? a++ : -1;
-      private->vAxisIndex = (caps.wCaps & JOYCAPS_HASV) ? a++ : -1;
-      private->axis_ranges = malloc(sizeof(UINT[2]) * a);
-      private->axis_ranges[0][0] = caps.wXmin;
-      private->axis_ranges[0][1] = caps.wXmax;
-      private->axis_ranges[1][0] = caps.wYmin;
-      private->axis_ranges[1][1] = caps.wYmax;
-      if (private->zAxisIndex != -1) {
-        private->axis_ranges[private->zAxisIndex][0] = caps.wZmin;
-        private->axis_ranges[private->zAxisIndex][1] = caps.wZmax;
-      }
-      if (private->rAxisIndex != -1) {
-        private->axis_ranges[private->rAxisIndex][0] = caps.wRmin;
-        private->axis_ranges[private->rAxisIndex][1] = caps.wRmax;
-      }
-      if (private->uAxisIndex != -1) {
-        private->axis_ranges[private->uAxisIndex][0] = caps.wUmin;
-        private->axis_ranges[private->uAxisIndex][1] = caps.wUmax;
-      }
-      if (private->vAxisIndex != -1) {
-        private->axis_ranges[private->vAxisIndex][0] = caps.wVmin;
-        private->axis_ranges[private->vAxisIndex][1] = caps.wVmax;
-      }
-      private->povXAxisIndex = (caps.wCaps & JOYCAPS_HASPOV) ? a++ : -1;
-      private->povYAxisIndex = (caps.wCaps & JOYCAPS_HASPOV) ? a++ : -1;
-
-      joystick_t* device = malloc(sizeof(joystick_t));
-      device->__private = private;
-      device->next = NULL;
-      device->device_id = next_device_id++;
-      device->description = get_mm_description(id, caps);
-      device->vendor_id = caps.wMid;
-      device->product_id = caps.wPid;
-      device->n_axes = caps.wNumAxes + ((caps.wCaps & JOYCAPS_HASPOV) ? 2 : 0);
-      device->n_buttons = caps.wNumButtons;
-      device->axes = malloc(sizeof(float) * device->n_axes);
-      device->buttons = malloc(sizeof(int) * device->n_buttons);
-
-      add_joystick(device);
-    }
-  }
-#else
-  if (!did) {
-    error_handle(LOW_PRIORITY, JOY_DI_ENUM_DEVICE_FAILED, "IDirectInput_EnumDevices() failed: DirectInput not initiated, call sgl_joystick_init first");
-    return false;
-  }
-
-  if (IDirectInput_EnumDevices(did, DI8DEVCLASS_GAMECTRL, enum_devices_cb, NULL, DIEDFL_ALLDEVICES) != DI_OK) {
-    error_handle(LOW_PRIORITY, JOY_DI_ENUM_DEVICE_FAILED, "IDirectInput_EnumDevices() failed: %s", GetLastError());
-    return false;
-  }
-
-#if !defined(SGL_DISABLE_XINPUT)
-  DWORD xresult;
-  XINPUT_CAPABILITIES capabilities;
-  if (xinput_available) {
-    for (unsigned int i = 0; i < MAX_XINPUT_DEVICES; ++i) {
-      xresult = XInputGetCapabilities_proc(i, 0, &capabilities);
-      if (xresult == ERROR_SUCCESS && xinput_devices[i] == NULL) {
-        joystick_t* device = malloc(sizeof(joystick_t));
-        joystick_private_t* private = malloc(sizeof(joystick_private_t));
-
-        private->is_xinput = TRUE;
-        private->player_index = i;
-        device->__private = private;
-        device->next = NULL;
-        device->device_id = next_device_id++;
-        device->description = xinput_device_names[i];
-        device->vendor_id = 0x45E;
-        device->product_id = 0x28E;
-        device->n_axes = 6;
-        device->n_buttons = 15;
-        device->axes = malloc(sizeof(float) * device->n_axes);
-        device->buttons = malloc(sizeof(int) * device->n_buttons);
-
-        add_joystick(device);
-        xinput_devices[i] = device;
-      }
-      else if (xresult != ERROR_SUCCESS && xinput_devices[i]) {
-        sgl_joystick_remove(xinput_devices[i]->device_id);
-        xinput_devices[i] = NULL;
-      }
-    }
-  }
-#endif
-#endif
-
-  return true;
-}
-
-static inline void release_joystick(joystick_t** d) {
-  joystick_t* _d = *d;
-  joystick_private_t* _p = _d->__private;
-
-#if defined(SGL_DISABLE_DIRECTINPUT)
-  FREE_SAFE(_p->axis_ranges);
-  FREE_SAFE((void*)_d->description);
-#else
-  if (!_p->is_xinput) {
-    IDirectInputDevice8_Release(_p->di8dev);
-    FREE_SAFE(_p->axis_info);
-    FREE_SAFE(_p->button_offsets);
-    FREE_SAFE((void*)_d->description);
-  }
-#endif
-  FREE_SAFE(_p);
-  FREE_SAFE(_d->axes);
-  FREE_SAFE(_d->buttons);
-  FREE_SAFE(_d);
-}
-
-void sgl_joystick_release() {
-  joystick_t* current = joy_devices.head;
-  joystick_t* next = current;
-  while (current) {
-    next = current->next;
-    release_joystick(&current);
-    current = next;
-  }
-  joy_devices.head = NULL;
-  joy_devices.size = 0;
-}
-
-bool sgl_joystick_remove(int id) {
-  joystick_t* current = joy_devices.head;
-  joystick_t* previous = current;
-  while (current) {
-    if (current->device_id == id) {
-      previous->next = current->next;
-      if (current == joy_devices.head)
-        joy_devices.head = current->next;
-      CALL(joy_removed_callback, current, current->device_id);
-      release_joystick(&current);
-      return true;
-    }
-    previous = current;
-    current = current->next;
-  }
-  return false;
-}
-
-void sgl_joystick_poll() {
-  joystick_t* device = joy_devices.head;
-  joystick_private_t* private = NULL;
-  HRESULT result;
-#if defined(SGL_DISABLE_DIRECTINPUT)
-  JOYINFOEX info;
-#endif
-
-  while (device) {
-    private = device->__private;
-
-#if defined(SGL_DISABLE_DIRECTINPUT)
-    info.dwSize = sizeof(info);
-    info.dwFlags = JOY_RETURNALL;
-    result = joyGetPosEx(private->joystick_id, &info);
-    if (result == JOYERR_UNPLUGGED)
-      sgl_joystick_remove(device->device_id);
-    else if (result == JOYERR_NOERROR) {
-      if (info.dwXpos != private->last_state.dwXpos)
-        handle_axis_change(device, private->xAxisIndex, info.dwXpos);
-      if (info.dwYpos != private->last_state.dwYpos)
-        handle_axis_change(device, private->yAxisIndex, info.dwYpos);
-      if (info.dwZpos != private->last_state.dwZpos)
-        handle_axis_change(device, private->zAxisIndex, info.dwZpos);
-      if (info.dwRpos != private->last_state.dwRpos)
-        handle_axis_change(device, private->rAxisIndex, info.dwRpos);
-      if (info.dwUpos != private->last_state.dwUpos)
-        handle_axis_change(device, private->uAxisIndex, info.dwUpos);
-      if (info.dwVpos != private->last_state.dwVpos)
-        handle_axis_change(device, private->vAxisIndex, info.dwVpos);
-      if (info.dwPOV != private->last_state.dwPOV)
-        handle_pov_change(device, private->last_state.dwPOV, info.dwPOV);
-      if (info.dwButtons != private->last_state.dwButtons)
-        handle_btn_change(device, private->last_state.dwButtons, info.dwButtons);
-      private->last_state = info;
-    }
-#else
-#if !defined(SGL_DISABLE_XINPUT)
-    if (private->is_xinput) {
-      XINPUT_STATE state;
-      DWORD xresult;
-
-      if (XInputGetStateEx_proc) {
-        XINPUT_STATE_EX state_ex;
-        xresult = XInputGetStateEx_proc(private->player_index, &state_ex);
-        state.Gamepad.wButtons = state_ex.Gamepad.wButtons;
-        state.Gamepad.sThumbLX = state_ex.Gamepad.sThumbLX;
-        state.Gamepad.sThumbLY = state_ex.Gamepad.sThumbLY;
-        state.Gamepad.sThumbRX = state_ex.Gamepad.sThumbRX;
-        state.Gamepad.sThumbRY = state_ex.Gamepad.sThumbRY;
-        state.Gamepad.bLeftTrigger = state_ex.Gamepad.bLeftTrigger;
-        state.Gamepad.bRightTrigger = state_ex.Gamepad.bRightTrigger;
-      } else
-        xresult = XInputGetState_proc(private->player_index, &state);
-
-      if (xresult == ERROR_SUCCESS) {
-        update_btn(device, 0, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP), ticks());
-        update_btn(device, 1, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN), ticks());
-        update_btn(device, 2, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT), ticks());
-        update_btn(device, 3, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT), ticks());
-        update_btn(device, 4, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_START), ticks());
-        update_btn(device, 5, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_BACK), ticks());
-        update_btn(device, 6, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB), ticks());
-        update_btn(device, 7, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB), ticks());
-        update_btn(device, 8, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER), ticks());
-        update_btn(device, 9, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER), ticks());
-        update_btn(device, 10, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_A), ticks());
-        update_btn(device, 11, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_B), ticks());
-        update_btn(device, 12, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_X), ticks());
-        update_btn(device, 13, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_Y), ticks());
-        update_btn(device, 14, !!(state.Gamepad.wButtons & XINPUT_GAMEPAD_GUIDE), ticks());
-        UPDATE_AXIS_IVAL(device, 0, state.Gamepad.sThumbLX, ticks());
-        UPDATE_AXIS_IVAL(device, 1, state.Gamepad.sThumbLY, ticks());
-        UPDATE_AXIS_IVAL(device, 2, state.Gamepad.sThumbRX, ticks());
-        UPDATE_AXIS_IVAL(device, 3, state.Gamepad.sThumbRY, ticks());
-        update_axis_float(device, 4, state.Gamepad.bLeftTrigger / 127.5f - 1.0f, ticks());
-        update_axis_float(device, 5, state.Gamepad.bRightTrigger / 127.5f - 1.0f, ticks());
-      } else {
-        sgl_joystick_remove(device->device_id);
-        xinput_devices[private->player_index] = NULL;
-      }
-    } else {
-#endif
-#pragma FIXME(Crash when disconnecting device)
-      result = IDirectInputDevice8_Poll(private->di8dev);
-      if (result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) {
-        IDirectInputDevice8_Acquire(private->di8dev);
-        IDirectInputDevice8_Poll(private->di8dev);
-      }
-
-      if (private->buffered) {
-        DWORD event_c = INPUT_QUEUE_SIZE;
-        DIDEVICEOBJECTDATA events[INPUT_QUEUE_SIZE];
-
-        result = IDirectInputDevice8_GetDeviceData(private->di8dev, sizeof(DIDEVICEOBJECTDATA), events, &event_c, 0);
-        if (result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) {
-          IDirectInputDevice8_Acquire(private->di8dev);
-          result = IDirectInputDevice8_GetDeviceData(private->di8dev, sizeof(DIDEVICEOBJECTDATA), events, &event_c, 0);
-        }
-        if (result != DI_OK) {
-          sgl_joystick_remove(device->device_id);
-          continue;
-        }
-
-        int e, b, a;
-        for (e = 0; e < event_c; ++e) {
-          for (b = 0; b < device->n_buttons; ++b)
-            if (events[e].dwOfs == private->button_offsets[b])
-              update_btn(device, b, !!events[e].dwData, events[e].dwTimeStamp / 1000);
-          for (a = 0; a < device->n_axes; ++a) {
-            if (events[e].dwOfs == private->axis_info[a].offset) {
-              if (private->axis_info[a].is_pov) {
-                update_axis_pov(device, a, events[e].dwData, events[e].dwTimeStamp / 1000);
-                a++;
-              } else
-                UPDATE_AXIS_IVAL(device, a, events[e].dwData, events[e].dwTimeStamp / 1000);
-            }
-          }
-        }
-      } else {
-        DIJOYSTATE2 state;
-
-        result = IDirectInputDevice8_GetDeviceState(private->di8dev, sizeof(DIJOYSTATE2), &state);
-        if (result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) {
-          IDirectInputDevice8_Acquire(private->di8dev);
-          result = IDirectInputDevice8_GetDeviceState(private->di8dev, sizeof(DIJOYSTATE2), &state);
-        }
-
-        if (result != DI_OK) {
-          sgl_joystick_remove(device->device_id);
-          continue;
-        }
-
-        for (int b = 0; b < device->n_buttons; ++b)
-          update_btn(device, b, !!state.rgbButtons[b], sgl_ticks());
-
-        for (int a = 0; a < device->n_axes; ++a) {
-          switch (private->axis_info[a].offset) {
-            case DIJOFS_X:
-              UPDATE_AXIS_IVAL(device, a, state.lX, sgl_ticks());
-              break;
-            case DIJOFS_Y:
-              UPDATE_AXIS_IVAL(device, a, state.lY, sgl_ticks());
-              break;
-            case DIJOFS_Z:
-              UPDATE_AXIS_IVAL(device, a, state.lZ, sgl_ticks());
-              break;
-            case DIJOFS_RX:
-              UPDATE_AXIS_IVAL(device, a, state.lRx, sgl_ticks());
-              break;
-            case DIJOFS_RY:
-              UPDATE_AXIS_IVAL(device, a, state.lRy, sgl_ticks());
-              break;
-            case DIJOFS_RZ:
-              UPDATE_AXIS_IVAL(device, a, state.lRz, sgl_ticks());
-              break;
-            case DIJOFS_SLIDER(0):
-              UPDATE_AXIS_IVAL(device, a, state.rglSlider[0], sgl_ticks());
-              break;
-            case DIJOFS_SLIDER(1):
-              UPDATE_AXIS_IVAL(device, a, state.rglSlider[1], sgl_ticks());
-              break;
-            case DIJOFS_POV(0):
-              update_axis_pov(device, a, state.rgdwPOV[0], sgl_ticks());
-              a++;
-              break;
-            case DIJOFS_POV(1):
-              update_axis_pov(device, a, state.rgdwPOV[1], sgl_ticks());
-              a++;
-              break;
-            case DIJOFS_POV(2):
-              update_axis_pov(device, a, state.rgdwPOV[2], sgl_ticks());
-              a++;
-              break;
-            case DIJOFS_POV(3):
-              update_axis_pov(device, a, state.rgdwPOV[3], sgl_ticks());
-              a++;
-              break;
-          }
-        }
-      }
-#if !defined(SGL_DISABLE_XINPUT)
-    }
-#endif
-#endif
-
-    device = device->next;
-  }
-}
-#endif
-
-static int translate_mod() {
-  int mods = 0;
-
-  if (GetKeyState(VK_SHIFT) & 0x8000)
-    mods |= KB_MOD_SHIFT;
-  if (GetKeyState(VK_CONTROL) & 0x8000)
-    mods |= KB_MOD_CONTROL;
-  if (GetKeyState(VK_MENU) & 0x8000)
-    mods |= KB_MOD_ALT;
-  if ((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000)
-    mods |= KB_MOD_SUPER;
-  if (GetKeyState(VK_CAPITAL) & 1)
-    mods |= KB_MOD_CAPS_LOCK;
-  if (GetKeyState(VK_NUMLOCK) & 1)
-    mods |= KB_MOD_NUM_LOCK;
-
-  return mods;
-}
-
-static int translate_key(WPARAM wParam, LPARAM lParam) {
-  if (wParam == VK_CONTROL) {
-    MSG next;
-    DWORD time;
-
-    if (lParam & 0x01000000)
-      return KB_KEY_RIGHT_CONTROL;
-
-    time = GetMessageTime();
-    if (PeekMessageW(&next, NULL, 0, 0, PM_NOREMOVE))
-      if (next.message == WM_KEYDOWN || next.message == WM_SYSKEYDOWN || next.message == WM_KEYUP || next.message == WM_SYSKEYUP)
-        if (next.wParam == VK_MENU && (next.lParam & 0x01000000) && next.time == time)
-          return KB_KEY_UNKNOWN;
-
-    return KB_KEY_LEFT_CONTROL;
-  }
-
-  if (wParam == VK_PROCESSKEY)
-    return KB_KEY_UNKNOWN;
-
-  return keycodes[HIWORD(lParam) & 0x1FF];
-}
-
-void set_adjusted_win_wh(int w, int h) {
-  RECT rect = { 0 };
-  rect.right = w;
-  rect.bottom = h;
-  AdjustWindowRect(&rect, adjust_flags, 0);
-  adjusted_win_w = rect.right - rect.left;
-  adjusted_win_h = rect.bottom - rect.top;
-}
-
-static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-  LRESULT res = 0;
-  switch (message) {
-    case WM_PAINT:
-      if (buffer) {
-#if defined(SGL_ENABLE_OPENGL)
-        draw_gl();
-        BeginPaint(hwnd, &ps);
-        EndPaint(hwnd, &ps);
-#elif defined(SGL_ENABLE_DX9)
-        IDirect3DDevice9_Clear(d3ddev, 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(255, 0, 0), 1.0f, 0);
-        IDirect3DDevice9_BeginScene(d3ddev);
-        IDirect3DDevice9_EndScene(d3ddev);
-        IDirect3DDevice9_Present(d3ddev, NULL, NULL, NULL, NULL);
-#else
-        bmpinfo->bmiHeader.biWidth = buffer->w;
-        bmpinfo->bmiHeader.biHeight = -buffer->h;
-        StretchDIBits(hdc, 0, 0, win_w, win_h, 0, 0, buffer->w, buffer->h, buffer->buf, bmpinfo, DIB_RGB_COLORS, SRCCOPY);
-        ValidateRect(hWnd, NULL);
-#endif
-      }
-      break;
-    case WM_SIZE:
-      if (!ifuckinghatethewin32api)
-        break;
-      RECT rect = { 0 };
-      rect.right = LOWORD(lParam);
-      rect.bottom = HIWORD(lParam);
-      AdjustWindowRect(&rect, adjust_flags, 0);
-      win_w = rect.right + rect.left;
-      win_h = rect.bottom - rect.top;
-      CALL(__resize_callback, win_w, win_h);
-#if defined(SGL_ENABLE_OPENGL)
-      glViewport(rect.left, rect.top, rect.right, win_h);
-      PostMessage(hWnd, WM_PAINT, 0, 0);
-#endif
-      break;
-    case WM_CLOSE:
-      __closed = true;
-      break;
-    case WM_KEYDOWN:
-    case WM_SYSKEYDOWN:
-    case WM_KEYUP:
-    case WM_SYSKEYUP: {
-      int kb_key = translate_key(wParam, lParam);
-      bool kb_action = !((lParam >> 31) & 1);
-      int kb_mods = translate_mod();
-
-      if (kb_key == KB_KEY_UNKNOWN)
-        return FALSE;
-      if (!kb_action && wParam == VK_SHIFT) {
-        CALL(__kb_callback, KB_KEY_LEFT_SHIFT, kb_mods, kb_action);
-      } else if (wParam == VK_SNAPSHOT) {
-        CALL(__kb_callback, kb_key, kb_mods, false);
-      } else {
-        CALL(__kb_callback, kb_key, kb_mods, kb_action);
-      }
-      break;
-    }
-    case WM_LBUTTONUP:
-    case WM_RBUTTONUP:
-    case WM_MBUTTONUP:
-    case WM_XBUTTONUP:
-    case WM_LBUTTONDOWN:
-    case WM_LBUTTONDBLCLK:
-    case WM_RBUTTONDOWN:
-    case WM_RBUTTONDBLCLK:
-    case WM_MBUTTONDOWN:
-    case WM_MBUTTONDBLCLK:
-    case WM_XBUTTONDOWN:
-    case WM_XBUTTONDBLCLK: {
-      int m_button, m_action = 0;
-      switch (message) {
-        case WM_LBUTTONDOWN:
-          m_action = 1;
-        case WM_LBUTTONUP:
-          m_button = MOUSE_BTN_1;
-          break;
-        case WM_RBUTTONDOWN:
-          m_action = 1;
-        case WM_RBUTTONUP:
-          m_button = MOUSE_BTN_2;
-          break;
-        case WM_MBUTTONDOWN:
-          m_action = 1;
-        case WM_MBUTTONUP:
-          m_button = MOUSE_BTN_3;
-          break;
-        default:
-          m_button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? MOUSE_BTN_5 : MOUSE_BTN_6);
-          if (message == WM_XBUTTONDOWN)
-            m_action = 1;
-      }
-      CALL(__mouse_btn_callback, (MOUSEBTN)m_button, translate_mod(), m_action);
-      break;
-    }
-    case WM_MOUSEWHEEL:
-    case WM_MOUSEHWHEEL:
-      CALL(__scroll_callback, translate_mod(), -((SHORT)HIWORD(wParam) / (float)WHEEL_DELTA), (SHORT)HIWORD(wParam) / (float)WHEEL_DELTA);
-      break;
-    case WM_MOUSEMOVE:
-      CALL(__mouse_move_callback, ((int)(short)LOWORD(lParam)), ((int)(short)HIWORD(lParam)), 0, 0);
-      if (cursor_locked && is_focused) {
-        GetWindowRect(hwnd, &rc);
-        rc.left += 3;
-        rc.right -= 3;
-        rc.top += 3;
-        rc.bottom -= 4;
-        ClipCursor(&rc);
-      }
-      break;
-    case WM_SETCURSOR:
-      SetCursor(__cursor);
-      break;
-    case WM_SETFOCUS:
-      is_focused = TRUE;
-      CALL(__focus_callback, is_focused);
-      break;
-    case WM_KILLFOCUS:
-      is_focused = FALSE;
-      CALL(__focus_callback, is_focused);
-      break;
-    default:
-      res = DefWindowProc(hWnd, message, wParam, lParam);
-  }
-  return res;
-}
-
-void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
-  ShowCursor((BOOL)shown);
-  cursor_locked = (BOOL)locked;
-
-  LPCSTR c = NULL;
-  switch (type) {
-    default:
-    case CURSOR_NO_CHANGE:
-      return;
-    case CURSOR_ARROW:
-      c = IDC_ARROW;
-      break;
-    case CURSOR_IBEAM:
-      c = IDC_IBEAM;
-      break;
-    case CURSOR_WAIT:
-    case CURSOR_WAITARROW:
-      c = IDC_WAIT;
-      break;
-    case CURSOR_SIZENWSE:
-      c = IDC_SIZENWSE;
-      break;
-    case CURSOR_SIZENESW:
-      c = IDC_SIZENESW;
-      break;
-    case CURSOR_SIZEWE:
-      c = IDC_SIZEWE;
-      break;
-    case CURSOR_SIZENS:
-      c = IDC_SIZENS;
-      break;
-    case CURSOR_SIZEALL:
-      c = IDC_SIZEALL;
-      break;
-    case CURSOR_NO:
-      c = IDC_NO;
-      break;
-    case CURSOR_HAND:
-      c = IDC_HAND;
-      break;
-    case CURSOR_CUSTOM:
-      if (!____custom_cursor) {
-        error_handle(LOW_PRIORITY, CUSTOM_CURSOR_NOT_CREATED, "cursor() failed: No custom cursor loaded");
-        return;
-      }
-  }
-
-  if (__cursor && __cursor != ____custom_cursor)
-    DestroyCursor(__cursor);
-  __cursor = (c ? LoadCursor(NULL, c) : ____custom_cursor);
-}
-
-void sgl_custom_cursor(surface_t* s) {
-#pragma TODO(Custom cursor loading for Windows)
-}
-
-bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
-  memset(keycodes, -1, sizeof(keycodes));
-
-  keycodes[0x00B] = KB_KEY_0;
-  keycodes[0x002] = KB_KEY_1;
-  keycodes[0x003] = KB_KEY_2;
-  keycodes[0x004] = KB_KEY_3;
-  keycodes[0x005] = KB_KEY_4;
-  keycodes[0x006] = KB_KEY_5;
-  keycodes[0x007] = KB_KEY_6;
-  keycodes[0x008] = KB_KEY_7;
-  keycodes[0x009] = KB_KEY_8;
-  keycodes[0x00A] = KB_KEY_9;
-  keycodes[0x01E] = KB_KEY_A;
-  keycodes[0x030] = KB_KEY_B;
-  keycodes[0x02E] = KB_KEY_C;
-  keycodes[0x020] = KB_KEY_D;
-  keycodes[0x012] = KB_KEY_E;
-  keycodes[0x021] = KB_KEY_F;
-  keycodes[0x022] = KB_KEY_G;
-  keycodes[0x023] = KB_KEY_H;
-  keycodes[0x017] = KB_KEY_I;
-  keycodes[0x024] = KB_KEY_J;
-  keycodes[0x025] = KB_KEY_K;
-  keycodes[0x026] = KB_KEY_L;
-  keycodes[0x032] = KB_KEY_M;
-  keycodes[0x031] = KB_KEY_N;
-  keycodes[0x018] = KB_KEY_O;
-  keycodes[0x019] = KB_KEY_P;
-  keycodes[0x010] = KB_KEY_Q;
-  keycodes[0x013] = KB_KEY_R;
-  keycodes[0x01F] = KB_KEY_S;
-  keycodes[0x014] = KB_KEY_T;
-  keycodes[0x016] = KB_KEY_U;
-  keycodes[0x02F] = KB_KEY_V;
-  keycodes[0x011] = KB_KEY_W;
-  keycodes[0x02D] = KB_KEY_X;
-  keycodes[0x015] = KB_KEY_Y;
-  keycodes[0x02C] = KB_KEY_Z;
-
-  keycodes[0x028] = KB_KEY_APOSTROPHE;
-  keycodes[0x02B] = KB_KEY_BACKSLASH;
-  keycodes[0x033] = KB_KEY_COMMA;
-  keycodes[0x00D] = KB_KEY_EQUAL;
-  keycodes[0x029] = KB_KEY_GRAVE_ACCENT;
-  keycodes[0x01A] = KB_KEY_LEFT_BRACKET;
-  keycodes[0x00C] = KB_KEY_MINUS;
-  keycodes[0x034] = KB_KEY_PERIOD;
-  keycodes[0x01B] = KB_KEY_RIGHT_BRACKET;
-  keycodes[0x027] = KB_KEY_SEMICOLON;
-  keycodes[0x035] = KB_KEY_SLASH;
-  keycodes[0x056] = KB_KEY_WORLD_2;
-
-  keycodes[0x00E] = KB_KEY_BACKSPACE;
-  keycodes[0x153] = KB_KEY_DELETE;
-  keycodes[0x14F] = KB_KEY_END;
-  keycodes[0x01C] = KB_KEY_ENTER;
-  keycodes[0x001] = KB_KEY_ESCAPE;
-  keycodes[0x147] = KB_KEY_HOME;
-  keycodes[0x152] = KB_KEY_INSERT;
-  keycodes[0x15D] = KB_KEY_MENU;
-  keycodes[0x151] = KB_KEY_PAGE_DOWN;
-  keycodes[0x149] = KB_KEY_PAGE_UP;
-  keycodes[0x045] = KB_KEY_PAUSE;
-  keycodes[0x146] = KB_KEY_PAUSE;
-  keycodes[0x039] = KB_KEY_SPACE;
-  keycodes[0x00F] = KB_KEY_TAB;
-  keycodes[0x03A] = KB_KEY_CAPS_LOCK;
-  keycodes[0x145] = KB_KEY_NUM_LOCK;
-  keycodes[0x046] = KB_KEY_SCROLL_LOCK;
-  keycodes[0x03B] = KB_KEY_F1;
-  keycodes[0x03C] = KB_KEY_F2;
-  keycodes[0x03D] = KB_KEY_F3;
-  keycodes[0x03E] = KB_KEY_F4;
-  keycodes[0x03F] = KB_KEY_F5;
-  keycodes[0x040] = KB_KEY_F6;
-  keycodes[0x041] = KB_KEY_F7;
-  keycodes[0x042] = KB_KEY_F8;
-  keycodes[0x043] = KB_KEY_F9;
-  keycodes[0x044] = KB_KEY_F10;
-  keycodes[0x057] = KB_KEY_F11;
-  keycodes[0x058] = KB_KEY_F12;
-  keycodes[0x064] = KB_KEY_F13;
-  keycodes[0x065] = KB_KEY_F14;
-  keycodes[0x066] = KB_KEY_F15;
-  keycodes[0x067] = KB_KEY_F16;
-  keycodes[0x068] = KB_KEY_F17;
-  keycodes[0x069] = KB_KEY_F18;
-  keycodes[0x06A] = KB_KEY_F19;
-  keycodes[0x06B] = KB_KEY_F20;
-  keycodes[0x06C] = KB_KEY_F21;
-  keycodes[0x06D] = KB_KEY_F22;
-  keycodes[0x06E] = KB_KEY_F23;
-  keycodes[0x076] = KB_KEY_F24;
-  keycodes[0x038] = KB_KEY_LEFT_ALT;
-  keycodes[0x01D] = KB_KEY_LEFT_CONTROL;
-  keycodes[0x02A] = KB_KEY_LEFT_SHIFT;
-  keycodes[0x15B] = KB_KEY_LEFT_SUPER;
-  keycodes[0x137] = KB_KEY_PRINT_SCREEN;
-  keycodes[0x138] = KB_KEY_RIGHT_ALT;
-  keycodes[0x11D] = KB_KEY_RIGHT_CONTROL;
-  keycodes[0x036] = KB_KEY_RIGHT_SHIFT;
-  keycodes[0x15C] = KB_KEY_RIGHT_SUPER;
-  keycodes[0x150] = KB_KEY_DOWN;
-  keycodes[0x14B] = KB_KEY_LEFT;
-  keycodes[0x14D] = KB_KEY_RIGHT;
-  keycodes[0x148] = KB_KEY_UP;
-
-  keycodes[0x052] = KB_KEY_KP_0;
-  keycodes[0x04F] = KB_KEY_KP_1;
-  keycodes[0x050] = KB_KEY_KP_2;
-  keycodes[0x051] = KB_KEY_KP_3;
-  keycodes[0x04B] = KB_KEY_KP_4;
-  keycodes[0x04C] = KB_KEY_KP_5;
-  keycodes[0x04D] = KB_KEY_KP_6;
-  keycodes[0x047] = KB_KEY_KP_7;
-  keycodes[0x048] = KB_KEY_KP_8;
-  keycodes[0x049] = KB_KEY_KP_9;
-  keycodes[0x04E] = KB_KEY_KP_ADD;
-  keycodes[0x053] = KB_KEY_KP_DECIMAL;
-  keycodes[0x135] = KB_KEY_KP_DIVIDE;
-  keycodes[0x11C] = KB_KEY_KP_ENTER;
-  keycodes[0x037] = KB_KEY_KP_MULTIPLY;
-  keycodes[0x04A] = KB_KEY_KP_SUBTRACT;
-
-  long _flags = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
-  if (flags & FULLSCREEN) {
-    flags |= (BORDERLESS | FULLSCREEN_DESKTOP);
-
-    DEVMODE settings;
-    EnumDisplaySettings(0, 0, &settings);
-    settings.dmPelsWidth = GetSystemMetrics(SM_CXSCREEN);
-    settings.dmPelsHeight = GetSystemMetrics(SM_CYSCREEN);
-    settings.dmBitsPerPel = 32;
-    settings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
-    if (ChangeDisplaySettings(&settings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL) {
-      cursor_locked = 1;
-      error_handle(LOW_PRIORITY, WIN_FULLSCREEN_FAILED, "screen() failed: Failed to go to fullscreen mode: Defaulting to fullscreen desktop");
-    }
-  }
-  _flags |= (flags & RESIZABLE ? WS_THICKFRAME : 0);
-  if (flags & BORDERLESS) {
-    _flags |= ~(WS_OVERLAPPED | WS_CAPTION);
-    _flags |= WS_POPUP;
-    adjust_flags = WS_POPUP;
-  }
-  if (flags & FULLSCREEN_DESKTOP) {
-    w = win_w = GetSystemMetrics(SM_CXSCREEN);
-    h = win_h = GetSystemMetrics(SM_CYSCREEN);
-  } else {
-    win_w = w;
-    win_h = h;
-  }
-
-  set_adjusted_win_wh(w, h);
-
-  if (s)
-    if (!sgl_surface(s, w, h))
-      return false;
-
-  int cx = GetSystemMetrics(SM_CXSCREEN) / 2 - adjusted_win_w / 2,
-      cy = GetSystemMetrics(SM_CYSCREEN) / 2 - adjusted_win_h / 2;
-
-  HINSTANCE hinst = GetModuleHandle(NULL);
-#if defined(SGL_ENABLE_OPENGL)
-  wnd.style = CS_OWNDC;
-#else
-  wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
-#endif
-  wnd.lpfnWndProc = (WNDPROC)WndProc;
-  wnd.lpszClassName = title;
-  wnd.hInstance = hinst;
-
-  if (!RegisterClass(&wnd)) {
-    sgl_release();
-    error_handle(HIGH_PRIORITY, WIN_WINDOW_CREATION_FAILED, "RegisterClass() failed: %s", GetLastError());
-    return false;
-  }
-
-  if (!(hwnd = CreateWindow(title, title, _flags, cx, cy, adjusted_win_w, adjusted_win_h, NULL, NULL, hinst, NULL))) {
-    sgl_release();
-    error_handle(HIGH_PRIORITY, WIN_WINDOW_CREATION_FAILED, "CreateWindowEx() failed: %s", GetLastError());
-    return false;
-  }
-
-  hdc = GetDC(hwnd);
-
-#if defined(SGL_ENABLE_OPENGL)
-  memset(&pfd, 0, sizeof(pfd));
-  pfd.nSize = sizeof(pfd);
-  pfd.nVersion = 1;
-  pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
-  pfd.iPixelType = PFD_TYPE_RGBA;
-  pfd.cColorBits = 32;
-
-  int pf = ChoosePixelFormat(hdc, &pfd);
-  if (pf == 0) {
-    sgl_release();
-    error_handle(HIGH_PRIORITY, WIN_GL_PF_ERROR, "ChoosePixelFormat() failed: %s", GetLastError());
-    return false;
-  }
-
-  if (SetPixelFormat(hdc, pf, &pfd) == FALSE) {
-    sgl_release();
-    error_handle(HIGH_PRIORITY, WIN_GL_PF_ERROR, "SetPixelFormat() failed: %s", GetLastError());
-    return false;
-  }
-
-  DescribePixelFormat(hdc, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
-
-  hrc = wglCreateContext(hdc);
-  wglMakeCurrent(hdc, hrc);
-
-  if (!init_gl(w, h))
-    return false;
-#elif defined(SGL_ENABLE_DX9)
-  d3d = Direct3DCreate9(D3D_SDK_VERSION);
-
-  D3DPRESENT_PARAMETERS d3dpp;
-  ZeroMemory(&d3dpp, sizeof(d3dpp));
-  d3dpp.Windowed = TRUE;
-  d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-  d3dpp.hDeviceWindow = hwnd;
-
-  IDirect3D9_CreateDevice(d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &d3ddev);
-#else
-  bmpinfo = (BITMAPINFO*)calloc(1, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
-  bmpinfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-  bmpinfo->bmiHeader.biPlanes = 1;
-  bmpinfo->bmiHeader.biBitCount = 32;
-  bmpinfo->bmiHeader.biCompression = BI_BITFIELDS;
-  bmpinfo->bmiHeader.biWidth = w;
-  bmpinfo->bmiHeader.biHeight = -h;
-  bmpinfo->bmiColors[0].rgbRed = 0xFF;
-  bmpinfo->bmiColors[1].rgbGreen = 0xFF;
-  bmpinfo->bmiColors[2].rgbBlue = 0xFF;
-#endif
-
-  ShowWindow(hwnd, SW_NORMAL);
-
-  if (flags & ALWAYS_ON_TOP)
-    SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-
-  SetFocus(hwnd);
-
-  __cursor = LoadCursor(NULL, IDC_ARROW);
-  ifuckinghatethewin32api = TRUE; // because I do
-
-  return true;
-}
-
-void sgl_poll() {
-  MSG msg;
-  if (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
-    TranslateMessage(&msg);
-    DispatchMessage(&msg);
-  }
-}
-
-void sgl_flush(surface_t* s) {
-  if (s && s->buf)
-    buffer = s;
-  InvalidateRect(hwnd, NULL, TRUE);
-  SendMessage(hwnd, WM_PAINT, 0, 0);
-}
-
-void sgl_release() {
-#if defined(SGL_ENABLE_OPENGL)
-  free_gl();
-  wglMakeCurrent(NULL, NULL);
-#elif defined(SGL_ENABLE_DX9)
-  IDirect3DDevice9_Release(d3ddev);
-  IDirect3D9_Release(d3d);
-#else
-  FREE_SAFE(bmpinfo);
-#endif
-
-  if (__cursor)
-    DestroyCursor(__cursor);
-  if (____custom_cursor)
-    DestroyCursor(____custom_cursor);
-  ReleaseDC(hwnd, hdc);
-  DestroyWindow(hwnd);
-}
-
-bool sgl_closed() {
-  return __closed;
-}
-#else
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/XKBlib.h>
-#include <X11/keysym.h>
-#include <X11/Xatom.h>
-#include <X11/cursorfont.h>
-
-static Display* display;
-static surface_t* buffer;
-static Window win;
-static GC gc;
-#if defined(SGL_ENABLE_OPENGL)
-static GLXContext ctx;
-static Colormap cmap;
-#else
-static XImage* img;
-#endif
-static XEvent event;
-static KeySym sym;
-static Cursor __cursor = 0, ____custom_cursor = 0;
-
-#define Button6 6
-#define Button7 7
-
-#if defined(SGL_ENABLE_OPENGL)
-#define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
-#define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
-typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
-
-static int check_ext(const char* list, const char* exts) {
-  const char *start, *where = strchr(exts, ' '), *terminator;
-  if (where || *exts == '\0')
-    return 0;
-
-  for (start = list;;) {
-    where = strstr(start, exts);
-
-    if (!where)
-      break;
-
-    terminator = where + strlen(exts);
-    if (where == start || *(where - 1) == ' ')
-      if (*terminator == ' ' || *terminator == '\0')
-        return 1;
-
-    start = terminator;
-  }
-
-  return 0;
-}
-#endif
-
-#if defined(SGL_ENABLE_JOYSTICKS)
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <linux/input.h>
-#define __USE_UNIX98
-#include <pthread.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-
-typedef enum {
-  JOY_DEVICE_ATTACHED,
-  JOY_DEVICE_REMOVED,
-  JOY_BTN_DOWN,
-  JOY_BTN_UP,
-  JOY_AXIS_MOVED
-} JOYEVENTTYPE;
-
-typedef struct {
-	pthread_t thrd;
-	int fd;
-	char* path;
-	int buttons[KEY_CNT - BTN_MISC];
-	int axes[ABS_CNT];
-	struct input_absinfo axis_info[ABS_CNT];
-} joystick_private_t;
-
-typedef struct __joy_q_event_t {
-  unsigned int device_id;
-  JOYEVENTTYPE event;
-  struct __joy_q_event_t* next;
-  void* data;
-} joystick_queued_event_t;
-
-static struct {
-  int size;
-  joystick_queued_event_t* head;
-} event_queue;
-
-typedef struct {
-  joystick_t* device;
-  long timestamp;
-  unsigned int btn_id;
-  bool down;
-} joystick_btn_event_t;
-
-typedef struct {
-  joystick_t* device;
-  long timestamp;
-  unsigned int axis_id;
-  float value, last_value;
-} joystick_axis_event_t;
-
-static pthread_mutex_t devices_mtx;
-static pthread_mutex_t event_queue_mtx;
-
-#if !defined(MAX_PATH)
-#define MAX_PATH 128
-#endif
-
-#define test_bit(b, a) ((a[(b) / (sizeof(int) * 8)] >> ((b) % (sizeof(int) * 8))) & 0x1)
-
-joystick_t* sgl_joystick(int id) {
-  if (id < 0 || !joy_devices.head)
-    return NULL;
-  joystick_t* ret = NULL;
-  pthread_mutex_lock(&devices_mtx);
-  joystick_t* current = joy_devices.head;
-  while (current) {
-    if (current->device_id == id) {
-      ret = current;
-      break;
-    }
-    current = current->next;
-  }
-  pthread_mutex_lock(&devices_mtx);
-  return ret;
-}
-
-static void queue_joy_event(unsigned int id, JOYEVENTTYPE type, void* data) {
-  pthread_mutex_lock(&event_queue_mtx);
-
-  joystick_queued_event_t* e = malloc(sizeof(joystick_queued_event_t));
-  e->device_id = id;
-  e->event = type;
-  e->data = data;
-  e->next = NULL;
-
-  joystick_queued_event_t* current = event_queue.head;
-  if (!current)
-    event_queue.head = e;
-  else {
-    while (current)
-      current = current->next;
-    current->next = e;
-  }
-  event_queue.size++;
-
-  pthread_mutex_unlock(&event_queue_mtx);
-}
-
-static void queue_axis_event(joystick_t* device, long time, unsigned int id, float v, float lv) {
-  joystick_axis_event_t* e = malloc(sizeof(joystick_axis_event_t));
-  e->device = device;
-  e->timestamp = time;
-  e->axis_id = id;
-  e->value = v;
-  e->last_value = lv;
-  queue_joy_event(device->device_id, JOY_AXIS_MOVED, (void*)e);
-}
-
-static void queue_btn_event(joystick_t* device, long time, unsigned int id, bool down) {
-  joystick_btn_event_t* e = malloc(sizeof(joystick_btn_event_t));
-  e->device = device;
-  e->timestamp = time;
-  e->btn_id = id;
-  e->down = down;
-  queue_joy_event(device->device_id, down ? JOY_BTN_DOWN : JOY_BTN_UP, (void*)e);
-}
-
-static void* device_thrd(void* ctx) {
-  joystick_t* device = (joystick_t*)ctx;
-  joystick_private_t* private = (joystick_private_t*)device->__private;
-  struct input_event event;
-  while (read(private->fd, &event, sizeof(struct input_event)) > 0) {
-    if (event.type == EV_ABS) {
-      if (event.code > ABS_MAX || private->axes[event.code] == -1)
-        continue;
-
-      float value = (event.value - private->axis_info[event.code].minimum) / (float)(private->axis_info[event.code].maximum - private->axis_info[event.code].minimum) * 2.0f - 1.0f;
-      queue_axis_event(device, (long)(event.time.tv_sec + event.time.tv_usec * 0.000001), private->axes[event.code], value, device->axes[private->axes[event.code]]);
-      device->axes[private->axes[event.code]] = value;
-    } else if (event.type == EV_KEY) {
-      if (event.code < BTN_MISC || event.code > KEY_MAX || private->buttons[event.code - BTN_MISC] == -1)
-        continue;
-      queue_btn_event(device, (long)(event.time.tv_sec + event.time.tv_usec * 0.000001), private->buttons[event.code - BTN_MISC], !!event.value);
-      device->buttons[private->buttons[event.code - BTN_MISC]] = !!event.value;
-    }
-  }
-
-  queue_joy_event(device->device_id, JOY_DEVICE_REMOVED, device);
-  sgl_joystick_remove(device->device_id);
-  return NULL;
-}
-
-bool sgl_joystick_init(bool scan_too) {
-  pthread_mutexattr_t rlock;
-  pthread_mutexattr_init(&rlock);
-  pthread_mutexattr_settype(&rlock, PTHREAD_MUTEX_RECURSIVE);
-  pthread_mutex_init(&devices_mtx, &rlock);
-  pthread_mutex_init(&event_queue_mtx, &rlock);
-  return (scan_too ? sgl_joystick_scan() : true);
-}
-
-bool sgl_joystick_scan() {
-  pthread_mutex_lock(&devices_mtx);
-  DIR* dev_input = opendir("/dev/input");
-  if (!dev_input) {
-    error_handle(PRIO_LOW, JOY_NIX_SCAN_FAILED, "sgl_joystick_scan() failed: Couldn't open /dev/input");
-    return false;
-  }
-
-  time_t c_time = time(NULL);
-  static time_t l_time;
-  struct stat sb;
-  struct input_id id;
-  char fname[MAX_PATH], name[128];
-  struct dirent* de;
-  int e_cap_bits[(EV_CNT  - 1) / sizeof(int) * 8 + 1];
-	int e_key_bits[(KEY_CNT - 1) / sizeof(int) * 8 + 1];
-	int e_abs_bits[(ABS_CNT - 1) / sizeof(int) * 8 + 1];
-  while ((de = readdir(dev_input))) {
-    int cc = 0, n;
-    if (!sscanf(de->d_name, "event%d%n", &n, &cc) || cc != strlen(de->d_name))
-      continue;
-
-    snprintf(fname, PATH_MAX, "/dev/input/%s", de->d_name);
-    if (stat(fname, &sb) ||sb.st_mtime < l_time)
-      continue;
-
-    bool duplicate = false;
-    joystick_t* current = joy_devices.head;
-    while (current) {
-      if (!strcmp(((joystick_private_t*)current->__private)->path, fname)) {
-        duplicate = true;
-        break;
-      }
-      current = current->next;
-    }
-    if (duplicate)
-      continue;
-
-    int fd = open(fname, O_RDONLY, 0);
-    memset(e_cap_bits, 0, sizeof(e_cap_bits));
-    memset(e_key_bits, 0, sizeof(e_key_bits));
-    memset(e_abs_bits, 0, sizeof(e_abs_bits));
-    if (ioctl(fd, EVIOCGBIT(0, sizeof(e_cap_bits)), e_cap_bits) < 0 ||
-        ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(e_key_bits)), e_key_bits) < 0 ||
-        ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(e_abs_bits)), e_abs_bits) < 0) {
-      close(fd);
-      continue;
-    }
-    if (!test_bit(EV_KEY, e_cap_bits) || !test_bit(EV_ABS, e_cap_bits) ||
-        !test_bit(ABS_X, e_abs_bits) || !test_bit(ABS_Y, e_abs_bits) ||
-        (!test_bit(BTN_TRIGGER, e_key_bits) && !test_bit(BTN_A, e_key_bits) && !test_bit(BTN_1, e_key_bits))) {
-      close(fd);
-      continue;
-    }
-
-    joystick_private_t* private = malloc(sizeof(joystick_private_t));
-    private->fd = fd;
-    private->path = strdup(fname);
-    memset(private->buttons, 0xFF, sizeof(private->buttons));
-    memset(private->axes, 0xFF, sizeof(private->axes));
-
-    joystick_t* device = malloc(sizeof(joystick_t));
-    device->next = NULL;
-    device->device_id = next_device_id++;
-    device->__private = (void*)private;
-    device->description = strdup((ioctl(fd, EVIOCGNAME(sizeof(name)), name) > 0 ? name : fname));
-    if (!ioctl(fd, EVIOCGID, &id)) {
-      device->vendor_id = id.vendor;
-      device->product_id = id.product;
-    } else
-      device->vendor_id = device->product_id = 0;
-
-    memset(e_key_bits, 0, sizeof(e_key_bits));
-    memset(e_abs_bits, 0, sizeof(e_abs_bits));
-    ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(e_key_bits)), e_key_bits);
-    ioctl(fd, EVIOCGBIT(EV_ABS, sizeof(e_abs_bits)), e_abs_bits);
-
-    device->n_axes = 0;
-    for (int b = 0; b < ABS_CNT; ++b) {
-      if (!test_bit(b, e_abs_bits))
-        continue;
-      if (ioctl(fd, EVIOCGABS(b), &private->axis_info[b]) < 0 ||
-          private->axis_info[b].minimum == private->axis_info[b].maximum)
-        continue;
-      private->axes[b] = device->n_axes;
-      device->n_axes++;
-    }
-    device->n_buttons = 0;
-    for (int b = BTN_MISC; b < KEY_CNT; ++b) {
-      if (!test_bit(b, e_key_bits))
-        continue;
-      private->buttons[b - BTN_MISC] = device->n_buttons;
-      device->n_buttons++;
-    }
-    device->axes = malloc(sizeof(float) * device->n_axes);
-    device->buttons = malloc(sizeof(int) * device->n_buttons);
-
-    add_joystick(device);
-
-    pthread_create(&private->thrd, NULL, device_thrd, device);
-  }
-
-  closedir(dev_input);
-  l_time = c_time;
-  pthread_mutex_unlock(&devices_mtx);
-  return true;
-}
-
-static inline void release_joystick(joystick_t** d) {
-  joystick_t* _d = *d;
-  joystick_private_t* _p = _d->__private;
-  close(_p->fd);
-  FREE_SAFE(_p->path);
-  FREE_SAFE(_p);
-  pthread_cancel(_p->thrd);
-  pthread_join(_p->thrd, NULL);
-  if (_d->description)
-    free((void*)_d->description);
-  FREE_SAFE(_d->axes);
-  FREE_SAFE(_d->buttons);
-  FREE_SAFE(_d);
-}
-
-void sgl_joystick_release() {
-  pthread_mutex_lock(&devices_mtx);
-  joystick_t* current_d = joy_devices.head;
-  joystick_t* next_d = current_d;
-  while (current_d) {
-    next_d = current_d->next;
-    release_joystick(&current_d);
-    current_d = next_d;
-  }
-  joy_devices.head = NULL;
-  joy_devices.size = 0;
-  pthread_mutex_unlock(&devices_mtx);
-
-  pthread_mutex_lock(&event_queue_mtx);
-  joystick_queued_event_t* current_e = event_queue.head;
-  joystick_queued_event_t* next_e = current_e;
-  while (current_e) {
-    next_e = current_e->next;
-    if (current_e->event != JOY_DEVICE_REMOVED)
-      free(current_e->data);
-    free(current_e);
-    current_e = next_e;
-  }
-  event_queue.head = NULL;
-  event_queue.size = 0;
-  pthread_mutex_unlock(&event_queue_mtx);
-}
-
-bool sgl_joystick_remove(int id) {
-  pthread_mutex_lock(&devices_mtx);
-  joystick_t* current = joy_devices.head;
-  joystick_t* previous = current;
-  while (current) {
-    if (current->device_id == id) {
-      previous->next = current->next;
-      if (current == joy_devices.head)
-        joy_devices.head = current->next;
-      CALL(joy_removed_callback, current, current->device_id);
-      release_joystick(&current);
-      return true;
-    }
-    previous = current;
-    current = current->next;
-  }
-  pthread_mutex_lock(&devices_mtx);
-  return false;
-}
-
-void sgl_joystick_poll() {
-  static bool processing_events = false;
-  if (processing_events || !event_queue.size)
-    return;
-
-  processing_events = true;
-  pthread_mutex_lock(&event_queue_mtx);
-
-  joystick_queued_event_t* current = event_queue.head;
-  joystick_queued_event_t* next = current;
-  while (current) {
-    next = current->next;
-    switch(current->event) {
-      case JOY_DEVICE_ATTACHED:
-        CALL(joy_connect_callback, (joystick_t*)current->data, current->device_id);
-        break;
-      case JOY_DEVICE_REMOVED: {
-        joystick_t* d = (joystick_t*)current->data;
-        CALL(joy_removed_callback, d, d->device_id);
-        sgl_joystick_remove(d->device_id);
-        break;
-      }
-      case JOY_BTN_DOWN:
-      case JOY_BTN_UP: {
-        joystick_btn_event_t* e = (joystick_btn_event_t*)current->data;
-        CALL(joy_btn_callback, e->device, e->btn_id, e->down, e->timestamp);
-        free(e);
-        break;
-      }
-      case JOY_AXIS_MOVED: {
-        joystick_axis_event_t* e = (joystick_axis_event_t*)current->data;
-        CALL(joy_axis_callback, e->device, e->axis_id, e->value, e->last_value, e->timestamp);
-        free(e);
-        break;
-      }
-    }
-    free(current);
-    current = next;
-  }
-  event_queue.head = NULL;
-  event_queue.size = 0;
-
-  pthread_mutex_unlock(&event_queue_mtx);
-  processing_events = false;
-}
-#endif
-
-static int translate_keycode(int scancode) {
-  if (scancode < 8 || scancode > 255)
-    return KB_KEY_UNKNOWN;
-
-  int _sym = XkbKeycodeToKeysym(display, scancode, 0, 1);
-  switch (_sym) {
-  case XK_KP_0:           return KB_KEY_KP_0;
-  case XK_KP_1:           return KB_KEY_KP_1;
-  case XK_KP_2:           return KB_KEY_KP_2;
-  case XK_KP_3:           return KB_KEY_KP_3;
-  case XK_KP_4:           return KB_KEY_KP_4;
-  case XK_KP_5:           return KB_KEY_KP_5;
-  case XK_KP_6:           return KB_KEY_KP_6;
-  case XK_KP_7:           return KB_KEY_KP_7;
-  case XK_KP_8:           return KB_KEY_KP_8;
-  case XK_KP_9:           return KB_KEY_KP_9;
-  case XK_KP_Separator:
-  case XK_KP_Decimal:     return KB_KEY_KP_DECIMAL;
-  case XK_KP_Equal:       return KB_KEY_KP_EQUAL;
-  case XK_KP_Enter:       return KB_KEY_KP_ENTER;
-  default:
-    break;
-  }
-  _sym = XkbKeycodeToKeysym(display, scancode, 0, 0);
-
-  switch (_sym) {
-  case XK_Escape:         return KB_KEY_ESCAPE;
-  case XK_Tab:            return KB_KEY_TAB;
-  case XK_Shift_L:        return KB_KEY_LEFT_SHIFT;
-  case XK_Shift_R:        return KB_KEY_RIGHT_SHIFT;
-  case XK_Control_L:      return KB_KEY_LEFT_CONTROL;
-  case XK_Control_R:      return KB_KEY_RIGHT_CONTROL;
-  case XK_Meta_L:
-  case XK_Alt_L:          return KB_KEY_LEFT_ALT;
-  case XK_Mode_switch: // Mapped to Alt_R on many keyboards
-  case XK_ISO_Level3_Shift: // AltGr on at least some machines
-  case XK_Meta_R:
-  case XK_Alt_R:          return KB_KEY_RIGHT_ALT;
-  case XK_Super_L:        return KB_KEY_LEFT_SUPER;
-  case XK_Super_R:        return KB_KEY_RIGHT_SUPER;
-  case XK_Menu:           return KB_KEY_MENU;
-  case XK_Num_Lock:       return KB_KEY_NUM_LOCK;
-  case XK_Caps_Lock:      return KB_KEY_CAPS_LOCK;
-  case XK_Print:          return KB_KEY_PRINT_SCREEN;
-  case XK_Scroll_Lock:    return KB_KEY_SCROLL_LOCK;
-  case XK_Pause:          return KB_KEY_PAUSE;
-  case XK_Delete:         return KB_KEY_DELETE;
-  case XK_BackSpace:      return KB_KEY_BACKSPACE;
-  case XK_Return:         return KB_KEY_ENTER;
-  case XK_Home:           return KB_KEY_HOME;
-  case XK_End:            return KB_KEY_END;
-  case XK_Page_Up:        return KB_KEY_PAGE_UP;
-  case XK_Page_Down:      return KB_KEY_PAGE_DOWN;
-  case XK_Insert:         return KB_KEY_INSERT;
-  case XK_Left:           return KB_KEY_LEFT;
-  case XK_Right:          return KB_KEY_RIGHT;
-  case XK_Down:           return KB_KEY_DOWN;
-  case XK_Up:             return KB_KEY_UP;
-  case XK_F1:             return KB_KEY_F1;
-  case XK_F2:             return KB_KEY_F2;
-  case XK_F3:             return KB_KEY_F3;
-  case XK_F4:             return KB_KEY_F4;
-  case XK_F5:             return KB_KEY_F5;
-  case XK_F6:             return KB_KEY_F6;
-  case XK_F7:             return KB_KEY_F7;
-  case XK_F8:             return KB_KEY_F8;
-  case XK_F9:             return KB_KEY_F9;
-  case XK_F10:            return KB_KEY_F10;
-  case XK_F11:            return KB_KEY_F11;
-  case XK_F12:            return KB_KEY_F12;
-  case XK_F13:            return KB_KEY_F13;
-  case XK_F14:            return KB_KEY_F14;
-  case XK_F15:            return KB_KEY_F15;
-  case XK_F16:            return KB_KEY_F16;
-  case XK_F17:            return KB_KEY_F17;
-  case XK_F18:            return KB_KEY_F18;
-  case XK_F19:            return KB_KEY_F19;
-  case XK_F20:            return KB_KEY_F20;
-  case XK_F21:            return KB_KEY_F21;
-  case XK_F22:            return KB_KEY_F22;
-  case XK_F23:            return KB_KEY_F23;
-  case XK_F24:            return KB_KEY_F24;
-  case XK_F25:            return KB_KEY_F25;
-
-  // Numeric keypad
-  case XK_KP_Divide:      return KB_KEY_KP_DIVIDE;
-  case XK_KP_Multiply:    return KB_KEY_KP_MULTIPLY;
-  case XK_KP_Subtract:    return KB_KEY_KP_SUBTRACT;
-  case XK_KP_Add:         return KB_KEY_KP_ADD;
-
-  // These should have been detected in secondary keysym test above!
-  case XK_KP_Insert:      return KB_KEY_KP_0;
-  case XK_KP_End:         return KB_KEY_KP_1;
-  case XK_KP_Down:        return KB_KEY_KP_2;
-  case XK_KP_Page_Down:   return KB_KEY_KP_3;
-  case XK_KP_Left:        return KB_KEY_KP_4;
-  case XK_KP_Right:       return KB_KEY_KP_6;
-  case XK_KP_Home:        return KB_KEY_KP_7;
-  case XK_KP_Up:          return KB_KEY_KP_8;
-  case XK_KP_Page_Up:     return KB_KEY_KP_9;
-  case XK_KP_Delete:      return KB_KEY_KP_DECIMAL;
-  case XK_KP_Equal:       return KB_KEY_KP_EQUAL;
-  case XK_KP_Enter:       return KB_KEY_KP_ENTER;
-
-  // Last resort: Check for printable keys (should not happen if the XKB
-  // extension is available). This will give a layout dependent mapping
-  // (which is wrong, and we may miss some keys, especially on non-US
-  // keyboards), but it's better than nothing...
-  case XK_a:              return KB_KEY_A;
-  case XK_b:              return KB_KEY_B;
-  case XK_c:              return KB_KEY_C;
-  case XK_d:              return KB_KEY_D;
-  case XK_e:              return KB_KEY_E;
-  case XK_f:              return KB_KEY_F;
-  case XK_g:              return KB_KEY_G;
-  case XK_h:              return KB_KEY_H;
-  case XK_i:              return KB_KEY_I;
-  case XK_j:              return KB_KEY_J;
-  case XK_k:              return KB_KEY_K;
-  case XK_l:              return KB_KEY_L;
-  case XK_m:              return KB_KEY_M;
-  case XK_n:              return KB_KEY_N;
-  case XK_o:              return KB_KEY_O;
-  case XK_p:              return KB_KEY_P;
-  case XK_q:              return KB_KEY_Q;
-  case XK_r:              return KB_KEY_R;
-  case XK_s:              return KB_KEY_S;
-  case XK_t:              return KB_KEY_T;
-  case XK_u:              return KB_KEY_U;
-  case XK_v:              return KB_KEY_V;
-  case XK_w:              return KB_KEY_W;
-  case XK_x:              return KB_KEY_X;
-  case XK_y:              return KB_KEY_Y;
-  case XK_z:              return KB_KEY_Z;
-  case XK_1:              return KB_KEY_1;
-  case XK_2:              return KB_KEY_2;
-  case XK_3:              return KB_KEY_3;
-  case XK_4:              return KB_KEY_4;
-  case XK_5:              return KB_KEY_5;
-  case XK_6:              return KB_KEY_6;
-  case XK_7:              return KB_KEY_7;
-  case XK_8:              return KB_KEY_8;
-  case XK_9:              return KB_KEY_9;
-  case XK_0:              return KB_KEY_0;
-  case XK_space:          return KB_KEY_SPACE;
-  case XK_minus:          return KB_KEY_MINUS;
-  case XK_equal:          return KB_KEY_EQUAL;
-  case XK_bracketleft:    return KB_KEY_LEFT_BRACKET;
-  case XK_bracketright:   return KB_KEY_RIGHT_BRACKET;
-  case XK_backslash:      return KB_KEY_BACKSLASH;
-  case XK_semicolon:      return KB_KEY_SEMICOLON;
-  case XK_apostrophe:     return KB_KEY_APOSTROPHE;
-  case XK_grave:          return KB_KEY_GRAVE_ACCENT;
-  case XK_comma:          return KB_KEY_COMMA;
-  case XK_period:         return KB_KEY_PERIOD;
-  case XK_slash:          return KB_KEY_SLASH;
-  case XK_less:           return KB_KEY_WORLD_1; // At least in some layouts...
-  default:
-    break;
-  }
-
-  return KB_KEY_UNKNOWN;
-}
-
-static int translate_key(int scancode) {
-  if (scancode < 0 || scancode > 255)
-    return KB_KEY_UNKNOWN;
-  return keycodes[scancode];
-}
-
-static int translate_mod(int state) {
-  int mods = 0;
-
-  if (state & ShiftMask)
-    mods |= KB_MOD_SHIFT;
-  if (state & ControlMask)
-    mods |= KB_MOD_CONTROL;
-  if (state & Mod1Mask)
-    mods |= KB_MOD_ALT;
-  if (state & Mod4Mask)
-    mods |= KB_MOD_SUPER;
-  if (state & LockMask)
-    mods |= KB_MOD_CAPS_LOCK;
-  if (state & Mod2Mask)
-    mods |= KB_MOD_NUM_LOCK;
-
-  return mods;
-}
-
-static Cursor x11_empty_cursor = None;
-static Cursor get_x11_empty_cursor() {
-  if (x11_empty_cursor == None) {
-    char data[1];
-    memset(data, 0, sizeof(data));
-    XColor color;
-    color.red = color.green = color.blue = 0;
-    Pixmap pixmap = XCreateBitmapFromData(display, DefaultRootWindow(display), data, 1, 1);
-    if (pixmap) {
-      x11_empty_cursor = XCreatePixmapCursor(display, pixmap, pixmap, &color, &color, 0, 0);
-      XFreePixmap(display, pixmap);
-    } else
-      error_handle(PRIO_LOW, NIX_CURSOR_PIXMAP_ERROR, "get_x11_empty_cursor() failed: Couldn't create X11 Pixmap");
-  }
-  return x11_empty_cursor;
-}
-
-static void x11_set_cursor(Cursor c) {
-  if (!c)
-    c = get_x11_empty_cursor();
-
-  XDefineCursor(display, win, c);
-  XFlush(display);
-}
-
-void sgl_cursor(bool shown, bool locked, CURSORTYPE type) {
-  x11_set_cursor(shown ? __cursor : 0);
-
-  unsigned int shape = -1;
-  switch (type) {
-    default:
-    case CURSOR_NO_CHANGE:
-      return;
-    case CURSOR_ARROW:
-      shape = XC_left_ptr;
-      break;
-    case CURSOR_IBEAM:
-      shape = XC_xterm;
-      break;
-    case CURSOR_WAIT:
-    case CURSOR_WAITARROW:
-      shape = XC_watch;
-      break;
-    case CURSOR_CROSSHAIR:
-      shape = XC_tcross;
-      break;
-    case CURSOR_SIZENWSE:
-    case CURSOR_SIZENESW:
-    case CURSOR_SIZEALL:
-      shape = XC_fleur;
-      break;
-    case CURSOR_SIZEWE:
-      shape = XC_sb_h_double_arrow;
-      break;
-    case CURSOR_SIZENS:
-      shape = XC_sb_v_double_arrow;
-      break;
-    case CURSOR_NO:
-      shape = XC_pirate;
-      break;
-    case CURSOR_HAND:
-      shape = XC_hand2;
-      break;
-    case CURSOR_CUSTOM:
-      if (!____custom_cursor) {
-        error_handle(PRIO_LOW, CUSTOM_CURSOR_NOT_CREATED, "cursor() failed: No custom cursor loaded");
-        return;
-      }
-  }
-
-  if (__cursor && __cursor != ____custom_cursor)
-    XFreeCursor(display, __cursor);
-  __cursor = (shape == -1 ? ____custom_cursor : XCreateFontCursor(display, shape));
-  if (shown)
-    x11_set_cursor(__cursor);
-}
-
-void sgl_custom_cursor(surface_t* s) {
-#pragma TODO(Add custom cursors for X11)
-}
-
-bool sgl_screen(const char* title, surface_t* s, int w, int h, short flags) {
-  display = XOpenDisplay(0);
-  if (!display) {
-    sgl_release();
-    error_handle(PRIO_HIGH, NIX_OPEN_DISPLAY_FAILED, "XOpenDisplay(0) failed!");
-    return false;
-  }
-
-  memset(keycodes, -1, sizeof(keycodes));
-  int scancode, key;
-  char name[XkbKeyNameLength + 1];
-  XkbDescPtr desc = XkbGetMap(display, 0, XkbUseCoreKbd);
-  XkbGetNames(display, XkbKeyNamesMask, desc);
-
-  for (scancode = desc->min_key_code;  scancode <= desc->max_key_code;  scancode++) {
-    memcpy(name, desc->names->keys[scancode].name, XkbKeyNameLength);
-    name[XkbKeyNameLength] = '\0';
-
-    if      (strcmp(name, "TLDE") == 0) key = KB_KEY_GRAVE_ACCENT;
-    else if (strcmp(name, "AE01") == 0) key = KB_KEY_1;
-    else if (strcmp(name, "AE02") == 0) key = KB_KEY_2;
-    else if (strcmp(name, "AE03") == 0) key = KB_KEY_3;
-    else if (strcmp(name, "AE04") == 0) key = KB_KEY_4;
-    else if (strcmp(name, "AE05") == 0) key = KB_KEY_5;
-    else if (strcmp(name, "AE06") == 0) key = KB_KEY_6;
-    else if (strcmp(name, "AE07") == 0) key = KB_KEY_7;
-    else if (strcmp(name, "AE08") == 0) key = KB_KEY_8;
-    else if (strcmp(name, "AE09") == 0) key = KB_KEY_9;
-    else if (strcmp(name, "AE10") == 0) key = KB_KEY_0;
-    else if (strcmp(name, "AE11") == 0) key = KB_KEY_MINUS;
-    else if (strcmp(name, "AE12") == 0) key = KB_KEY_EQUAL;
-    else if (strcmp(name, "AD01") == 0) key = KB_KEY_Q;
-    else if (strcmp(name, "AD02") == 0) key = KB_KEY_W;
-    else if (strcmp(name, "AD03") == 0) key = KB_KEY_E;
-    else if (strcmp(name, "AD04") == 0) key = KB_KEY_R;
-    else if (strcmp(name, "AD05") == 0) key = KB_KEY_T;
-    else if (strcmp(name, "AD06") == 0) key = KB_KEY_Y;
-    else if (strcmp(name, "AD07") == 0) key = KB_KEY_U;
-    else if (strcmp(name, "AD08") == 0) key = KB_KEY_I;
-    else if (strcmp(name, "AD09") == 0) key = KB_KEY_O;
-    else if (strcmp(name, "AD10") == 0) key = KB_KEY_P;
-    else if (strcmp(name, "AD11") == 0) key = KB_KEY_LEFT_BRACKET;
-    else if (strcmp(name, "AD12") == 0) key = KB_KEY_RIGHT_BRACKET;
-    else if (strcmp(name, "AC01") == 0) key = KB_KEY_A;
-    else if (strcmp(name, "AC02") == 0) key = KB_KEY_S;
-    else if (strcmp(name, "AC03") == 0) key = KB_KEY_D;
-    else if (strcmp(name, "AC04") == 0) key = KB_KEY_F;
-    else if (strcmp(name, "AC05") == 0) key = KB_KEY_G;
-    else if (strcmp(name, "AC06") == 0) key = KB_KEY_H;
-    else if (strcmp(name, "AC07") == 0) key = KB_KEY_J;
-    else if (strcmp(name, "AC08") == 0) key = KB_KEY_K;
-    else if (strcmp(name, "AC09") == 0) key = KB_KEY_L;
-    else if (strcmp(name, "AC10") == 0) key = KB_KEY_SEMICOLON;
-    else if (strcmp(name, "AC11") == 0) key = KB_KEY_APOSTROPHE;
-    else if (strcmp(name, "AB01") == 0) key = KB_KEY_Z;
-    else if (strcmp(name, "AB02") == 0) key = KB_KEY_X;
-    else if (strcmp(name, "AB03") == 0) key = KB_KEY_C;
-    else if (strcmp(name, "AB04") == 0) key = KB_KEY_V;
-    else if (strcmp(name, "AB05") == 0) key = KB_KEY_B;
-    else if (strcmp(name, "AB06") == 0) key = KB_KEY_N;
-    else if (strcmp(name, "AB07") == 0) key = KB_KEY_M;
-    else if (strcmp(name, "AB08") == 0) key = KB_KEY_COMMA;
-    else if (strcmp(name, "AB09") == 0) key = KB_KEY_PERIOD;
-    else if (strcmp(name, "AB10") == 0) key = KB_KEY_SLASH;
-    else if (strcmp(name, "BKSL") == 0) key = KB_KEY_BACKSLASH;
-    else if (strcmp(name, "LSGT") == 0) key = KB_KEY_WORLD_1;
-    else                                key = KB_KEY_UNKNOWN;
-    if ((scancode >= 0) && (scancode < 256))
-      keycodes[scancode] = key;
-  }
-
-  XkbFreeNames(desc, XkbKeyNamesMask, True);
-  XkbFreeKeyboard(desc, 0, True);
-
-  int __screen = DefaultScreen(display);
-  int s_width = DisplayWidth(display, __screen);
-  int s_height = DisplayHeight(display, __screen);
-
-  if (flags & FULLSCREEN)
-    flags |= (FULLSCREEN_DESKTOP | BORDERLESS | ~RESIZABLE);
-
-  if (flags & FULLSCREEN_DESKTOP) {
-    w = s_width;
-    h = s_height;
-  }
-
-  int px = s_width / 2 - w / 2;
-  int py = s_height / 2 - h / 2;
-
-#if defined(SGL_ENABLE_OPENGL)
-  static int visual_attribs[] = {
-    GLX_X_RENDERABLE, True,
-    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
-    GLX_RENDER_TYPE, GLX_RGBA_BIT,
-    GLX_RED_SIZE, 8,
-    GLX_GREEN_SIZE, 8,
-    GLX_BLUE_SIZE, 8,
-    GLX_ALPHA_SIZE, 8,
-    GLX_DEPTH_SIZE, 24,
-    GLX_STENCIL_SIZE, 8,
-    GLX_DOUBLEBUFFER, False,
-    None
-  };
-
-  int fb_count;
-  GLXFBConfig* fbc = glXChooseFBConfig(display, DefaultScreen(display), visual_attribs, &fb_count);
-  if (!fbc) {
-    sgl_release();
-    error_handle(PRIO_HIGH, NIX_GL_FB_ERROR, "glXChooseFBConfig() failed: Failed to retreive framebuffer config");
-    return false;
-  }
-
-  int best_fbc = -1, worst_fbc = -1, best_num_samp = -1, worst_num_samp = 999;
-  for (int i = 0; i < fb_count; ++i) {
-    XVisualInfo* vi = glXGetVisualFromFBConfig(display, fbc[i]);
-    if (vi != 0) {
-      int samp_buf, samples;
-      glXGetFBConfigAttrib(display, fbc[i], GLX_SAMPLE_BUFFERS, &samp_buf);
-      glXGetFBConfigAttrib(display, fbc[i], GLX_SAMPLE_BUFFERS, &samples);
-
-      if (best_fbc < 0 || (samp_buf && samples > best_num_samp)) {
-        best_fbc = i;
-        best_num_samp = samples;
-      }
-
-      if (worst_fbc < 0 || !samp_buf || samples < worst_num_samp) {
-        worst_fbc = i;
-        worst_num_samp = samples;
-      }
-    }
-    XFree(vi);
-  }
-  GLXFBConfig fbc_best = fbc[best_fbc];
-  XFree(fbc);
-
-  XVisualInfo* vi = glXGetVisualFromFBConfig(display, fbc_best);
-  if (!vi) {
-    sgl_release();
-    error_handle(PRIO_HIGH, NIX_GL_FB_ERROR, "glXGetVisualFromFBConfig() failed: Could not create correct visual window");
-    return false;
-  }
-
-  XSetWindowAttributes swa;
-  swa.override_redirect = True;
-  swa.colormap = cmap = XCreateColormap(display, RootWindow(display, vi->screen), vi->visual, AllocNone);
-  swa.background_pixmap = None;
-  swa.border_pixel = 0;
-  swa.event_mask = StructureNotifyMask;
-
-  win = XCreateWindow(display, RootWindow(display, vi->screen),
-                      px, py, w, h, 0, vi->depth,
-                      InputOutput, vi->visual,
-                      CWBorderPixel | CWColormap | CWEventMask, &swa);
-#else
-  Visual* visual = DefaultVisual(display, __screen);
-  int format_c;
-  XPixmapFormatValues* formats = XListPixmapFormats(display, &format_c);
-  int depth = DefaultDepth(display, __screen);
-  Window default_root_win = DefaultRootWindow(display);
-
-  int c_depth;
-  for (int i = 0; i < format_c; ++i) {
-    if (depth == formats[i].depth) {
-      c_depth = formats[i].bits_per_pixel;
-      break;
-    }
-  }
-  XFree(formats);
-
-  if (c_depth != 32) {
-    sgl_release();
-    error_handle(PRIO_HIGH, NIX_WINDOW_CREATION_FAILED, "Invalid display depth: %d", c_depth);
-    return false;
-  }
-
-  XSetWindowAttributes swa;
-  swa.override_redirect = True;
-  swa.border_pixel = BlackPixel(display, __screen);
-  swa.background_pixel = BlackPixel(display, __screen);
-  swa.backing_store = NotUseful;
-
-  win = XCreateWindow(display, default_root_win,
-                      px, py, w, h, 0, depth,
-                      InputOutput, visual,
-                      CWBackPixel | CWBorderPixel | CWBackingStore,
-                      &swa);
-#endif
-
-  if (!win) {
-    sgl_release();
-    error_handle(PRIO_HIGH, NIX_WINDOW_CREATION_FAILED, "XCreateWindow() failed!");
-    return false;
-  }
-
-  if (s)
-    if (!sgl_surface(s, w, h))
-      return false;
-
-  XSelectInput(display, win, StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask);
-  XStoreName(display, win, title);
-
-  if (flags & BORDERLESS) {
-    struct StyleHints {
-      unsigned long   flags;
-      unsigned long   functions;
-      unsigned long   decorations;
-      long            inputMode;
-      unsigned long   status;
-    } sh = {
-      .flags = 2,
-      .decorations = 0
-    };
-    Atom sh_p = XInternAtom(display, "_MOTIF_WM_HINTS", True);
-    XChangeProperty(display, win, sh_p, sh_p, 32, PropModeReplace, (unsigned char*)&sh, 5);
-  }
-
-  if (flags & ALWAYS_ON_TOP) {
-    Atom sa_p = XInternAtom(display, "_NET_WM_STATE_ABOVE", False);
-    XChangeProperty(display, win, XInternAtom(display, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *)&sa_p, 1);
-  }
-
-  if (flags & FULLSCREEN) {
-    Atom sf_p = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", True);
-    XChangeProperty(display, win, XInternAtom(display, "_NET_WM_STATE", True), XA_ATOM, 32, PropModeReplace, (unsigned char*)&sf_p, 1);
-  }
-
-  XSizeHints hints;
-  hints.flags = PPosition;
-  hints.x = 0;
-  hints.y = 0;
-#if !defined(SGL_ENABLE_OPENGL)
-  hints.flags |= PMinSize | PMaxSize;
-  hints.min_width = w;
-  hints.max_width = w;
-  hints.min_height = h;
-  hints.max_height = h;
-#endif
-
-  XSetWMNormalHints(display, win, &hints);
-  XClearWindow(display, win);
-  XMapRaised(display, win);
-  XFlush(display);
-
-  gc = DefaultGC(display, __screen);
-
-#if defined(SGL_ENABLE_OPENGL)
-  XFree(vi);
-
-  glXCreateContextAttribsARBProc glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc)glXGetProcAddressARB((const GLubyte*)"glXCreateContextAttribsARB");
-  const char* glx_exts = glXQueryExtensionsString(display, DefaultScreen(display));
-  if (!check_ext(glx_exts, "GLX_ARB_create_context") || !glXCreateContextAttribsARB)
-    ctx = glXCreateNewContext(display, fbc_best, GLX_RGBA_TYPE, 0, True);
-  else {
-    int context_attribs[] = {
-      GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
-      GLX_CONTEXT_MINOR_VERSION_ARB, 2,
-      None
-    };
-    ctx = glXCreateContextAttribsARB(display, fbc_best, 0, True, context_attribs);
-  }
-  XSync(display, False);
-
-  if (!ctx) {
-    sgl_release();
-    error_handle(PRIO_HIGH, NIX_GL_CONTEXT_ERROR, "glXCreateContextAttribsARB() failed: Couldn't create OpenGL context");
-    return false;
-  }
-
-  glXMakeCurrent(display, win, ctx);
-  init_gl(w, h);
-#else
-  img = XCreateImage(display, CopyFromParent, depth, ZPixmap, 0, NULL, w, h, 32, w * 4);
-#endif
-
-  __cursor = XCreateFontCursor(display, XC_left_ptr);
-
-  return true;
-}
-
-bool sgl_closed() {
-  return __closed;
-}
-
-void poll() {
-  while (XPending(display)) {
-    XNextEvent(display, &event);
-    switch (event.type) {
-      case KeyPress:
-        CALL(__kb_callback, translate_key(event.xkey.keycode), translate_mod(event.xkey.state), true);
-        break;
-      case KeyRelease:
-        CALL(__kb_callback, translate_key(event.xkey.keycode), translate_mod(event.xkey.state), false);
-        break;
-      case ButtonPress: {
-        int btn_mod = translate_mod(event.xkey.state);
-        switch (event.xbutton.button) {
-        case Button1:
-          CALL(__mouse_btn_callback, MOUSE_BTN_1, btn_mod, true);
-          break;
-        case Button2:
-          CALL(__mouse_btn_callback, MOUSE_BTN_2, btn_mod, true);
-          break;
-        case Button3:
-          CALL(__mouse_btn_callback, MOUSE_BTN_3, btn_mod, true);
-          break;
-        case Button4:
-          CALL(__scroll_callback, btn_mod, 0.f, 1.f);
-          break;
-        case Button5:
-          CALL(__scroll_callback, btn_mod, 0.f, -1.f);
-          break;
-        case Button6:
-          CALL(__scroll_callback, btn_mod, 1.f, 0.f);
-          break;
-        case Button7:
-          CALL(__scroll_callback, btn_mod, -1.f, 0.f);
-          break;
-        default:
-          CALL(__mouse_btn_callback, (MOUSEBTN)(event.xbutton.button - 4), btn_mod, true);
-        }
-        break;
-      }
-      case ButtonRelease: {
-        int btn_mod = translate_mod(event.xkey.state);
-        switch (event.xbutton.button) {
-          case Button1:
-            CALL(__mouse_btn_callback, MOUSE_BTN_1, btn_mod, false);
-            break;
-          case Button2:
-            CALL(__mouse_btn_callback, MOUSE_BTN_2, btn_mod, false);
-            break;
-          case Button3:
-            CALL(__mouse_btn_callback, MOUSE_BTN_3, btn_mod, false);
-            break;
-          default:
-            CALL(__mouse_btn_callback, (MOUSEBTN)(event.xbutton.button - 4), btn_mod, false);
-        }
-        break;
-      }
-    #if defined(SGL_ENABLE_OPENGL)
-      case ConfigureNotify:
-        win_w = event.xconfigure.width;
-        win_h = event.xconfigure.height;
-        glViewport(0, 0, win_w, win_h);
-        break;
-    #endif
-      case MotionNotify:
-        CALL(__mouse_move_callback, event.xmotion.x, event.xmotion.y, 0, 0);
-        break;
-      case DestroyNotify:
-        __closed = true;
-      default:
-        break;
-    }
-  }
-}
-
-void sgl_flush(surface_t* s) {
-  if (s && s->buf)
-    buffer = s;
-#if defined(SGL_ENABLE_OPENGL)
-  draw_gl();
-  glXSwapBuffers(display, win);
-#else
-  img->data = (char*)buffer->buf;
-  XPutImage(display, win, gc, img, 0, 0, 0, 0, buffer->w, buffer->h);
-  XFlush(display);
-#endif
-}
-
-void sgl_release() {
-#if defined(SGL_ENABLE_OPENGL)
-  glXMakeCurrent(display, 0, 0);
-  glXDestroyContext(display, ctx);
-  XFreeColormap(display, cmap);
-#else
-  img->data = NULL;
-  XDestroyImage(img);
-#endif
-  if (__cursor)
-    XFreeCursor(display, __cursor);
-  if (____custom_cursor)
-    XFreeCursor(display, ____custom_cursor);
-  if (x11_empty_cursor)
-    XFreeCursor(display, x11_empty_cursor);
-  XDestroyWindow(display, win);
-  XCloseDisplay(display);
-}
+#error Unsupported operating system
 #endif
 #endif

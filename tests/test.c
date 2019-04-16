@@ -23,21 +23,21 @@ static bool grey = false;
 
 #define SKIP_RESIZE 1
 #define SKIP_PRINTF 0
-#define SKIP_RENDING 1
+#define SKIP_RENDING 0
 
 #if SKIP_PRINTF
 #define printf(fmt, ...) (0)
 #endif
 
-void on_keyboard(void* data, screen_t* s, KEYSYM sym, KEYMOD mod, bool down) {
+void on_keyboard(void* data, KEYSYM sym, KEYMOD mod, bool down) {
   if (down) {
-    printf("window (%d):kb: key %d is down\n", s->id, sym);
+    printf("kb: key %d is down\n", sym);
     switch (sym) {
-#if defined(__APPLE__)
+#if defined(SGL_OSX)
       case KB_KEY_Q:
       case KB_KEY_W:
         if (mod & KB_MOD_SUPER)
-          if (sgl_dialog(DIALOG_INFO, DIALOG_YES_NO, "Do you want to quit?"))
+          if (sgl_alert(ALERT_INFO, ALERT_YES_NO, "Do you want to quit?"))
             running = 0;
         break;
   #else
@@ -51,40 +51,26 @@ void on_keyboard(void* data, screen_t* s, KEYSYM sym, KEYMOD mod, bool down) {
         break;
     }
   } else {
-    printf("window (%d):kb: key %d is up\n", s->id, sym);
+    printf("kb: key %d is up\n", sym);
     switch (sym) {
       case KB_KEY_SPACE:
         grey = false;
         break;
       case KB_KEY_F1: {
-        dialog_filters* filters = sgl_parse_dialog_filters("BMP:bmp");
-        char* path = sgl_dialog_file(DIALOG_SAVE, ".", "test", filters);
+        char* path = sgl_dialog(DIALOG_SAVE, ".", "test", false, 1, "bmp");
         if (path) {
           sgl_save_bmp(&buf, path);
           free(path);
         }
-        sgl_dialog_filters_destroy(filters);
         break;
       }
 #if defined(SGL_ENABLE_STB_IMAGE)
       case KB_KEY_F2: {
-        dialog_filters* filters = sgl_parse_dialog_filters("PNG:png;TGA:tga;BMP:bmp;JPEG:jpg");
-        char* path = sgl_dialog_file(DIALOG_SAVE, ".", "test", filters);
+        char* path = sgl_dialog(DIALOG_SAVE, ".", "test", false, 1, "png");
         if (path) {
-          SAVEFORMAT fmt = PNG;
-          const char* dot = strrchr(path, '.');
-          if (dot)
-            dot += 1;
-          if (!strcmp("tga", dot))
-            fmt = TGA;
-          else if (!strcmp("tga", dot))
-            fmt = BMP;
-          else if (!strcmp("tga", dot))
-            fmt = JPG;
-          sgl_save_image(&buf, path, fmt);
+          sgl_save_bmp(&buf, path);
           free(path);
         }
-        sgl_dialog_filters_destroy(filters);
         break;
       }
 #endif
@@ -92,32 +78,33 @@ void on_keyboard(void* data, screen_t* s, KEYSYM sym, KEYMOD mod, bool down) {
   }
 }
 
-void on_mouse_btn(void* data, screen_t* s, MOUSEBTN btn, KEYMOD mod, bool down) {
-  printf("window (%d):mouse btn: %d is %s\n", s->id, (int)btn, (down ? "down" : "up"));
+void on_mouse_btn(void* data, MOUSEBTN btn, KEYMOD mod, bool down) {
+  printf("mouse btn: %d is %s\n", (int)btn, (down ? "down" : "up"));
 }
 
-void on_mouse_move(void* data, screen_t* s, int x, int y, int dx, int dy) {
+void on_mouse_move(void* data, int x, int y, int dx, int dy) {
 #if !SKIP_RESIZE
   mx = x;
   my = y;
 #else
-  mx = (int)(((float)x / (float)win.w) * buf.w);
-  my = (int)(((float)y / (float)win.h) * buf.h);
+  static point_t win_sz;
+  sgl_screen_size(win, &win_sz.x, &win_sz.y);
+  mx = (int)(((float)x / (float)win_sz.x) * buf.w);
+  my = (int)(((float)y / (float)win_sz.y) * buf.h);
 #endif
 }
 
-void on_scroll(void* data, screen_t* s, KEYMOD mod, float dx, float dy) {
-  printf("window (%d):scroll: %f %f\n", s->id, dx, dy);
+void on_scroll(void* data, KEYMOD mod, float dx, float dy) {
+  printf("scroll: %f %f\n", dx, dy);
 }
 
-void on_focus(void* data, screen_t* s, bool focused) {
-  printf("window (%d):%s\n", s->id, (focused ? "FOCUSED" : "UNFOCUSED"));
+void on_focus(void* data, bool focused) {
+  printf("%s\n", (focused ? "FOCUSED" : "UNFOCUSED"));
 }
 
-void on_resize(void* data, screen_t* s, int w, int h) {
+void on_resize(void* data, int w, int h) {
 #if !SKIP_RESIZE
   sgl_reset(&buf, w, h);
-  printf("window (%d):%d %d\n", s->id, buf.w, buf.h);
 #else
   sgl_cls(&buf);
 #endif
@@ -141,14 +128,14 @@ void on_error(void* data, ERRORLVL lvl, ERRORTYPE type, const char* msg, const c
   fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
   switch (lvl) {
     case LOW_PRIORITY:
-      sgl_dialog(DIALOG_INFO, DIALOG_OK, "MINOR ERROR: See logs for info");
+      sgl_alert(ALERT_INFO, ALERT_OK, "MINOR ERROR: See logs for info");
       break;
     case NORMAL_PRIORITY:
-      if (sgl_dialog(DIALOG_WARNING, DIALOG_YES_NO, "ERROR! Do you want to continue? See logs for info"))
+      if (!sgl_alert(ALERT_WARNING, ALERT_YES_NO, "ERROR! Do you want to continue? See logs for info"))
         abort();
       break;
     case HIGH_PRIORITY:
-      sgl_dialog(DIALOG_ERROR, DIALOG_OK, "SERIOUS ERROR! See logs for info");
+      sgl_alert(ALERT_ERROR, ALERT_OK, "SERIOUS ERROR! See logs for info");
       abort();
       break;
   }
@@ -175,12 +162,33 @@ void on_joystick_axis(void* data, joystick_t* d, int axis, float v, float lv, lo
 #define WIN_W 575
 #define WIN_H 500
 
+struct test_t {
+  int i;
+};
+
+typedef struct test_t* test_t;
+
+void init_test(test_t* a) {
+  if (!*a)
+    *a = malloc(sizeof(struct test_t));
+  struct test_t* b = *a;
+  b->i = 10;
+}
+
+void test_test(test_t a) {
+  init_test(&a);
+  a->i = 20;
+}
 
 int main(int argc, const char* argv[]) {
   sgl_error_callback(on_error);
 
   sgl_screen(&win, "test",  WIN_W, WIN_H, RESIZABLE);
-  sgl_screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize);
+  sgl_screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, win);
+  
+  screen_t win2;
+  sgl_screen(&win2, "test2", WIN_W - 100, WIN_H - 100, RESIZABLE | BORDERLESS);
+  sgl_screen_callbacks(NULL, NULL, NULL, NULL, NULL, NULL, win2);
   
   surface_t test_icon;
 #define TEST_ICON_SIZE 32
@@ -190,14 +198,13 @@ int main(int argc, const char* argv[]) {
   sgl_rect(&test_icon, 0, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, BLUE, true);
   sgl_rect(&test_icon, TEST_ICON_SIZE_4, 0, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, YELLOW, true);
   sgl_rect(&test_icon, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, TEST_ICON_SIZE_4, RGBA(0, 255, 1, 255), true);
-  sgl_screen_icon(NULL, &test_icon);
-  sgl_cursor_load_custom(&test_icon);
-  sgl_cursor(&win, SHOWN, LOCKED, CURSOR_CUSTOM);
+  sgl_screen_icon_buf(NULL, &test_icon);
+  sgl_cursor_icon_custom_buf(win, &test_icon);
   
   sgl_surface(&buf, WIN_W, WIN_H);
 
 #if defined(SGL_ENABLE_JOYSTICKS)
-  sgl_joystick_callbacks(on_joystick_connect, on_joystick_disconnect, on_joystick_btn, on_joystick_axis);
+  sgl_joystick_callbacks(on_joystick_connect, on_joystick_disconnect, on_joystick_btn, on_joystick_axis, 0);
   sgl_joystick_init(true);
 #endif
   
@@ -278,7 +285,7 @@ int main(int argc, const char* argv[]) {
   long prev_frame_tick;
   long curr_frame_tick = sgl_ticks();
   int test_alpha = 255;
-  while (!sgl_closed(&win) && running) {
+  while (!sgl_closed(win) && running) {
     prev_frame_tick = curr_frame_tick;
     curr_frame_tick = sgl_ticks();
 #if defined(SGL_ENABLE_JOYSTICKS)
@@ -373,19 +380,20 @@ int main(int argc, const char* argv[]) {
     if (test_alpha <= 0)
       test_alpha = 255;
     
+    sgl_blit(&buf, &points[9], &s[10], NULL);
+    
     sgl_writelnf(&buf, 400, 88, BLACK, 0, "mouse pos: (%d, %d)\ntheta: %f", mx, my, theta);
     col = sgl_pget(&buf, mx, my);
     
     sgl_line(&buf, 0, 0, mx, my, col);
     sgl_circle(&buf, mx, my, 30, col, 0);
-    
-    sgl_blit(&buf, &points[9], &s[10], NULL);
 
     if (grey)
       sgl_filter(&buf, greyscale);
     
 FLUSH:
-    sgl_flush(&win, &buf);
+    sgl_flush(win, &buf);
+    sgl_flush(win2, &s[5]);
   }
 
 #if defined(SGL_ENABLE_JOYSTICKS)
@@ -405,6 +413,7 @@ FLUSH:
   for (int i = 0; i < (int)(sizeof(s) / sizeof(s[0])); ++i)
     sgl_destroy(&s[i]);
   sgl_screen_destroy(&win);
+  sgl_screen_destroy(&win2);
   sgl_release();
   return 0;
 }

@@ -62,21 +62,15 @@ Tested on:
 ### Important
 
 - Cursor clipping for Linux [and OS X](https://stackoverflow.com/a/40922095)
+- Make gif_t, joystick_t and surface_t private
 - Sort out joysticks
   - General clean up
   - Remove redundant stuff
-  - Make joystick_t a private struct in s ource
   - Fix crashes
   - Linux joysticks totally untested
-  - Move outside of os specific code blocks
-- Move dialog code outside of os specific code blocks
-- Message box support (~OS X~/Windows/Linux)
-- Multiple Windows (~OS X~/Windows/Linux)
-- Window icon support (~OS X~/Windows/Linux)
-- Cursor loading from surface (~OS X~/Windows/Linux)
-- Set cursor position function (~OS X~/Windows/Linux)
+- Reimplement Linux & Windows support
 - Make a CMake build file
-- Port new stuff to Windows & Linux
+- Remove any unnecessary non-standard library includes
 
 ### Less important
 
@@ -89,11 +83,11 @@ Tested on:
 ### At some point
 
 - ~Fix color pallete for GIF save~
-- Fix unicode FreeType hang
-- Fix SGL_DISABLE_RGBA
+- Fix unicode FreeType
+- Fix or delete SGL_DISABLE_RGBA
 - Keyboard scancodes
 - Make thread safe (surface locks)
-- Vulkan/DirectX/~~Metal~~ backends
+- Vulkan/DirectX/~~Metal~~/SIXEL backends
 - Wayland window code
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
@@ -106,9 +100,10 @@ Tested on:
 
 ### Investigate
 
-- Why CoreGraphics rendering is so slow
+- Why CoreGraphics rendering is so slow?
 - Resizing for X11
-- Getting CoreGraphcs working on OS X in 10.14 again
+- Get CoreGraphics working on OS X in 10.13+ again?
+- Why if one Metal window covers another everything lags (????)
 
 
 ## License
