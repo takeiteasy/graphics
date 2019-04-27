@@ -232,11 +232,7 @@ extern "C" {
 #if !defined(SGL_DISABLE_CHROMA_KEY) && !defined(BLIT_CHROMA_KEY)
 #define BLIT_CHROMA_KEY LIME
 #endif
-
-  typedef struct {
-    int *buf, w, h;
-  } surface_t;
-
+  
   typedef struct {
     int x, y, w, h;
   } rect_t;
@@ -323,45 +319,51 @@ extern "C" {
   void* sgl_get_userdata(void);
   void sgl_error_callback(void(*cb)(void*, ERRORLVL, ERRORTYPE, const char*, const char*, const char*, int));
 
+  typedef struct surface_t* surface_t;
+  
+  void sgl_surface_size(surface_t s, int* w, int* h);
+  int sgl_surface_width(surface_t s);
+  int sgl_surface_height(surface_t s);
+  int* sgl_surface_raw(surface_t s);
   bool sgl_surface(surface_t* s, unsigned int w, unsigned int h);
   void sgl_destroy(surface_t*);
-  void sgl_fill(surface_t* s, int col);
-  void sgl_flood(surface_t* s, int x, int y, int col);
-  void sgl_cls(surface_t* s);
-  void sgl_pset(surface_t* s, int x, int y, int col);
-  void sgl_psetb(surface_t* s, int x, int y, int col);
-  int sgl_pget(surface_t* s, int x, int y);
-  bool sgl_blit(surface_t* dst, point_t* p, surface_t* src, rect_t* rect);
-  bool sgl_reset(surface_t* s, int nw, int nh);
-  bool sgl_copy(surface_t* in, surface_t* out);
-  void sgl_filter(surface_t* s, int(*fn)(int x, int y, int col));
-  bool sgl_resize(surface_t* in, int nw, int nh, surface_t* out);
-  bool sgl_rotate(surface_t* in, float angle, surface_t* out);
-  void sgl_quantization(surface_t* in, int n_colors, surface_t* out);
+  void sgl_fill(surface_t s, int col);
+  void sgl_flood(surface_t s, int x, int y, int col);
+  void sgl_cls(surface_t s);
+  void sgl_pset(surface_t s, int x, int y, int col);
+  void sgl_psetb(surface_t s, int x, int y, int col);
+  int sgl_pget(surface_t s, int x, int y);
+  bool sgl_blit(surface_t dst, point_t* p, surface_t src, rect_t* rect);
+  bool sgl_reset(surface_t s, int nw, int nh);
+  bool sgl_copy(surface_t a, surface_t* b);
+  void sgl_filter(surface_t s, int(*fn)(int x, int y, int col));
+  bool sgl_resize(surface_t a, int nw, int nh, surface_t* b);
+  bool sgl_rotate(surface_t a, float angle, surface_t* b);
+  void sgl_quantization(surface_t a, int n_colors, surface_t* b);
 
-  void sgl_vline(surface_t* s, int x, int y0, int y1, int col);
-  void sgl_hline(surface_t* s, int y, int x0, int x1, int col);
-  void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col);
-  void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill);
-  void sgl_ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill);
-  void sgl_ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col);
-  void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill);
-  void sgl_ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col);
-  void sgl_bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col);
-  void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col);
-  void sgl_bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
-  void sgl_rect(surface_t* s, int x, int y, int w, int h, int col, int fill);
+  void sgl_vline(surface_t s, int x, int y0, int y1, int col);
+  void sgl_hline(surface_t s, int y, int x0, int x1, int col);
+  void sgl_line(surface_t s, int x0, int y0, int x1, int y1, int col);
+  void sgl_circle(surface_t s, int xc, int yc, int r, int col, int fill);
+  void sgl_ellipse(surface_t s, int xc, int yc, int rx, int ry, int col, int fill);
+  void sgl_ellipse_rotated(surface_t s, int x, int y, int a, int b, float angle, int col);
+  void sgl_ellipse_rect(surface_t s, int x0, int y0, int x1, int y1, int col, int fill);
+  void sgl_ellipse_rect_rotated(surface_t s, int x0, int y0, int x1, int y1, long zd, int col);
+  void sgl_bezier(surface_t s, int x0, int y0, int x1, int y1, int x2, int y2, int col);
+  void sgl_bezier_rational(surface_t s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col);
+  void sgl_bezier_cubic(surface_t s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
+  void sgl_rect(surface_t s, int x, int y, int w, int h, int col, int fill);
 
   bool sgl_bmp(surface_t* s, const char* path);
-  bool sgl_save_bmp(surface_t* s, const char* path);
+  bool sgl_save_bmp(surface_t s, const char* path);
 
 #if !defined(SGL_DISABLE_TEXT)
-  void sgl_ascii(surface_t* s, char ch, int x, int y, int fg, int bg);
-  int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg);
-  void sgl_writeln(surface_t* s, int x, int y, int fg, int bg, const char* str);
-  void sgl_writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...);
-  void sgl_string(surface_t* out, int fg, int bg, const char* str);
-  void sgl_stringf(surface_t* out, int fg, int bg, const char* fmt, ...);
+  void sgl_ascii(surface_t s, char ch, int x, int y, int fg, int bg);
+  int sgl_character(surface_t s, const char* ch, int x, int y, int fg, int bg);
+  void sgl_writeln(surface_t s, int x, int y, int fg, int bg, const char* str);
+  void sgl_writelnf(surface_t s, int x, int y, int fg, int bg, const char* fmt, ...);
+  void sgl_string(surface_t* s, int fg, int bg, const char* str);
+  void sgl_stringf(surface_t* s, int fg, int bg, const char* fmt, ...);
 #endif
 
   long sgl_ticks(void);
@@ -371,24 +373,25 @@ extern "C" {
   typedef struct bdf_t* bdf_t;
   void sgl_bdf_destroy(bdf_t* f);
   bool sgl_bdf(bdf_t* out, const char* path);
-  int sgl_bdf_character(surface_t* s, bdf_t f, const char* ch, int x, int y, int fg, int bg);
-  void sgl_bdf_writeln(surface_t* s, bdf_t f, int x, int y, int fg, int bg, const char* str);
-  void sgl_bdf_writelnf(surface_t* s, bdf_t f, int x, int y, int fg, int bg, const char* fmt, ...);
-  void sgl_bdf_string(surface_t* out, bdf_t f, int fg, int bg, const char* str);
-  void sgl_bdf_stringf(surface_t* out, bdf_t f, int fg, int bg, const char* fmt, ...);
+  int sgl_bdf_character(surface_t s, bdf_t f, const char* ch, int x, int y, int fg, int bg);
+  void sgl_bdf_writeln(surface_t s, bdf_t f, int x, int y, int fg, int bg, const char* str);
+  void sgl_bdf_writelnf(surface_t s, bdf_t f, int x, int y, int fg, int bg, const char* fmt, ...);
+  void sgl_bdf_string(surface_t* s, bdf_t f, int fg, int bg, const char* str);
+  void sgl_bdf_stringf(surface_t* s, bdf_t f, int fg, int bg, const char* fmt, ...);
 #endif
   
 #if defined(SGL_ENABLE_FREETYPE)
   typedef struct ftfont_t* ftfont_t;
+  
   void sgl_ft_init(void);
   void sgl_ft_release(void);
   void sgl_ftfont(ftfont_t* font, const char* path, unsigned int size);
   void sgl_ftfont_destroy(ftfont_t* font);
-  int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y, int fg, int bg, int* w, int* h);
-  void sgl_ftfont_writeln(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* str);
-  void sgl_ftfont_writelnf(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* fmt, ...);
-  void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* str);
-  void sgl_ftfont_stringf(surface_t* out, ftfont_t f, int fg, int bg, const char* fmt, ...);
+  int sgl_ftfont_character(surface_t s, ftfont_t f, const char* ch, int x, int y, int fg, int bg, int* w, int* h);
+  void sgl_ftfont_writeln(surface_t s, ftfont_t f, int x, int y, int fg, int bg, const char* str);
+  void sgl_ftfont_writelnf(surface_t s, ftfont_t f, int x, int y, int fg, int bg, const char* fmt, ...);
+  void sgl_ftfont_string(surface_t* s, ftfont_t f, int fg, int bg, const char* str);
+  void sgl_ftfont_stringf(surface_t* s, ftfont_t f, int fg, int bg, const char* fmt, ...);
 #endif
 
 #if defined(SGL_ENABLE_STB_IMAGE)
@@ -399,16 +402,21 @@ extern "C" {
     JPG
   } SAVEFORMAT;
   
-  bool sgl_image(surface_t* out, const char* path);
-  bool sgl_save_image(surface_t* in, const char* path, SAVEFORMAT type);
+  bool sgl_image(surface_t* s, const char* path);
+  bool sgl_save_image(surface_t a, const char* path, SAVEFORMAT type);
 #endif
   
 #if defined(SGL_ENABLE_GIF)
-  typedef struct {
-    int delay, frames, frame, w, h;
-    surface_t* surfaces;
-  } gif_t;
-
+  typedef struct gif_t* gif_t;
+  
+  int sgl_gif_delay(gif_t g);
+  int sgl_gif_total_frames(gif_t g);
+  int sgl_gif_current_frame(gif_t g);
+  void sgl_gif_size(gif_t g, int* w, int* h);
+  int sgl_gif_next_frame(gif_t g);
+  void sgl_gif_set_frame(gif_t g, int n);
+  surface_t sgl_gif_frame(gif_t g);
+  
   bool sgl_gif(gif_t* g, const char* path);
   bool sgl_save_gif(gif_t* g, const char* path);
   void sgl_gif_destroy(gif_t* g);
@@ -677,7 +685,7 @@ void sgl_##a##_callback(screen_t screen, void(*a##_cb)b);
   } WINDOWFLAGS;
 
   bool sgl_screen(screen_t* s, const char* t, int w, int h, short flags);
-  void sgl_screen_icon_buf(screen_t s, surface_t* b);
+  void sgl_screen_icon_buf(screen_t s, surface_t b);
   void sgl_screen_icon(screen_t s, const char* p);
   void sgl_screen_title(screen_t s, const char* t);
   void sgl_screen_destroy(screen_t* s);
@@ -689,12 +697,12 @@ void sgl_##a##_callback(screen_t screen, void(*a##_cb)b);
   void sgl_cursor_visible(bool show);
   void sgl_cursor_icon(screen_t s, CURSORTYPE t);
   void sgl_cursor_icon_custom(screen_t s, const char* p);
-  void sgl_cursor_icon_custom_buf(screen_t s, surface_t* b);
+  void sgl_cursor_icon_custom_buf(screen_t s, surface_t b);
   void sgl_cursor_pos(point_t* p);
   void sgl_cursor_set_pos(point_t* p);
   
   void sgl_poll(void);
-  void sgl_flush(screen_t s, surface_t* b);
+  void sgl_flush(screen_t s, surface_t b);
   void sgl_release(void);
 #endif
 

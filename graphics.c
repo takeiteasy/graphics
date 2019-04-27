@@ -109,14 +109,40 @@ static void* stb__sbgrowf(void *arr, int increment, int itemsize) {
     p[0] = m;
     return p+2;
   } else {
-#ifdef STRETCHY_BUFFER_OUT_OF_MEMORY
-    STRETCHY_BUFFER_OUT_OF_MEMORY ;
-#endif
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "realloc() failed");
     return (void *) (2*sizeof(int)); // try to force a NULL pointer exception later
   }
 }
 
-bool sgl_surface(surface_t* s, unsigned int w, unsigned int h) {
+struct surface_t {
+  int *buf, w, h;
+};
+
+void sgl_surface_size(surface_t s, int* w, int* h) {
+  if (w)
+    *w = s->w;
+  if (h)
+    *h = s->h;
+}
+
+int sgl_surface_width(surface_t s) {
+  return s->w;
+}
+
+int sgl_surface_height(surface_t s) {
+  return s->h;
+}
+
+int* sgl_surface_raw(surface_t s) {
+  return s->buf;
+}
+
+bool sgl_surface(surface_t* _s, unsigned int w, unsigned int h) {
+  surface_t s = *_s = malloc(sizeof(struct surface_t));
+  if (!s) {
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
+    return false;
+  }
   s->w = w;
   s->h = h;
   size_t sz = w * h * sizeof(unsigned int) + 1;
@@ -130,22 +156,23 @@ bool sgl_surface(surface_t* s, unsigned int w, unsigned int h) {
   return true;
 }
 
-void sgl_destroy(surface_t* s) {
+void sgl_destroy(surface_t* _s) {
+  surface_t s = *_s;
   if (!s)
     return;
   FREE_SAFE(s->buf);
-  s->w = 0;
-  s->h = 0;
+  FREE_SAFE(s);
+  *_s = NULL;
 }
 
-void sgl_fill(surface_t* s, int col) {
+void sgl_fill(surface_t s, int col) {
   for (int i = 0; i < s->w * s->h; ++i)
     s->buf[i] = col;
 }
 
 #define XYGET(s, x, y) (s->buf[(y) * s->w + (x)])
 
-static inline void flood_fn(surface_t* s, int x, int y, int new, int old) {
+static inline void flood_fn(surface_t s, int x, int y, int new, int old) {
   if (new == old || XYGET(s, x, y) != old)
     return;
 
@@ -190,17 +217,17 @@ static inline void flood_fn(surface_t* s, int x, int y, int new, int old) {
   }
 }
 
-void sgl_flood(surface_t* s, int x, int y, int col) {
+void sgl_flood(surface_t s, int x, int y, int col) {
   if (!s || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
   flood_fn(s, x, y, col, XYGET(s, x, y));
 }
 
-void sgl_cls(surface_t* s) {
+void sgl_cls(surface_t s) {
   memset(s->buf, 0, s->w * s->h * sizeof(int));
 }
 
-void sgl_pset(surface_t* s, int x, int y, int c)  {
+void sgl_pset(surface_t s, int x, int y, int c)  {
   if (x >= 0 && y >= 0 && x < s->w && y < s->h)
     s->buf[y * s->w + x] = c;
 }
@@ -208,7 +235,7 @@ void sgl_pset(surface_t* s, int x, int y, int c)  {
 #define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
 
 #if !defined(SGL_DISABLE_RGBA)
-void sgl_psetb(surface_t* s, int x, int y, int c) {
+void sgl_psetb(surface_t s, int x, int y, int c) {
   int a = A(c);
   if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
@@ -221,9 +248,9 @@ void sgl_psetb(surface_t* s, int x, int y, int c) {
                                    a + (b * (255 - a) >> 8));
 }
 
-static void(*pset_fn)(surface_t*, int, int, int) = sgl_psetb;
+static void(*pset_fn)(surface_t, int, int, int) = sgl_psetb;
 #else
-void sgl_psetb(surface_t* s, int x, int y, int c) {
+void sgl_psetb(surface_t s, int x, int y, int c) {
   int a = A(c);
   if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
@@ -235,14 +262,14 @@ void sgl_psetb(surface_t* s, int x, int y, int c) {
                                                      (int)roundf(B(c) * (1 - i) + B(b) * i)));
 }
 
-static void(*pset_fn)(surface_t*, int, int, int) = sgl_pset;
+static void(*pset_fn)(surface_t, int, int, int) = sgl_pset;
 #endif
 
-int sgl_pget(surface_t* s, int x, int y) {
+int sgl_pget(surface_t s, int x, int y) {
   return (x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
 }
 
-bool sgl_blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
+bool sgl_blit(surface_t dst, point_t* p, surface_t src, rect_t* r) {
   int offset_x = 0, offset_y = 0,
       from_x = 0, from_y = 0,
       width = src->w, height = src->h;
@@ -290,7 +317,7 @@ bool sgl_blit(surface_t* dst, point_t* p, surface_t* src, rect_t* r) {
   return true;
 }
 
-bool sgl_reset(surface_t* s, int nw, int nh) {
+bool sgl_reset(surface_t s, int nw, int nh) {
   size_t sz = nw * nh * sizeof(unsigned int) + 1;
   int* tmp = realloc(s->buf, sz);
   if (!tmp) {
@@ -304,14 +331,15 @@ bool sgl_reset(surface_t* s, int nw, int nh) {
   return true;
 }
 
-bool sgl_copy(surface_t* in, surface_t* out) {
-  if (!sgl_surface(out, in->w, in->h))
+bool sgl_copy(surface_t a, surface_t* b) {
+  if (!sgl_surface(b, a->w, a->h))
     return false;
-  memcpy(out->buf, in->buf, in->w * in->h * sizeof(unsigned int) + 1);
-  return !!out->buf;
+  surface_t tmp = *b;
+  memcpy(tmp->buf, a->buf, a->w * a->h * sizeof(unsigned int) + 1);
+  return !!tmp->buf;
 }
 
-void sgl_filter(surface_t* s, int (*fn)(int x, int y, int col)) {
+void sgl_filter(surface_t s, int (*fn)(int x, int y, int col)) {
   if (!s || !s->buf)
     return;
 
@@ -321,17 +349,18 @@ void sgl_filter(surface_t* s, int (*fn)(int x, int y, int col)) {
       sgl_pset(s, x, y, fn(x, y, XYGET(s, x, y)));
 }
 
-bool sgl_resize(surface_t* in, int nw, int nh, surface_t* out) {
-  if (!sgl_surface(out, nw, nh))
+bool sgl_resize(surface_t a, int nw, int nh, surface_t* b) {
+  if (!sgl_surface(b, nw, nh))
     return false;
 
-  int x_ratio = (int)((in->w << 16) / nw) + 1;
-  int y_ratio = (int)((in->h << 16) / nh) + 1;
+  surface_t tmp = *b;
+  int x_ratio = (int)((a->w << 16) / nw) + 1;
+  int y_ratio = (int)((a->h << 16) / nh) + 1;
   int x2, y2, i, j;
   for (i = 0; i < nh; ++i) {
-    int* t = out->buf + i * nw;
+    int* t = tmp->buf + i * nw;
     y2 = ((i * y_ratio) >> 16);
-    int* p = in->buf + y2 * in->w;
+    int* p = a->buf + y2 * a->w;
     int rat = 0;
     for (j = 0; j < nw; ++j) {
       x2 = (rat >> 16);
@@ -342,13 +371,13 @@ bool sgl_resize(surface_t* in, int nw, int nh, surface_t* out) {
   return true;
 }
 
-bool sgl_rotate(surface_t* in, float angle, surface_t* out) {
+bool sgl_rotate(surface_t a, float angle, surface_t* b) {
   float theta = DEG2RAD(angle);
   float c = cosf(theta), s = sinf(theta);
   float r[3][2] = {
-    { -in->h * s, in->h * c },
-    {  in->w * c - in->h * s, in->h * c + in->w * s },
-    {  in->w * c, in->w * s }
+    { -a->h * s, a->h * c },
+    {  a->w * c - a->h * s, a->h * c + a->w * s },
+    {  a->w * c, a->w * s }
   };
 
   float mm[2][2] = { {
@@ -362,7 +391,7 @@ bool sgl_rotate(surface_t* in, float angle, surface_t* out) {
 
   int dw = (int)ceil(fabsf(mm[1][0]) - mm[0][0]);
   int dh = (int)ceil(fabsf(mm[1][1]) - mm[0][1]);
-  if (!sgl_surface(out, dw, dh))
+  if (!sgl_surface(b, dw, dh))
     return false;
 
 // p'x = cos(theta) * (px - ox) - sin(theta) * (py-oy) + ox
@@ -374,9 +403,9 @@ bool sgl_rotate(surface_t* in, float angle, surface_t* out) {
     for (y = 0; y < dh; ++y) {
       sx = ((x + mm[0][0]) * c + (y + mm[0][1]) * s);
       sy = ((y + mm[0][1]) * c - (x + mm[0][0]) * s);
-      if (sx < 0 || sx >= in->w || sy < 0 || sy >= in->h)
+      if (sx < 0 || sx >= a->w || sy < 0 || sy >= a->h)
         continue;
-      pset_fn(out, x, y, XYGET(in, sx, sy));
+      pset_fn(b, x, y, XYGET(a, sx, sy));
     }
   return true;
 }
@@ -530,8 +559,9 @@ oct_node_t* node_insert(oct_node_pool_t* pool, oct_node_t* root, int* buf) {
 }
 
 oct_node_t* node_fold(oct_node_t* p) {
+#warning TODO: Remove this abort
   if (p->n_kids)
-    abort(); // CHANGE ME
+    abort();
   
   oct_node_t* q = p->parent;
   q->count += p->count;
@@ -559,23 +589,24 @@ void color_replace(oct_node_t* root, int* buf) {
   *buf = RGB((int)root->r, (int)root->g, (int)root->b);
 }
 
-void sgl_quantization(surface_t* in, int n_colors, surface_t* out) {
-  if (!out)
-    out = in;
-  if (out && in != out) {
-    if (out->w != in->w || out->h != in->h)
-      sgl_reset(out, in->w, in->h);
-    if (!out->buf)
-      sgl_surface(out, in->w, in->h);
-    sgl_copy(in, out);
+void sgl_quantization(surface_t a, int n_colors, surface_t* b) {
+  surface_t tmp = (b ? *b : NULL);
+  if (!tmp)
+    tmp = a;
+  if (tmp && a != tmp) {
+    if (tmp->w != a->w || tmp->h != a->h)
+      sgl_reset(tmp, a->w, a->h);
+    if (!tmp->buf)
+      sgl_surface(b, a->w, a->h);
+    sgl_copy(a, b);
   }
   
-  int i, *buf = in->buf;
+  int i, *buf = a->buf;
   node_heap heap = { 0, 0, 0 };
   oct_node_pool_t pool = { NULL, 0 };
   
   oct_node_t *root = node_new(&pool, 0, 0, 0), *got;
-  for (i = 0, buf = out->buf; i < out->w * out->h; i++, buf++)
+  for (i = 0, buf = tmp->buf; i < tmp->w * tmp->h; i++, buf++)
     heap_add(&heap, node_insert(&pool, root, buf));
   
   while (heap.n > n_colors + 1)
@@ -590,14 +621,14 @@ void sgl_quantization(surface_t* in, int n_colors, surface_t* out) {
     got->b = got->b / c + .5;
   }
   
-  for (i = 0, buf = out->buf; i < out->w * out->h; i++, buf++)
+  for (i = 0, buf = tmp->buf; i < tmp->w * tmp->h; i++, buf++)
     color_replace(root, buf);
   
   free_node(&pool);
   free(heap.buf);
 }
 
-void sgl_vline(surface_t* s, int x, int y0, int y1, int col) {
+void sgl_vline(surface_t s, int x, int y0, int y1, int col) {
   if (y1 < y0) {
     y0 += y1;
     y1  = y0 - y1;
@@ -616,7 +647,7 @@ void sgl_vline(surface_t* s, int x, int y0, int y1, int col) {
     pset_fn(s, x, y, col);
 }
 
-void sgl_hline(surface_t* s, int y, int x0, int x1, int col) {
+void sgl_hline(surface_t s, int y, int x0, int x1, int col) {
   if (x1 < x0) {
     x0 += x1;
     x1  = x0 - x1;
@@ -635,7 +666,7 @@ void sgl_hline(surface_t* s, int y, int x0, int x1, int col) {
     pset_fn(s, x, y, col);
 }
 
-void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
+void sgl_line(surface_t s, int x0, int y0, int x1, int y1, int col) {
 #if !defined(SGL_DISABLE_RGBA)
   int a = A(col);
   if (!a)
@@ -703,7 +734,7 @@ void sgl_line(surface_t* s, int x0, int y0, int x1, int y1, int col) {
   }
 }
 
-void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
+void sgl_circle(surface_t s, int xc, int yc, int r, int col, int fill) {
 #if !defined(SGL_DISABLE_RGBA)
   int a = A(col);
   if (!a)
@@ -779,7 +810,7 @@ void sgl_circle(surface_t* s, int xc, int yc, int r, int col, int fill) {
   } while (x < 0);
 }
 
-void sgl_ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill) {
+void sgl_ellipse(surface_t s, int xc, int yc, int rx, int ry, int col, int fill) {
 #if defined(SGL_ENABLE_AA)
 #warning TODO: Add AA option
 #endif
@@ -811,7 +842,7 @@ void sgl_ellipse(surface_t* s, int xc, int yc, int rx, int ry, int col, int fill
   } while (x <= 0);
 }
 
-void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int fill) {
+void sgl_ellipse_rect(surface_t s, int x0, int y0, int x1, int y1, int col, int fill) {
 #warning FIXME: This is borked without AA
 #warning FIXME: Arithmic error when too big with AA
 
@@ -933,7 +964,7 @@ void sgl_ellipse_rect(surface_t* s, int x0, int y0, int x1, int y1, int col, int
 #endif
 }
 
-static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
+static inline void bezier_seg(surface_t s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
   int sx = x2 - x1, sy = y2 - y1;
   long xx = x0 - x1, yy = y0 - y1, xy;
   float dx, dy, err, cur = xx * sy - yy * sx;
@@ -1022,7 +1053,7 @@ static inline void bezier_seg(surface_t* s, int x0, int y0, int x1, int y1, int 
   sgl_line(s, x0, y0, x2, y2, col);
 }
 
-void sgl_bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
+void sgl_bezier(surface_t s, int x0, int y0, int x1, int y1, int x2, int y2, int col) {
   int x = x0 - x1, y = y0 - y1;
   float t = x0 - 2 * x1 + x2, r;
 
@@ -1065,7 +1096,7 @@ void sgl_bezier(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, in
   bezier_seg(s, x0, y0, x1, y1, x2, y2, col);
 }
 
-static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
+static inline void bezier_seg_rational(surface_t s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
   int sx = x2 - x1, sy = y2 - y1;
   float dx = x0 - x2, dy = y0 - y2, xx = x0 - x1, yy = y0 - y1;
   float xy = xx * sy + yy * sx, cur = xx * sy - yy * sx, err;
@@ -1174,7 +1205,7 @@ static inline void bezier_seg_rational(surface_t* s, int x0, int y0, int x1, int
   sgl_line(s, x0, y0, x2, y2, col);
 }
 
-void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
+void sgl_bezier_rational(surface_t s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col) {
   int x = x0 - 2 * x1 + x2, y = y0 - 2 * y1 + y2;
   float xx = x0 - x1, yy = y0 - y1, ww, t, q;
 
@@ -1241,7 +1272,7 @@ void sgl_bezier_rational(surface_t* s, int x0, int y0, int x1, int y1, int x2, i
   bezier_seg_rational(s, x0, y0, x1, y1, x2, y2, w*w, col);
 }
 
-void sgl_ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long zd, int col) {
+void sgl_ellipse_rect_rotated(surface_t s, int x0, int y0, int x1, int y1, long zd, int col) {
 #warning TODO: Add fill option
   int xd = x1 - x0, yd = y1 - y0;
   float w = xd * (long)yd;
@@ -1259,7 +1290,7 @@ void sgl_ellipse_rect_rotated(surface_t* s, int x0, int y0, int x1, int y1, long
   bezier_seg_rational(s, x1, y1 - yd, x1, y0, x0 + xd, y0, w, col);
 }
 
-void sgl_ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, int col) {
+void sgl_ellipse_rotated(surface_t s, int x, int y, int a, int b, float angle, int col) {
 #warning TODO: Add fill option
   float xd = (long)a * a, yd = (long)b * b;
   float q = sinf(angle), zd = (xd - yd) * q;
@@ -1271,7 +1302,7 @@ void sgl_ellipse_rotated(surface_t* s, int x, int y, int a, int b, float angle, 
   sgl_ellipse_rect_rotated(s, x - a, y - b, x + a, y + b, (long)(4 * zd * cosf(angle)), col);
 }
 
-static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, float y1, float x2, float y2, int x3, int y3, int col) {
+static inline void bezier_seg_cubic(surface_t s, int x0, int y0, float x1, float y1, float x2, float y2, int x3, int y3, int col) {
   int f, fx, fy, leg = 1;
   int sx = x0 < x3 ? 1 : -1, sy = y0 < y3 ? 1 : -1;
   float xc = -fabsf(x0 + x1 - x2 - x3), xa = xc - 4 * sx * (x1 - x2), xb = sx * (x0 - x1 - x2 + x3);
@@ -1465,7 +1496,7 @@ static inline void bezier_seg_cubic(surface_t* s, int x0, int y0, float x1, floa
   sgl_line(s, x0, y0, x3, y3, col);
 }
 
-void sgl_bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col) {
+void sgl_bezier_cubic(surface_t s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col) {
   int n = 0, i = 0;
   long xc = x0 + x1 - x2 - x3, xa = xc - 4 * (x1 - x2);
   long xb = x0 - x1 - x2 + x3, xd = xb + 4 * (x1 + x2);
@@ -1538,7 +1569,7 @@ void sgl_bezier_cubic(surface_t* s, int x0, int y0, int x1, int y1, int x2, int 
   }
 }
 
-void sgl_rect(surface_t* s, int x, int y, int w, int h, int col, int fill) {
+void sgl_rect(surface_t s, int x, int y, int w, int h, int col, int fill) {
   if (x < 0) {
     w += x;
     x  = 0;
@@ -1608,7 +1639,7 @@ typedef struct {
 memcpy(d, b + off, s); \
 off += s;
 
-#define BMP_SET(c) (s->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
+#define BMP_SET(c) ((*s)->buf[(i - (i % info.width)) + (info.width - (i % info.width) - 1)] = (c));
 
 bool sgl_bmp(surface_t* s, const char* path) {
   FILE* fp = fopen(path, "rb");
@@ -1706,7 +1737,7 @@ bool sgl_bmp(surface_t* s, const char* path) {
   return true;
 }
 
-bool sgl_save_bmp(surface_t* s, const char* path) {
+bool sgl_save_bmp(surface_t s, const char* path) {
   const int filesize = 54 + 3 * s->w * s->h;
   unsigned char* img = (unsigned char *)malloc(3 * s->w * s->h);
   if (!img) {
@@ -1726,17 +1757,21 @@ bool sgl_save_bmp(surface_t* s, const char* path) {
     }
   }
 
-  unsigned char header[14] = {'B', 'M',
+  unsigned char header[14] = {
+    'B', 'M',
     0,  0, 0, 0,
     0,  0,
     0,  0,
-    54, 0, 0, 0};
-  unsigned char info[40] = {40, 0, 0, 0,
+    54, 0, 0, 0
+  };
+  unsigned char info[40] = {
+    40, 0, 0, 0,
     0,  0, 0, 0,
     0,  0, 0, 0,
     1,  0,
-    24, 0};
-  unsigned char pad[3] = {0, 0, 0};
+    24, 0
+  };
+  unsigned char pad[3] = { 0, 0, 0 };
 
   header[2]  = (unsigned char)(filesize);
   header[3]  = (unsigned char)(filesize >> 8);
@@ -2492,7 +2527,7 @@ static inline int letter_index(int c) {
   return 0;
 }
 
-void sgl_ascii(surface_t* s, char ch, int x, int y, int fg, int bg) {
+void sgl_ascii(surface_t s, char ch, int x, int y, int fg, int bg) {
   int c = letter_index((int)ch), i, j;
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 8; ++j) {
@@ -2507,7 +2542,7 @@ void sgl_ascii(surface_t* s, char ch, int x, int y, int fg, int bg) {
   }
 }
 
-int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
+int sgl_character(surface_t s, const char* ch, int x, int y, int fg, int bg) {
   int u = -1;
   int l = ctoi(ch, &u);
   int uc = letter_index(u), i, j;
@@ -2525,7 +2560,7 @@ int sgl_character(surface_t* s, const char* ch, int x, int y, int fg, int bg) {
   return l;
 }
 
-void sgl_writeln(surface_t* s, int x, int y, int fg, int bg, const char* str) {
+void sgl_writeln(surface_t s, int x, int y, int fg, int bg, const char* str) {
   const char* c = str;
   int u = x, v = y, col, len;
   while (c && *c != '\0')
@@ -2556,7 +2591,7 @@ void sgl_writeln(surface_t* s, int x, int y, int fg, int bg, const char* str) {
     }
 }
 
-void sgl_writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...) {
+void sgl_writelnf(surface_t s, int x, int y, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
 
@@ -2577,15 +2612,15 @@ void sgl_writelnf(surface_t* s, int x, int y, int fg, int bg, const char* fmt, .
   free(buffer);
 }
 
-void sgl_string(surface_t* out, int fg, int bg, const char* str) {
+void sgl_string(surface_t* s, int fg, int bg, const char* str) {
   int w, h;
   str_size(str, &w, &h);
-  sgl_surface(out, w * 8, h * LINE_HEIGHT);
-  sgl_fill(out, (bg == -1 ? 0 : bg));
-  sgl_writeln(out, 0, 0, fg, bg, str);
+  sgl_surface(s, w * 8, h * LINE_HEIGHT);
+  sgl_fill(*s, (bg == -1 ? 0 : bg));
+  sgl_writeln(*s, 0, 0, fg, bg, str);
 }
 
-void sgl_stringf(surface_t* out, int fg, int bg, const char* fmt, ...) {
+void sgl_stringf(surface_t* s, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
 
@@ -2602,7 +2637,7 @@ void sgl_stringf(surface_t* out, int fg, int bg, const char* fmt, ...) {
     va_end(argptr);
   }
 
-  sgl_string(out, fg, bg, buffer);
+  sgl_string(s, fg, bg, buffer);
   free(buffer);
 }
 #endif
@@ -2841,7 +2876,7 @@ bool sgl_bdf(struct bdf_t** _out, const char* path) {
   return true;
 }
 
-int sgl_bdf_character(surface_t* s, struct bdf_t* f, const char* ch, int x, int y, int fg, int bg) {
+int sgl_bdf_character(surface_t s, struct bdf_t* f, const char* ch, int x, int y, int fg, int bg) {
   int u = -1, i, j, n;
   int l = ctoi(ch, &u);
   for (i = 0; i < f->n_chars; ++i)
@@ -2863,7 +2898,7 @@ int sgl_bdf_character(surface_t* s, struct bdf_t* f, const char* ch, int x, int 
   return l;
 }
 
-void sgl_bdf_writeln(surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* str) {
+void sgl_bdf_writeln(surface_t s, struct bdf_t* f, int x, int y, int fg, int bg, const char* str) {
   const char* c = (const char*)str;
   int u = x, v = y, col, len;
   while (c && *c != '\0') {
@@ -2897,7 +2932,7 @@ void sgl_bdf_writeln(surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg
   }
 }
 
-void sgl_bdf_writelnf(surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...) {
+void sgl_bdf_writelnf(surface_t s, struct bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
 
@@ -2918,15 +2953,15 @@ void sgl_bdf_writelnf(surface_t* s, struct bdf_t* f, int x, int y, int fg, int b
   free(buffer);
 }
 
-void sgl_bdf_string(surface_t* out, struct bdf_t* f, int fg, int bg, const char* str) {
+void sgl_bdf_string(surface_t* s, struct bdf_t* f, int fg, int bg, const char* str) {
   int w, h;
   str_size(str, &w, &h);
-  sgl_surface(out, w * 8, h * LINE_HEIGHT);
-  sgl_fill(out, (bg == -1 ? 0 : bg));
-  sgl_bdf_writeln(out, f, 0, 0, fg, bg, str);
+  sgl_surface(s, w * 8, h * LINE_HEIGHT);
+  sgl_fill(*s, (bg == -1 ? 0 : bg));
+  sgl_bdf_writeln(*s, f, 0, 0, fg, bg, str);
 }
 
-void sgl_bdf_stringf(surface_t* out, struct bdf_t* f, int fg, int bg, const char* fmt, ...) {
+void sgl_bdf_stringf(surface_t* s, struct bdf_t* f, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
 
@@ -2943,7 +2978,7 @@ void sgl_bdf_stringf(surface_t* out, struct bdf_t* f, int fg, int bg, const char
     va_end(argptr);
   }
 
-  sgl_bdf_string(out, f, fg, bg, buffer);
+  sgl_bdf_string(s, f, fg, bg, buffer);
   free(buffer);
 }
 #endif
@@ -3009,7 +3044,7 @@ static int load_ftfont_char(struct ftfont_t* font, const char* ch) {
   for (i = 0; i < new.size.x; ++i)
     for (j = 0; j < new.size.y; ++j) {
       b = B(font->face->glyph->bitmap.buffer[j * new.size.x + i]);
-      sgl_psetb(&new.buffer, i, j, b ? RGBA1(0, b) : 0);
+      sgl_psetb(new.buffer, i, j, b ? RGBA1(0, b) : 0);
     }
   
   stb_sb_push(font->encoding_table, u);
@@ -3050,7 +3085,7 @@ void sgl_ftfont_destroy(struct ftfont_t** _font) {
   free(font);
 }
 
-int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y, int fg, int bg, int* w, int* h) {
+int sgl_ftfont_character(surface_t s, ftfont_t f, const char* ch, int x, int y, int fg, int bg, int* w, int* h) {
   int u = -1, i, j;
   int l = ctoi(ch, &u);
   int index = ftfont_char_index(f, u);
@@ -3064,7 +3099,7 @@ int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y,
       pset_fn(s, x + i, y + j, bg);
 #warning TODO: Find better solution than called pset twice
 #warning TODO: Update other font renderers to fix alpha
-      pset_fn(s, x + i, y + j, ACHAN(fg, CLAMP(A(fg) - (255 - A(XYGET((&(c->buffer)), i, j))), 0, 255)));
+      pset_fn(s, x + i, y + j, ACHAN(fg, CLAMP(A(fg) - (255 - A(XYGET(((c->buffer)), i, j))), 0, 255)));
     }
   }
   
@@ -3075,7 +3110,7 @@ int sgl_ftfont_character(surface_t* s, ftfont_t f, const char* ch, int x, int y,
   return l;
 }
 
-void sgl_ftfont_writeln(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* str) {
+void sgl_ftfont_writeln(surface_t s, ftfont_t f, int x, int y, int fg, int bg, const char* str) {
   const char* c = (const char*)str;
   int u = x, v = y, w, lh, h = 0, col, len;
   while (c && *c != '\0') {
@@ -3112,7 +3147,7 @@ void sgl_ftfont_writeln(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, 
   }
 }
 
-void sgl_ftfont_writelnf(surface_t* s, ftfont_t f, int x, int y, int fg, int bg, const char* fmt, ...) {
+void sgl_ftfont_writelnf(surface_t s, ftfont_t f, int x, int y, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
   
@@ -3133,12 +3168,12 @@ void sgl_ftfont_writelnf(surface_t* s, ftfont_t f, int x, int y, int fg, int bg,
   free(buffer);
 }
 
-void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* str) {
-  const char* s = (const char*)str;
+void sgl_ftfont_string(surface_t* s, ftfont_t f, int fg, int bg, const char* str) {
+  const char* _str = (const char*)str;
   int n = 0, m = 0, nn = 0, mm = 6, c, len, index;
   ft_char_t* ch = NULL;
-  while (s && *s != '\0') {
-    c = *s;
+  while (_str && *_str != '\0') {
+    c = *_str;
     if (c >= 0 && c <= 127) {
       switch (c) {
         case '\n':
@@ -3148,34 +3183,34 @@ void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* s
             n = nn;
           nn = 0;
           m += (mm + 6);
-          s++;
+          _str++;
           break;
         case '\f':
         case '\b':
-          if (read_color(s, NULL, &len)) {
-            s += len;
+          if (read_color(_str, NULL, &len)) {
+            _str += len;
             continue;
           }
           else
-            s++;
+            _str++;
           break;
         default:
           index = ftfont_char_index(f, c);
           if (index == -1)
-            index = load_ftfont_char(f, s);
+            index = load_ftfont_char(f, _str);
           
           ch = &f->chars[index];
           nn += (int)(ch->advance >> 6);
           if (ch->size.y > mm)
             mm = ch->size.y;
-          s++;
+          _str++;
           break;
       }
     } else {
-      len = ctoi(s, &c);
+      len = ctoi(_str, &c);
       index = ftfont_char_index(f, c);
       if (index == -1)
-        index = load_ftfont_char(f, s);
+        index = load_ftfont_char(f, _str);
       // TODO
     }
   }
@@ -3183,12 +3218,12 @@ void sgl_ftfont_string(surface_t* out, ftfont_t f, int fg, int bg, const char* s
     n = nn;
   m += mm + 6;
   
-  sgl_surface(out, n, m);
-  sgl_fill(out, bg);
-  sgl_ftfont_writeln(out, f, 0, mm, fg, 0, str);
+  sgl_surface(s, n, m);
+  sgl_fill(*s, bg);
+  sgl_ftfont_writeln(*s, f, 0, mm, fg, 0, str);
 }
 
-void sgl_ftfont_stringf(surface_t* out, ftfont_t f, int fg, int bg, const char* fmt, ...) {
+void sgl_ftfont_stringf(surface_t* s, ftfont_t f, int fg, int bg, const char* fmt, ...) {
   char *buffer = NULL;
   int buffer_size = 0;
   
@@ -3205,7 +3240,7 @@ void sgl_ftfont_stringf(surface_t* out, ftfont_t f, int fg, int bg, const char* 
     va_end(argptr);
   }
   
-  sgl_ftfont_string(out, f, fg, bg, buffer);
+  sgl_ftfont_string(s, f, fg, bg, buffer);
   free(buffer);
 }
 #endif
@@ -3227,7 +3262,7 @@ void sgl_ftfont_stringf(surface_t* out, ftfont_t f, int fg, int bg, const char* 
 #include STB_IMAGE_WRITE_PATH
 #endif
 
-bool sgl_image(surface_t* out, const char* path) {
+bool sgl_image(surface_t* s, const char* path) {
   int w, h, c, x, y;
   unsigned char* data = stbi_load(path, &w, &h, &c, 0);
   if (!data) {
@@ -3235,19 +3270,20 @@ bool sgl_image(surface_t* out, const char* path) {
     return false;
   }
 
-  if (!sgl_surface(out, w, h)) {
+  if (!sgl_surface(s, w, h)) {
     stbi_image_free(data);
     return false;
   }
 
+  surface_t tmp = *s;
   unsigned char* p = NULL;
   for (x = 0; x < w; ++x) {
     for (y = 0; y < h; ++y) {
       p = data + (x + w * y) * c;
 #if !defined(SGL_DISABLE_RGBA)
-      out->buf[y * w + x] = RGBA(p[0], p[1], p[2], (c == 4 ? p[3] : 255));
+      tmp->buf[y * w + x] = RGBA(p[0], p[1], p[2], (c == 4 ? p[3] : 255));
 #else
-      out->buf[y * w + x] = (c == 4 && !p[3] ? BLIT_CHROMA_KEY : RGB(p[0], p[1], p[2]));
+      tmp->buf[y * w + x] = (c == 4 && !p[3] ? BLIT_CHROMA_KEY : RGB(p[0], p[1], p[2]));
 #endif
     }
   }
@@ -3256,8 +3292,8 @@ bool sgl_image(surface_t* out, const char* path) {
   return true;
 }
 
-bool sgl_save_image(surface_t* in, const char* path, SAVEFORMAT type) {
-  if (!in || !path) {
+bool sgl_save_image(surface_t a, const char* path, SAVEFORMAT type) {
+  if (!a || !path) {
     error_handle(NORMAL_PRIORITY, INVALID_PARAMETERS, "save_image() failed: Invalid parameters");
     return false;
   }
@@ -3268,7 +3304,7 @@ bool sgl_save_image(surface_t* in, const char* path, SAVEFORMAT type) {
 #define NC 3
 #endif
 
-  unsigned char* data = malloc(in->w * in->h * NC * sizeof(unsigned char));
+  unsigned char* data = malloc(a->w * a->h * NC * sizeof(unsigned char));
   if (!data) {
     error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "save_image() failed: Out of memory");
     return false;
@@ -3276,10 +3312,10 @@ bool sgl_save_image(surface_t* in, const char* path, SAVEFORMAT type) {
 
   unsigned char* p = NULL;
   int i, j, c;
-  for (i = 0; i < in->w; ++i) {
-    for (j = 0; j < in->h; ++j) {
-      p = data + (i + in->w * j) * NC;
-      c = in->buf[j * in->w + i];
+  for (i = 0; i < a->w; ++i) {
+    for (j = 0; j < a->h; ++j) {
+      p = data + (i + a->w * j) * NC;
+      c = a->buf[j * a->w + i];
       p[0] = R(c);
       p[1] = G(c);
       p[2] = B(c);
@@ -3293,16 +3329,16 @@ bool sgl_save_image(surface_t* in, const char* path, SAVEFORMAT type) {
   switch (type) {
   default:
   case PNG:
-    res = stbi_write_png(path, in->w, in->h, NC, data, 0);
+    res = stbi_write_png(path, a->w, a->h, NC, data, 0);
     break;
   case TGA:
-    res = stbi_write_tga(path, in->w, in->h, NC, data);
+    res = stbi_write_tga(path, a->w, a->h, NC, data);
     break;
   case BMP:
-    res = stbi_write_bmp(path, in->w, in->h, NC, data);
+    res = stbi_write_bmp(path, a->w, a->h, NC, data);
     break;
   case JPG:
-    res = stbi_write_jpg(path, in->w, in->h, NC, data, 85);
+    res = stbi_write_jpg(path, a->w, a->h, NC, data, 85);
     break;
   }
   FREE_SAFE(data);
@@ -3328,6 +3364,47 @@ bool sgl_save_image(surface_t* in, const char* path, SAVEFORMAT type) {
 #define GIF_EXTR static
 #endif
 #define _GIF_SWAP(h) ((GIF_BIGE)? ((uint16_t)(h << 8) | (h >> 8)) : h)
+
+struct gif_t {
+  int delay, frames, frame, w, h;
+  surface_t* surfaces;
+};
+
+int sgl_gif_delay(gif_t g) {
+  return g->delay;
+}
+
+int sgl_gif_total_frames(gif_t g) {
+  return g->frames;
+}
+
+int sgl_gif_current_frame(gif_t g) {
+  return g->frame;
+}
+
+void sgl_gif_size(gif_t g, int* w, int* h) {
+  if (w)
+    *w = g->w;
+  if (h)
+    *h = g->h;
+}
+
+int sgl_gif_next_frame(gif_t g) {
+  g->frame++;
+  if (g->frame >= g->frames)
+    g->frame = 0;
+  return g->frame;
+}
+
+void sgl_gif_set_frame(gif_t g, int n) {
+  if (n >= g->frames || n < 0)
+    return;
+  g->frame = n;
+}
+
+surface_t sgl_gif_frame(gif_t g) {
+  return g->surfaces[g->frame];
+}
 
 #pragma pack(push, 1)
 struct GIF_WHDR {         /** ======== frame writer info: ======== **/
@@ -3565,7 +3642,7 @@ GIF_EXTR long GIF_Load(void *data, long size,
 typedef struct {
   void *data, *pict, *prev;
   unsigned long size, last;
-  gif_t* out;
+  gif_t out;
 } gif_data_t;
 #pragma pack(pop)
 
@@ -3604,7 +3681,7 @@ void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
   
   int this = (int)whdr->ifrm;
   sgl_surface(&gif->out->surfaces[this], gif->out->w, gif->out->h);
-  memcpy(gif->out->surfaces[this].buf, pict, whdr->xdim * whdr->ydim * sizeof(uint32_t));
+  memcpy(gif->out->surfaces[this]->buf, pict, whdr->xdim * whdr->ydim * sizeof(uint32_t));
   
   if ((whdr->mode == GIF_PREV) && !gif->last) {
     whdr->frxd = whdr->xdim;
@@ -3630,7 +3707,9 @@ void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
 #undef BGRA
 }
 
-bool sgl_gif(gif_t* g, const char* path) {
+bool sgl_gif(gif_t* _g, const char* path) {
+  gif_t g = *_g = malloc(sizeof(struct gif_t));
+  
   FILE* fp = fopen(path, "rb");
   if (!fp) {
     error_handle(NORMAL_PRIORITY, FILE_OPEN_FAILED, "fopen() failed: %s", path);
@@ -3928,12 +4007,13 @@ void ge_close_gif(ge_GIF* gif) {
   free(gif);
 }
 
-bool sgl_save_gif(gif_t* _g, const char* path) {
+bool sgl_save_gif(gif_t* __g, const char* path) {
+  gif_t _g = *__g;
   int i, j, k, c, cp;
   uint8_t r, g, b;
   
   for (i = 0; i < _g->frames; ++i) {
-    if (_g->surfaces[i].w != _g->w || _g->surfaces[i].h != _g->h) {
+    if (_g->surfaces[i]->w != _g->w || _g->surfaces[i]->h != _g->h) {
       error_handle(NORMAL_PRIORITY, GIF_SAVE_INVALID_SIZE, "Sizes of surfaces in GIF don't match");
       return false;
     }
@@ -3942,7 +4022,7 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
   uint8_t* palette = NULL;
   for (i = 0; i < _g->frames; ++i) {
     for (j = 0; j < _g->w * _g->h; ++j) {
-      c = _g->surfaces[i].buf[j];
+      c = _g->surfaces[i]->buf[j];
       r = (uint8_t)R(c);
       g = (uint8_t)G(c);
       b = (uint8_t)B(c);
@@ -3976,27 +4056,27 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
     point_t tmp_p = {0};
     for (i = 0; i < _g->frames; ++i) {
       tmp_p.y = _g->h * i;
-      sgl_blit(&tmp_s, &tmp_p, &_g->surfaces[i], NULL);
+      sgl_blit(tmp_s, &tmp_p, _g->surfaces[i], NULL);
     }
 
-    sgl_quantization(&tmp_s, 257, NULL);
+    sgl_quantization(tmp_s, 257, NULL);
 
     rect_t tmp_r = { 0, 0, _g->w, _g->h };
     for (i = 0; i < _g->frames; ++i) {
       tmp_r.y = _g->h * i;
-      sgl_blit(&_g->surfaces[i], NULL, &tmp_s, &tmp_r);
+      sgl_blit(_g->surfaces[i], NULL, tmp_s, &tmp_r);
     }
     sgl_destroy(&tmp_s);
     stb_sb_free(palette);
     
-    return sgl_save_gif(_g, path);
+    return sgl_save_gif(__g, path);
   }
   
   int** frames = malloc(sizeof(int*) * _g->frames);
   for (i = 0; i < _g->frames; ++i) {
     frames[i] = malloc(_g->w * _g->h * sizeof(int));
     for (j = 0; j < _g->w * _g->h; ++j) {
-      c = _g->surfaces[i].buf[j];
+      c = _g->surfaces[i]->buf[j];
       r = (uint8_t)R(c);
       g = (uint8_t)G(c);
       b = (uint8_t)B(c);
@@ -4033,11 +4113,14 @@ bool sgl_save_gif(gif_t* _g, const char* path) {
   return true;
 }
 
-void sgl_gif_destroy(gif_t* g) {
-  int nframes = sizeof(g->surfaces) / sizeof(surface_t);
-  for (int i = 0; i < nframes; ++i)
+void sgl_gif_destroy(gif_t* _g) {
+  gif_t g = *_g;
+  if (!g)
+    return;
+  for (int i = 0; i < g->frames; ++i)
     sgl_destroy(&g->surfaces[i]);
-  free(g->surfaces);
+  FREE_SAFE(g->surfaces);
+  FREE_SAFE(g);
 }
 #endif
 
@@ -4987,7 +5070,7 @@ bool init_gl(int w, int h, GLuint* _vao, GLuint* _shader, GLuint* _texture) {
   return true;
 }
 
-void draw_gl(GLuint vao, GLuint texture, surface_t* buffer) {
+void draw_gl(GLuint vao, GLuint texture, surface_t buffer) {
   glBindTexture(GL_TEXTURE_2D, texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -5093,7 +5176,7 @@ static int translate_key(unsigned int key) {
   return (key >= sizeof(keycodes) / sizeof(keycodes[0]) ?  KB_KEY_UNKNOWN : keycodes[key]);
 }
 
-static inline NSImage* create_cocoa_image(surface_t* s) {
+static inline NSImage* create_cocoa_image(surface_t s) {
   NSImage* nsi = [[[NSImage alloc] initWithSize:NSMakeSize(s->w, s->h)] autorelease];
   if (!nsi)
     return nil;
@@ -5156,7 +5239,7 @@ static screen_t active_window = NULL;
 #endif
 @property (nonatomic, weak) id<AppViewDelegate> delegate;
 @property (strong) NSTrackingArea* track;
-@property (nonatomic) surface_t* buffer;
+@property (nonatomic) surface_t buffer;
 @property BOOL mouse_in_window;
 @property (nonatomic, strong) NSCursor* cursor;
 @property BOOL custom_cursor;
@@ -5731,7 +5814,7 @@ bool sgl_screen(struct screen_t** s, const char* t, int w, int h, short flags) {
   
 #define SET_DEFAULT_APP_ICON [NSApp setApplicationIconImage:[NSImage imageNamed:@"NSApplicationIcon"]]
 
-void sgl_screen_icon_buf(screen_t s, surface_t* b) {
+void sgl_screen_icon_buf(screen_t s, surface_t b) {
   if (!b || !b->buf) {
     SET_DEFAULT_APP_ICON;
     return;
@@ -5830,7 +5913,7 @@ void sgl_cursor_icon_custom(screen_t s, const char* p) {
   [img release];
 }
 
-void sgl_cursor_icon_custom_buf(screen_t s, surface_t* b) {
+void sgl_cursor_icon_custom_buf(screen_t s, surface_t b) {
   if (!s || !b) {
     error_handle(LOW_PRIORITY, CURSOR_MOD_FAILED, "sgl_cursor_icon_custom_buf() failed: Invalid parameters");
     return;
@@ -5909,7 +5992,7 @@ void sgl_poll(void) {
   [pool release];
 }
 
-void sgl_flush(screen_t s, surface_t* b) {
+void sgl_flush(screen_t s, surface_t b) {
   if (!s || !b)
     return;
   AppDelegate* tmp = (AppDelegate*)s->window;

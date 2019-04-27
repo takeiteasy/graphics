@@ -62,7 +62,6 @@ Tested on:
 ### Important
 
 - Cursor clipping for Linux [and OS X](https://stackoverflow.com/a/40922095)
-- Make gif_t, joystick_t and surface_t private
 - Sort out joysticks
   - General clean up
   - Remove redundant stuff
@@ -71,6 +70,7 @@ Tested on:
 - Reimplement Linux & Windows support
 - Make a CMake build file
 - Remove any unnecessary non-standard library includes
+- Clean up code before porting Windows and Linux back
 
 ### Less important
 
@@ -82,7 +82,6 @@ Tested on:
 
 ### At some point
 
-- ~Fix color pallete for GIF save~
 - Fix unicode FreeType
 - Fix or delete SGL_DISABLE_RGBA
 - Keyboard scancodes

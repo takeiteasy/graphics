@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		883C09E82165F15F00E30574 /* libfreetype.6.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 883C09E72165F15F00E30574 /* libfreetype.6.dylib */; };
+		888CF59522732C1F000E9462 /* libfreetype.6.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 888CF59422732C1F000E9462 /* libfreetype.6.dylib */; };
 		88B0A62B20EC6B8000CE1317 /* graphics.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0A62820EC6B8000CE1317 /* graphics.c */; settings = {COMPILER_FLAGS = "-x objective-c -fno-objc-arc"; }; };
 		88B0A64C20EC6B9400CE1317 /* test.c in Sources */ = {isa = PBXBuildFile; fileRef = 88B0A63720EC6B9400CE1317 /* test.c */; };
 		88B0A65120EC6E6D00CE1317 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88B0A65020EC6E6D00CE1317 /* Cocoa.framework */; };
@@ -32,6 +32,7 @@
 
 /* Begin PBXFileReference section */
 		883C09E72165F15F00E30574 /* libfreetype.6.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libfreetype.6.dylib; path = ../../../../../../usr/local/Cellar/freetype/2.9.1/lib/libfreetype.6.dylib; sourceTree = "<group>"; };
+		888CF59422732C1F000E9462 /* libfreetype.6.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libfreetype.6.dylib; path = ../../../../../usr/local/Cellar/freetype/2.10.0/lib/libfreetype.6.dylib; sourceTree = "<group>"; };
 		88B0255020F5D1500007849F /* stb_image_write.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image_write.h; sourceTree = "<group>"; };
 		88B0255120F5D1500007849F /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
 		88B0A61D20EC6B5100CE1317 /* graphics_osx */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics_osx; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -65,7 +66,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				883C09E82165F15F00E30574 /* libfreetype.6.dylib in Frameworks */,
+				888CF59522732C1F000E9462 /* libfreetype.6.dylib in Frameworks */,
 				88CC7A19210CDAD600392B08 /* IOKit.framework in Frameworks */,
 				88B0A65620EC6E7700CE1317 /* MetalKit.framework in Frameworks */,
 				88B0A65720EC6E7700CE1317 /* Metal.framework in Frameworks */,
@@ -150,6 +151,7 @@
 			isa = PBXGroup;
 			children = (
 				883C09E72165F15F00E30574 /* libfreetype.6.dylib */,
+				888CF59422732C1F000E9462 /* libfreetype.6.dylib */,
 				88CC7A18210CDAD600392B08 /* IOKit.framework */,
 				88B0A65520EC6E7600CE1317 /* Metal.framework */,
 				88B0A65420EC6E7600CE1317 /* MetalKit.framework */,
@@ -401,6 +403,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/usr/local/Cellar/freetype/2.9.1/lib,
+					/usr/local/Cellar/freetype/2.10.0/lib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WARNING_CFLAGS = "";
@@ -424,6 +427,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/usr/local/Cellar/freetype/2.9.1/lib,
+					/usr/local/Cellar/freetype/2.10.0/lib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WARNING_CFLAGS = "";
