@@ -84,6 +84,7 @@ void error_handle(ERRORLVL pri, ERRORTYPE type, const char* msg, ...) {
   va_end(args);
 }
 
+#if defined(SGL_ENABLE_FREETYPE) || defined(SGL_ENABLE_GIF)
 #define stb_sb_free(a)         ((a) ? free(stb__sbraw(a)),0 : 0)
 #define stb_sb_push(a,v)       (stb__sbmaybegrow(a,1), (a)[stb__sbn(a)++] = (v))
 #define stb_sb_count(a)        ((a) ? stb__sbn(a) : 0)
@@ -113,6 +114,7 @@ static void* stb__sbgrowf(void *arr, int increment, int itemsize) {
     return (void *) (2*sizeof(int)); // try to force a NULL pointer exception later
   }
 }
+#endif
 
 struct surface_t {
   int *buf, w, h;
@@ -4267,7 +4269,6 @@ static void queue_axis_event(joystick_t* device, long time, int id, float v, flo
   e->timestamp = time;
   queue_input_event(device->device_id, JOY_AXIS_MOVED, (void*)e);
 }
-
 
 static void queue_btn_event(joystick_t* device, long time, int id, bool down) {
   joystick_btn_event_t* e = malloc(sizeof(joystick_btn_event_t));
