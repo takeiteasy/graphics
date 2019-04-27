@@ -40,7 +40,7 @@ static bool grey = false;
 #define SKIP_RESIZE 1
 #define SKIP_PRINTF 0
 #define SKIP_RENDING 0
-#define SKIP_2ND_WINDOW 0
+#define SKIP_2ND_WINDOW 1
 
 #if SKIP_PRINTF
 #define printf(fmt, ...) (0)

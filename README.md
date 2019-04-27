@@ -26,7 +26,7 @@ OS X will be the primary platform for all stuff, then after that is working to a
 
 ## Building
 
-No external libraries are used unless you want to use the alternate backends (enable them by defining ```GRAPHICS_ENABLE_(OPENGL/METAL)```). I don't know how to make CMake files yet so backends will have to be defined manually. To enable AA primitives define ```GRAPHICS_ENABLE_AA```, for BDF rendering ```GRAPHICS_ENABLE_BDF``` and for image loading using stb_image ```GRAPHICS_ENABLE_STB_IMAGE```.
+No external libraries are used unless you want to use the alternate backends (enable them by defining ```SGL_ENABLE_(OPENGL/METAL)```). I don't know how to make CMake files yet so backends will have to be defined manually. To enable AA primitives define ```SGL_ENABLE_AA```, for BDF rendering ```SGL_ENABLE_BDF``` and for image loading using stb_image ```SGL_ENABLE_STB_IMAGE```, etc.
 
 On OS X you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for Metal. Also, if you're using XCode you'll also have to disable modules in the build settings, becuase modules imports curses with stdio for some reason.
 
@@ -63,17 +63,14 @@ Tested on:
 
 - Cursor clipping for Linux [and OS X](https://stackoverflow.com/a/40922095)
 - Sort out joysticks
-  - General clean up
-  - Remove redundant stuff
-  - Fix crashes
-  - Linux joysticks totally untested
-- Reimplement Linux & Windows support
-- Make a CMake build file
+- Make a CMake build file (or some other build system)
 - Remove any unnecessary non-standard library includes
 - Clean up code before porting Windows and Linux back
+- Add ```on_close()``` window callback
 
 ### Less important
 
+- Fix unicode FreeType
 - Come back to surface transformation
 - Different scaling functions
 - Add fill option for ```ellipse_rotated()``` and other functions
@@ -82,7 +79,6 @@ Tested on:
 
 ### At some point
 
-- Fix unicode FreeType
 - Fix or delete SGL_DISABLE_RGBA
 - Keyboard scancodes
 - Make thread safe (surface locks)
@@ -94,8 +90,9 @@ Tested on:
 - More extras (~gif load/save~, ~FreeType fonts~, C++ OOP wrapper)
 - Optional OpenCL for processing
 - Pixel shader support
-- Audio playback (wav files)
+- Audio playback (seperate library?)
 - Other language bindings (Either Wren/Lua/Ruby probably)
+- Optional garbage collector
 
 ### Investigate
 
