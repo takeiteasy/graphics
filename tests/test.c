@@ -1,5 +1,18 @@
 #include "../graphics.h"
 
+// Define RES_PATH or it will use my paths
+#if !defined(RES_PATH)
+#if defined(__APPLE__)
+#define RES_PATH "/Users/roryb/git/graphics.h/tests/"
+#elif defined(_WIN32)
+#define RES_PATH "C:\\Users\\DESKTOP\\Documents\\graphics.h\\tests\\"
+#else
+#define RES_PATH "/home/reimu/Desktop/graphics.h/tests/"
+#endif
+#endif
+#define RES_JOIN(X,Y) (X Y)
+#define RES(X) (RES_JOIN(RES_PATH, X))
+
 int invert(int x, int y, int c) {
   return RGB(255 - R(c), 255 - G(c), 255 - B(c));
 }
@@ -41,7 +54,9 @@ void on_keyboard(void* data, KEYSYM sym, KEYMOD mod, bool down) {
       case KB_KEY_Q:
       case KB_KEY_W:
         if (mod & KB_MOD_SUPER)
+#if defined(SGL_ENABLE_DIALOGS)
           if (sgl_alert(ALERT_INFO, ALERT_YES_NO, "Do you want to quit?"))
+#endif
             running = 0;
         break;
   #else
@@ -61,7 +76,11 @@ void on_keyboard(void* data, KEYSYM sym, KEYMOD mod, bool down) {
         grey = false;
         break;
       case KB_KEY_F1: {
+#if defined(SGL_ENABLE_DIALOGS)
         char* path = sgl_dialog(DIALOG_SAVE, ".", "test", false, 1, "bmp");
+#else
+        char* path = RES("test.bmp");
+#endif
         if (path) {
           sgl_save_bmp(buf, path);
           free(path);
@@ -70,7 +89,11 @@ void on_keyboard(void* data, KEYSYM sym, KEYMOD mod, bool down) {
       }
 #if defined(SGL_ENABLE_STB_IMAGE)
       case KB_KEY_F2: {
+#if defined(SGL_ENABLE_DIALOGS)
         char* path = sgl_dialog(DIALOG_SAVE, ".", "test", false, 1, "png");
+#else
+        char* path = RES("test.png");
+#endif
         if (path) {
           sgl_save_bmp(buf, path);
           free(path);
@@ -116,21 +139,9 @@ void on_resize(void* data, int w, int h) {
   sgl_writelnf(buf, 4, 5, WHITE, -1, "%dx%d\n", w, h);
 }
 
-// Define RES_PATH or it will use my paths
-#if !defined(RES_PATH)
-#if defined(__APPLE__)
-#define RES_PATH "/Users/roryb/git/graphics.h/tests/"
-#elif defined(_WIN32)
-#define RES_PATH "C:\\Users\\DESKTOP\\Documents\\graphics.h\\tests\\"
-#else
-#define RES_PATH "/home/reimu/Desktop/graphics.h/tests/"
-#endif
-#endif
-#define RES_JOIN(X,Y) (X Y)
-#define RES(X) (RES_JOIN(RES_PATH, X))
-
 void on_error(void* data, ERRORLVL lvl, ERRORTYPE type, const char* msg, const char* file, const char* func, int line) {
   fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
+#if defined(SGL_ENABLE_DIALOGS)
   switch (lvl) {
     case LOW_PRIORITY:
       sgl_alert(ALERT_INFO, ALERT_OK, "MINOR ERROR: See logs for info");
@@ -144,6 +155,7 @@ void on_error(void* data, ERRORLVL lvl, ERRORTYPE type, const char* msg, const c
       abort();
       break;
   }
+#endif
 }
 
 #if defined(SGL_ENABLE_JOYSTICKS)
@@ -167,33 +179,17 @@ void on_joystick_axis(void* data, joystick_t* d, int axis, float v, float lv, lo
 #define WIN_W 575
 #define WIN_H 500
 
-struct test_t {
-  int i;
-};
-
-typedef struct test_t* test_t;
-
-void init_test(test_t* a) {
-  if (!*a)
-    *a = malloc(sizeof(struct test_t));
-  struct test_t* b = *a;
-  b->i = 10;
-}
-
-void test_test(test_t a) {
-  init_test(&a);
-  a->i = 20;
-}
-
 int main(int argc, const char* argv[]) {
   sgl_error_callback(on_error);
 
   sgl_screen(&win, "test",  WIN_W, WIN_H, RESIZABLE);
   sgl_screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, win);
   
+#if !SKIP_2ND_WINDOW
   screen_t win2;
   sgl_screen(&win2, "test2", WIN_W - 100, WIN_H - 100, RESIZABLE | BORDERLESS);
   sgl_screen_callbacks(NULL, NULL, NULL, NULL, NULL, NULL, win2);
+#endif
   
   surface_t icon;
 #define TEST_ICON_SIZE 32
@@ -207,10 +203,11 @@ int main(int argc, const char* argv[]) {
   sgl_cursor_icon_custom_buf(win, icon);
   sgl_destroy(&icon);
   
+#if !SKIP_2ND_WINDOW
   surface_t buf2;
   sgl_surface(&buf2, 256, 256);
   sgl_filter(buf2, xor);
-  
+#endif
   sgl_surface(&buf, WIN_W, WIN_H);
 
 #if defined(SGL_ENABLE_JOYSTICKS)
@@ -284,7 +281,7 @@ int main(int argc, const char* argv[]) {
 #if defined(SGL_ENABLE_GIF)
   gif_t ok_hand;
   sgl_gif(&ok_hand, RES("ok.gif"));
-  sgl_save_gif(&ok_hand, RES("ok_2.gif"));
+  // sgl_save_gif(&ok_hand, RES("ok_2.gif"));
 #endif
   
   float theta = 1.f;
@@ -292,7 +289,7 @@ int main(int argc, const char* argv[]) {
   long sine_i = 0;
   long prev_frame_tick;
   long curr_frame_tick = sgl_ticks();
-  int test_alpha = 255;
+  int text_alpha = 255;
   while (!sgl_closed(win) && running) {
     prev_frame_tick = curr_frame_tick;
     curr_frame_tick = sgl_ticks();
@@ -307,8 +304,7 @@ int main(int argc, const char* argv[]) {
 #endif
     
     current_ticks = clock();
-
-//    cls(&win);
+    
     sgl_fill(buf, WHITE);
 
     for (int x = 32; x < sgl_surface_width(buf); x += 32)
@@ -377,12 +373,14 @@ int main(int argc, const char* argv[]) {
       fps = CLOCKS_PER_SEC / delta_ticks;
     sgl_writelnf(buf, 2, 2, RED, 0, "FPS: %ju", fps);
     
+#if defined(SGL_ENABLE_FREETYPE)
     time(&rt);
     struct tm tm = *localtime(&rt);
-    sgl_ftfont_writelnf(buf, ftf, 0, 90, RGBA(255, 0, 0, test_alpha), RGBA(0, 255, 0, test_alpha), "It is %d/%d/%d at %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-    test_alpha -= 1;
-    if (test_alpha <= 0)
-      test_alpha = 255;
+    sgl_ftfont_writelnf(buf, ftf, 0, 90, RGBA(255, 0, 0, text_alpha), RGBA(0, 255, 0, text_alpha), "It is %d/%d/%d at %d:%d:%d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    text_alpha -= 1;
+    if (text_alpha <= 0)
+      text_alpha = 255;
+#endif
     
     sgl_blit(buf, &points[9], s[10], NULL);
     
@@ -397,7 +395,9 @@ int main(int argc, const char* argv[]) {
     
 FLUSH:
     sgl_flush(win, buf);
+#if !SKIP_2ND_WINDOW
     sgl_flush(win2, buf2);
+#endif
   }
 
 #if defined(SGL_ENABLE_JOYSTICKS)
@@ -413,12 +413,14 @@ FLUSH:
 #if defined(SGL_ENABLE_GIF)
   sgl_gif_destroy(&ok_hand);
 #endif
-  sgl_destroy(&buf);
-  sgl_destroy(&buf2);
   for (int i = 0; i < TOTAL_SURFACES; ++i)
     sgl_destroy(&s[i]);
+  sgl_destroy(&buf);
   sgl_screen_destroy(&win);
+#if !SKIP_2ND_WINDOW
+  sgl_destroy(&buf2);
   sgl_screen_destroy(&win2);
+#endif
   sgl_release();
   return 0;
 }
