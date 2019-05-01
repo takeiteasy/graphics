@@ -159,20 +159,24 @@ void on_error(void* data, ERRORLVL lvl, ERRORTYPE type, const char* msg, const c
 }
 
 #if defined(SGL_ENABLE_JOYSTICKS)
-void on_joystick_connect(void* data, joystick_t* d, int i) {
-  printf("%s:%d connected\n", d->description, i);
+void on_joystick_connect(void* data, joystick_t j, int i) {
+  const char* d = NULL; int a, b;
+  sgl_joystick_info(j, &d, NULL, &a, &b);
+  printf("JOYSTICK CONNECTED: %d: (%s, %d, %d)\n", i, d, a, b);
 }
 
-void on_joystick_disconnect(void* data, joystick_t* d, int i) {
-  printf("%s:%d disconnected\n", d->description, i);
+void on_joystick_disconnect(void* data, joystick_t j, int i) {
+  const char* d = NULL; int a, b;
+  sgl_joystick_info(j, &d, NULL, &a, &b);
+  printf("JOYSTICK DISCONNECTED: %d: (%s, %d, %d)\n", i, d, a, b);
 }
 
-void on_joystick_btn(void* data, joystick_t* d, int btn, bool down, long time) {
-  printf("%s:%d bnt %d: %d\n", d->description, d->device_id, btn, down);
+void on_joystick_btn(void* data, joystick_t j, int i, int btn, bool down, long time) {
+  printf("JOYSTICK %d, BUTTON %d: %d\n", i, btn, down);
 }
 
-void on_joystick_axis(void* data, joystick_t* d, int axis, float v, float lv, long time) {
-  printf("%s:%d axis: %d: %f %f\n", d->description, d->device_id, axis, v, lv);
+void on_joystick_axis(void* data, joystick_t j, int i, int axis, float v, float lv, long time) {
+  printf("JOYSTICK %d, AXIS %d: %f %f\n", i, axis, v, lv);
 }
 #endif
 
@@ -212,7 +216,7 @@ int main(int argc, const char* argv[]) {
 
 #if defined(SGL_ENABLE_JOYSTICKS)
   sgl_joystick_callbacks(on_joystick_connect, on_joystick_disconnect, on_joystick_btn, on_joystick_axis, 0);
-  sgl_joystick_init(true);
+  sgl_joystick_init(4);
 #endif
   
 #define TOTAL_SURFACES 11

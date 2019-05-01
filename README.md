@@ -62,11 +62,10 @@ Tested on:
 ### Important
 
 - Cursor clipping for Linux [and OS X](https://stackoverflow.com/a/40922095)
-- Sort out joysticks
-- Make a CMake build file (or some other build system)
-- Remove any unnecessary non-standard library includes
+- Learn CMake and make a build file
+- Get a new laptop for Windows/Linux testing
+- Rewrite sgl_gif_save remove non-standard includes
 - Clean up code before porting Windows and Linux back
-- Add ```on_close()``` window callback
 
 ### Less important
 

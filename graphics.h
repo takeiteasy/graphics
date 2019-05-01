@@ -423,24 +423,13 @@ extern "C" {
 #endif
   
 #if defined(SGL_ENABLE_JOYSTICKS)
-  typedef struct __joystick_t {
-    const char* description;
-    int device_id, vendor_id, product_id;
-    
-    unsigned int n_axes, n_buttons;
-    float* axes;
-    int* buttons;
-    
-    struct __joystick_t* next;
-    
-    void* __private;
-  } joystick_t;
+  typedef struct joystick_t* joystick_t;
   
 #define XMAP_JOYSTICK_CB \
-  X(connect, (void*, joystick_t*, int), connect) \
-  X(removed, (void*, joystick_t*, int), remove) \
-  X(btn, (void*, joystick_t*, int, bool, long), button) \
-  X(axis, (void*, joystick_t*, int, float, float, long), axis)
+  X(connect, (void*, joystick_t, int), connect) \
+  X(removed, (void*, joystick_t, int), remove) \
+  X(btn, (void*, joystick_t, int, int, bool, long), button) \
+  X(axis, (void*, joystick_t, int, int, float, float, long), axis)
   
 #define X(a, b, c) \
 void(*a##_cb)b,
@@ -451,11 +440,11 @@ void sgl_##c##_callback(void(*a##_cb)b);
   XMAP_JOYSTICK_CB
 #undef X
   
-  joystick_t* sgl_joystick(int id);
-  bool sgl_joystick_init(bool scan_too);
-  bool sgl_joystick_scan(void);
+  joystick_t sgl_joystick(int n);
+  void sgl_joystick_info(joystick_t j, const char** description, int* device_id, int* vendor_id, int* product_id);
+  bool sgl_joystick_init(int max);
   void sgl_joystick_release(void);
-  bool sgl_joystick_remove(int id);
+  bool sgl_joystick_remove(int n);
   void sgl_joystick_poll(void);
 #endif
   

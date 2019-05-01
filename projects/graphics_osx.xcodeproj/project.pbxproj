@@ -43,14 +43,11 @@
 		88B0A62F20EC6B9400CE1317 /* lena.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = lena.png; sourceTree = "<group>"; };
 		88B0A63020EC6B9400CE1317 /* 1bpp.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = 1bpp.bmp; sourceTree = "<group>"; };
 		88B0A63120EC6B9400CE1317 /* Uncompressed-24.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = "Uncompressed-24.bmp"; sourceTree = "<group>"; };
-		88B0A63420EC6B9400CE1317 /* build_nix.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_nix.sh; sourceTree = "<group>"; };
-		88B0A63520EC6B9400CE1317 /* build_osx.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_osx.sh; sourceTree = "<group>"; };
 		88B0A63620EC6B9400CE1317 /* lena.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = lena.bmp; sourceTree = "<group>"; };
 		88B0A63720EC6B9400CE1317 /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
 		88B0A63820EC6B9400CE1317 /* test_alpha.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = test_alpha.png; sourceTree = "<group>"; };
 		88B0A63920EC6B9400CE1317 /* 8bpp.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = 8bpp.bmp; sourceTree = "<group>"; };
 		88B0A63A20EC6B9400CE1317 /* 4bpp.bmp */ = {isa = PBXFileReference; lastKnownFileType = image.bmp; path = 4bpp.bmp; sourceTree = "<group>"; };
-		88B0A63B20EC6B9400CE1317 /* build_test.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_test.sh; sourceTree = "<group>"; };
 		88B0A63C20EC6B9400CE1317 /* tewi.bdf */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = tewi.bdf; sourceTree = "<group>"; };
 		88B0A65020EC6E6D00CE1317 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		88B0A65220EC6E7200CE1317 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
@@ -133,14 +130,11 @@
 				88B0A62F20EC6B9400CE1317 /* lena.png */,
 				88B0A63020EC6B9400CE1317 /* 1bpp.bmp */,
 				88B0A63120EC6B9400CE1317 /* Uncompressed-24.bmp */,
-				88B0A63420EC6B9400CE1317 /* build_nix.sh */,
-				88B0A63520EC6B9400CE1317 /* build_osx.sh */,
 				88B0A63620EC6B9400CE1317 /* lena.bmp */,
 				88B0A63720EC6B9400CE1317 /* test.c */,
 				88B0A63820EC6B9400CE1317 /* test_alpha.png */,
 				88B0A63920EC6B9400CE1317 /* 8bpp.bmp */,
 				88B0A63A20EC6B9400CE1317 /* 4bpp.bmp */,
-				88B0A63B20EC6B9400CE1317 /* build_test.sh */,
 				88B0A63C20EC6B9400CE1317 /* tewi.bdf */,
 			);
 			name = tests;

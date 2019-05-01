@@ -2509,7 +2509,7 @@ static inline int letter_index(int c) {
       return c - 32;
     case 9600 ... 9631: // Blocks
       return (c - 9600) + 95;
-    case 9472 ...9599: // Box
+    case 9472 ... 9599: // Box
       return (c - 9472) + 127;
     case 912 ... 969: // Greek
       return (c - 912) + 255;
@@ -3213,7 +3213,7 @@ void sgl_ftfont_string(surface_t* s, ftfont_t f, int fg, int bg, const char* str
       index = ftfont_char_index(f, c);
       if (index == -1)
         index = load_ftfont_char(f, _str);
-      // TODO
+#warning TODO: Unicode support for FreeType
     }
   }
   if (nn > n)
@@ -3512,7 +3512,7 @@ GIF_EXTR long GIF_Load(void *data, long size,
                        void (*eamf)(void*, struct GIF_WHDR*),
                        void *anim, long skip) {
   const long    GIF_BLEN = (1 << 12) * sizeof(uint32_t);
-  const uint8_t GIF_EHDM = 0x21, /** extension header mark              **/
+  const uint8_t GIF_EHDM = 0x21, /** extension header mark **/
   GIF_FHDM = 0x2C, /** frame header mark                  **/
   GIF_EOFM = 0x3B, /** end-of-file mark                   **/
   GIF_EGCM = 0xF9, /** extension: graphics control mark   **/
@@ -4127,11 +4127,42 @@ void sgl_gif_destroy(gif_t* _g) {
 #endif
 
 #if defined(SGL_ENABLE_JOYSTICKS)
-static struct {
-  int size;
-  joystick_t* head;
-} joy_devices;
-static int next_device_id = 0;
+#if defined(SGL_OSX)
+#include <IOKit/hid/IOHIDLib.h>
+#include <limits.h>
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+
+struct HIDGamepadAxis {
+  IOHIDElementCookie cookie;
+  CFIndex logicalMin;
+  CFIndex logicalMax;
+  bool hasNullState;
+  bool isHatSwitch;
+  bool isHatSwitchSecondAxis;
+};
+
+struct HIDGamepadButton {
+  IOHIDElementCookie cookie;
+};
+#endif
+
+struct joystick_t {
+  const char* description;
+  int device_id, vendor_id, product_id;
+  
+  unsigned int n_axes, n_buttons;
+  float* axes;
+  int* buttons;
+  
+#if defined(SGL_OSX)
+  IOHIDDeviceRef deviceRef;
+  struct HIDGamepadAxis* axisElements;
+  struct HIDGamepadButton* buttonElements;
+#endif
+};
+static joystick_t* joysticks = NULL;
+static int joysticks_sz = 0;
 
 #define X(a, b, c) \
 static void(*joy_##a##_callback)b = NULL;
@@ -4150,133 +4181,34 @@ joy_##a##_callback = a##_cb;
 
 #define X(a, b, c)\
 void sgl_##c##_callback(void(*a##_cb)b) { \
-joy_##a##_callback = a##_cb; \
+  joy_##a##_callback = a##_cb; \
 }
 XMAP_JOYSTICK_CB
 #undef X
 
-joystick_t* sgl_joystick(int id) {
-  if (id < 0 || !joy_devices.head)
-    return NULL;
-  
-  joystick_t* current = joy_devices.head;
-  while (current) {
-    if (current->device_id == id)
-      return current;
-    current = current->next;
-  }
-  return NULL;
-}
-
-static inline void add_joystick(joystick_t* d) {
-  CALL(joy_connect_callback, d, d->device_id);
-  
-  joystick_t* current = joy_devices.head;
-  if (!current)
-    joy_devices.head = d;
-  else {
-    while (current->next)
-      current = current->next;
-    current->next = d;
-  }
-  joy_devices.size++;
-}
-
-#include <IOKit/hid/IOHIDLib.h>
-#include <limits.h>
-#include <mach/mach.h>
-#include <mach/mach_time.h>
-
-typedef struct {
-  IOHIDElementCookie cookie;
-  CFIndex min, max;
-  bool has_null_state, is_hat_switch, is_hat_switch_2nd_axis;
-} hid_joystick_axis_t;
-
-typedef struct {
-  IOHIDElementCookie cookie;
-} hid_joystick_btn_t;
-
-typedef struct {
-  IOHIDDeviceRef device;
-  hid_joystick_axis_t* axes;
-  hid_joystick_btn_t* buttons;
-} joystick_private_t;
-
-typedef enum {
-  JOY_DEVICE_ATTACHED,
-  JOY_DEVICE_REMOVED,
-  JOY_BTN_DOWN,
-  JOY_BTN_UP,
-  JOY_AXIS_MOVED
-} JOYEVENTTYPE;
-
-typedef struct {
-  joystick_t* device;
-  long timestamp;
-  unsigned int btn_id;
-  bool down;
-} joystick_btn_event_t;
-
-typedef struct {
-  joystick_t* device;
-  long timestamp;
-  unsigned int axis_id;
-  float value, last_value;
-} joystick_axis_event_t;
-
-typedef struct __joy_q_event_t {
-  int device_id;
-  JOYEVENTTYPE event;
-  struct __joy_q_event_t* next;
-  void* data;
-} joystick_queued_event_t;
-
-typedef struct {
-  int size;
-  joystick_queued_event_t* head;
-} joystick_queue_t;
-
+#if defined(SGL_OSX)
 static IOHIDManagerRef hid = NULL;
-static joystick_queue_t input_event_q, device_event_q;
-
 #define GAMEPAD_RUN_LOOP_MODE CFSTR("GamepadRunLoopMode")
 
-static void queue_input_event(int device_id, JOYEVENTTYPE type, void* data) {
-  joystick_queued_event_t* e = malloc(sizeof(joystick_queued_event_t));
-  e->device_id = device_id;
-  e->event = type;
-  e->data = data;
-  e->next = NULL;
+static int IOHIDDeviceGetIntProperty(IOHIDDeviceRef deviceRef, CFStringRef key) {
+  CFTypeRef typeRef;
+  int value;
   
-  joystick_queued_event_t* current = input_event_q.head;
-  if (!current)
-    input_event_q.head = e;
-  else {
-    while (current)
-      current = current->next;
-    current = e;
+  typeRef = IOHIDDeviceGetProperty(deviceRef, key);
+  if (typeRef == NULL || CFGetTypeID(typeRef) != CFNumberGetTypeID()) {
+    return 0;
   }
-  input_event_q.size++;
+  
+  CFNumberGetValue((CFNumberRef) typeRef, kCFNumberSInt32Type, &value);
+  return value;
 }
 
-static void queue_axis_event(joystick_t* device, long time, int id, float v, float lv) {
-  joystick_axis_event_t* e = malloc(sizeof(joystick_axis_event_t));
-  e->device = device;
-  e->axis_id = id;
-  e->value = v;
-  e->last_value = lv;
-  e->timestamp = time;
-  queue_input_event(device->device_id, JOY_AXIS_MOVED, (void*)e);
+static int IOHIDDeviceGetVendorID(IOHIDDeviceRef deviceRef) {
+  return IOHIDDeviceGetIntProperty(deviceRef, CFSTR(kIOHIDVendorIDKey));
 }
 
-static void queue_btn_event(joystick_t* device, long time, int id, bool down) {
-  joystick_btn_event_t* e = malloc(sizeof(joystick_btn_event_t));
-  e->device = device;
-  e->btn_id = id;
-  e->down = down;
-  e->timestamp = time;
-  queue_input_event(device->device_id, down ? JOY_BTN_DOWN : JOY_BTN_UP, (void*)e);
+static int IOHIDDeviceGetProductID(IOHIDDeviceRef deviceRef) {
+  return IOHIDDeviceGetIntProperty(deviceRef, CFSTR(kIOHIDProductIDKey));
 }
 
 static void hat_val_xy(CFIndex v, CFIndex r, int* x, int* y) {
@@ -4284,194 +4216,244 @@ static void hat_val_xy(CFIndex v, CFIndex r, int* x, int* y) {
   *y = (v == r ? 0 : (v > r / 4 * 3 || v < r / 4 ? -1 : (v > r / 4 && v < r / 4 * 3 ? 1 : 0)));
 }
 
-static void device_val_changed(void* ctx, IOReturn result, void* sender, IOHIDValueRef value) {
-  static mach_timebase_info_data_t tbi;
-  if (!tbi.denom)
-    mach_timebase_info(&tbi);
+static void device_input(void* ctx, IOReturn result, void* src, IOHIDValueRef value) {
+  joystick_t device;
+  IOHIDElementRef element;
+  IOHIDElementCookie cookie;
+  unsigned int axisIndex, buttonIndex;
   
-  joystick_t* device = (joystick_t*)ctx;
-  joystick_private_t* private = device->__private;
-  IOHIDElementRef element = IOHIDValueGetElement(value);
-  IOHIDElementCookie cookie = IOHIDElementGetCookie(element);
+  static mach_timebase_info_data_t timebaseInfo;
+  if (timebaseInfo.denom == 0) {
+    mach_timebase_info(&timebaseInfo);
+  }
   
-  for (int a = 0; a < device->n_axes; ++a) {
-    if (!private->axes[a].is_hat_switch_2nd_axis &&
-        private->axes[a].cookie == cookie) {
-      if (IOHIDValueGetLength(value) > 4)
-        continue;
+  device = (joystick_t)ctx;
+  element = IOHIDValueGetElement(value);
+  cookie = IOHIDElementGetCookie(element);
+  
+  for (axisIndex = 0; axisIndex < device->n_axes; axisIndex++) {
+    if (!device->axisElements[axisIndex].isHatSwitchSecondAxis && device->axisElements[axisIndex].cookie == cookie) {
+      CFIndex integerValue;
       
-      CFIndex iv = IOHIDValueGetIntegerValue(value);
-      if (private->axes[a].is_hat_switch) {
-        if (!private->axes[a].has_null_state)
-          iv = (iv < private->axes[a].min ? private->axes[a].max - private->axes[a].min + 1 : iv - 1);
-        
-        int x, y;
-        hat_val_xy(iv, private->axes[a].max - private->axes[a].min + 1, &x, &y);
-        if (x != device->axes[a]) {
-          queue_axis_event(device, IOHIDValueGetTimeStamp(value) * tbi.numer / tbi.denom * 0.000000001, a, x, device->axes[a]);
-          device->axes[a] = x;
-        }
-        if (y != device->axes[a + 1]) {
-          queue_axis_event(device, IOHIDValueGetTimeStamp(value) * tbi.numer / tbi.denom * 0.000000001, a + 1, y, device->axes[a + 1]);
-          device->axes[a + 1] = y;
-        }
-      } else {
-        if (iv < private->axes[a].min)
-          private->axes[a].min = iv;
-        if (iv > private->axes[a].max)
-          private->axes[a].max = iv;
-        float fv = (iv - private->axes[a].min) / (float) (private->axes[a].max - private->axes[a].min) * 2.0f - 1.0f;
-        
-        queue_axis_event(device, IOHIDValueGetTimeStamp(value) * tbi.numer / tbi.denom * 0.000000001, a, fv, device->axes[a]);
-        device->axes[a] = fv;
+      if (IOHIDValueGetLength(value) > 4) {
+        // Workaround for a strange crash that occurs with PS3 controller; was getting lengths of 39 (!)
+        continue;
       }
-      return;
-    }
-  }
-  
-  for (int b = 0; b < device->n_buttons; ++b) {
-    if (private->buttons[b].cookie == cookie) {
-      bool down = IOHIDValueGetIntegerValue(value);
-      queue_btn_event(device, IOHIDValueGetTimeStamp(value) * tbi.numer / tbi.denom * 0.000000001, b, down);
-      device->buttons[b] = down;
-      return;
-    }
-  }
-}
-
-static int IOHIDDeviceGetIntProperty(IOHIDDeviceRef ref, CFStringRef key) {
-  CFTypeRef ref_type = IOHIDDeviceGetProperty(ref, key);
-  if (!ref_type || CFGetTypeID(ref_type) != CFNumberGetTypeID())
-    return 0;
-  int value;
-  CFNumberGetValue((CFNumberRef)ref_type, kCFNumberSInt32Type, &value);
-  return value;
-}
-
-#define IOHIDDeviceGetProductID(r) (IOHIDDeviceGetIntProperty(r, CFSTR(kIOHIDProductIDKey)))
-#define IOHIDDeviceGetVendorID(r) (IOHIDDeviceGetIntProperty(r, CFSTR(kIOHIDVendorIDKey)))
-
-static void device_added(void* ctx, IOReturn result, void* sender, IOHIDDeviceRef device_ref) {
-  joystick_private_t* private = malloc(sizeof(joystick_private_t));
-  private->device = device_ref;
-  private->axes = NULL;
-  private->buttons = NULL;
-  
-  joystick_t* device = malloc(sizeof(joystick_t));
-  device->__private = private;
-  device->next = NULL;
-  device->device_id = next_device_id++;
-  device->product_id = IOHIDDeviceGetProductID(device_ref);
-  device->vendor_id = IOHIDDeviceGetVendorID(device_ref);
-  device->n_axes = 0;
-  device->n_buttons = 0;
-  
-  char* description;
-  CFStringRef product_name = IOHIDDeviceGetProperty(device_ref, CFSTR(kIOHIDProductKey));
-  if (!product_name || CFGetTypeID(product_name) != CFStringGetTypeID()) {
-    description = malloc(sizeof(char) * 10);
-    strcpy(description, "[Unknown]");
-  } else {
-    CFIndex pn_len;
-    CFStringGetBytes(product_name, CFRangeMake(0, CFStringGetLength(product_name)), kCFStringEncodingUTF8, '?', false, NULL, 100, &pn_len);
-    description = malloc(sizeof(char) * pn_len + 1);
-    CFStringGetBytes(product_name, CFRangeMake(0, CFStringGetLength(product_name)), kCFStringEncodingUTF8, '?', false, (UInt8*)description, pn_len + 1, NULL);
-    description[pn_len] = '\x00';
-  }
-  device->description = description;
-  
-  CFArrayRef elements = IOHIDDeviceCopyMatchingElements(device_ref, NULL, kIOHIDOptionsTypeNone);
-  for (int e = 0; e < CFArrayGetCount(elements); ++e) {
-    IOHIDElementRef element = (IOHIDElementRef)CFArrayGetValueAtIndex(elements, e);
-    switch(IOHIDElementGetType(element)) {
-      case kIOHIDElementTypeInput_Misc:
-      case kIOHIDElementTypeInput_Axis:
-        private->axes = realloc(private->axes, sizeof(hid_joystick_axis_t) * (device->n_axes + 1));
-        private->axes[device->n_axes].cookie = IOHIDElementGetCookie(element);
-        private->axes[device->n_axes].min = IOHIDElementGetLogicalMin(element);
-        private->axes[device->n_axes].max = IOHIDElementGetLogicalMax(element);
-        private->axes[device->n_axes].has_null_state = !!IOHIDElementHasNullState(element);
-        private->axes[device->n_axes].is_hat_switch = IOHIDElementGetUsage(element) == kHIDUsage_GD_Hatswitch;
-        private->axes[device->n_axes].is_hat_switch_2nd_axis = false;
-        device->n_axes++;
+      integerValue = IOHIDValueGetIntegerValue(value);
+      
+      if (device->axisElements[axisIndex].isHatSwitch) {
+        int x, y;
         
-        if (private->axes[device->n_axes - 1].is_hat_switch) {
-          private->axes = realloc(private->axes, sizeof(hid_joystick_axis_t) * (device->n_axes + 1));
-          private->axes[device->n_axes].is_hat_switch_2nd_axis = true;
-          device->n_axes++;
+        // Fix for Saitek X52
+        if (!device->axisElements[axisIndex].hasNullState) {
+          if (integerValue < device->axisElements[axisIndex].logicalMin) {
+            integerValue = device->axisElements[axisIndex].logicalMax - device->axisElements[axisIndex].logicalMin + 1;
+          } else {
+            integerValue--;
+          }
         }
-        break;
-      case kIOHIDElementTypeInput_Button:
-        private->buttons = realloc(private->buttons, sizeof(hid_joystick_btn_t) * (device->n_buttons + 1));
-        private->buttons[device->n_buttons].cookie = IOHIDElementGetCookie(element);
-        device->n_buttons++;
-        break;
+        
+        hat_val_xy(integerValue, device->axisElements[axisIndex].logicalMax - device->axisElements[axisIndex].logicalMin + 1, &x, &y);
+        
+        if (x != device->axes[axisIndex]) {
+          CALL(joy_axis_callback, device, device->device_id, axisIndex, x, device->axes[axisIndex], IOHIDValueGetTimeStamp(value) * timebaseInfo.numer / timebaseInfo.denom * 0.000000001)
+          device->axes[axisIndex] = x;
+        }
+        
+        if (y != device->axes[axisIndex + 1]) {
+          CALL(joy_axis_callback, device, device->device_id, axisIndex + 1, y, device->axes[axisIndex + 1], IOHIDValueGetTimeStamp(value) * timebaseInfo.numer / timebaseInfo.denom * 0.000000001)
+          device->axes[axisIndex + 1] = y;
+        }
+        
+      } else {
+        float floatValue;
+        
+        if (integerValue < device->axisElements[axisIndex].logicalMin) {
+          device->axisElements[axisIndex].logicalMin = integerValue;
+        }
+        if (integerValue > device->axisElements[axisIndex].logicalMax) {
+          device->axisElements[axisIndex].logicalMax = integerValue;
+        }
+        floatValue = (integerValue - device->axisElements[axisIndex].logicalMin) / (float) (device->axisElements[axisIndex].logicalMax - device->axisElements[axisIndex].logicalMin) * 2.0f - 1.0f;
+        
+        CALL(joy_axis_callback, device, device->device_id, axisIndex, floatValue, device->axes[axisIndex], IOHIDValueGetTimeStamp(value) * timebaseInfo.numer / timebaseInfo.denom * 0.000000001)
+        device->axes[axisIndex] = floatValue;
+      }
+      
+      return;
+    }
+  }
+  
+  for (buttonIndex = 0; buttonIndex < device->n_buttons; buttonIndex++) {
+    if (device->buttonElements[buttonIndex].cookie == cookie) {
+      bool down;
+      
+      down = IOHIDValueGetIntegerValue(value);
+      CALL(joy_btn_callback, device, device->device_id, buttonIndex, down, IOHIDValueGetTimeStamp(value) * timebaseInfo.numer / timebaseInfo.denom * 0.000000001);
+      device->buttons[buttonIndex] = down;
+      
+      return;
+    }
+  }
+}
+
+static void device_added(void* ctx, IOReturn result, void* src, IOHIDDeviceRef device) {
+  CFArrayRef elements;
+  CFIndex elementIndex;
+  IOHIDElementRef element;
+  CFStringRef cfProductName;
+  joystick_t joystick;
+  IOHIDElementType type;
+  char* description;
+  
+  joystick = malloc(sizeof(struct joystick_t));
+  if (!joystick) {
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
+    return;
+  }
+  int i = 0;
+  for (i = 0; i < joysticks_sz; ++i)
+    if (!joysticks[i])
+      break;
+  if (i == joysticks_sz)
+    return;
+  joystick->device_id = i;
+  joystick->vendor_id = IOHIDDeviceGetVendorID(device);
+  joystick->product_id = IOHIDDeviceGetProductID(device);
+  joystick->n_axes = 0;
+  joystick->n_buttons = 0;
+  joystick->deviceRef = device;
+  joystick->axisElements = NULL;
+  joystick->buttonElements = NULL;
+  joysticks[i] = joystick;
+  
+  cfProductName = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDProductKey));
+  if (cfProductName == NULL || CFGetTypeID(cfProductName) != CFStringGetTypeID()) {
+    description = malloc(strlen("[Unknown]" + 1));
+    strcpy(description, "[Unknown]");
+    
+  } else {
+    CFIndex length;
+    
+    CFStringGetBytes(cfProductName, CFRangeMake(0, CFStringGetLength(cfProductName)), kCFStringEncodingUTF8, '?', false, NULL, 100, &length);
+    description = malloc(length + 1);
+    CFStringGetBytes(cfProductName, CFRangeMake(0, CFStringGetLength(cfProductName)), kCFStringEncodingUTF8, '?', false, (UInt8 *) description, length + 1, NULL);
+    description[length] = '\x00';
+  }
+  joystick->description = description;
+  
+  elements = IOHIDDeviceCopyMatchingElements(device, NULL, kIOHIDOptionsTypeNone);
+  for (elementIndex = 0; elementIndex < CFArrayGetCount(elements); elementIndex++) {
+    element = (IOHIDElementRef) CFArrayGetValueAtIndex(elements, elementIndex);
+    type = IOHIDElementGetType(element);
+    if (type == kIOHIDElementTypeInput_Misc ||
+        type == kIOHIDElementTypeInput_Axis) {
+      
+      joystick->axisElements = realloc(joystick->axisElements, sizeof(struct HIDGamepadAxis) * (joystick->n_axes + 1));
+      joystick->axisElements[joystick->n_axes].cookie = IOHIDElementGetCookie(element);
+      joystick->axisElements[joystick->n_axes].logicalMin = IOHIDElementGetLogicalMin(element);
+      joystick->axisElements[joystick->n_axes].logicalMax = IOHIDElementGetLogicalMax(element);
+      joystick->axisElements[joystick->n_axes].hasNullState = !!IOHIDElementHasNullState(element);
+      joystick->axisElements[joystick->n_axes].isHatSwitch = IOHIDElementGetUsage(element) == kHIDUsage_GD_Hatswitch;
+      joystick->axisElements[joystick->n_axes].isHatSwitchSecondAxis = false;
+      joystick->n_axes++;
+      
+      if (joystick->axisElements[joystick->n_axes - 1].isHatSwitch) {
+        joystick->axisElements = realloc(joystick->axisElements, sizeof(struct HIDGamepadAxis) * (joystick->n_axes + 1));
+        joystick->axisElements[joystick->n_axes].isHatSwitchSecondAxis = true;
+        joystick->n_axes++;
+      }
+      
+    } else if (type == kIOHIDElementTypeInput_Button) {
+      joystick->buttonElements = realloc(joystick->buttonElements, sizeof(struct HIDGamepadButton) * (joystick->n_buttons + 1));
+      joystick->buttonElements[joystick->n_buttons].cookie = IOHIDElementGetCookie(element);
+      joystick->n_buttons++;
     }
   }
   CFRelease(elements);
   
-  device->axes = malloc(sizeof(float) * device->n_axes);
-  device->buttons = malloc(sizeof(int) * device->n_buttons);
+  joystick->axes = malloc(sizeof(float) * joystick->n_axes);
+  joystick->buttons = malloc(sizeof(int) * joystick->n_buttons);
   
-  IOHIDDeviceRegisterInputValueCallback(device_ref, device_val_changed, device);
-  
-  joystick_queued_event_t* q_event = malloc(sizeof(joystick_queued_event_t));
-  q_event->device_id = device->device_id;
-  q_event->event = JOY_DEVICE_ATTACHED;
-  q_event->data = (void*)device;
-  q_event->next = NULL;
-  
-  joystick_queued_event_t* current = device_event_q.head;
-  if (!current)
-    device_event_q.head = q_event;
-  else {
-    while (current->next)
-      current = current->next;
-    current->next = q_event;
-  }
-  device_event_q.size++;
+  IOHIDDeviceRegisterInputValueCallback(device, device_input, joystick);
+  CALL(joy_connect_callback, joystick, joystick->device_id);
 }
 
-static void device_removed(void* ctx, IOReturn result, void* sender, IOHIDDeviceRef device_ref) {
-  joystick_t* current = joy_devices.head;
-  while (current) {
-    if (((joystick_private_t*)current->__private)->device == device_ref)
-      break;
-    current = current->next;
-  }
+static void release_joystick(int i) {
+  joystick_t j = joysticks[i];
+  if (!j)
+    return;
   
-  joystick_queued_event_t* q_event = malloc(sizeof(joystick_queued_event_t));
-  q_event->device_id = current->device_id;
-  q_event->event = JOY_DEVICE_REMOVED;
-  q_event->data = (void*)current;
-  q_event->next = NULL;
-  
-  joystick_queued_event_t* e_current = device_event_q.head;
-  if (!e_current)
-    device_event_q.head = q_event;
-  else {
-    while (e_current->next)
-      e_current = e_current->next;
-    e_current->next = q_event;
+  IOHIDDeviceRegisterInputValueCallback(j->deviceRef, NULL, NULL);
+  FREE_SAFE(j->axisElements);
+  FREE_SAFE(j->buttonElements);
+  if (j->description) {
+    free((void*)j->description);
+    j->description = NULL;
   }
-  device_event_q.size++;
+  FREE_SAFE(j->axes);
+  FREE_SAFE(j->buttons);
+  FREE_SAFE(j);
+  joysticks[i] = NULL;
 }
 
-bool sgl_joystick_init(bool scan_too) {
-  hid = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+static void device_removed(void* ctx, IOReturn result, void* src, IOHIDDeviceRef device) {
+  for (int i = 0; i < joysticks_sz; ++i) {
+    if (joysticks[i]->deviceRef == device) {
+      CALL(joy_removed_callback, joysticks[i], i);
+      release_joystick(i);
+      return;
+    }
+  }
+}
+#endif
+
+joystick_t sgl_joystick(int n) {
+  if ((!hid && !joysticks) || n < 0 || n >= joysticks_sz)
+    return NULL;
+  return joysticks[n];
+}
+
+void sgl_joystick_info(joystick_t j, const char** description, int* device_id, int* vendor_id, int* product_id) {
+  if (description)
+    *description = j->description;
+  if (device_id)
+    *device_id = j->device_id;
+  if (vendor_id)
+    *vendor_id = j->vendor_id;
+  if (product_id)
+    *product_id = j->product_id;
+}
+
+bool sgl_joystick_init(int max) {
+  if (hid && joysticks)
+    return false;
   
-  CFStringRef keys[2] = {
-    CFSTR(kIOHIDDeviceUsagePageKey),
-    CFSTR(kIOHIDDeviceUsageKey)
-  };
-  
-  int value = kHIDPage_GenericDesktop;
+  CFStringRef keys[2];
+  int value;
   CFNumberRef values[2];
+  CFDictionaryRef dictionaries[3];
+  CFArrayRef array;
+  
+  hid = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+  if (!max)
+    max = 4;
+  joysticks = malloc(sizeof(joystick_t) * max);
+  if (!joysticks) {
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
+    return false;
+  }
+  for (int i = 0; i < max; ++i)
+    joysticks[i] = NULL;
+  joysticks_sz = max;
+  
+  keys[0] = CFSTR(kIOHIDDeviceUsagePageKey);
+  keys[1] = CFSTR(kIOHIDDeviceUsageKey);
+  
+  value = kHIDPage_GenericDesktop;
   values[0] = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &value);
   value = kHIDUsage_GD_Joystick;
   values[1] = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &value);
-  
-  CFDictionaryRef dictionaries[3];
   dictionaries[0] = CFDictionaryCreate(kCFAllocatorDefault, (const void**)keys, (const void**)values, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
   CFRelease(values[0]);
   CFRelease(values[1]);
@@ -4492,7 +4474,7 @@ bool sgl_joystick_init(bool scan_too) {
   CFRelease(values[0]);
   CFRelease(values[1]);
   
-  CFArrayRef array = CFArrayCreate(kCFAllocatorDefault, (const void**)dictionaries, 3, &kCFTypeArrayCallBacks);
+  array = CFArrayCreate(kCFAllocatorDefault, (const void**)dictionaries, 3, &kCFTypeArrayCallBacks);
   CFRelease(dictionaries[0]);
   CFRelease(dictionaries[1]);
   CFRelease(dictionaries[2]);
@@ -4501,156 +4483,36 @@ bool sgl_joystick_init(bool scan_too) {
   
   IOHIDManagerRegisterDeviceMatchingCallback(hid, device_added, NULL);
   IOHIDManagerRegisterDeviceRemovalCallback(hid, device_removed, NULL);
-  
   IOHIDManagerOpen(hid, kIOHIDOptionsTypeNone);
   IOHIDManagerScheduleWithRunLoop(hid, CFRunLoopGetCurrent(), GAMEPAD_RUN_LOOP_MODE);
   CFRunLoopRunInMode(GAMEPAD_RUN_LOOP_MODE, 0, true);
-  
-  return (scan_too ? sgl_joystick_scan() : true);
-}
-
-static void process_event_queue(joystick_queued_event_t* e) {
-  switch (e->event) {
-    case JOY_DEVICE_ATTACHED:
-      add_joystick((joystick_t*)e->data);
-      break;
-    case JOY_DEVICE_REMOVED: {
-      joystick_t* d = (joystick_t*)e->data;
-      CALL(joy_removed_callback, d, d->device_id);
-      sgl_joystick_remove(d->device_id);
-      break;
-    }
-    case JOY_BTN_UP:
-    case JOY_BTN_DOWN: {
-      joystick_btn_event_t* _e = (joystick_btn_event_t*)e->data;
-      CALL(joy_btn_callback, _e->device, _e->btn_id, _e->down, _e->timestamp);
-      break;
-    }
-    case JOY_AXIS_MOVED: {
-      joystick_axis_event_t* _e = (joystick_axis_event_t*)e->data;
-      CALL(joy_axis_callback, _e->device, _e->axis_id, _e->value, _e->last_value, _e->timestamp);
-      break;
-    }
-  }
-}
-
-bool sgl_joystick_scan(void) {
-  CFRunLoopRunInMode(GAMEPAD_RUN_LOOP_MODE, 0, true);
-  joystick_queued_event_t* current = device_event_q.head;
-  joystick_queued_event_t* next = current;
-  
-  while (current) {
-    next = current->next;
-    process_event_queue(current);
-    FREE_SAFE(current);
-    current = next;
-  }
-  device_event_q.head = NULL;
-  device_event_q.size = 0;
-  
   return true;
 }
 
-static inline void release_joystick(joystick_t** d) {
-  joystick_t* _d = *d;
-  joystick_private_t* _p = (joystick_private_t*)_d->__private;
-  
-  IOHIDDeviceRegisterInputValueCallback(_p->device, NULL, NULL);
-  
-  joystick_queued_event_t* current = input_event_q.head;
-  joystick_queued_event_t* previous = current;
-  while (current) {
-    if (current->device_id == _d->device_id) {
-      previous->next = current->next;
-      if (current == input_event_q.head)
-        input_event_q.head = current->next;
-      FREE_SAFE(current->data);
-      FREE_SAFE(current);
-      input_event_q.size--;
-    }
-  }
-  
-  current = device_event_q.head;
-  previous = current;
-  while (current) {
-    if (current->device_id == _d->device_id) {
-      previous->next = current->next;
-      if (current == input_event_q.head)
-        device_event_q.head = current->next;
-      FREE_SAFE(current->data);
-      FREE_SAFE(current);
-      device_event_q.size--;
-    }
-  }
-  
-  FREE_SAFE(_p->buttons);
-  FREE_SAFE(_p->axes);
-  FREE_SAFE(_p);
-  if (_d->description)
-    free((void*)_d->description);
-  FREE_SAFE(_d->buttons);
-  FREE_SAFE(_d->axes);
-  FREE_SAFE(_d);
-}
-
 void sgl_joystick_release() {
+  if (!hid && !joysticks)
+    return;
+  
   IOHIDManagerUnscheduleFromRunLoop(hid, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-  
-  joystick_t* current = joy_devices.head;
-  joystick_t* next = current;
-  while (current) {
-    next = current->next;
-    release_joystick(&current);
-    current = next;
-  }
-  joy_devices.head = NULL;
-  joy_devices.size = 0;
-  
+  for (int i = 0; i < joysticks_sz; ++i)
+    release_joystick(i);
+  FREE_SAFE(joysticks);
   IOHIDManagerClose(hid, 0);
   CFRelease(hid);
   hid = NULL;
 }
 
-bool sgl_joystick_remove(int id) {
-  joystick_t* current = joy_devices.head;
-  joystick_t* previous = current;
-  
-  while (current) {
-    if (current->device_id == id) {
-      previous->next = current->next;
-      if (current == joy_devices.head)
-        joy_devices.head = current->next;
-      CALL(joy_removed_callback, current, current->device_id);
-      release_joystick(&current);
-      return true;
-    }
-    previous = current;
-    current = current->next;
-  }
-  
-  return false;
+bool sgl_joystick_remove(int n) {
+  if ((!hid && !joysticks) || n < 0 || n >= joysticks_sz)
+    return false;
+  release_joystick(n);
+  return true;
 }
 
 void sgl_joystick_poll() {
-  static bool processing_events = false;
-  if (processing_events)
+  if (!hid && !joysticks)
     return;
-  
-  processing_events = true;
-  
   CFRunLoopRunInMode(GAMEPAD_RUN_LOOP_MODE, 0, true);
-  joystick_queued_event_t* current = input_event_q.head;
-  joystick_queued_event_t* next = current;
-  while (current) {
-    next = current->next;
-    process_event_queue(current);
-    free(current);
-    current = next;
-  }
-  input_event_q.head = NULL;
-  input_event_q.size = 0;
-  
-  processing_events = false;
 }
 #endif
 
