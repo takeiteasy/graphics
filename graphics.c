@@ -3357,7 +3357,7 @@ bool sgl_save_image(surface_t a, const char* path, SAVEFORMAT type) {
 #if defined(SGL_ENABLE_GIF)
 #include <stdint.h>
 #ifndef GIF_MGET
-#define GIF_MGET(m,s,a,c) m = (uint8_t*)realloc((c)? 0 : m, (c)? s : 0UL);
+#define GIF_MGET(m,s,a,c) m = (unsigned char*)realloc((c)? 0 : m, (c)? s : 0UL);
 #endif
 #ifndef GIF_BIGE
 #define GIF_BIGE 0
@@ -3365,7 +3365,7 @@ bool sgl_save_image(surface_t a, const char* path, SAVEFORMAT type) {
 #ifndef GIF_EXTR
 #define GIF_EXTR static
 #endif
-#define _GIF_SWAP(h) ((GIF_BIGE)? ((uint16_t)(h << 8) | (h >> 8)) : h)
+#define _GIF_SWAP(h) ((GIF_BIGE)? ((unsigned short)(h << 8) | (h >> 8)) : h)
 
 struct gif_t {
   int delay, frames, frame, w, h;
@@ -3408,6 +3408,35 @@ surface_t sgl_gif_frame(gif_t g) {
   return g->surfaces[g->frame];
 }
 
+void sgl_gif_create(gif_t* _g, int w, int h, int delay, int frames, ...) {
+  gif_t g = *_g = malloc(sizeof(gif_t));
+  if (!g) {
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
+    *_g = NULL;
+    return;
+  }
+  g->delay = delay;
+  g->frame = 0;
+  g->frames = frames;
+  g->h = h;
+  g->w = w;
+  g->surfaces = calloc(g->frames, sizeof(surface_t));
+  if (!g->surfaces) {
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
+    FREE_SAFE(g);
+    *_g = NULL;
+    return;
+  }
+  
+  va_list ap;
+  va_start(ap, frames);
+  for (int i = 0; i < frames; ++i) {
+    surface_t tmp = va_arg(ap, surface_t);
+    sgl_copy(tmp, &g->surfaces[i]);
+  }
+  va_end(ap);
+}
+
 #pragma pack(push, 1)
 struct GIF_WHDR {         /** ======== frame writer info: ======== **/
   long xdim, ydim, clrs,  /** global dimensions, palette size      **/
@@ -3415,16 +3444,16 @@ struct GIF_WHDR {         /** ======== frame writer info: ======== **/
   intr, mode,             /** interlace flag, frame blending mode  **/
   frxd, fryd, frxo, fryo, /** current frame dimensions and offset  **/
   time, ifrm, nfrm;       /** delay, frame number, frame count     **/
-  uint8_t *bptr;          /** frame pixel indices or metadata      **/
+  unsigned char *bptr;          /** frame pixel indices or metadata      **/
   struct {                /** [==== GIF RGB palette element: ====] **/
-    uint8_t R, G, B;      /** [color values - red, green, blue   ] **/
+    unsigned char R, G, B;      /** [color values - red, green, blue   ] **/
   } *cpal;                /** current palette                      **/
 };
 #pragma pack(pop)
 
 enum {GIF_NONE = 0, GIF_CURR = 1, GIF_BKGD = 2, GIF_PREV = 3};
 
-static long _GIF_SkipChunk(uint8_t **buff, long size) {
+static long _GIF_SkipChunk(unsigned char **buff, long size) {
   long skip;
   
   for (skip = 2, ++size, ++(*buff); ((size -= skip) > 0) && (skip > 1);
@@ -3432,21 +3461,21 @@ static long _GIF_SkipChunk(uint8_t **buff, long size) {
   return size;
 }
 
-static long _GIF_LoadHeader(unsigned gflg, uint8_t **buff, void **rpal,
+static long _GIF_LoadHeader(unsigned gflg, unsigned char **buff, void **rpal,
                             unsigned fflg, long *size, long flen) {
   if (flen && (!(*buff += flen) || ((*size -= flen) <= 0)))
     return -2;  /** v--[ 0x80: "palette is present" flag ]--, **/
   if (flen && (fflg & 0x80)) { /** local palette has priority | **/
-    *rpal = *buff; /** [ 3L: 3 uint8_t color channels ]--,  | **/
+    *rpal = *buff; /** [ 3L: 3 unsigned char color channels ]--,  | **/
     *buff += (flen = 2 << (fflg & 7)) * 3L;       /** <--|  | **/
     return ((*size -= flen * 3L) > 0)? flen : -1; /** <--'  | **/
   } /** no local palette found, checking for the global one   | **/
   return (gflg & 0x80)? (2 << (gflg & 7)) : 0;      /** <-----' **/
 }
 
-static long _GIF_LoadFrame(uint8_t **buff, long *size,
-                           uint8_t *bptr, uint8_t *blen) {
-  typedef uint16_t GIF_H;
+static long _GIF_LoadFrame(unsigned char **buff, long *size,
+                           unsigned char *bptr, unsigned char *blen) {
+  typedef unsigned short GIF_H;
   const long GIF_HLEN = sizeof(GIF_H), /** to rid the scope of sizeof **/
   GIF_CLEN = 1 << 12;    /** code table length: 4096 items **/
   GIF_H accu, mask; /** bit accumulator / bit mask                    **/
@@ -3454,7 +3483,7 @@ static long _GIF_LoadFrame(uint8_t **buff, long *size,
   prev, curr, /** codes from the stream: previous / current     **/
   ctsz, ccsz, /** code table bit sizes: min LZW / current       **/
   bseq, bszc; /** counters: block sequence / bit size           **/
-  uint32_t *code = (uint32_t*)bptr - GIF_CLEN; /** code table pointer **/
+  unsigned int *code = (unsigned int*)bptr - GIF_CLEN; /** code table pointer **/
   
   /** preparing initial values **/
   if ((--(*size) <= GIF_HLEN) || !*++(*buff))
@@ -3488,20 +3517,20 @@ static long _GIF_LoadFrame(uint8_t **buff, long *size,
               mask = (GIF_H)(mask + mask + 1);
               ccsz++; /** yes; extending **/
             } /** prev = TD? => curr < ctbl = prev **/
-            code[ctbl] = (uint32_t)prev + (code[prev] & 0xFFF000);
+            code[ctbl] = (unsigned int)prev + (code[prev] & 0xFFF000);
           } /** appending SP / MP decoded pixels to the frame **/
           prev = (long)code[iter = (ctbl > curr)? curr : prev];
           if ((bptr += (prev = (prev >> 12) & 0xFFF)) > blen)
             continue; /** skipping pixels above frame capacity **/
           for (prev++; (iter &= 0xFFF) >> ctsz;
-               *bptr-- = (uint8_t)((iter = (long)code[iter]) >> 24));
-          (bptr += prev)[-prev] = (uint8_t)iter;
+               *bptr-- = (unsigned char)((iter = (long)code[iter]) >> 24));
+          (bptr += prev)[-prev] = (unsigned char)iter;
           if (ctbl < GIF_CLEN) { /** appending the code table **/
             if (ctbl == curr)
-              *bptr++ = (uint8_t)iter;
+              *bptr++ = (unsigned char)iter;
             else if (ctbl < curr)
               return -5; /** wrong code in the stream **/
-            code[ctbl++] += ((uint32_t)iter << 24) + 0x1000;
+            code[ctbl++] += ((unsigned int)iter << 24) + 0x1000;
           }
         } /** 0: no ED before end-of-stream mark; -4: see above **/
   return (++(*size) >= 0)? 0 : -4; /** ^- N.B.: 0 error is recoverable **/
@@ -3511,29 +3540,29 @@ GIF_EXTR long GIF_Load(void *data, long size,
                        void (*gwfr)(void*, struct GIF_WHDR*),
                        void (*eamf)(void*, struct GIF_WHDR*),
                        void *anim, long skip) {
-  const long    GIF_BLEN = (1 << 12) * sizeof(uint32_t);
-  const uint8_t GIF_EHDM = 0x21, /** extension header mark **/
+  const long    GIF_BLEN = (1 << 12) * sizeof(unsigned int);
+  const unsigned char GIF_EHDM = 0x21, /** extension header mark **/
   GIF_FHDM = 0x2C, /** frame header mark                  **/
   GIF_EOFM = 0x3B, /** end-of-file mark                   **/
   GIF_EGCM = 0xF9, /** extension: graphics control mark   **/
   GIF_EAMM = 0xFF; /** extension: app metadata mark       **/
 #pragma pack(push, 1)
   struct GIF_GHDR {      /** ========== GLOBAL GIF HEADER: ========== **/
-    uint8_t head[6];     /** 'GIF87a' / 'GIF89a' header signature     **/
-    uint16_t xdim, ydim; /** total image width, total image height    **/
-    uint8_t flgs;        /** FLAGS:
+    unsigned char head[6];     /** 'GIF87a' / 'GIF89a' header signature     **/
+    unsigned short xdim, ydim; /** total image width, total image height    **/
+    unsigned char flgs;        /** FLAGS:
                           GlobalPlt    bit 7     1: global palette exists
                           0: local in each frame
                           ClrRes       bit 6-4   bits/channel = ClrRes+1
                           [reserved]   bit 3     0
                           PixelBits    bit 2-0   |Plt| = 2 * 2^PixelBits
                           **/
-    uint8_t bkgd, aspr;  /** background color index, aspect ratio     **/
+    unsigned char bkgd, aspr;  /** background color index, aspect ratio     **/
   } *ghdr = (struct GIF_GHDR*)data;
   struct GIF_FHDR {      /** ======= GIF FRAME MASTER HEADER: ======= **/
-    uint16_t frxo, fryo; /** offset of this frame in a "full" image   **/
-    uint16_t frxd, fryd; /** frame width, frame height                **/
-    uint8_t flgs;        /** FLAGS:
+    unsigned short frxo, fryo; /** offset of this frame in a "full" image   **/
+    unsigned short frxd, fryd; /** frame width, frame height                **/
+    unsigned char flgs;        /** FLAGS:
                           LocalPlt     bit 7     1: local palette exists
                           0: global is used
                           Interlaced   bit 6     1: interlaced frame
@@ -3544,7 +3573,7 @@ GIF_EXTR long GIF_Load(void *data, long size,
                           **/
   } *fhdr;
   struct GIF_EGCH {        /** ==== [EXT] GRAPHICS CONTROL HEADER: ==== **/
-    uint8_t flgs;        /** FLAGS:
+    unsigned char flgs;        /** FLAGS:
                           [reserved]   bit 7-5   [undefined]
                           BlendMode    bit 4-2   000: not set; static GIF
                           001: leave result as is
@@ -3556,13 +3585,13 @@ GIF_EXTR long GIF_Load(void *data, long size,
                           TransColor   bit 0     1: got transparent color
                           0: frame is fully opaque
                           **/
-    uint16_t time;       /** delay in GIF time units; 1 unit = 10 ms  **/
-    uint8_t tran;        /** transparent color index                  **/
+    unsigned short time;       /** delay in GIF time units; 1 unit = 10 ms  **/
+    unsigned char tran;        /** transparent color index                  **/
   } *egch = 0;
 #pragma pack(pop)
   struct GIF_WHDR wtmp, whdr = {0};
   long desc, blen;
-  uint8_t *buff;
+  unsigned char *buff;
   
   /** checking if the stream is not empty and has a 'GIF8[79]a' signature,
    the data has sufficient size and frameskip value is non-negative **/
@@ -3571,9 +3600,9 @@ GIF_EXTR long GIF_Load(void *data, long size,
       || ((buff[4] != 55) && (buff[4] != 57)) || (buff[5] != 97) || !gwfr)
     return 0;
   
-  buff = (uint8_t*)(ghdr + 1) /** skipping the global header and palette **/
+  buff = (unsigned char*)(ghdr + 1) /** skipping the global header and palette **/
   + _GIF_LoadHeader(ghdr->flgs, 0, 0, 0, 0, 0L) * 3L;
-  if ((size -= buff - (uint8_t*)ghdr) <= 0)
+  if ((size -= buff - (unsigned char*)ghdr) <= 0)
     return 0;
   
   whdr.xdim = _GIF_SWAP(ghdr->xdim);
@@ -3649,14 +3678,14 @@ typedef struct {
 #pragma pack(pop)
 
 void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
-  uint32_t *pict, *prev, x, y, yoff, iter, ifin, dsrc, ddst;
+  unsigned int *pict, *prev, x, y, yoff, iter, ifin, dsrc, ddst;
   gif_data_t* gif = (gif_data_t*)data;
   
 #define BGRA(i) \
   ((whdr->bptr[i] == whdr->tran)? 0 : \
-    ((uint32_t)(whdr->cpal[whdr->bptr[i]].R << ((GIF_BIGE)? 8 : 16)) \
-  |  (uint32_t)(whdr->cpal[whdr->bptr[i]].G << ((GIF_BIGE)? 16 : 8)) \
-  |  (uint32_t)(whdr->cpal[whdr->bptr[i]].B << ((GIF_BIGE)? 24 : 0)) \
+    ((unsigned int)(whdr->cpal[whdr->bptr[i]].R << ((GIF_BIGE)? 8 : 16)) \
+  |  (unsigned int)(whdr->cpal[whdr->bptr[i]].G << ((GIF_BIGE)? 16 : 8)) \
+  |  (unsigned int)(whdr->cpal[whdr->bptr[i]].B << ((GIF_BIGE)? 24 : 0)) \
   |  ((GIF_BIGE)? 0xFF : 0xFF000000)))
   
   if (!whdr->ifrm) {
@@ -3665,25 +3694,25 @@ void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
     gif->out->h = (int)whdr->ydim;
     gif->out->frames = (int)whdr->nfrm;
     gif->out->frame  = 0;
-    ddst = (uint32_t)(whdr->xdim * whdr->ydim);
-    gif->pict = calloc(sizeof(uint32_t), ddst);
-    gif->prev = calloc(sizeof(uint32_t), ddst);
+    ddst = (unsigned int)(whdr->xdim * whdr->ydim);
+    gif->pict = calloc(sizeof(unsigned int), ddst);
+    gif->prev = calloc(sizeof(unsigned int), ddst);
     gif->out->surfaces = calloc(gif->out->frames, sizeof(surface_t));
   }
   
-  pict = (uint32_t*)gif->pict;
-  ddst = (uint32_t)(whdr->xdim * whdr->fryo + whdr->frxo);
+  pict = (unsigned int*)gif->pict;
+  ddst = (unsigned int)(whdr->xdim * whdr->fryo + whdr->frxo);
   ifin = (!(iter = (whdr->intr)? 0 : 4))? 4 : 5; /** interlacing support **/
-  for (dsrc = (uint32_t)-1; iter < ifin; iter++)
+  for (dsrc = (unsigned int)-1; iter < ifin; iter++)
     for (yoff = 16U >> ((iter > 1)? iter : 1), y = (8 >> iter) & 7;
-         y < (uint32_t)whdr->fryd; y += yoff)
-      for (x = 0; x < (uint32_t)whdr->frxd; x++)
+         y < (unsigned int)whdr->fryd; y += yoff)
+      for (x = 0; x < (unsigned int)whdr->frxd; x++)
         if (whdr->tran != (long)whdr->bptr[++dsrc])
-          pict[(uint32_t)whdr->xdim * y + x + ddst] = BGRA(dsrc);
+          pict[(unsigned int)whdr->xdim * y + x + ddst] = BGRA(dsrc);
   
   int this = (int)whdr->ifrm;
   sgl_surface(&gif->out->surfaces[this], gif->out->w, gif->out->h);
-  memcpy(gif->out->surfaces[this]->buf, pict, whdr->xdim * whdr->ydim * sizeof(uint32_t));
+  memcpy(gif->out->surfaces[this]->buf, pict, whdr->xdim * whdr->ydim * sizeof(unsigned int));
   
   if ((whdr->mode == GIF_PREV) && !gif->last) {
     whdr->frxd = whdr->xdim;
@@ -3694,18 +3723,18 @@ void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
   else {
     gif->last = (whdr->mode == GIF_PREV)?
     gif->last : (unsigned long)(whdr->ifrm + 1);
-    pict = (uint32_t*)((whdr->mode == GIF_PREV)? gif->pict : gif->prev);
-    prev = (uint32_t*)((whdr->mode == GIF_PREV)? gif->prev : gif->pict);
-    for (x = (uint32_t)(whdr->xdim * whdr->ydim); --x;
+    pict = (unsigned int*)((whdr->mode == GIF_PREV)? gif->pict : gif->prev);
+    prev = (unsigned int*)((whdr->mode == GIF_PREV)? gif->prev : gif->pict);
+    for (x = (unsigned int)(whdr->xdim * whdr->ydim); --x;
          pict[x - 1] = prev[x - 1]);
   }
   
   if (whdr->mode == GIF_BKGD) /** cutting a hole for the next frame **/
-    for (whdr->bptr[0] = (uint8_t)((whdr->tran >= 0)?
+    for (whdr->bptr[0] = (unsigned char)((whdr->tran >= 0)?
                                    whdr->tran : whdr->bkgd), y = 0,
-         pict = (uint32_t*)gif->pict; y < (uint32_t)whdr->fryd; y++)
-      for (x = 0; x < (uint32_t)whdr->frxd; x++)
-        pict[(uint32_t)whdr->xdim * y + x + ddst] = BGRA(0);
+         pict = (unsigned int*)gif->pict; y < (unsigned int)whdr->fryd; y++)
+      for (x = 0; x < (unsigned int)whdr->frxd; x++)
+        pict[(unsigned int)whdr->xdim * y + x + ddst] = BGRA(0);
 #undef BGRA
 }
 
@@ -3745,19 +3774,10 @@ bool sgl_gif(gif_t* _g, const char* path) {
   return true;
 }
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#ifdef _WIN32
-#include <io.h>
-#else
-#include <unistd.h>
-#endif
-
 /* helper to write a little-endian 16-bit number portably */
-#define write_num(fd, n) write((fd), (uint8_t []) {(n) & 0xFF, (n) >> 8}, 2)
+#define gif_write_num(fd, n) fwrite((unsigned char []) {(n) & 0xFF, (n) >> 8}, 2, 1, fd)
 
-static uint8_t vga[0x30] = {
+static unsigned char vga[0x30] = {
   0x00, 0x00, 0x00,
   0xAA, 0x00, 0x00,
   0x00, 0xAA, 0x00,
@@ -3777,22 +3797,22 @@ static uint8_t vga[0x30] = {
 };
 
 typedef struct ge_Node {
-  uint16_t key;
+  unsigned short key;
   struct ge_Node* children[];
 } ge_Node;
 
 typedef struct ge_GIF {
-  uint16_t w, h;
+  unsigned short w, h;
   int depth;
-  int fd;
+  FILE* fd;
   int offset;
   int nframes;
-  uint8_t *frame, *back;
-  uint32_t partial;
-  uint8_t buffer[0xFF];
+  unsigned char *frame, *back;
+  unsigned int partial;
+  unsigned char buffer[0xFF];
 } ge_GIF;
 
-static ge_Node* new_node(uint16_t key, int degree) {
+static ge_Node* new_node(unsigned short key, int degree) {
   ge_Node* node = calloc(1, sizeof(*node) + degree * sizeof(ge_Node *));
   if (node)
     node->key = key;
@@ -3816,44 +3836,44 @@ static void del_trie(ge_Node* root, int degree) {
   free(root);
 }
 
-static void put_loop(ge_GIF* gif, uint16_t loop) {
-  write(gif->fd, (uint8_t []) {'!', 0xFF, 0x0B}, 3);
-  write(gif->fd, "NETSCAPE2.0", 11);
-  write(gif->fd, (uint8_t []) {0x03, 0x01}, 2);
-  write_num(gif->fd, loop);
-  write(gif->fd, "\0", 1);
+static void put_loop(ge_GIF* gif, unsigned short loop) {
+  fwrite((unsigned char []) {'!', 0xFF, 0x0B}, 3, 1, gif->fd);
+  fwrite("NETSCAPE2.0", 11, 1, gif->fd);
+  fwrite((unsigned char []) {0x03, 0x01}, 2, 1, gif->fd);
+  gif_write_num(gif->fd, loop);
+  fwrite("\0", 1, 1, gif->fd);
 }
 
-ge_GIF* ge_new_gif(const char *fname, uint16_t width, uint16_t height, uint8_t* palette, int depth, int loop) {
+ge_GIF* ge_new_gif(const char *fname, unsigned short width, unsigned short height, unsigned char* palette, int depth, int loop) {
   int i, r, g, b, v;
   ge_GIF *gif = calloc(1, sizeof(*gif) + 2*width*height);
   if (!gif)
     goto no_gif;
   gif->w = width; gif->h = height;
   gif->depth = depth > 1 ? depth : 2;
-  gif->frame = (uint8_t *) &gif[1];
+  gif->frame = (unsigned char *) &gif[1];
   gif->back = &gif->frame[width*height];
-  gif->fd = creat(fname, 0666);
-  if (gif->fd == -1)
+  gif->fd = fopen(fname, "wb");
+  if (!gif->fd)
     goto no_fd;
 #ifdef _WIN32
   setmode(gif->fd, O_BINARY);
 #endif
-  write(gif->fd, "GIF89a", 6);
-  write_num(gif->fd, width);
-  write_num(gif->fd, height);
-  write(gif->fd, (uint8_t []) {0xF0 | (depth-1), 0x00, 0x00}, 3);
+  fwrite("GIF89a", 6, 1, gif->fd);
+  gif_write_num(gif->fd, width);
+  gif_write_num(gif->fd, height);
+  fwrite((unsigned char []) {0xF0 | (depth-1), 0x00, 0x00}, 3, 1, gif->fd);
   if (palette) {
-    write(gif->fd, palette, 3 << depth);
+    fwrite(palette, 3 << depth, 1, gif->fd);
   } else if (depth <= 4) {
-    write(gif->fd, vga, 3 << depth);
+    fwrite(vga, 3 << depth, 1, gif->fd);
   } else {
-    write(gif->fd, vga, sizeof(vga));
+    fwrite(vga, sizeof(vga), 1, gif->fd);
     i = 0x10;
     for (r = 0; r < 6; r++) {
       for (g = 0; g < 6; g++) {
         for (b = 0; b < 6; b++) {
-          write(gif->fd, (uint8_t []) {r*51, g*51, b*51}, 3);
+          fwrite((unsigned char []) {r*51, g*51, b*51}, 3, 1, gif->fd);
           if (++i == 1 << depth)
             goto done_gct;
         }
@@ -3861,12 +3881,12 @@ ge_GIF* ge_new_gif(const char *fname, uint16_t width, uint16_t height, uint8_t* 
     }
     for (i = 1; i <= 24; i++) {
       v = i * 0xFF / 25;
-      write(gif->fd, (uint8_t []) {v, v, v}, 3);
+      fwrite((unsigned char []) {v, v, v}, 3, 1, gif->fd);
     }
   }
 done_gct:
   if (loop >= 0 && loop <= 0xFFFF)
-    put_loop(gif, (uint16_t) loop);
+    put_loop(gif, (unsigned short) loop);
   return gif;
 no_fd:
   free(gif);
@@ -3877,17 +3897,17 @@ no_gif:
 /* Add packed key to buffer, updating offset and partial.
  *   gif->offset holds position to put next *bit*
  *   gif->partial holds bits to include in next byte */
-static void put_key(ge_GIF* gif, uint16_t key, int key_size) {
+static void put_key(ge_GIF* gif, unsigned short key, int key_size) {
   int byte_offset, bit_offset, bits_to_write;
   byte_offset = gif->offset / 8;
   bit_offset = gif->offset % 8;
-  gif->partial |= ((uint32_t) key) << bit_offset;
+  gif->partial |= ((unsigned int) key) << bit_offset;
   bits_to_write = bit_offset + key_size;
   while (bits_to_write >= 8) {
     gif->buffer[byte_offset++] = gif->partial & 0xFF;
     if (byte_offset == 0xFF) {
-      write(gif->fd, "\xFF", 1);
-      write(gif->fd, gif->buffer, 0xFF);
+      fwrite("\xFF", 1, 1, gif->fd);
+      fwrite(gif->buffer, 0xFF, 1, gif->fd);
       byte_offset = 0;
     }
     gif->partial >>= 8;
@@ -3901,29 +3921,29 @@ static void end_key(ge_GIF* gif) {
   byte_offset = gif->offset / 8;
   if (gif->offset % 8)
     gif->buffer[byte_offset++] = gif->partial & 0xFF;
-  write(gif->fd, (uint8_t []) {byte_offset}, 1);
-  write(gif->fd, gif->buffer, byte_offset);
-  write(gif->fd, "\0", 1);
+  fwrite((unsigned char []) {byte_offset}, 1, 1, gif->fd);
+  fwrite(gif->buffer, byte_offset, 1, gif->fd);
+  fwrite("\0", 1, 1, gif->fd);
   gif->offset = gif->partial = 0;
 }
 
-static void put_image(ge_GIF* gif, uint16_t w, uint16_t h, uint16_t x, uint16_t y) {
+static void put_image(ge_GIF* gif, unsigned short w, unsigned short h, unsigned short x, unsigned short y) {
   int nkeys, key_size, i, j;
   ge_Node *node, *child, *root;
   int degree = 1 << gif->depth;
   
-  write(gif->fd, ",", 1);
-  write_num(gif->fd, x);
-  write_num(gif->fd, y);
-  write_num(gif->fd, w);
-  write_num(gif->fd, h);
-  write(gif->fd, (uint8_t []) {0x00, gif->depth}, 2);
+  fwrite(",", 1, 1, gif->fd);
+  gif_write_num(gif->fd, x);
+  gif_write_num(gif->fd, y);
+  gif_write_num(gif->fd, w);
+  gif_write_num(gif->fd, h);
+  fwrite((unsigned char []) {0x00, gif->depth}, 2, 1, gif->fd);
   root = node = new_trie(degree, &nkeys);
   key_size = gif->depth + 1;
   put_key(gif, degree, key_size); /* clear code */
   for (i = y; i < y+h; i++) {
     for (j = x; j < x+w; j++) {
-      uint8_t pixel = gif->frame[i*gif->w+j] & (degree - 1);
+      unsigned char pixel = gif->frame[i*gif->w+j] & (degree - 1);
       child = node->children[pixel];
       if (child) {
         node = child;
@@ -3949,7 +3969,7 @@ static void put_image(ge_GIF* gif, uint16_t w, uint16_t h, uint16_t x, uint16_t 
   del_trie(root, degree);
 }
 
-static int get_bbox(ge_GIF* gif, uint16_t* w, uint16_t* h, uint16_t* x, uint16_t* y) {
+static int get_bbox(ge_GIF* gif, unsigned short* w, unsigned short* h, unsigned short* x, unsigned short* y) {
   int i, j, k;
   int left, right, top, bottom;
   left = gif->w; right = 0;
@@ -3975,15 +3995,15 @@ static int get_bbox(ge_GIF* gif, uint16_t* w, uint16_t* h, uint16_t* x, uint16_t
   }
 }
 
-static void set_delay(ge_GIF* gif, uint16_t d) {
-  write(gif->fd, (uint8_t []) {'!', 0xF9, 0x04, 0x04}, 4);
-  write_num(gif->fd, d);
-  write(gif->fd, "\0\0", 2);
+static void set_delay(ge_GIF* gif, unsigned short d) {
+  fwrite((unsigned char []) {'!', 0xF9, 0x04, 0x04}, 4, 1, gif->fd);
+  gif_write_num(gif->fd, d);
+  fwrite("\0\0", 2, 1, gif->fd);
 }
 
-void ge_add_frame(ge_GIF* gif, uint16_t delay) {
-  uint16_t w, h, x, y;
-  uint8_t *tmp;
+void ge_add_frame(ge_GIF* gif, unsigned short delay) {
+  unsigned short w, h, x, y;
+  unsigned char *tmp;
   
   if (delay)
     set_delay(gif, delay);
@@ -4004,15 +4024,15 @@ void ge_add_frame(ge_GIF* gif, uint16_t delay) {
 }
 
 void ge_close_gif(ge_GIF* gif) {
-  write(gif->fd, ";", 1);
-  close(gif->fd);
+  fwrite(";", 1, 1, gif->fd);
+  fclose(gif->fd);
   free(gif);
 }
 
 bool sgl_save_gif(gif_t* __g, const char* path) {
   gif_t _g = *__g;
   int i, j, k, c, cp;
-  uint8_t r, g, b;
+  unsigned char r, g, b;
   
   for (i = 0; i < _g->frames; ++i) {
     if (_g->surfaces[i]->w != _g->w || _g->surfaces[i]->h != _g->h) {
@@ -4021,13 +4041,13 @@ bool sgl_save_gif(gif_t* __g, const char* path) {
     }
   }
   
-  uint8_t* palette = NULL;
+  unsigned char* palette = NULL;
   for (i = 0; i < _g->frames; ++i) {
     for (j = 0; j < _g->w * _g->h; ++j) {
       c = _g->surfaces[i]->buf[j];
-      r = (uint8_t)R(c);
-      g = (uint8_t)G(c);
-      b = (uint8_t)B(c);
+      r = (unsigned char)R(c);
+      g = (unsigned char)G(c);
+      b = (unsigned char)B(c);
       
       cp = -1;
       for (k = 0; k < stb_sb_count(palette); k += 3) {
@@ -4079,9 +4099,9 @@ bool sgl_save_gif(gif_t* __g, const char* path) {
     frames[i] = malloc(_g->w * _g->h * sizeof(int));
     for (j = 0; j < _g->w * _g->h; ++j) {
       c = _g->surfaces[i]->buf[j];
-      r = (uint8_t)R(c);
-      g = (uint8_t)G(c);
-      b = (uint8_t)B(c);
+      r = (unsigned char)R(c);
+      g = (unsigned char)G(c);
+      b = (unsigned char)B(c);
       
       for (k = 0; k < stb_sb_count(palette); k += 3) {
         if (r == palette[k] && g == palette[k + 1] && b == palette[k + 2]) {

@@ -416,6 +416,7 @@ extern "C" {
   int sgl_gif_next_frame(gif_t g);
   void sgl_gif_set_frame(gif_t g, int n);
   surface_t sgl_gif_frame(gif_t g);
+  void sgl_gif_create(gif_t* g, int w, int h, int delay, int frames, ...);
   
   bool sgl_gif(gif_t* g, const char* path);
   bool sgl_save_gif(gif_t* g, const char* path);

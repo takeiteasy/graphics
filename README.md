@@ -64,7 +64,6 @@ Tested on:
 - Cursor clipping for Linux [and OS X](https://stackoverflow.com/a/40922095)
 - Learn CMake and make a build file
 - Get a new laptop for Windows/Linux testing
-- Rewrite sgl_gif_save remove non-standard includes
 - Clean up code before porting Windows and Linux back
 
 ### Less important
@@ -78,6 +77,7 @@ Tested on:
 
 ### At some point
 
+- Look into SDF rendering
 - Fix or delete SGL_DISABLE_RGBA
 - Keyboard scancodes
 - Make thread safe (surface locks)

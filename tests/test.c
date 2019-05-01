@@ -285,7 +285,7 @@ int main(int argc, const char* argv[]) {
 #if defined(SGL_ENABLE_GIF)
   gif_t ok_hand;
   sgl_gif(&ok_hand, RES("ok.gif"));
-  // sgl_save_gif(&ok_hand, RES("ok_2.gif"));
+  sgl_save_gif(&ok_hand, RES("ok_2.gif"));
 #endif
   
   float theta = 1.f;
