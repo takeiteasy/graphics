@@ -380,7 +380,7 @@
 					"$(inherited)",
 					SGL_ENABLE_METALno,
 					SGL_ENABLE_OPENGLno,
-					SGL_ENABLE_AAa,
+					SGL_ENABLE_AAno,
 					SGL_ENABLE_BDF,
 					SGL_ENABLE_STB_IMAGE,
 					SGL_ENABLE_JOYSTICKS,

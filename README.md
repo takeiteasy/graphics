@@ -64,29 +64,22 @@ Tested on:
 - Cursor clipping for Linux [and OS X](https://stackoverflow.com/a/40922095)
 - Learn CMake and make a build file
 - Get a new laptop for Windows/Linux testing
-- Clean up code before porting Windows and Linux back
+- Fix all current warnings before working on Windows and Linux builds
 
 ### Less important
 
-- Fix unicode FreeType
+- Add line width option to primitives
 - Come back to surface transformation
 - Different scaling functions
-- Add fill option for ```ellipse_rotated()``` and other functions
-- Add line width option to primitives
-- 1 & 4 bpp, RLE compressed and OS/2 BMP support
-
-### At some point
-
 - Look into SDF rendering
-- Fix or delete SGL_DISABLE_RGBA
 - Keyboard scancodes
 - Make thread safe (surface locks)
-- Vulkan/DirectX/~~Metal~~/SIXEL backends
+- Vulkan/DirectX/SIXEL backends
 - Wayland window code
 - Documentation & comments
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
 - More examples/tests
-- More extras (~gif load/save~, ~FreeType fonts~, C++ OOP wrapper)
+- Make C++ wrapper
 - Optional OpenCL for processing
 - Pixel shader support
 - Audio playback (seperate library?)

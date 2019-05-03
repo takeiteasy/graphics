@@ -268,6 +268,11 @@ extern "C" {
     GIF_SAVE_INVALID_SIZE,
     GIF_SAVE_FAILED,
 #endif
+#if defined(SGL_ENABLE_FREETYPE)
+    FT_INIT_FAILED,
+    FT_LOAD_CHAR_FAILED,
+    FT_LOAD_FONT_FAILED,
+#endif
 #if defined(SGL_ENABLE_OPENGL)
     GL_SHADER_ERROR,
 #endif
@@ -344,15 +349,15 @@ extern "C" {
   void sgl_vline(surface_t s, int x, int y0, int y1, int col);
   void sgl_hline(surface_t s, int y, int x0, int x1, int col);
   void sgl_line(surface_t s, int x0, int y0, int x1, int y1, int col);
-  void sgl_circle(surface_t s, int xc, int yc, int r, int col, int fill);
-  void sgl_ellipse(surface_t s, int xc, int yc, int rx, int ry, int col, int fill);
+  void sgl_circle(surface_t s, int xc, int yc, int r, int col, bool fill);
+  void sgl_ellipse(surface_t s, int xc, int yc, int rx, int ry, int col, bool fill);
   void sgl_ellipse_rotated(surface_t s, int x, int y, int a, int b, float angle, int col);
-  void sgl_ellipse_rect(surface_t s, int x0, int y0, int x1, int y1, int col, int fill);
+  void sgl_ellipse_rect(surface_t s, int x0, int y0, int x1, int y1, int col, bool fill);
   void sgl_ellipse_rect_rotated(surface_t s, int x0, int y0, int x1, int y1, long zd, int col);
   void sgl_bezier(surface_t s, int x0, int y0, int x1, int y1, int x2, int y2, int col);
   void sgl_bezier_rational(surface_t s, int x0, int y0, int x1, int y1, int x2, int y2, float w, int col);
   void sgl_bezier_cubic(surface_t s, int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3, int col);
-  void sgl_rect(surface_t s, int x, int y, int w, int h, int col, int fill);
+  void sgl_rect(surface_t s, int x, int y, int w, int h, int col, bool fill);
 
   bool sgl_bmp(surface_t* s, const char* path);
   bool sgl_save_bmp(surface_t s, const char* path);
@@ -383,7 +388,7 @@ extern "C" {
 #if defined(SGL_ENABLE_FREETYPE)
   typedef struct ftfont_t* ftfont_t;
   
-  void sgl_ft_init(void);
+  bool sgl_ft_init(void);
   void sgl_ft_release(void);
   void sgl_ftfont(ftfont_t* font, const char* path, unsigned int size);
   void sgl_ftfont_destroy(ftfont_t* font);

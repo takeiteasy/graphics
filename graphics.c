@@ -236,7 +236,6 @@ void sgl_pset(surface_t s, int x, int y, int c)  {
 
 #define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
 
-#if !defined(SGL_DISABLE_RGBA)
 void sgl_psetb(surface_t s, int x, int y, int c) {
   int a = A(c);
   if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
@@ -249,23 +248,6 @@ void sgl_psetb(surface_t s, int x, int y, int c) {
                                    BLEND(B(c), B(*p), a, b),
                                    a + (b * (255 - a) >> 8));
 }
-
-static void(*pset_fn)(surface_t, int, int, int) = sgl_psetb;
-#else
-void sgl_psetb(surface_t s, int x, int y, int c) {
-  int a = A(c);
-  if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
-    return;
-
-  int b = XYGET(s, x, y);
-  float i = (float)a / 255.f;
-  sgl_pset(s, x, y, (i >= 1.f || i <= 0.f) ? c : RGB((int)roundf(R(c) * (1 - i) + R(b) * i),
-                                                     (int)roundf(G(c) * (1 - i) + G(b) * i),
-                                                     (int)roundf(B(c) * (1 - i) + B(b) * i)));
-}
-
-static void(*pset_fn)(surface_t, int, int, int) = sgl_pset;
-#endif
 
 int sgl_pget(surface_t s, int x, int y) {
   return (x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
@@ -314,7 +296,7 @@ bool sgl_blit(surface_t dst, point_t* p, surface_t src, rect_t* r) {
       if (c == BLIT_CHROMA_KEY)
         continue;
 #endif
-      pset_fn(dst, offset_x + x, offset_y + y, c);
+      sgl_psetb(dst, offset_x + x, offset_y + y, c);
     }
   return true;
 }
@@ -342,9 +324,6 @@ bool sgl_copy(surface_t a, surface_t* b) {
 }
 
 void sgl_filter(surface_t s, int (*fn)(int x, int y, int col)) {
-  if (!s || !s->buf)
-    return;
-
   int x, y;
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
@@ -407,7 +386,7 @@ bool sgl_rotate(surface_t a, float angle, surface_t* b) {
       sy = ((y + mm[0][1]) * c - (x + mm[0][0]) * s);
       if (sx < 0 || sx >= a->w || sy < 0 || sy >= a->h)
         continue;
-      pset_fn(b, x, y, XYGET(a, sx, sy));
+      sgl_psetb(*b, x, y, XYGET(a, sx, sy));
     }
   return true;
 }
@@ -561,9 +540,10 @@ oct_node_t* node_insert(oct_node_pool_t* pool, oct_node_t* root, int* buf) {
 }
 
 oct_node_t* node_fold(oct_node_t* p) {
-#warning TODO: Remove this abort
-  if (p->n_kids)
-    abort();
+  if (p->n_kids) {
+    error_handle(HIGH_PRIORITY, INVALID_PARAMETERS, "I don't know to be honest.");
+    return NULL;
+  }
   
   oct_node_t* q = p->parent;
   q->count += p->count;
@@ -646,7 +626,7 @@ void sgl_vline(surface_t s, int x, int y0, int y1, int col) {
     y1 = s->h - 1;
 
   for(int y = y0; y <= y1; y++)
-    pset_fn(s, x, y, col);
+    sgl_psetb(s, x, y, col);
 }
 
 void sgl_hline(surface_t s, int y, int x0, int x1, int col) {
@@ -665,18 +645,13 @@ void sgl_hline(surface_t s, int y, int x0, int x1, int col) {
     x1 = s->w - 1;
 
   for(int x = x0; x <= x1; x++)
-    pset_fn(s, x, y, col);
+    sgl_psetb(s, x, y, col);
 }
 
 void sgl_line(surface_t s, int x0, int y0, int x1, int y1, int col) {
-#if !defined(SGL_DISABLE_RGBA)
   int a = A(col);
   if (!a)
     return;
-#else
-  int a = 255;
-#endif
-
   if (x0 == x1)
     sgl_vline(s, x0, y0, y1, col);
   if (y0 == y1)
@@ -716,7 +691,7 @@ void sgl_line(surface_t s, int x0, int y0, int x1, int y1, int col) {
       y0 += sy;
     }
 #else
-    pset_fn(s, x0, y0, col);
+    sgl_psetb(s, x0, y0, col);
     e2 = 2 * err;
 
     if (e2 >= dy) {
@@ -736,14 +711,10 @@ void sgl_line(surface_t s, int x0, int y0, int x1, int y1, int col) {
   }
 }
 
-void sgl_circle(surface_t s, int xc, int yc, int r, int col, int fill) {
-#if !defined(SGL_DISABLE_RGBA)
+void sgl_circle(surface_t s, int xc, int yc, int r, int col, bool fill) {
   int a = A(col);
   if (!a)
     return;
-#else
-  int a = 255;
-#endif
 
   if (xc + r < 0 || yc + r < 0 || xc - r > s->w || yc - r > s->h)
     return;
@@ -793,10 +764,10 @@ void sgl_circle(surface_t s, int xc, int yc, int r, int col, int fill) {
       err += ++y * 2 + 1;
     }
 #else
-    pset_fn(s, xc - x, yc + y, col);
-    pset_fn(s, xc - y, yc - x, col);
-    pset_fn(s, xc + x, yc - y, col);
-    pset_fn(s, xc + y, yc + x, col);
+    sgl_psetb(s, xc - x, yc + y, col);
+    sgl_psetb(s, xc - y, yc - x, col);
+    sgl_psetb(s, xc + x, yc - y, col);
+    sgl_psetb(s, xc + y, yc + x, col);
 
     if (fill) {
       sgl_hline(s, yc - y, xc - x, xc + x, col);
@@ -812,11 +783,7 @@ void sgl_circle(surface_t s, int xc, int yc, int r, int col, int fill) {
   } while (x < 0);
 }
 
-void sgl_ellipse(surface_t s, int xc, int yc, int rx, int ry, int col, int fill) {
-#if defined(SGL_ENABLE_AA)
-#warning TODO: Add AA option
-#endif
-
+void sgl_ellipse(surface_t s, int xc, int yc, int rx, int ry, int col, bool fill) {
   int x = -rx, y = 0;
   long e2 = ry, dx = (1 + 2 * x) * e2 * e2;
   long dy = x * x, err = dx + dy;
@@ -844,23 +811,19 @@ void sgl_ellipse(surface_t s, int xc, int yc, int rx, int ry, int col, int fill)
   } while (x <= 0);
 }
 
-void sgl_ellipse_rect(surface_t s, int x0, int y0, int x1, int y1, int col, int fill) {
-#warning FIXME: This is borked without AA
-#warning FIXME: Arithmic error when too big with AA
-
+void sgl_ellipse_rect(surface_t s, int x0, int y0, int x1, int y1, int col, bool fill) {
   long a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;
-  float dx = 4 * (a - 1.) * b * b, dy = 4 * (b1 + 1) * a * a;
-  float err = b1 * a * a - dx + dy;
-
 #if defined(SGL_ENABLE_AA)
+  float dx = 4 * (a - 1.0) * b * b, dy = 4 * (b1 + 1) * a * a;
+  float err = b1 * a * a - dx + dy;
   int f, ed, i;
-
+#else
+  double dx = 4 * (1.0 - a) * b * b, dy = 4 * (b1 + 1) * a * a;
+  double err = dx + dy + b1 * a * a, e2;
+#endif
+  
   if (a == 0 || b == 0)
     sgl_line(s, x0, y0, x1, y1, col);
-#else
-  long e2;
-#endif
-
   if (x0 > x1) {
     x0 = x1;
     x1 += a;
@@ -868,36 +831,33 @@ void sgl_ellipse_rect(surface_t s, int x0, int y0, int x1, int y1, int col, int 
   if (y0 > y1)
     y0 = y1;
   y0 += (b + 1) / 2;
-  y1 = y0 - (int)b1;
+  y1 = y0 - b1;
   a = 8 * a * a;
   b1 = 8 * b * b;
 
 #if defined(SGL_ENABLE_AA)
   for (;;) {
-    i = fminf(dx, dy);
+    i  = fminf(dx, dy);
     ed = fmaxf(dx, dy);
-    if (!i || !ed)
-      break;
     if (y0 == y1 + 1 && err > dy && a > b1)
       ed = 255 * 4. / a;
     else
-      ed = 255 / (ed + 2 * ed * i * i / (4 * ed * ed + i * i)); // Fix overflow
-
+      ed = 255 / (ed + 2 * ed * i * i / (4 * ed * ed + i * i));
+    
     i = ACHAN(col, 255 - (ed * (int)fabsf(err + dx - dy)));
     sgl_psetb(s, x0, y0, i);
     sgl_psetb(s, x0, y1, i);
     sgl_psetb(s, x1, y0, i);
     sgl_psetb(s, x1, y1, i);
-
+    
     if (fill) {
-      sgl_hline(s, y0, x0 + 1, x1 - 1, col);
-      sgl_hline(s, y1, x0 + 1, x1 - 1, col);
+      sgl_hline(s, y0, x0, x1, col);
+      sgl_hline(s, y1, x0, x1, col);
     }
-
+    
     if ((f = 2 * err + dy >= 0)) {
       if (x0 >= x1)
         break;
-
       i = ed * (err + dx);
       if (i < 255) {
         i = ACHAN(col, 255 - i);
@@ -907,7 +867,6 @@ void sgl_ellipse_rect(surface_t s, int x0, int y0, int x1, int y1, int col, int 
         sgl_psetb(s, x1, y1 - 1, i);
       }
     }
-
     if (2 * err <= dx) {
       i = ed * (dy - err);
       if (i < 255) {
@@ -917,21 +876,20 @@ void sgl_ellipse_rect(surface_t s, int x0, int y0, int x1, int y1, int col, int 
         sgl_psetb(s, x0 + 1, y1, i);
         sgl_psetb(s, x1 - 1, y1, i);
       }
-
       y0++;
       y1--;
       err += dy += a;
     }
-
     if (f) {
-      x0++; x1--;
+      x0++;
+      x1--;
       err -= dx -= b1;
     }
   }
-
+  
   if (--x0 == x1++)
-    while (y0 - y1 < b) {
-      i = ACHAN(col, 255 - (255 * 4 * (int)fabsf(err + dx) / (int)b1));
+    while (y0-y1 < b) {
+      i = 255 * 4 * fabs(err + dx) / b1;
       sgl_psetb(s, x0, ++y0, i);
       sgl_psetb(s, x1, y0, i);
       sgl_psetb(s, x0, --y1, i);
@@ -940,29 +898,35 @@ void sgl_ellipse_rect(surface_t s, int x0, int y0, int x1, int y1, int col, int 
     }
 #else
   do {
-    pset_fn(s, x1, y0, col);
-    pset_fn(s, x0, y0, col);
-    pset_fn(s, x0, y1, col);
-    pset_fn(s, x1, y1, col);
-
+    sgl_psetb(s, x1, y0, col);
+    sgl_psetb(s, x0, y0, col);
+    sgl_psetb(s, x0, y1, col);
+    sgl_psetb(s, x1, y1, col);
+    
     if (fill) {
       sgl_hline(s, y0, x0, x1, col);
       sgl_hline(s, y1, x0, x1, col);
     }
-
-    e2 = 2 * err;
+    
+    e2 = 2*err;
     if (e2 <= dy) {
       y0++;
       y1--;
       err += dy += a;
     }
-
-    if (e2 >= dx || 2 * err > dy) {
+    if (e2 >= dx || 2*err > dy) {
       x0++;
       x1--;
       err += dx += b1;
     }
   } while (x0 <= x1);
+  
+  while (y0-y1 <= b) {
+    sgl_psetb(s, x0-1, y0, col);
+    sgl_psetb(s, x1+1, y0++, col);
+    sgl_psetb(s, x0-1, y1, col);
+    sgl_psetb(s, x1+1, y1--, col);
+  }
 #endif
 }
 
@@ -1033,7 +997,7 @@ static inline void bezier_seg(surface_t s, int x0, int y0, int x1, int y1, int x
       }
     } while (dy < dx);
 #else
-      pset_fn(s, x0, y0, col);
+      sgl_psetb(s, x0, y0, col);
       if (x0 == x2 && y0 == y2)
         return;
 
@@ -1184,7 +1148,7 @@ static inline void bezier_seg_rational(surface_t s, int x0, int y0, int x1, int 
         }
       } while (dy < dx);
 #else
-      pset_fn(s, x0, y0, col);
+      sgl_psetb(s, x0, y0, col);
       if (x0 == x2 && y0 == y2)
         return;
 
@@ -1275,7 +1239,6 @@ void sgl_bezier_rational(surface_t s, int x0, int y0, int x1, int y1, int x2, in
 }
 
 void sgl_ellipse_rect_rotated(surface_t s, int x0, int y0, int x1, int y1, long zd, int col) {
-#warning TODO: Add fill option
   int xd = x1 - x0, yd = y1 - y0;
   float w = xd * (long)yd;
   if (zd == 0)
@@ -1293,7 +1256,6 @@ void sgl_ellipse_rect_rotated(surface_t s, int x0, int y0, int x1, int y1, long 
 }
 
 void sgl_ellipse_rotated(surface_t s, int x, int y, int a, int b, float angle, int col) {
-#warning TODO: Add fill option
   float xd = (long)a * a, yd = (long)b * b;
   float q = sinf(angle), zd = (xd - yd) * q;
   xd = sqrtf(xd - zd * q);
@@ -1445,7 +1407,7 @@ static inline void bezier_seg_cubic(surface_t s, int x0, int y0, float x1, float
     x1 = x2;
 #else
     for (pxy = &xy, fx = fy = f; x0 != x3 && y0 != y3;) {
-      pset_fn(s, x0, y0, col);
+      sgl_psetb(s, x0, y0, col);
       do {
         if (dx > *pxy || dy < *pxy)
           goto exit;
@@ -1571,7 +1533,7 @@ void sgl_bezier_cubic(surface_t s, int x0, int y0, int x1, int y1, int x2, int y
   }
 }
 
-void sgl_rect(surface_t s, int x, int y, int w, int h, int col, int fill) {
+void sgl_rect(surface_t s, int x, int y, int w, int h, int col, bool fill) {
   if (x < 0) {
     w += x;
     x  = 0;
@@ -2534,11 +2496,11 @@ void sgl_ascii(surface_t s, char ch, int x, int y, int fg, int bg) {
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 8; ++j) {
       if (font[c][i] & 1 << j) {
-        pset_fn(s, x + j, y + i, fg);
+        sgl_psetb(s, x + j, y + i, fg);
       } else {
         if (bg == -1)
           continue;
-        pset_fn(s, x + j, y + i, bg);
+        sgl_psetb(s, x + j, y + i, bg);
       }
     }
   }
@@ -2551,11 +2513,11 @@ int sgl_character(surface_t s, const char* ch, int x, int y, int fg, int bg) {
   for (i = 0; i < 8; ++i)
     for (j = 0; j < 8; ++j) {
       if (font[uc][i] & 1 << j)
-        pset_fn(s, x + j, y + i, fg);
+        sgl_psetb(s, x + j, y + i, fg);
       else {
         if (bg == -1)
           continue;
-        pset_fn(s, x + j, y + i, bg);
+        sgl_psetb(s, x + j, y + i, bg);
       }
     }
 
@@ -2893,7 +2855,7 @@ int sgl_bdf_character(surface_t s, struct bdf_t* f, const char* ch, int x, int y
       cc = (yy < yoffset || yy > yoffset + f->chars[n].bb.h ? 0 : f->chars[n].bitmap[(yy - yoffset) * ((f->fontbb.w + 7) / 8) + xx / 8]);
 
       for (i = 128, j = 0; i; i /= 2, ++j)
-        pset_fn(s, x + j, y + yy, (cc & i ? fg : bg));
+        sgl_psetb(s, x + j, y + yy, (cc & i ? fg : bg));
     }
   }
 
@@ -2989,7 +2951,6 @@ void sgl_bdf_stringf(surface_t* s, struct bdf_t* f, int fg, int bg, const char* 
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-#warning TODO: Add error handling to FreeType
 #warning TODO: Fixed unicode for FreeType
 
 static FT_Library ft_library;
@@ -3006,9 +2967,12 @@ struct ftfont_t {
   ft_char_t* chars;
 };
 
-void sgl_ft_init() {
-  if (FT_Init_FreeType(&ft_library))
-    abort();
+bool sgl_ft_init() {
+  if (FT_Init_FreeType(&ft_library)) {
+    error_handle(HIGH_PRIORITY, FT_INIT_FAILED, "FT_Init_FreeType() failed");
+    return false;
+  }
+  return true;
 }
 
 void sgl_ft_release() {
@@ -3029,10 +2993,14 @@ static int load_ftfont_char(struct ftfont_t* font, const char* ch) {
   int u = -1;
   ctoi(ch, &u);
   
-  if (ftfont_char_index(font, u) >= 0)
-    abort(); // This probably shouldn't happen
-  if (FT_Load_Char(font->face, u, FT_LOAD_RENDER))
-    abort();
+  if (ftfont_char_index(font, u) >= 0) {
+    error_handle(HIGH_PRIORITY, FT_LOAD_CHAR_FAILED, "ftfont_char_index() failed");
+    return 0;
+  }
+  if (FT_Load_Char(font->face, u, FT_LOAD_RENDER)) {
+    error_handle(HIGH_PRIORITY, FT_LOAD_CHAR_FAILED, "FT_Load_Char() failed");
+    return 0;
+  }
   
   ft_char_t new;
   new.size.x    = font->face->glyph->bitmap.width;
@@ -3056,11 +3024,17 @@ static int load_ftfont_char(struct ftfont_t* font, const char* ch) {
 
 void sgl_ftfont(struct ftfont_t** _font, const char* path, unsigned int size) {
   struct ftfont_t* font = *_font = malloc(sizeof(struct ftfont_t));
-  if (!font)
-    abort();
+  if (!font) {
+    error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "malloc() failed");
+    return;
+  }
   
-  if (FT_New_Face(ft_library, path, 0, &font->face))
-    abort();
+  if (FT_New_Face(ft_library, path, 0, &font->face)) {
+    error_handle(HIGH_PRIORITY, FT_LOAD_FONT_FAILED, "FT_New_Face() failed");
+    free(font);
+    *_font = NULL;
+    return;
+  }
   FT_Set_Pixel_Sizes(font->face, 0, size);
   
   font->encoding_table = NULL;
@@ -3076,7 +3050,7 @@ void sgl_ftfont(struct ftfont_t** _font, const char* path, unsigned int size) {
 
 void sgl_ftfont_destroy(struct ftfont_t** _font) {
   if (!*_font)
-    abort();
+    return;
   
   struct ftfont_t* font = *_font;
   FT_Done_Face(font->face);
@@ -3098,10 +3072,10 @@ int sgl_ftfont_character(surface_t s, ftfont_t f, const char* ch, int x, int y, 
   y -= c->bearing.y;
   for (i = 0; i < c->size.x; ++i) {
     for (j = 0; j < c->size.y; ++j) {
-      pset_fn(s, x + i, y + j, bg);
+      sgl_psetb(s, x + i, y + j, bg);
 #warning TODO: Find better solution than called pset twice
 #warning TODO: Update other font renderers to fix alpha
-      pset_fn(s, x + i, y + j, ACHAN(fg, CLAMP(A(fg) - (255 - A(XYGET(((c->buffer)), i, j))), 0, 255)));
+      sgl_psetb(s, x + i, y + j, ACHAN(fg, CLAMP(A(fg) - (255 - A(XYGET(((c->buffer)), i, j))), 0, 255)));
     }
   }
   
@@ -3282,11 +3256,7 @@ bool sgl_image(surface_t* s, const char* path) {
   for (x = 0; x < w; ++x) {
     for (y = 0; y < h; ++y) {
       p = data + (x + w * y) * c;
-#if !defined(SGL_DISABLE_RGBA)
       tmp->buf[y * w + x] = RGBA(p[0], p[1], p[2], (c == 4 ? p[3] : 255));
-#else
-      tmp->buf[y * w + x] = (c == 4 && !p[3] ? BLIT_CHROMA_KEY : RGB(p[0], p[1], p[2]));
-#endif
     }
   }
 
@@ -3299,14 +3269,8 @@ bool sgl_save_image(surface_t a, const char* path, SAVEFORMAT type) {
     error_handle(NORMAL_PRIORITY, INVALID_PARAMETERS, "save_image() failed: Invalid parameters");
     return false;
   }
-
-#if !defined(SGL_DISABLE_RGBA)
-#define NC 4
-#else
-#define NC 3
-#endif
-
-  unsigned char* data = malloc(a->w * a->h * NC * sizeof(unsigned char));
+  
+  unsigned char* data = malloc(a->w * a->h * 4 * sizeof(unsigned char));
   if (!data) {
     error_handle(HIGH_PRIORITY, OUT_OF_MEMEORY, "save_image() failed: Out of memory");
     return false;
@@ -3316,14 +3280,12 @@ bool sgl_save_image(surface_t a, const char* path, SAVEFORMAT type) {
   int i, j, c;
   for (i = 0; i < a->w; ++i) {
     for (j = 0; j < a->h; ++j) {
-      p = data + (i + a->w * j) * NC;
+      p = data + (i + a->w * j) * 4;
       c = a->buf[j * a->w + i];
       p[0] = R(c);
       p[1] = G(c);
       p[2] = B(c);
-#if !defined(SGL_DISABLE_RGBA)
       p[3] = A(c);
-#endif
     }
   }
 
@@ -3331,16 +3293,16 @@ bool sgl_save_image(surface_t a, const char* path, SAVEFORMAT type) {
   switch (type) {
   default:
   case PNG:
-    res = stbi_write_png(path, a->w, a->h, NC, data, 0);
+    res = stbi_write_png(path, a->w, a->h, 4, data, 0);
     break;
   case TGA:
-    res = stbi_write_tga(path, a->w, a->h, NC, data);
+    res = stbi_write_tga(path, a->w, a->h, 4, data);
     break;
   case BMP:
-    res = stbi_write_bmp(path, a->w, a->h, NC, data);
+    res = stbi_write_bmp(path, a->w, a->h, 4, data);
     break;
   case JPG:
-    res = stbi_write_jpg(path, a->w, a->h, NC, data, 85);
+    res = stbi_write_jpg(path, a->w, a->h, 4, data, 85);
     break;
   }
   FREE_SAFE(data);
