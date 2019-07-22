@@ -1,32 +1,35 @@
-# sgl
+# hal
 
-Cross platform 2D software rendering graphics library, inspired by [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb), [SDL 1.2](https://www.libsdl.org/) and [QuickCG](http://lodev.org/cgtutor/).
+Cross platform hardware abstraction layer, inspired by [SDL 1.2](https://www.libsdl.org/), [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb) and [QuickCG](http://lodev.org/cgtutor/).
 
-Designed to be a drop-in and use with little hassle sort of deal. I don't know if anyone will really find a use for this besides me. But it's very fun to work on. It's not explicitly a game development library, just a rendering library. It's most likely less efficient, slower, more buggy and has less features, support, compatibility and portability than SDL - Just so you know, if you didn't already guess.
+Designed to be a drop-in and use with little hassle sort of deal. I don't know if anyone will really find a use for this besides me. But it's very fun to work on. It's not explicitly a game development library, but that'll be the most likely one. It's most likely less efficient, slower, more buggy and has less features, support, compatibility and portability than SDL - Just so you know, if you didn't already guess.
 
 
 ## Features
 
-- Windows, OS X and Linux (X11)
-- Keyboard and mouse events
-- Primitive shapes
-- BMP loading (Uncompressed 8, 24 & 32 bpp) (1 & 4 bpp, RLE compression and OS/2 not supported yet)
-- Save surfaces to BMP file
-- Text rendering (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8))
-- Joystick handling (adapted from [ThemsAllTook/libstem_gamepad](https://github.com/ThemsAllTook/libstem_gamepad))
-- GIF loading (adapted from [hidefromkgb/gif_load](https://github.com/hidefromkgb/gif_load)) and saving (adapted from [lecram/gifenc](https://github.com/lecram/gifenc))
+- OSX (Quartz, GL, Metal), Windows (Win32, GL), Linux (X11, GL).
+- Multiple Windows
+- Keyboard, mouse and window events.
+- Text rendering via in-built font (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8)) or BDF files
+- BMP (24 or 32 bpp uncompressed) and GIF loading (adapted from [hidefromkgb/gif_load](https://github.com/hidefromkgb/gif_load))
 - Message box & dialog support (adapted from [AndrewBelt/osdialog](https://github.com/AndrewBelt/osdialog))
-- Optional OpenGL & Metal backends (Just for rendering to screen)
-- Optional extras (AA primitives, BDF font rendering, Freetype rendering, image loader (adapted from  [stb_image](https://github.com/nothings/stb)))
+
+### Planned features
+
+- Vulkan backends for OSX (via MoltenVK), Windows and Linux
+- Emscripten, SIXEL and Wayland options
+- Joystick support for OSX, Windows and Linux
+- Support RLE, OS/2 and uncompressed 1, 4 and 8bpp BMP files
+- GIF saving
 
 See below screenshots for TODO list and the examples folder for some idea of how to use. ___Still a WIP, API subject to change a lot___.
 
-OS X will be the primary platform for all stuff, then after that is working to a level I like I will finish the windows port and after that the linux port. It's too much effort changing something on OS X then doing it on other platforms all the time. __At the moment Windows & Linux won't build__.
+OS X will be the primary platform for all stuff, then after that is working to a level I like I will finish the windows port and after that the linux port. It's too much effort changing something on OS X then doing it on other platforms all the time. __At the moment Windows & Linux won't build__ (because I removed them).
 
 
 ## Building
 
-No external libraries are used unless you want to use the alternate backends (enable them by defining ```SGL_ENABLE_(OPENGL/METAL)```). I don't know how to make CMake files yet so backends will have to be defined manually. To enable AA primitives define ```SGL_ENABLE_AA```, for BDF rendering ```SGL_ENABLE_BDF``` and for image loading using stb_image ```SGL_ENABLE_STB_IMAGE```, etc.
+No external libraries are used unless you want to use the alternate backends. I don't know how to make CMake files yet so backends will have to be defined manually. You can enable or disable features using macros, there will be a list when everything is closer to being done.
 
 On OS X you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for Metal. Also, if you're using XCode you'll also have to disable modules in the build settings, becuase modules imports curses with stdio for some reason.
 
@@ -64,34 +67,29 @@ Tested on:
 - Cursor clipping for Linux [and OS X](https://stackoverflow.com/a/40922095)
 - Learn CMake and make a build file
 - Get a new laptop for Windows/Linux testing
-- Fix all current warnings before working on Windows and Linux builds
 
 ### Less important
 
-- Add line width option to primitives
+- Add CTX mode for just creating a GL/Metal/Whatever context
 - Come back to surface transformation
 - Different scaling functions
 - Look into SDF rendering
 - Keyboard scancodes
 - Make thread safe (surface locks)
-- Vulkan/DirectX/SIXEL backends
-- Wayland window code
-- Documentation & comments
+- Wayland/emscripten/Vulkan/DirectX(9+11)/SIXEL backends
 - libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
-- More examples/tests
 - Make C++ wrapper
 - Optional OpenCL for processing
 - Pixel shader support
-- Audio playback (seperate library?)
-- Other language bindings (Either Wren/Lua/Ruby probably)
-- Optional garbage collector
+- Audio playback
+- Other language bindings (Test SWIG)
 
 ### Investigate
 
-- Why CoreGraphics rendering is so slow?
-- Resizing for X11
-- Get CoreGraphics working on OS X in 10.13+ again?
-- Why if one Metal window covers another everything lags (????)
+- Why CoreGraphics rendering is so slow? [OSX]
+- Get CoreGraphics working on OS X in 10.13+ again? [OSX]
+- Why if one Metal window covers another everything lags (????) [OSX]
+- Resizing for X11 [Linux]
 
 
 ## License

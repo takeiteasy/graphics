@@ -1,7 +1,5 @@
 a.out
+CMakeCache.txt
+CMakeFiles/
 .DS_Store
-Debug/
-.vs/
-x64/
-bin/
-obj/
+build/
