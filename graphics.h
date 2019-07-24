@@ -39,7 +39,7 @@
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+ * ARE DISCLAIMED. IN NO EVENT SHALL GEORGE WATSON BE LIABLE FOR ANY
  * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
  * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
  * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -412,7 +412,7 @@ extern "C" {
    */
   void hal_flood(surface_t s, i32 x, i32 y, i32 col);
   /*!
-   * @discussion Clear a surface, 0 the buffer
+   * @discussion Clear a surface, zero the buffer
    * @param s Surface object
    */
   void hal_cls(surface_t s);
@@ -1217,7 +1217,7 @@ extern "C" {
  *
  *
  *
- *   /$$   /$$ /$$$$$$$$  /$$$$$$  /$$$$$$$  /$$$$$$$$ /$$$$$$$
+ *    /$$   /$$ /$$$$$$$$  /$$$$$$  /$$$$$$$  /$$$$$$$$ /$$$$$$$
  *   | $$  | $$| $$_____/ /$$__  $$| $$__  $$| $$_____/| $$__  $$
  *   | $$  | $$| $$      | $$  \ $$| $$  \ $$| $$      | $$  \ $$
  *   | $$$$$$$$| $$$$$   | $$$$$$$$| $$  | $$| $$$$$   | $$$$$$$/

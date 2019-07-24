@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-headerdoc2html -dp graphics.h
+headerdoc2html -udp graphics.h
 if [ -d "graphics_h" ]; then
   rm -rf docs
   mv graphics_h docs

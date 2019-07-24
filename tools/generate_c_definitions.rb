@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 if $*.empty?
-  puts "\n\tquick_gen.rb [header files...]\n"
+  puts "\n\t#{$0} [header files...]\n"
   exit 1
 end
 

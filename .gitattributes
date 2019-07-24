@@ -1,0 +1,3 @@
+docs/* linguist-generated
+examples/3rdparty/* linguist-vendored
+tools/* linguist-vendored=false

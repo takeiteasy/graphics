@@ -1,28 +1,21 @@
 # hal
 
-Cross platform hardware abstraction layer, inspired by [SDL 1.2](https://www.libsdl.org/), [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb) and [QuickCG](http://lodev.org/cgtutor/).
+Cross platform hardware abstraction layer, inspired by [SDL 1.2](https://www.libsdl.org/), [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb) and [QuickCG](http://lodev.org/cgtutor/). It was initially forked from [minifb](https://github.com/emoon/minifb), but has evolved beyond it and shares almost no code with it anymore, if any.
 
 Designed to be a drop-in and use with little hassle sort of deal. I don't know if anyone will really find a use for this besides me. But it's very fun to work on. It's not explicitly a game development library, but that'll be the most likely one. It's most likely less efficient, slower, more buggy and has less features, support, compatibility and portability than SDL - Just so you know, if you didn't already guess.
 
 
 ## Features
 
-- OSX (Quartz, GL, Metal), Windows (Win32, GL), Linux (X11, GL).
+- OSX (Carbon, GL, Metal), Windows (Win32, GL), Linux (X11, GL) (so far, see project page for planned s).
 - Multiple Windows
 - Keyboard, mouse and window events.
 - Text rendering via in-built font (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8)) or BDF files
 - BMP (24 or 32 bpp uncompressed) and GIF loading (adapted from [hidefromkgb/gif_load](https://github.com/hidefromkgb/gif_load))
 - Message box & dialog support (adapted from [AndrewBelt/osdialog](https://github.com/AndrewBelt/osdialog))
 
-### Planned features
 
-- Vulkan backends for OSX (via MoltenVK), Windows and Linux
-- Emscripten, SIXEL and Wayland options
-- Joystick support for OSX, Windows and Linux
-- Support RLE, OS/2 and uncompressed 1, 4 and 8bpp BMP files
-- GIF saving
-
-See below screenshots for TODO list and the examples folder for some idea of how to use. ___Still a WIP, API subject to change a lot___.
+See below screenshots, and check out the examples folder for some idea of how to use. ___Still a WIP, API subject to change a lot___. For documentation, visit [the docs page](https://takeiteasy.github.io/hal/).  Also, see the projects tab for an idea of progress, planned features and ideas.
 
 OS X will be the primary platform for all stuff, then after that is working to a level I like I will finish the windows port and after that the linux port. It's too much effort changing something on OS X then doing it on other platforms all the time. __At the moment Windows & Linux won't build__ (because I removed them).
 
@@ -39,7 +32,7 @@ On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're usin
 
 On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line options or unicode decoding won't work properly. I don't know why, but it doesn't.
 
-Tested on:
+**Tested on** (so far):
 - OS X 10.12, 10.13 & 10.14 (clang)
 - Windows 7 x64 (MSVC)
 -  Ubuntu 19 x86_64 (Linux 4.13.0-16) (Inside VM only) (clang)
@@ -60,61 +53,28 @@ Tested on:
 </p>
 
 
-## TODO
-
-### Important
-
-- Cursor clipping for Linux [and OS X](https://stackoverflow.com/a/40922095)
-- Learn CMake and make a build file
-- Get a new laptop for Windows/Linux testing
-
-### Less important
-
-- Add CTX mode for just creating a GL/Metal/Whatever context
-- Come back to surface transformation
-- Different scaling functions
-- Look into SDF rendering
-- Keyboard scancodes
-- Make thread safe (surface locks)
-- Wayland/emscripten/Vulkan/DirectX(9+11)/SIXEL backends
-- libtcc interactive player (like [CToy](https://github.com/anael-seghezzi/CToy))
-- Make C++ wrapper
-- Optional OpenCL for processing
-- Pixel shader support
-- Audio playback
-- Other language bindings (Test SWIG)
-
-### Investigate
-
-- Why CoreGraphics rendering is so slow? [OSX]
-- Get CoreGraphics working on OS X in 10.13+ again? [OSX]
-- Why if one Metal window covers another everything lags (????) [OSX]
-- Resizing for X11 [Linux]
-
-
 ## License
 
-```Copyright (c) 2013, George Watson
-All rights reserved.
+```Created by Rory B. Bellows on 26/11/2017.
+Copyright © 2017-2019 George Watson. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
-* Redistributions of source code must retain the above copyright
-notice, this list of conditions and the following disclaimer.
-* Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in the
-documentation and/or other materials provided with the distribution.
-* Neither the name of the <organization> nor the
-names of its contributors may be used to endorse or promote products
-derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL RUSTY SHACKLEFORD BE LIABLE FOR ANY
+*   Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+*   Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+*   Neither the name of the <organization> nor the
+    names of its contributors may be used to endorse or promote products
+    derived from this software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL GEORGE WATSON BE LIABLE FOR ANY
 DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.```
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
