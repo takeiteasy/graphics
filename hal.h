@@ -49,16 +49,98 @@
  *
  */
 
-#ifndef hal_h
+#if !defined(hal_h)
 #define hal_h
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-#define HAL_VERSION_INT(a, b, c) (a<<16 | b<<8 | c)
-#define HAL_VERSION_DOT(a, b, c) a ##.## b ##.## c
-#define HAL_VERSION(a, b, c) HAL_VERSION_DOT(a, b, c)
+#if !defined(HAL_LIBRARY)
+#define HAL_IMPLEMENTATION
+#endif
 
+#if !defined(HALDEF)
+#if defined(HAL_STATIC)
+#define HALDEF static
+#else
+#define HALDEF extern
+#endif
+#endif
+
+#if defined(__cplusplus)
+#define HAL_EXTERN extern "C"
+#else
+#define HAL_EXTERN extern
+#endif
+
+
+#if !defined(_MSC_VER)
+#if defined(__cplusplus)
+#define hal_inline inline
+#else
+#define hal_inline
+#endif
+#else
+#define hal_inline __forceinline
+#endif
+
+#if defined(HAL_ONLY_GRAPHICS)  || \
+    defined(HAL_ONLY_AUDIO)     || \
+    defined(HAL_ONLY_THREADS)   || \
+    defined(HAL_ONLY_SOCKETS)   || \
+    defined(HAL_ONLY_FILESYSTEM)
+#if !defined(HAL_ONLY_GRAPHICS)
+#define HAL_NO_GRAPHICS
+#endif
+#if !defined(HAL_ONLY_AUDIO)
+#define HAL_NO_AUDIO
+#endif
+#if !defined(HAL_ONLY_THREADS)
+#define HAL_NO_THREADS
+#endif
+#if !defined(HAL_ONLY_SOCKETS)
+#define HAL_NO_SOCKETS
+#endif
+#if !defined(HAL_ONLY_FILESYSTEM)
+#define HAL_NO_FILESYSTEM
+#endif
+#endif
+
+#if !defined(HAL_VERSION_MAJOR)
+#define HAL_VERSION_MAJOR 0
+#if !defined(HAL_VERSION_MINOR)
+#define HAL_VERSION_MINOR 0
+#endif
+#if !defined(HAL_VERSION_REV)
+#define HAL_VERSION_REV 0
+#endif
+#define HAL_VERSION_INT (HAL_VERSION_MAJOR << 16 | HAL_VERSION_MINOR << 8 | HAL_VERSION_REV)
+#define HAL_VERSION_DOT_STR(a, b, c) a ##.## b ##.## c
+#define HAL_VERSION_STR HAL_VERSION_DOT_STR(a, b, c)
+#if !defined(HAL_VERSION_GIT)
+#define HAL_VERSION_GIT "unknown"
+#endif
+
+#if !defined(HAL_NO_GRAPHICS)
+#include "graphics.h"
+#endif
+
+#if !defined(HAL_NO_AUDIO)
+#include "audio.h"
+#endif
+
+#if !defined(HAL_NO_THREADS)
+#include "threads.h"
+#endif
+
+#if !defined(HAL_NO_SOCKETS)
+#include "sockets.h"
+#endif
+
+#if !defined(HAL_NO_FILESYSTEM)
+#include "filesystem.h"
+#endif
+  
 #if defined(__cplusplus)
 }
 #endif

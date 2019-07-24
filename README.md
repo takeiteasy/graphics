@@ -7,7 +7,7 @@ Designed to be a drop-in and use with little hassle sort of deal. I don't know i
 
 ## Features
 
-- OSX (Carbon, GL, Metal), Windows (Win32, GL), Linux (X11, GL) (so far, see project page for planned s).
+- OSX (Carbon, GL, Metal), Windows (Win32, GL), Linux (X11, GL) (so far, see project page for planned stuff).
 - Multiple Windows
 - Keyboard, mouse and window events.
 - Text rendering via in-built font (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8)) or BDF files

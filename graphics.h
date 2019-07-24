@@ -116,9 +116,9 @@ extern "C" {
 #endif
 
 #ifndef HAL_MALLOC
-#define HAL_MALLOC(sz)           malloc(sz)
-#define HAL_REALLOC(p,newsz)     realloc(p,newsz)
-#define HAL_FREE(p)              free(p)
+#define HAL_MALLOC(sz)       malloc(sz)
+#define HAL_REALLOC(p,newsz) realloc(p,newsz)
+#define HAL_FREE(p)          free(p)
 #endif
 
 #define RGBA(r, g, b, a) ((((u32)(a)) << 24) | (((u32)(r)) << 16) | (((u32)(g)) << 8) | (b))
@@ -1255,23 +1255,17 @@ extern "C" {
 #define strdup _strdup
 #endif
 
-#if !defined(MIN)
-#define MIN(a, b) (((a) < (b)) ? (a) : (b))
-#endif
-#if !defined(MAX)
-#define MAX(a, b) (((a) > (b)) ? (a) : (b))
-#endif
-#if !defined(CLAMP)
-#define CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
-#endif
+#define HAL_MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define HAL_MAX(a, b) (((a) > (b)) ? (a) : (b))
+#define HAL_CLAMP(x, low, high) (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
 
 #if !defined(M_PI)
 #define M_PI 3.14159265358979323846264338327950288f
 #endif
-#define DEG2RAD(a) ((a) * M_PI / 180.0)
-#define RAD2DEG(a) ((a) * 180.0 / M_PI)
+#define HAL_D2R(a) ((a) * M_PI / 180.0)
+#define HAL_R2D(a) ((a) * 180.0 / M_PI)
 
-#define FREE(x) \
+#define HAL_SAFE_FREE(x) \
   if ((x)) {  \
     HAL_FREE((x)); \
     (x) = NULL; \
@@ -1339,8 +1333,8 @@ void hal_destroy(surface_t* _s) {
   surface_t s = *_s;
   if (!s)
     return;
-  FREE(s->buf);
-  FREE(s);
+  HAL_SAFE_FREE(s->buf);
+  HAL_SAFE_FREE(s);
   *_s = NULL;
 }
 
@@ -1555,7 +1549,7 @@ bool hal_resize(surface_t a, i32 nw, i32 nh, surface_t* b) {
 }
 
 bool hal_rotate(surface_t a, float angle, surface_t* b) {
-  float theta = DEG2RAD(angle);
+  float theta = HAL_D2R(angle);
   float c = cosf(theta), s = sinf(theta);
   float r[3][2] = {
     { -a->h * s, a->h * c },
@@ -1564,11 +1558,11 @@ bool hal_rotate(surface_t a, float angle, surface_t* b) {
   };
 
   float mm[2][2] = { {
-    MIN(0, MIN(r[0][0], MIN(r[1][0], r[2][0]))),
-      MIN(0, MIN(r[0][1], MIN(r[1][1], r[2][1])))
+    HAL_MIN(0, HAL_MIN(r[0][0], HAL_MIN(r[1][0], r[2][0]))),
+    HAL_MIN(0, HAL_MIN(r[0][1], HAL_MIN(r[1][1], r[2][1])))
   }, {
-    (theta > 1.5708  && theta < 3.14159 ? 0.f : MAX(r[0][0], MAX(r[1][0], r[2][0]))),
-      (theta > 3.14159 && theta < 4.71239 ? 0.f : MAX(r[0][1], MAX(r[1][1], r[2][1])))
+    (theta > 1.5708  && theta < 3.14159 ? 0.f : HAL_MAX(r[0][0], HAL_MAX(r[1][0], r[2][0]))),
+      (theta > 3.14159 && theta < 4.71239 ? 0.f : HAL_MAX(r[0][1], HAL_MAX(r[1][1], r[2][1])))
   }
   };
 
@@ -1713,7 +1707,7 @@ void free_node(oct_node_pool_t* pool) {
   oct_node_t* p;
   while (pool->pool) {
     p = pool->pool->parent;
-    FREE(pool->pool);
+    HAL_SAFE_FREE(pool->pool);
     pool->pool = p;
   }
 }
@@ -1805,7 +1799,7 @@ void hal_quantize(surface_t a, i32 n_colors, surface_t* b) {
     color_replace(root, buf);
 
   free_node(&pool);
-  FREE(heap.buf);
+  HAL_SAFE_FREE(heap.buf);
 }
 
 static inline void hal_vline(surface_t s, i32 x, i32 y0, i32 y1, i32 col) {
@@ -2058,7 +2052,7 @@ bool hal_bmp(surface_t* s, const char* path) {
   }
 
   if (!hal_surface(s, info.width, info.height)) {
-    FREE(color_map);
+    HAL_SAFE_FREE(color_map);
     error_handle(OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
@@ -2089,7 +2083,7 @@ bool hal_bmp(surface_t* s, const char* path) {
           break;
         default:
           error_handle(UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
-          FREE(color_map);
+          HAL_SAFE_FREE(color_map);
           hal_destroy(s);
           return false;
       }
@@ -2099,12 +2093,12 @@ bool hal_bmp(surface_t* s, const char* path) {
     default:
 #warning TODO: Add RLE support
       error_handle(UNSUPPORTED_BMP, "bmp() failed. Unsupported compression: %d", info.compression);
-      FREE(color_map);
+      HAL_SAFE_FREE(color_map);
       hal_destroy(s);
       return false;
   }
 
-  FREE(color_map);
+  HAL_SAFE_FREE(color_map);
   return true;
 }
 
@@ -2161,7 +2155,7 @@ bool hal_save_bmp(surface_t s, const char* path) {
   FILE* fp = fopen(path, "wb");
   if (!fp) {
     error_handle(FILE_OPEN_FAILED, "fopen() failed: %s", path);
-    FREE(img);
+    HAL_SAFE_FREE(img);
     return false;
   }
 
@@ -2172,7 +2166,7 @@ bool hal_save_bmp(surface_t s, const char* path) {
     fwrite(pad, 1, (4 - (s->w * 3) % 4) % 4,fp);
   }
 
-  FREE(img);
+  HAL_SAFE_FREE(img);
   fclose(fp);
   return true;
 }
@@ -2831,7 +2825,7 @@ static inline void str_size(const char* str, i32* w, i32* h) {
       return;
     n++;
   }
-  *w = MAX(n, m);
+  *w = HAL_MAX(n, m);
   *h = l;
 }
 
@@ -2958,7 +2952,7 @@ void hal_writelnf(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ..
   }
 
   hal_writeln(s, x, y, fg, bg, buffer);
-  FREE(buffer);
+  HAL_SAFE_FREE(buffer);
 }
 
 void hal_string(surface_t* s, i32 fg, i32 bg, const char* str) {
@@ -2987,7 +2981,7 @@ void hal_stringf(surface_t* s, i32 fg, i32 bg, const char* fmt, ...) {
   }
 
   hal_string(s, fg, bg, buffer);
-  FREE(buffer);
+  HAL_SAFE_FREE(buffer);
 }
 #endif // !defined(HAL_NO_TEXT)
 
@@ -3059,20 +3053,20 @@ void hal_bdf_destroy(struct bdf_t** _f) {
   struct bdf_t* f = *_f;
   for (i32 i = 0; i < f->n_chars; ++i)
     if (f->chars[i].bitmap) {
-      FREE(f->chars[i].bitmap);
+      HAL_SAFE_FREE(f->chars[i].bitmap);
       f->chars[i].bitmap = NULL;
     }
   if (f->chars) {
-    FREE(f->chars);
+    HAL_SAFE_FREE(f->chars);
     f->chars = NULL;
   }
   if (f->encoding_table) {
-    FREE(f->encoding_table);
+    HAL_SAFE_FREE(f->encoding_table);
     f->encoding_table = NULL;
   }
   f->n_chars = 0;
   memset(&f->fontbb, 0, sizeof(rect_t));
-  FREE(f);
+  HAL_SAFE_FREE(f);
 }
 
 static inline i32 htoi(const char* p) {
@@ -3301,7 +3295,7 @@ void hal_bdf_writelnf(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg
   }
 
   hal_bdf_writeln(s, f, x, y, fg, bg, buffer);
-  FREE(buffer);
+  HAL_SAFE_FREE(buffer);
 }
 
 void hal_bdf_string(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* str) {
@@ -3330,7 +3324,7 @@ void hal_bdf_stringf(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* 
   }
 
   hal_bdf_string(s, f, fg, bg, buffer);
-  FREE(buffer);
+  HAL_SAFE_FREE(buffer);
 }
 #endif // HAL_BDF
 
@@ -3400,7 +3394,7 @@ void hal_gif_create(gif_t* _g, i32 w, i32 h, i32 delay, i32 frames, ...) {
   g->surfaces = HAL_MALLOC(g->frames * sizeof(surface_t));
   if (!g->surfaces) {
     error_handle(OUT_OF_MEMEORY, "malloc() failed");
-    FREE(g);
+    HAL_SAFE_FREE(g);
     *_g = NULL;
     return;
   }
@@ -3742,9 +3736,9 @@ bool hal_gif(gif_t* _g, const char* path) {
     return false;
   }
 
-  FREE(tmp.data);
-  FREE(tmp.prev);
-  FREE(tmp.pict);
+  HAL_SAFE_FREE(tmp.data);
+  HAL_SAFE_FREE(tmp.prev);
+  HAL_SAFE_FREE(tmp.pict);
   return true;
 }
 
@@ -3759,8 +3753,8 @@ void hal_gif_destroy(gif_t* _g) {
     return;
   for (i32 i = 0; i < g->frames; ++i)
     hal_destroy(&g->surfaces[i]);
-  FREE(g->surfaces);
-  FREE(g);
+  HAL_SAFE_FREE(g->surfaces);
+  HAL_SAFE_FREE(g);
 }
 #endif // HAL_GIF
 
@@ -4011,7 +4005,7 @@ void print_shader_log(GLuint s) {
     if (log_len > 0)
       error_handle(GL_SHADER_ERROR, "load_shader() failed: %s", log);
 
-    FREE(log);
+    HAL_SAFE_FREE(log);
   }
 }
 
@@ -4320,7 +4314,7 @@ static inline NSImage* create_cocoa_image(surface_t s) {
     }
   }
   memcpy([nsbir bitmapData], rgba, s->w * s->h * sizeof(char) * 4);
-  FREE(rgba);
+  HAL_SAFE_FREE(rgba);
 
   [nsi addRepresentation:nsbir];
   return nsi;
@@ -4969,8 +4963,8 @@ void hal_screen_destroy(struct screen_t** s) {
     [[app view] dealloc];
     [[app window] close];
   }
-  FREE(app);
-  FREE(screen);
+  HAL_SAFE_FREE(app);
+  HAL_SAFE_FREE(screen);
   [pool drain];
 }
 
@@ -5191,7 +5185,7 @@ int main(int argc, const char* argv[]) {
   hal_fill(buf, RED);
 
   surface_t img;
-  hal_bmp(&img, "/Users/roryb/git/graphics.h/old/test/resources/Uncompressed-24.bmp");
+  hal_bmp(&img, "/Users/roryb/git/hal/old/test/resources/Uncompressed-24.bmp");
   hal_paste(buf, img, 10, 10);
 
   while (!hal_closed(win) && running) {
