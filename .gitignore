@@ -3,3 +3,5 @@ CMakeCache.txt
 CMakeFiles/
 .DS_Store
 build/
+pu.sh
+old/

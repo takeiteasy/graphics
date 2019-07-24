@@ -1,3 +1,5 @@
 docs/* linguist-generated
 examples/3rdparty/* linguist-vendored
 tools/* linguist-vendored=false
+*.c linguist-language=C
+*.h linguist-language=C
