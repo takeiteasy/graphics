@@ -63,16 +63,6 @@ extern "C" {
 #include <stdbool.h>
 #endif
 
-#if defined(__gnu_linux__) || defined(__linux__) || defined(__unix__)
-#define HAL_LINUX
-#elif defined(macintosh) || defined(Macintosh) || (defined(__APPLE__) && defined(__MACH__))
-#define HAL_OSX
-#elif defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(__WINDOWS__)
-#define HAL_WINDOWS
-#else
-#define HAL_NO_WINDOW
-#endif
-
 #if defined(HAL_USE_GPU)
 #if defined(HAL_OSX)
 #if defined(HAL_HAS_METAL)
@@ -109,18 +99,6 @@ extern "C" {
 #endif
 #endif
 
-#if defined(HAL_MALLOC) && defined(HAL_FREE) && (defined(HAL_REALLOC) || defined(HAL_REALLOC_SIZED))
-#elif !defined(HAL_MALLOC) && !defined(HAL_FREE) && !defined(HAL_REALLOC) && !defined(HAL_REALLOC_SIZED)
-#else
-#error "Must define all or none of HAL_MALLOC, HAL_FREE, and HAL_REALLOC (or HAL_REALLOC_SIZED)."
-#endif
-
-#ifndef HAL_MALLOC
-#define HAL_MALLOC(sz)       malloc(sz)
-#define HAL_REALLOC(p,newsz) realloc(p,newsz)
-#define HAL_FREE(p)          free(p)
-#endif
-
 #define RGBA(r, g, b, a) ((((u32)(a)) << 24) | (((u32)(r)) << 16) | (((u32)(g)) << 8) | (b))
 #define RGB(r, g, b) (RGBA((r), (g), (b), 255))
 #define R(v) (((v) >> 16) & 0xFF)
@@ -133,15 +111,6 @@ extern "C" {
 #define ACHAN(a, b) (((a) & ~0xFF000000) | ((b) << 24))
 #define RGB1(c) (RGB((c), (c), (c)))
 #define RGBA1(c, a) (RGBA((c), (c), (c), (a)))
-
-  typedef signed char        i8;
-  typedef unsigned char      u8;
-  typedef signed short       i16;
-  typedef unsigned short     u16;
-  typedef signed int         i32;
-  typedef unsigned int       u32;
-  typedef signed long long   i64;
-  typedef unsigned long long u64;
 
 #if !defined(HAL_NO_COLORS)
   /*!
@@ -359,7 +328,7 @@ extern "C" {
    * @discussion Callback for errors inside library
    * @param cb Function pointer to callback
    */
-  void  hal_error_callback(void(*cb)(ERROR_TYPE, const char*, const char*, const char*, i32));
+  HALDEF void  hal_error_callback(void(*cb)(ERROR_TYPE, const char*, const char*, const char*, i32));
 
   /*!
    * @typedef surface_t
@@ -376,13 +345,13 @@ extern "C" {
    * @param w Pointer to int to set
    * @param h Pointer to int to set
    */
-  void hal_surface_size(surface_t s, int* w, int* h);
+  HALDEF void hal_surface_size(surface_t s, int* w, int* h);
   /*!
    * @discussion Get pointer to buffer of given surface
    * @param s Surface object
    * @return The pointer to surface buffer
    */
-  i32* hal_surface_raw(surface_t s);
+  HALDEF i32* hal_surface_raw(surface_t s);
   /*!
    * @discussion Create a new surface
    * @param s Pointer to surface object to create
@@ -390,19 +359,19 @@ extern "C" {
    * @param h Height of new surface
    * @return Boolean for success
    */
-  bool hal_surface(surface_t* s, u32 w, u32 h);
+  HALDEF bool hal_surface(surface_t* s, u32 w, u32 h);
   /*!
    * @discussion Destroy a surface
    * @param s Pointer to pointer to surface object
    */
-  void hal_destroy(surface_t* s);
+  HALDEF void hal_destroy(surface_t* s);
 
   /*!
    * @discussion Fill a surface with a given colour
    * @param s Surface object
    * @param col Colour to set
    */
-  void hal_fill(surface_t s, i32 col);
+  HALDEF void hal_fill(surface_t s, i32 col);
   /*!
    * @discussion Flood portion of surface with given colour
    * @param s Surface object
@@ -410,12 +379,12 @@ extern "C" {
    * @param y Y position
    * @param col Colour to set
    */
-  void hal_flood(surface_t s, i32 x, i32 y, i32 col);
+  HALDEF void hal_flood(surface_t s, i32 x, i32 y, i32 col);
   /*!
    * @discussion Clear a surface, zero the buffer
    * @param s Surface object
    */
-  void hal_cls(surface_t s);
+  HALDEF void hal_cls(surface_t s);
   /*!
    * @discussion Set surface pixel colour
    * @param s Surface object
@@ -423,7 +392,7 @@ extern "C" {
    * @param y Y position
    * @param col Colour to set
    */
-  void hal_pset(surface_t s, i32 x, i32 y, i32 col);
+  HALDEF void hal_pset(surface_t s, i32 x, i32 y, i32 col);
   /*!
    * @discussion Get surface pixel colour
    * @param s Surface object
@@ -431,7 +400,7 @@ extern "C" {
    * @param y Y position
    * @return Pixel colour
    */
-  i32  hal_pget(surface_t s, i32 x, i32 y);
+  HALDEF i32  hal_pget(surface_t s, i32 x, i32 y);
   /*!
    * @discussion Blit one surface onto another at point
    * @param dst Surface to blit to
@@ -440,7 +409,7 @@ extern "C" {
    * @param y Y position
    * @return Boolean of success
    */
-  bool hal_paste(surface_t dst, surface_t src, i32 x, i32 y);
+  HALDEF bool hal_paste(surface_t dst, surface_t src, i32 x, i32 y);
   /*!
    * @discussion Blit one surface onto another at point with clipping rect
    * @param dst Surface to blit to
@@ -453,7 +422,7 @@ extern "C" {
    * @param rh Clip rect height
    * @return Boolean of success
    */
-  bool hal_clip_paste(surface_t dst, surface_t src, i32 x, i32 y, i32 rx, i32 ry, i32 rw, i32 rh);
+  HALDEF bool hal_clip_paste(surface_t dst, surface_t src, i32 x, i32 y, i32 rx, i32 ry, i32 rw, i32 rh);
   /*!
    * @discussion Reallocate a surface
    * @param s Surface object
@@ -461,20 +430,20 @@ extern "C" {
    * @param nh New height
    * @return Boolean of success
    */
-  bool hal_reset(surface_t s, i32 nw, i32 nh);
+  HALDEF bool hal_reset(surface_t s, i32 nw, i32 nh);
   /*!
    * @discussion Create a copy of a surface
    * @param a Original surface object
    * @param b New surface object to be allocated
    * @return Boolean of success
    */
-  bool hal_copy(surface_t a, surface_t* b);
+  HALDEF bool hal_copy(surface_t a, surface_t* b);
   /*!
    * @discussion Loop through each pixel of surface and run position and colour through a callback. Return value of the callback is the new colour at the position
    * @param s Surface object
    * @param fn Callback function
    */
-  void hal_passthru(surface_t s, i32(*fn)(i32 x, i32 y, i32 col));
+  HALDEF void hal_passthru(surface_t s, i32(*fn)(i32 x, i32 y, i32 col));
   /*!
    * @discussion Resize (and scale) surface to given size
    * @param a Original surface object
@@ -483,7 +452,7 @@ extern "C" {
    * @param b New surface object to be allocated
    * return Boolean of success
    */
-  bool hal_resize(surface_t a, i32 nw, i32 nh, surface_t* b);
+  HALDEF bool hal_resize(surface_t a, i32 nw, i32 nh, surface_t* b);
   /*!
    * @discussion Rotate a surface by a given degree
    * @param a Original surface object
@@ -491,14 +460,14 @@ extern "C" {
    * @param b New surface object to be allocated
    * return Boolean of success
    */
-  bool hal_rotate(surface_t a, float angle, surface_t* b);
+  HALDEF bool hal_rotate(surface_t a, float angle, surface_t* b);
   /*!
    * @discussion https://en.wikipedia.org/wiki/Color_quantization
    * @param a Original surface object
    * @param n_colors Maximum colours
    * @param b New surface object to be allocated
    */
-  void hal_quantize(surface_t a, i32 n_colors, surface_t* b);
+  HALDEF void hal_quantize(surface_t a, i32 n_colors, surface_t* b);
 
   /*!
    * @discussion Simple Bresenham line
@@ -509,7 +478,7 @@ extern "C" {
    * @param y1 Vector B Y position
    * @param col Colour of line
    */
-  void hal_line(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 col);
+  HALDEF void hal_line(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 col);
   /*!
    * @discussion Draw a circle
    * @param s Surface object
@@ -519,7 +488,7 @@ extern "C" {
    * @param col Colour of cricle
    * @param fill Fill circle boolean
    */
-  void hal_circle(surface_t s, i32 xc, i32 yc, i32 r, i32 col, bool fill);
+  HALDEF void hal_circle(surface_t s, i32 xc, i32 yc, i32 r, i32 col, bool fill);
   /*!
    * @discussion Draw a rectangle
    * @param x X position
@@ -529,7 +498,7 @@ extern "C" {
    * @param col Colour of rectangle
    * @param fill Fill rectangle boolean
    */
-  void hal_rect(surface_t s, i32 x, i32 y, i32 w, i32 h, i32 col, bool fill);
+  HALDEF void hal_rect(surface_t s, i32 x, i32 y, i32 w, i32 h, i32 col, bool fill);
   /*!
    * @discussion Draw a triangle
    * @param s Surface object
@@ -542,7 +511,7 @@ extern "C" {
    * @param col Colour of line
    * @param fill Fill triangle boolean
    */
-  void hal_tri(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 x2, i32 y2, i32 col, bool fill);
+  HALDEF void hal_tri(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 x2, i32 y2, i32 col, bool fill);
 
   /*!
    * @discussion Load BMP file from path
@@ -551,7 +520,7 @@ extern "C" {
    * @param mipmap_level Mipmap detail level
    * return Boolean of success
    */
-  bool hal_bmp(surface_t* s, const char* path);
+  HALDEF bool hal_bmp(surface_t* s, const char* path);
 
 #if !defined(HAL_NO_TEXT)
   /*!
@@ -563,7 +532,7 @@ extern "C" {
    * @param fg Foreground colour
    * @param bg Background colour
    */
-  void hal_ascii(surface_t s, i8 ch, i32 x, i32 y, i32 fg, i32 bg);
+  HALDEF void hal_ascii(surface_t s, i8 ch, i32 x, i32 y, i32 fg, i32 bg);
   /*!
    * @discussion Draw first character (ASCII or Unicode) from string using default in-built font
    * @param s Surface object
@@ -574,7 +543,7 @@ extern "C" {
    * @param bg Background colour
    * @return Returns length of character
    */
-  i32 hal_character(surface_t s, const char* ch, i32 x, i32 y, i32 fg, i32 bg);
+  HALDEF i32 hal_character(surface_t s, const char* ch, i32 x, i32 y, i32 fg, i32 bg);
   /*!
    * @discussion Draw a string using default in-built font
    * @param s Surface object
@@ -584,7 +553,7 @@ extern "C" {
    * @param bg Background colour
    * @param str String to write
    */
-  void hal_writeln(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* str);
+  HALDEF void hal_writeln(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* str);
   /*!
    * @discussion Draw a string using default in-built font
    * @param s Surface object
@@ -594,7 +563,7 @@ extern "C" {
    * @param bg Background colour
    * @param fmt Format string
    */
-  void hal_writelnf(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...);
+  HALDEF void hal_writelnf(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...);
   /*!
    * @discussion Create a surface object for text using default in-built font
    * @param s Surface object to be allocated
@@ -602,7 +571,7 @@ extern "C" {
    * @param bg Background colour
    * @param str String to write
    */
-  void hal_string(surface_t* s, i32 fg, i32 bg, const char* str);
+  HALDEF void hal_string(surface_t* s, i32 fg, i32 bg, const char* str);
   /*!
    * @discussion Create a surface object for formatted text using default in-built font
    * @param s Surface object to be allocated
@@ -610,19 +579,19 @@ extern "C" {
    * @param bg Background colour
    * @param fmt Format string
    */
-  void hal_stringf(surface_t* s, i32 fg, i32 bg, const char* fmt, ...);
+  HALDEF void hal_stringf(surface_t* s, i32 fg, i32 bg, const char* fmt, ...);
 #endif
 
   /*!
    * @discussion Get current CPU time
    * @return CPU time
    */
-  i64 hal_ticks(void);
+  HALDEF i64 hal_ticks(void);
   /*!
    * @discussion Sleep in milliseconds
    * @param ms Durection in milliseconds
    */
-  void hal_delay(i64 ms);
+  HALDEF void hal_delay(i64 ms);
 
 #if defined(HAL_BDF)
   /*!
@@ -635,14 +604,14 @@ extern "C" {
    * @discussion Destroy a BDF font object
    * @param f Pointer to BDF font object
    */
-  void hal_bdf_destroy(bdf_t* f);
+  HALDEF void hal_bdf_destroy(bdf_t* f);
   /*!
    * @discussion Load a BDF font from path
    * @param out BDF object to be allocated
    * @param path Path of BDF file
    * @return Boolean of success
    */
-  bool hal_bdf(bdf_t* out, const char* path);
+  HALDEF bool hal_bdf(bdf_t* out, const char* path);
   /*!
    * @discussion Draw a string using BDF font
    * @param s Surface object
@@ -654,7 +623,7 @@ extern "C" {
    * @param bg Background colour
    * @return Returns length of character
    */
-  i32 hal_bdf_character(surface_t s, bdf_t f, const char* ch, i32 x, i32 y, i32 fg, i32 bg);
+  HALDEF i32 hal_bdf_character(surface_t s, bdf_t f, const char* ch, i32 x, i32 y, i32 fg, i32 bg);
   /*!
    * @discussion Draw a string using BDF font object
    * @param s Surface object
@@ -665,7 +634,7 @@ extern "C" {
    * @param bg Background colour
    * @param str String to write
    */
-  void hal_bdf_writeln(surface_t s, bdf_t f, i32 x, i32 y, i32 fg, i32 bg, const char* str);
+  HALDEF void hal_bdf_writeln(surface_t s, bdf_t f, i32 x, i32 y, i32 fg, i32 bg, const char* str);
   /*!
    * @discussion Draw a formatted string using BDF font object
    * @param s Surface object
@@ -676,7 +645,7 @@ extern "C" {
    * @param bg Background colour
    * @param fmt Format string
    */
-  void hal_bdf_writelnf(surface_t s, bdf_t f, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...);
+  HALDEF void hal_bdf_writelnf(surface_t s, bdf_t f, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...);
   /*!
    * @discussion Create a surface object for text using BDF font object
    * @param s Surface object to be allocated
@@ -685,7 +654,7 @@ extern "C" {
    * @param bg Background colour
    * @param str String to write
    */
-  void hal_bdf_string(surface_t* s, bdf_t f, i32 fg, i32 bg, const char* str);
+  HALDEF void hal_bdf_string(surface_t* s, bdf_t f, i32 fg, i32 bg, const char* str);
   /*!
    * @discussion Create a surface object for formatted text using BDF font object
    * @param s Surface object to be allocated
@@ -694,7 +663,7 @@ extern "C" {
    * @param bg Background colour
    * @param fmt Format string
    */
-  void hal_bdf_stringf(surface_t* s, bdf_t f, i32 fg, i32 bg, const char* fmt, ...);
+  HALDEF void hal_bdf_stringf(surface_t* s, bdf_t f, i32 fg, i32 bg, const char* fmt, ...);
 #endif
 
 #if defined(HAL_GIF)
@@ -709,38 +678,38 @@ extern "C" {
    * @param g GIF object
    * @return Frame delay for GIF
    */
-  i32 hal_gif_delay(gif_t g);
+  HALDEF i32 hal_gif_delay(gif_t g);
   /*!
    * @discussion Get the total frames for a GIF
    * @param g GIF object
    * @return Total frames for GIF
    */
-  i32 hal_gif_total_frames(gif_t g);
+  HALDEF i32 hal_gif_total_frames(gif_t g);
   /*!
    * @discussion Get GIF object's current frame
    * @param g GIF object
    * @return Current frame index
    */
-  i32 hal_gif_current_frame(gif_t g);
+  HALDEF i32 hal_gif_current_frame(gif_t g);
   /*!
    * @discussion Get GIF object's dimentions
    * @param g GIF object
    * @param w Pointer to int to set
    * @param h Pointer to int to set
    */
-  void hal_gif_size(gif_t g, i32* w, i32* h);
+  HALDEF void hal_gif_size(gif_t g, i32* w, i32* h);
   /*!
    * @discussion Advance GIF frame
    * @param g GIF object
    * @return New current frame index
    */
-  i32 hal_gif_next_frame(gif_t g);
+  HALDEF i32 hal_gif_next_frame(gif_t g);
   /*!
    * @discussion Get the current frame for GIF object
    * @param g GIF object
    * @param n New index
    */
-  void hal_gif_set_frame(gif_t g, i32 n);
+  HALDEF void hal_gif_set_frame(gif_t g, i32 n);
   /*!
    * @discussion Get the surface object for GIF object's current frame
    * @param g GIF object
@@ -756,7 +725,7 @@ extern "C" {
    * @param frames Total number of frames
    * @param ... Surface objects
    */
-  void hal_gif_create(gif_t* g, i32 w, i32 h, i32 delay, i32 frames, ...);
+  HALDEF void hal_gif_create(gif_t* g, i32 w, i32 h, i32 delay, i32 frames, ...);
 
   /*!
    * @discussion Load GIF from path
@@ -764,19 +733,19 @@ extern "C" {
    * @param path Path to GIF file
    * @return Boolean of success
    */
-  bool hal_gif(gif_t* g, const char* path);
+  HALDEF bool hal_gif(gif_t* g, const char* path);
   /*!
    * @discussion Save GIF to path
    * @param g GIF object
    * @param path Path to save GIF file
    * @return Boolean of success
    */
-  bool hal_save_gif(gif_t* g, const char* path);
+  HALDEF bool hal_save_gif(gif_t* g, const char* path);
   /*!
    * @discussion Destroy GIF object
    * @param g Pointer to GIF object
    */
-  void hal_gif_destroy(gif_t* g);
+  HALDEF void hal_gif_destroy(gif_t* g);
 #endif
 
 #if defined(HAL_DIALOGS)
@@ -820,7 +789,7 @@ extern "C" {
    * @param fmt Formatted message
    * @return User value from dialog action
    */
-  bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...);
+  HALDEF bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...);
   /*!
    * @discussion Open file dialog
    * @param action Save, open directory, open file
@@ -831,7 +800,7 @@ extern "C" {
    * @param ... Extension filters
    * @return Selected paths in dialog or NULL is cancelled
    */
-  char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...);
+  HALDEF char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...);
 #endif
 
 #if !defined(HAL_NO_WINDOW)
@@ -1006,13 +975,13 @@ extern "C" {
    * @param s Screen object
    * @param p Pointer to parent
    */
-  void hal_screen_set_parent(screen_t s, void* p);
+  HALDEF void hal_screen_set_parent(screen_t s, void* p);
   /*!
    * @discussion Get parent point from screen object
    * @param s Screen object
    * @return Point to parent
    */
-  void* hal_screen_parent(screen_t s);
+  HALDEF void* hal_screen_parent(screen_t s);
 
 #define XMAP_SCREEN_CB \
   X(keyboard, (void*, KEY_SYM, KEY_MOD, bool)) \
@@ -1034,10 +1003,10 @@ extern "C" {
    * @param resize Window resize callback
    * @param s Screen object
    */
-  void hal_screen_callbacks(XMAP_SCREEN_CB screen_t screen);
+  HALDEF void hal_screen_callbacks(XMAP_SCREEN_CB screen_t screen);
 #undef X
 #define X(a, b) \
-  void hal_##a##_callback(screen_t screen, void(*a##_cb)b);
+  HALDEF void hal_##a##_callback(screen_t screen, void(*a##_cb)b);
   XMAP_SCREEN_CB
 #undef X
 
@@ -1088,112 +1057,111 @@ extern "C" {
    * @param flags Window flags
    * @return Boolean of success
    */
-  bool hal_screen(screen_t* s, const char* t, i32 w, i32 h, i16 flags);
+  HALDEF bool hal_screen(screen_t* s, const char* t, i32 w, i32 h, i16 flags);
   /*!
    * @discussion Set window icon from surface object
    * @param s Screen object
    * @param b Surface object
    */
-  void hal_screen_icon_buf(screen_t s, surface_t b);
+  HALDEF void hal_screen_icon_buf(screen_t s, surface_t b);
   /*!
    * @discussion Set window icon from file
    * @param s Screen object
    * @param p Path to icon file
    */
-  void hal_screen_icon(screen_t s, const char* p);
+  HALDEF void hal_screen_icon(screen_t s, const char* p);
   /*!
    * @discussion Set window title
    * @param s Screen object
    * @param t New title
    */
-  void hal_screen_title(screen_t s, const char* t);
+  HALDEF void hal_screen_title(screen_t s, const char* t);
   /*!
    * @discussion Destroy window object
    * @param s Screen object
    */
-  void hal_screen_destroy(screen_t* s);
+  HALDEF void hal_screen_destroy(screen_t* s);
   /*!
    * @discussion Unique window ID for screen object
    * @param s Screen object
    * @retunr Unique ID of screen object
    */
-  i32  hal_screen_id(screen_t s);
+  HALDEF i32  hal_screen_id(screen_t s);
   /*!
    * @discussion Get size of window
    * @param s Screen object
    * @param w Pointer to int to set
    * @param h Pointer to int to set
    */
-  void hal_screen_size(screen_t s, i32* w, i32* h);
+  HALDEF void hal_screen_size(screen_t s, i32* w, i32* h);
   /*!
    * @discussion Check if a window is still open
    * @param s Screen object
    * @return Boolean if window is open
    */
-  bool hal_closed(screen_t s);
+  HALDEF bool hal_closed(screen_t s);
 
   /*!
    * @discussion Lock or unlock cursor movement to active window
    * @param locked Turn on or off
    */
-  void hal_cursor_lock(bool locked);
+  HALDEF void hal_cursor_lock(bool locked);
   /*!
    * @discussion Hide or show system cursor
    * @param show Hide or show
    */
-  void hal_cursor_visible(bool show);
+  HALDEF void hal_cursor_visible(bool show);
   /*!
    * @discussion Change cursor icon to system icon
    * @param s Screen object
    * @param t Type of cursor
    */
-  void hal_cursor_icon(screen_t s, CURSOR_TYPE t);
+  HALDEF void hal_cursor_icon(screen_t s, CURSOR_TYPE t);
   /*!
    * @discussion Change cursor icon to icon from file
    * @param s Screen object
    * @param p Path to icon file
    */
-  void hal_cursor_custom_icon(screen_t s, const char* p);
+  HALDEF void hal_cursor_custom_icon(screen_t s, const char* p);
   /*!
    * @discussion Change cursor icon to icon from surface object
    * @param s Screen object
    * @param b Surface object
    */
-  void hal_cursor_custom_icon_buf(screen_t s, surface_t b);
+  HALDEF void hal_cursor_custom_icon_buf(screen_t s, surface_t b);
   /*!
    * @discussion Get cursor position
    * @param x Integer to set
    * @param y Integer to set
    */
-  void hal_cursor_pos(i32* x, i32* y);
+  HALDEF void hal_cursor_pos(i32* x, i32* y);
   /*!
    * @discussion Set cursor position
    * @param x X position
    * @param y Y position
    */
-  void hal_cursor_set_pos(i32 x, i32 y);
+  HALDEF void hal_cursor_set_pos(i32 x, i32 y);
 
   /*!
    * @discussion Poll for window events
    */
-  void hal_poll(void);
+  HALDEF void hal_poll(void);
   /*!
    * @discussion Draw surface object to window
    * @param s Screen object
    * @param b Surface object
    */
-  void hal_flush(screen_t s, surface_t b);
+  HALDEF void hal_flush(screen_t s, surface_t b);
   /*!
    * @discussion Release anything allocated by this library
    */
-  void hal_release(void);
+  HALDEF void hal_release(void);
 #endif
-
 
 #if defined(__cplusplus)
 }
 #endif
-#endif /* graphics_h */
+#endif // graphics_h
 
 /*                /$$$$$$$$ /$$   /$$ /$$$$$$$
  *               | $$_____/| $$$ | $$| $$__  $$
@@ -1297,7 +1265,7 @@ struct surface_t {
   i32 *buf, w, h;
 };
 
-void hal_surface_size(surface_t s, i32* w, i32* h) {
+HALDEF void hal_surface_size(surface_t s, i32* w, i32* h) {
   if (!s || !s->buf || (!w && !h))
     return;
   if (w)
@@ -1306,11 +1274,11 @@ void hal_surface_size(surface_t s, i32* w, i32* h) {
     *h = s->h;
 }
 
-i32* hal_surface_raw(surface_t s) {
+HALDEF i32* hal_surface_raw(surface_t s) {
   return (!s || !s->buf ? NULL : s->buf);
 }
 
-bool hal_surface(surface_t* _s, u32 w, u32 h) {
+HALDEF bool hal_surface(surface_t* _s, u32 w, u32 h) {
   surface_t s = *_s = HAL_MALLOC(sizeof(struct surface_t));
   if (!s) {
     error_handle(OUT_OF_MEMEORY, "malloc() failed");
@@ -1329,7 +1297,7 @@ bool hal_surface(surface_t* _s, u32 w, u32 h) {
   return true;
 }
 
-void hal_destroy(surface_t* _s) {
+HALDEF void hal_destroy(surface_t* _s) {
   surface_t s = *_s;
   if (!s)
     return;
@@ -1338,7 +1306,7 @@ void hal_destroy(surface_t* _s) {
   *_s = NULL;
 }
 
-void hal_fill(surface_t s, i32 col) {
+HALDEF void hal_fill(surface_t s, i32 col) {
   for (i32 i = 0; i < s->w * s->h; ++i)
     s->buf[i] = col;
 }
@@ -1390,19 +1358,19 @@ static inline void flood_fn(surface_t s, i32 x, i32 y, i32 new, i32 old) {
   }
 }
 
-void hal_flood(surface_t s, i32 x, i32 y, i32 col) {
+HALDEF void hal_flood(surface_t s, i32 x, i32 y, i32 col) {
   if (!s || !s->buf || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
   flood_fn(s, x, y, col, XYGET(s, x, y));
 }
 
-void hal_cls(surface_t s) {
+HALDEF void hal_cls(surface_t s) {
   if (!s || !s->buf)
     return;
   memset(s->buf, 0, s->w * s->h * sizeof(i32));
 }
 
-void hal_pset(surface_t s, i32 x, i32 y, i32 c) {
+HALDEF void hal_pset(surface_t s, i32 x, i32 y, i32 c) {
   if (x >= 0 && y >= 0 && x < s->w && y < s->h)
     s->buf[y * s->w + x] = c;
 }
@@ -1412,7 +1380,7 @@ void hal_pset(surface_t s, i32 x, i32 y, i32 c) {
 #else
 #define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
 
-void blend(surface_t s, i32 x, i32 y, i32 c) {
+static inline void blend(surface_t s, i32 x, i32 y, i32 c) {
   i32 a = A(c);
   if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
@@ -1426,11 +1394,11 @@ void blend(surface_t s, i32 x, i32 y, i32 c) {
 }
 #endif
 
-i32 hal_pget(surface_t s, i32 x, i32 y) {
+HALDEF i32 hal_pget(surface_t s, i32 x, i32 y) {
   return (!s || !s->buf || x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
 }
 
-bool hal_paste(surface_t dst, surface_t src, i32 x, i32 y) {
+HALDEF bool hal_paste(surface_t dst, surface_t src, i32 x, i32 y) {
   if (!dst || !dst->buf || !src || !src->buf)
     return false;
   if (x > dst->w || x < 0 || y > dst->h || y < 0)
@@ -1454,7 +1422,7 @@ bool hal_paste(surface_t dst, surface_t src, i32 x, i32 y) {
   return true;
 }
 
-bool hal_clip_paste(surface_t dst, surface_t src, i32 x, i32 y, i32 rx, i32 ry, i32 rw, i32 rh) {
+HALDEF bool hal_clip_paste(surface_t dst, surface_t src, i32 x, i32 y, i32 rx, i32 ry, i32 rw, i32 rh) {
   if (!dst || !dst->buf || !src || !src->buf)
     return false;
   if (rx == rw || ry == rh)
@@ -1497,7 +1465,7 @@ bool hal_clip_paste(surface_t dst, surface_t src, i32 x, i32 y, i32 rx, i32 ry, 
   return true;
 }
 
-bool hal_reset(surface_t s, i32 nw, i32 nh) {
+HALDEF bool hal_reset(surface_t s, i32 nw, i32 nh) {
   size_t sz = nw * nh * sizeof(u32) + 1;
   i32* tmp = HAL_REALLOC(s->buf, sz);
   if (!tmp) {
@@ -1511,7 +1479,7 @@ bool hal_reset(surface_t s, i32 nw, i32 nh) {
   return true;
 }
 
-bool hal_copy(surface_t a, surface_t* b) {
+HALDEF bool hal_copy(surface_t a, surface_t* b) {
   if (!hal_surface(b, a->w, a->h))
     return false;
   surface_t tmp = *b;
@@ -1519,14 +1487,14 @@ bool hal_copy(surface_t a, surface_t* b) {
   return !!tmp->buf;
 }
 
-void hal_passthru(surface_t s, i32 (*fn)(i32 x, i32 y, i32 col)) {
+HALDEF void hal_passthru(surface_t s, i32 (*fn)(i32 x, i32 y, i32 col)) {
   i32 x, y;
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
       hal_pset(s, x, y, fn(x, y, XYGET(s, x, y)));
 }
 
-bool hal_resize(surface_t a, i32 nw, i32 nh, surface_t* b) {
+HALDEF bool hal_resize(surface_t a, i32 nw, i32 nh, surface_t* b) {
   if (!hal_surface(b, nw, nh))
     return false;
 
@@ -1548,7 +1516,7 @@ bool hal_resize(surface_t a, i32 nw, i32 nh, surface_t* b) {
   return true;
 }
 
-bool hal_rotate(surface_t a, float angle, surface_t* b) {
+HALDEF bool hal_rotate(surface_t a, float angle, surface_t* b) {
   float theta = HAL_D2R(angle);
   float c = cosf(theta), s = sinf(theta);
   float r[3][2] = {
@@ -1600,7 +1568,7 @@ typedef struct {
   i32 len;
 } oct_node_pool_t;
 
-i32 cmp_node(oct_node_t* a, oct_node_t* b) {
+static inline i32 cmp_node(oct_node_t* a, oct_node_t* b) {
   if (a->n_kids < b->n_kids)
     return -1;
   if (a->n_kids > b->n_kids)
@@ -1611,7 +1579,7 @@ i32 cmp_node(oct_node_t* a, oct_node_t* b) {
   return ac < bc ? -1 : ac > bc;
 }
 
-void down_heap(node_heap* h, oct_node_t* p) {
+static inline void down_heap(node_heap* h, oct_node_t* p) {
   i32 n = p->heap_idx, m;
 
   while (1) {
@@ -1633,7 +1601,7 @@ void down_heap(node_heap* h, oct_node_t* p) {
   p->heap_idx = n;
 }
 
-void up_heap(node_heap* h, oct_node_t* p) {
+static inline void up_heap(node_heap* h, oct_node_t* p) {
   i32 n = p->heap_idx;
   oct_node_t* prev;
 
@@ -1651,7 +1619,7 @@ void up_heap(node_heap* h, oct_node_t* p) {
   p->heap_idx = n;
 }
 
-void heap_add(node_heap* h, oct_node_t* p) {
+static inline void heap_add(node_heap* h, oct_node_t* p) {
   if ((p->flags & 1)) {
     down_heap(h, p);
     up_heap(h, p);
@@ -1671,7 +1639,7 @@ void heap_add(node_heap* h, oct_node_t* p) {
   up_heap(h, p);
 }
 
-oct_node_t* pop_heap(node_heap* h) {
+static inline oct_node_t* pop_heap(node_heap* h) {
   if (h->n <= 1)
     return 0;
 
@@ -1686,7 +1654,7 @@ oct_node_t* pop_heap(node_heap* h) {
   return ret;
 }
 
-oct_node_t* node_new(oct_node_pool_t* pool, u8 idx, u8 depth, oct_node_t* p) {
+static inline oct_node_t* node_new(oct_node_pool_t* pool, u8 idx, u8 depth, oct_node_t* p) {
   if (pool->len <= 1) {
     oct_node_t* p = HAL_MALLOC(2048 * sizeof(oct_node_t));
     p->parent = pool->pool;
@@ -1703,7 +1671,7 @@ oct_node_t* node_new(oct_node_pool_t* pool, u8 idx, u8 depth, oct_node_t* p) {
   return x;
 }
 
-void free_node(oct_node_pool_t* pool) {
+static inline void free_node(oct_node_pool_t* pool) {
   oct_node_t* p;
   while (pool->pool) {
     p = pool->pool->parent;
@@ -1712,7 +1680,7 @@ void free_node(oct_node_pool_t* pool) {
   }
 }
 
-oct_node_t* node_insert(oct_node_pool_t* pool, oct_node_t* root, i32* buf) {
+static inline oct_node_t* node_insert(oct_node_pool_t* pool, oct_node_t* root, i32* buf) {
   u8 i, bit, depth = 0;
   i32 c = *buf;
   i32 r = R(c), g = G(c), b = B(c);
@@ -1731,7 +1699,7 @@ oct_node_t* node_insert(oct_node_pool_t* pool, oct_node_t* root, i32* buf) {
   return root;
 }
 
-oct_node_t* node_fold(oct_node_t* p) {
+static inline oct_node_t* node_fold(oct_node_t* p) {
   if (p->n_kids) {
     error_handle(INVALID_PARAMETERS, "I don't know to be honest.");
     return NULL;
@@ -1748,7 +1716,7 @@ oct_node_t* node_fold(oct_node_t* p) {
   return q;
 }
 
-void color_replace(oct_node_t* root, i32* buf) {
+HALDEF void color_replace(oct_node_t* root, i32* buf) {
   u8 i, bit;
   i32 c = *buf;
   i32 r = R(c), g = G(c), b = B(c);
@@ -1763,7 +1731,7 @@ void color_replace(oct_node_t* root, i32* buf) {
   *buf = RGB((i32)root->r, (i32)root->g, (i32)root->b);
 }
 
-void hal_quantize(surface_t a, i32 n_colors, surface_t* b) {
+HALDEF void hal_quantize(surface_t a, i32 n_colors, surface_t* b) {
   surface_t tmp = (b ? *b : NULL);
   if (!tmp)
     tmp = a;
@@ -1840,7 +1808,7 @@ static inline void hal_hline(surface_t s, i32 y, i32 x0, i32 x1, i32 col) {
     blend(s, x, y, col);
 }
 
-void hal_line(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 col) {
+HALDEF void hal_line(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 col) {
   if (!s || !s->buf)
     return;
 
@@ -1860,7 +1828,7 @@ void hal_line(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 col) {
   }
 }
 
-void hal_circle(surface_t s, i32 xc, i32 yc, i32 r, i32 col, bool fill) {
+HALDEF void hal_circle(surface_t s, i32 xc, i32 yc, i32 r, i32 col, bool fill) {
   if (!s || !s->buf)
     return;
 
@@ -1884,7 +1852,7 @@ void hal_circle(surface_t s, i32 xc, i32 yc, i32 r, i32 col, bool fill) {
   } while (x < 0);
 }
 
-void hal_rect(surface_t s, i32 x, i32 y, i32 w, i32 h, i32 col, bool fill) {
+HALDEF void hal_rect(surface_t s, i32 x, i32 y, i32 w, i32 h, i32 col, bool fill) {
   if (!s || !s->buf)
     return;
 
@@ -1925,7 +1893,7 @@ void hal_rect(surface_t s, i32 x, i32 y, i32 w, i32 h, i32 col, bool fill) {
     b = temp;          \
   } while(0)
 
-void hal_tri(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 x2, i32 y2, i32 col, bool fill) {
+HALDEF void hal_tri(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 x2, i32 y2, i32 col, bool fill) {
   if (y0 ==  y1 && y0 ==  y2)
     return;
   if (fill) {
@@ -2005,7 +1973,7 @@ typedef struct {
   memcpy(d, b + off, s); \
   off += s;
 
-bool hal_bmp(surface_t* s, const char* path) {
+HALDEF bool hal_bmp(surface_t* s, const char* path) {
   FILE* fp = fopen(path, "rb");
   if (!fp) {
     error_handle(FILE_OPEN_FAILED, "fopen() failed: %s", path);
@@ -2102,7 +2070,7 @@ bool hal_bmp(surface_t* s, const char* path) {
   return true;
 }
 
-bool hal_save_bmp(surface_t s, const char* path) {
+HALDEF bool hal_save_bmp(surface_t s, const char* path) {
   const i32 filesize = 54 + 3 * s->w * s->h;
   u8* img = HAL_MALLOC(3 * s->w * s->h);
   if (!img) {
@@ -2744,7 +2712,7 @@ static i32 extra_font_lookup[10] = {
 };
 
 #if !defined(HAL_NO_TEXT_COLOR_PARSING)
-i32 read_color(const char* str, i32* col, i32* len) {
+static inline i32 read_color(const char* str, i32* col, i32* len) {
 #warning TODO: Alpha value wrong?
   const char* c = str;
   if (*c != '(')
@@ -2829,7 +2797,7 @@ static inline void str_size(const char* str, i32* w, i32* h) {
   *h = l;
 }
 
-i32 ctoi(const char* c, i32* out) {
+HALDEF i32 ctoi(const char* c, i32* out) {
   i32 u = *c, l = 1;
   if ((u & 0xC0) == 0xC0) {
     i32 a = (u & 0x20) ? ((u & 0x10) ? ((u & 0x08) ? ((u & 0x04) ? 6 : 5) : 4) : 3) : 2;
@@ -2868,7 +2836,7 @@ static inline i32 letter_index(i32 c) {
   }
 }
 
-void hal_ascii(surface_t s, i8 ch, i32 x, i32 y, i32 fg, i32 bg) {
+HALDEF void hal_ascii(surface_t s, i8 ch, i32 x, i32 y, i32 fg, i32 bg) {
   i32 c = letter_index((i32)ch), i, j;
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 8; ++j) {
@@ -2883,7 +2851,7 @@ void hal_ascii(surface_t s, i8 ch, i32 x, i32 y, i32 fg, i32 bg) {
   }
 }
 
-i32 hal_character(surface_t s, const char* ch, i32 x, i32 y, i32 fg, i32 bg) {
+HALDEF i32 hal_character(surface_t s, const char* ch, i32 x, i32 y, i32 fg, i32 bg) {
   i32 u = -1;
   i32 l = ctoi(ch, &u);
   i32 uc = letter_index(u), i, j;
@@ -2901,7 +2869,7 @@ i32 hal_character(surface_t s, const char* ch, i32 x, i32 y, i32 fg, i32 bg) {
   return l;
 }
 
-void hal_writeln(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* str) {
+HALDEF void hal_writeln(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* str) {
   const char* c = str;
   i32 u = x, v = y, col, len;
   while (c && *c != '\0')
@@ -2934,7 +2902,7 @@ void hal_writeln(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* str) {
     }
 }
 
-void hal_writelnf(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...) {
+HALDEF void hal_writelnf(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...) {
   i8* buffer = NULL;
   i32 buffer_size = 0;
 
@@ -2955,7 +2923,7 @@ void hal_writelnf(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ..
   HAL_SAFE_FREE(buffer);
 }
 
-void hal_string(surface_t* s, i32 fg, i32 bg, const char* str) {
+HALDEF void hal_string(surface_t* s, i32 fg, i32 bg, const char* str) {
   i32 w, h;
   str_size(str, &w, &h);
   hal_surface(s, w * 8, h * LINE_HEIGHT);
@@ -2963,7 +2931,7 @@ void hal_string(surface_t* s, i32 fg, i32 bg, const char* str) {
   hal_writeln(*s, 0, 0, fg, bg, str);
 }
 
-void hal_stringf(surface_t* s, i32 fg, i32 bg, const char* fmt, ...) {
+HALDEF void hal_stringf(surface_t* s, i32 fg, i32 bg, const char* fmt, ...) {
   i8* buffer = NULL;
   i32 buffer_size = 0;
 
@@ -2987,7 +2955,7 @@ void hal_stringf(surface_t* s, i32 fg, i32 bg, const char* fmt, ...) {
 
 static i32 ticks_started = 0;
 
-i64 hal_ticks() {
+HALDEF i64 hal_ticks() {
 #if defined(HAL_WINDOWS)
   static LARGE_INTEGER ticks_start;
   if (!ticks_started) {
@@ -3013,7 +2981,7 @@ i64 hal_ticks() {
 #endif
 }
 
-void hal_delay(i64 ms) {
+HALDEF void hal_delay(i64 ms) {
 #if defined(HAL_WINDOWS)
   Sleep((DWORD)ms);
 #else
@@ -3046,7 +3014,7 @@ struct bdf_t {
   i32 n_chars;
 };
 
-void hal_bdf_destroy(struct bdf_t** _f) {
+HALDEF void hal_bdf_destroy(struct bdf_t** _f) {
   if (!*_f)
     return;
 
@@ -3073,7 +3041,7 @@ static inline i32 htoi(const char* p) {
   return (*p <= '9' ? *p - '0' : (*p <= 'F' ? *p - 'A' + 10 : *p - 'a' + 10));
 }
 
-bool hal_bdf(struct bdf_t** _out, const char* path) {
+HALDEF bool hal_bdf(struct bdf_t** _out, const char* path) {
   struct bdf_t* out = *_out = HAL_MALLOC(sizeof(struct bdf_t));
   if (!out) {
     error_handle(OUT_OF_MEMEORY, "malloc() failed");
@@ -3219,7 +3187,7 @@ bool hal_bdf(struct bdf_t** _out, const char* path) {
   return true;
 }
 
-i32 hal_bdf_character(surface_t s, struct bdf_t* f, const char* ch, i32 x, i32 y, i32 fg, i32 bg) {
+HALDEF i32 hal_bdf_character(surface_t s, struct bdf_t* f, const char* ch, i32 x, i32 y, i32 fg, i32 bg) {
   i32 u = -1, i, j, n;
   i32 l = ctoi(ch, &u);
   for (i = 0; i < f->n_chars; ++i)
@@ -3241,7 +3209,7 @@ i32 hal_bdf_character(surface_t s, struct bdf_t* f, const char* ch, i32 x, i32 y
   return l;
 }
 
-void hal_bdf_writeln(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg, const char* str) {
+HALDEF void hal_bdf_writeln(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg, const char* str) {
   const char* c = (const char*)str;
   i32 u = x, v = y, col, len;
   while (c && *c != '\0') {
@@ -3277,7 +3245,7 @@ void hal_bdf_writeln(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg,
   }
 }
 
-void hal_bdf_writelnf(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...) {
+HALDEF void hal_bdf_writelnf(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...) {
   i8* buffer = NULL;
   i32 buffer_size = 0;
 
@@ -3298,7 +3266,7 @@ void hal_bdf_writelnf(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg
   HAL_SAFE_FREE(buffer);
 }
 
-void hal_bdf_string(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* str) {
+HALDEF void hal_bdf_string(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* str) {
   i32 w, h;
   str_size(str, &w, &h);
   hal_surface(s, w * 8, h * LINE_HEIGHT);
@@ -3306,7 +3274,7 @@ void hal_bdf_string(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* s
   hal_bdf_writeln(*s, f, 0, 0, fg, bg, str);
 }
 
-void hal_bdf_stringf(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* fmt, ...) {
+HALDEF void hal_bdf_stringf(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* fmt, ...) {
   i8* buffer = NULL;
   i32 buffer_size = 0;
 
@@ -3343,43 +3311,43 @@ struct gif_t {
   surface_t* surfaces;
 };
 
-i32 hal_gif_delay(gif_t g) {
+HALDEF i32 hal_gif_delay(gif_t g) {
   return g->delay;
 }
 
-i32 hal_gif_total_frames(gif_t g) {
+HALDEF i32 hal_gif_total_frames(gif_t g) {
   return g->frames;
 }
 
-i32 hal_gif_current_frame(gif_t g) {
+HALDEF i32 hal_gif_current_frame(gif_t g) {
   return g->frame;
 }
 
-void hal_gif_size(gif_t g, i32* w, i32* h) {
+HALDEF void hal_gif_size(gif_t g, i32* w, i32* h) {
   if (w)
     *w = g->w;
   if (h)
     *h = g->h;
 }
 
-i32 hal_gif_next_frame(gif_t g) {
+HALDEF i32 hal_gif_next_frame(gif_t g) {
   g->frame++;
   if (g->frame >= g->frames)
     g->frame = 0;
   return g->frame;
 }
 
-void hal_gif_set_frame(gif_t g, i32 n) {
+HALDEF void hal_gif_set_frame(gif_t g, i32 n) {
   if (n >= g->frames || n < 0)
     return;
   g->frame = n;
 }
 
-surface_t hal_gif_frame(gif_t g) {
+HALDEF surface_t hal_gif_frame(gif_t g) {
   return g->surfaces[g->frame];
 }
 
-void hal_gif_create(gif_t* _g, i32 w, i32 h, i32 delay, i32 frames, ...) {
+HALDEF void hal_gif_create(gif_t* _g, i32 w, i32 h, i32 delay, i32 frames, ...) {
   gif_t g = *_g = HAL_MALLOC(sizeof(gif_t));
   if (!g) {
     error_handle(OUT_OF_MEMEORY, "malloc() failed");
@@ -3424,7 +3392,7 @@ struct GIF_WHDR {              /** ======== frame writer info: ======== **/
 
 enum {GIF_NONE = 0, GIF_CURR = 1, GIF_BKGD = 2, GIF_PREV = 3};
 
-static i64 _GIF_SkipChunk(u8 **buff, i64 size) {
+static inline i64 _GIF_SkipChunk(u8 **buff, i64 size) {
   i64 skip;
 
   for (skip = 2, ++size, ++(*buff); ((size -= skip) > 0) && (skip > 1);
@@ -3432,7 +3400,7 @@ static i64 _GIF_SkipChunk(u8 **buff, i64 size) {
   return size;
 }
 
-static i64 _GIF_LoadHeader(unsigned gflg, u8 **buff, void **rpal,
+static inline i64 _GIF_LoadHeader(unsigned gflg, u8 **buff, void **rpal,
     unsigned fflg, i64 *size, i64 flen) {
   if (flen && (!(*buff += flen) || ((*size -= flen) <= 0)))
     return -2;        /** v--[ 0x80: "palette is present" flag ]--, **/
@@ -3444,7 +3412,7 @@ static i64 _GIF_LoadHeader(unsigned gflg, u8 **buff, void **rpal,
   return (gflg & 0x80)? (2 << (gflg & 7)) : 0;          /** <-----' **/
 }
 
-static i64 _GIF_LoadFrame(u8 **buff, i64 *size,
+static inline i64 _GIF_LoadFrame(u8 **buff, i64 *size,
     u8 *bptr, u8 *blen) {
   typedef u16 GIF_H;
   const i64 GIF_HLEN = sizeof(GIF_H), /** to rid the scope of sizeof **/
@@ -3507,7 +3475,7 @@ static i64 _GIF_LoadFrame(u8 **buff, i64 *size,
   return (++(*size) >= 0)? 0 : -4; /** ^- N.B.: 0 error is recoverable **/
 }
 
-static i64 GIF_Load(void *data, i64 size,
+static inline i64 GIF_Load(void *data, i64 size,
     void (*gwfr)(void*, struct GIF_WHDR*),
     void (*eamf)(void*, struct GIF_WHDR*),
     void *anim, i64 skip) {
@@ -3645,7 +3613,7 @@ typedef struct {
 } gif_data_t;
 #pragma pack(pop)
 
-void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
+HALDEF void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
   u32 *pict, *prev, x, y, yoff, iter, ifin, dsrc, ddst;
   gif_data_t* gif = (gif_data_t*)data;
 
@@ -3706,7 +3674,7 @@ void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
 #undef BGRA
 }
 
-bool hal_gif(gif_t* _g, const char* path) {
+HALDEF bool hal_gif(gif_t* _g, const char* path) {
   gif_t g = *_g = HAL_MALLOC(sizeof(struct gif_t));
 
   FILE* fp = fopen(path, "rb");
@@ -3742,12 +3710,12 @@ bool hal_gif(gif_t* _g, const char* path) {
   return true;
 }
 
-bool hal_save_gif(gif_t* g, const char* path) {
+HALDEF bool hal_save_gif(gif_t* g, const char* path) {
 #warning TODO: Reimplement hal_save_gif
   return false
 }
 
-void hal_gif_destroy(gif_t* _g) {
+HALDEF void hal_gif_destroy(gif_t* _g) {
   gif_t g = *_g;
   if (!g)
     return;
@@ -3767,7 +3735,7 @@ void hal_gif_destroy(gif_t* _g) {
 #define NSAlertStyleCritical NSCriticalAlertStyle
 #endif
 
-bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
+HALDEF bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   NSAlert* alert = [[NSAlert alloc] init];
 
   switch (lvl) {
@@ -3810,7 +3778,7 @@ bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return result;
 }
 
-char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...) {
+HALDEF char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...) {
   NSSavePanel* panel = nil;
   NSOpenPanel* open_panel = nil;
   NSMutableArray* file_types = nil;
@@ -3903,11 +3871,11 @@ void hal_screen_callbacks(XMAP_SCREEN_CB screen_t screen) {
 XMAP_SCREEN_CB
 #undef X
 
-i32 hal_screen_id(screen_t s) {
+HALDEF i32 hal_screen_id(screen_t s) {
   return s->id;
 }
 
-void hal_screen_size(screen_t s, i32* w, i32* h) {
+HALDEF void hal_screen_size(screen_t s, i32* w, i32* h) {
   if (w)
     *w = s->w;
   if (h)
@@ -3995,7 +3963,7 @@ GL_LIST
 #undef GLE
 #endif
 
-void print_shader_log(GLuint s) {
+static inline void print_shader_log(GLuint s) {
   if (glIsShader(s)) {
     i32 log_len = 0, max_len = 0;
     glGetShaderiv(s, GL_INFO_LOG_LENGTH, &max_len);
@@ -4009,7 +3977,7 @@ void print_shader_log(GLuint s) {
   }
 }
 
-GLuint load_shader(const GLchar* src, GLenum type) {
+static inline GLuint load_shader(const GLchar* src, GLenum type) {
   GLuint s = glCreateShader(type);
   glShaderSource(s, 1, &src, NULL);
   glCompileShader(s);
@@ -4024,7 +3992,7 @@ GLuint load_shader(const GLchar* src, GLenum type) {
   return s;
 }
 
-GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
+static inline GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
   GLuint sp = glCreateProgram();
   GLuint vs = load_shader(vs_src, GL_VERTEX_SHADER);
   GLuint fs = load_shader(fs_src, GL_FRAGMENT_SHADER);
@@ -4039,7 +4007,7 @@ GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
 static i32 gl3_available = 1;
 static bool dll_loaded = false;
 
-bool init_gl(i32 w, i32 h, GLuint* _vao, GLuint* _shader, GLuint* _texture) {
+static inline bool init_gl(i32 w, i32 h, GLuint* _vao, GLuint* _shader, GLuint* _texture) {
   if (!dll_loaded) {
 #if defined(HAL_WINDOWS)
     HINSTANCE dll = LoadLibraryA("opengl32.dll");
@@ -4175,7 +4143,7 @@ bool init_gl(i32 w, i32 h, GLuint* _vao, GLuint* _shader, GLuint* _texture) {
   return true;
 }
 
-void draw_gl(GLuint vao, GLuint texture, surface_t buffer) {
+static inline void draw_gl(GLuint vao, GLuint texture, surface_t buffer) {
   glBindTexture(GL_TEXTURE_2D, texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -4202,7 +4170,7 @@ void draw_gl(GLuint vao, GLuint texture, surface_t buffer) {
 #endif
 }
 
-void free_gl(GLuint vao, GLuint shader, GLuint texture) {
+static inline void free_gl(GLuint vao, GLuint shader, GLuint texture) {
   if (texture)
     glDeleteTextures(1, &texture);
   if (!gl3_available) {
@@ -4261,7 +4229,7 @@ static const AAPLVertex quad_vertices[] = {
 #define NSBitmapFormatAlphaNonpremultiplied NSAlphaNonpremultipliedBitmapFormat
 #endif
 
-static i32 translate_mod(NSUInteger flags) {
+static inline i32 translate_mod(NSUInteger flags) {
   i32 mods = 0;
 
   if (flags & NSEventModifierFlagShift)
@@ -4278,7 +4246,7 @@ static i32 translate_mod(NSUInteger flags) {
   return mods;
 }
 
-static i32 translate_key(u32 key) {
+static inline i32 translate_key(u32 key) {
   return (key >= sizeof(keycodes) / sizeof(keycodes[0]) ?  KB_KEY_UNKNOWN : keycodes[key]);
 }
 
@@ -4326,53 +4294,63 @@ static screen_t active_window = NULL;
 
 #if defined(HAL_OPENGL)
 @interface AppView : NSOpenGLView
-@property GLuint vao;
-@property GLuint shader;
-@property GLuint texture;
+@property (class) GLuint vao;
+@property (class) GLuint shader;
+@property (class) GLuint texture;
 #elif defined(HAL_METAL)
 @interface AppView : MTKView
-@property (nonatomic, unsafe_unretained) id<MTLDevice> device;
-@property (nonatomic, unsafe_unretained) id<MTLRenderPipelineState> pipeline;
-@property (nonatomic, unsafe_unretained) id<MTLCommandQueue> cmd_queue;
-@property (nonatomic, unsafe_unretained) id<MTLLibrary> library;
-@property (nonatomic, unsafe_unretained) id<MTLTexture> texture;
-@property (nonatomic, unsafe_unretained) id<MTLBuffer> vertices;
-@property NSUInteger n_vertices;
-@property vector_uint2 mtk_viewport;
-@property CGFloat scale_f;
+@property (class, nonatomic, unsafe_unretained) id<MTLDevice> device;
+@property (class, nonatomic, unsafe_unretained) id<MTLRenderPipelineState> pipeline;
+@property (class, nonatomic, unsafe_unretained) id<MTLCommandQueue> cmd_queue;
+@property (class, nonatomic, unsafe_unretained) id<MTLLibrary> library;
+@property (class, nonatomic, unsafe_unretained) id<MTLTexture> texture;
+@property (class, nonatomic, unsafe_unretained) id<MTLBuffer> vertices;
+@property (class) NSUInteger n_vertices;
+@property (class) vector_uint2 mtk_viewport;
+@property (class) CGFloat scale_f;
 #else
 @interface AppView : NSView
 #endif
-@property (nonatomic, unsafe_unretained) id<AppViewDelegate> delegate;
-@property (strong) NSTrackingArea* track;
-@property (nonatomic) surface_t buffer;
-@property BOOL mouse_in_window;
-@property (nonatomic, strong) NSCursor* cursor;
-@property BOOL custom_cursor;
+@property (class, nonatomic, unsafe_unretained) id<AppViewDelegate> delegate;
+@property (class, strong) NSTrackingArea* track;
+@property (class, nonatomic) surface_t buffer;
+@property (class, nonatomic, assign, readonly) BOOL mouse_in_window;
+@property (class, nonatomic, strong) NSCursor* cursor;
+@property (class) BOOL custom_cursor;
 @end
 
-@implementation AppView
-#if defined(HAL_OPENGL)
-@synthesize vao = _vao;
-@synthesize shader = _shader;
-@synthesize texture = _texture;
-#elif defined(HAL_METAL)
-@synthesize device = _device;
-@synthesize pipeline = _pipeline;
-@synthesize cmd_queue = _cmd_queue;
-@synthesize library = _library;
-@synthesize texture = _texture;
-@synthesize vertices = _vertices;
-@synthesize n_vertices = _n_vertices;
-@synthesize mtk_viewport = _mtk_viewport;
-@synthesize scale_f = _scale_f;
+#if defined(HAL_DEBUG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-property-implementation"
 #endif
-@synthesize delegate = _delegate;
-@synthesize track = _track;
-@synthesize buffer = _buffer;
-@synthesize mouse_in_window = _mouse_in_window;
-@synthesize cursor = _cursor;
-@synthesize custom_cursor = _custom_cursor;
+@implementation AppView
+#if defined(HAL_DEBUG)
+#pragma clang diagnostic pop
+#endif
+#if defined(HAL_OPENGL)
+static GLuint _vao = 0;
+static GLuint _shader = 0;
+static GLuint _texture = 0;
+#elif defined(HAL_METAL)
+static id<MTLDevice> _device;
+static id<MTLRenderPipelineState> _pipeline;
+static id<MTLCommandQueue> _cmd_queue;
+static id<MTLLibrary> _library;
+static id<MTLTexture> _texture;
+static id<MTLBuffer> _vertices;
+static NSUInteger _n_vertices = 0;
+static vector_uint2 _mtk_viewport;
+static CGFloat _scale_f = 0.f;
+#endif
+static id<AppViewDelegate> _delegate;
+static NSTrackingArea* _track = nil;
+static surface_t _buffer = nil;
+-(surface_t)buffer { return _buffer; }
+-(void)setBuffer:(surface_t)v { _buffer = v; }
+static BOOL _mouse_in_window = NO;
+-(BOOL)mouse_in_window { return _mouse_in_window; }
+static NSCursor* _cursor = nil;
+static BOOL _custom_cursor = NO;
 
 - (id)initWithFrame:(NSRect)frameRect {
   _mouse_in_window = NO;
@@ -4609,46 +4587,46 @@ static screen_t active_window = NULL;
   _texture = [_device newTextureWithDescriptor:td];
   [_texture replaceRegion:(MTLRegion){{ 0, 0, 0 }, { _buffer->w, _buffer->h, 1 }}
 mipmapLevel:0
-              withBytes:_buffer->buf
+                withBytes:_buffer->buf
               bytesPerRow:_buffer->w * 4];
 
-            id <MTLCommandBuffer> cmd_buf = [_cmd_queue commandBuffer];
-            cmd_buf.label = @"[Command Buffer]";
-            MTLRenderPassDescriptor* rpd = [self currentRenderPassDescriptor];
-            if (rpd) {
-              id<MTLRenderCommandEncoder> re = [cmd_buf renderCommandEncoderWithDescriptor:rpd];
-              re.label = @"[Render Encoder]";
+    id <MTLCommandBuffer> cmd_buf = [_cmd_queue commandBuffer];
+    cmd_buf.label = @"[Command Buffer]";
+    MTLRenderPassDescriptor* rpd = [self currentRenderPassDescriptor];
+    if (rpd) {
+      id<MTLRenderCommandEncoder> re = [cmd_buf renderCommandEncoderWithDescriptor:rpd];
+      re.label = @"[Render Encoder]";
 
-              [re setViewport:(MTLViewport){ .0, .0, _mtk_viewport.x, _mtk_viewport.y, -1., 1. }];
-              [re setRenderPipelineState:_pipeline];
-              [re setVertexBuffer:_vertices
-                offset:0
-                  atIndex:AAPLVertexInputIndexVertices];
-              [re setVertexBytes:&_mtk_viewport
-                length:sizeof(_mtk_viewport)
-                  atIndex:AAPLVertexInputIndexViewportSize];
-              [re setFragmentTexture:_texture
-                atIndex:AAPLTextureIndexBaseColor];
-              [re drawPrimitives:MTLPrimitiveTypeTriangle
-                vertexStart:0
-                  vertexCount:_n_vertices];
-              [re endEncoding];
+      [re setViewport:(MTLViewport){ .0, .0, _mtk_viewport.x, _mtk_viewport.y, -1., 1. }];
+      [re setRenderPipelineState:_pipeline];
+      [re setVertexBuffer:_vertices
+        offset:0
+          atIndex:AAPLVertexInputIndexVertices];
+      [re setVertexBytes:&_mtk_viewport
+        length:sizeof(_mtk_viewport)
+          atIndex:AAPLVertexInputIndexViewportSize];
+      [re setFragmentTexture:_texture
+        atIndex:AAPLTextureIndexBaseColor];
+      [re drawPrimitives:MTLPrimitiveTypeTriangle
+        vertexStart:0
+          vertexCount:_n_vertices];
+      [re endEncoding];
 
-              [cmd_buf presentDrawable:[self currentDrawable]];
-            }
+      [cmd_buf presentDrawable:[self currentDrawable]];
+    }
 
-            [_texture release];
-            [td release];
-            [cmd_buf commit];
+    [_texture release];
+    [td release];
+    [cmd_buf commit];
 #else
-            CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
-            CGColorSpaceRef s = CGColorSpaceCreateDeviceRGB();
-            CGDataProviderRef p = CGDataProviderCreateWithData(NULL, _buffer->buf, _buffer->w * _buffer->h * 3, NULL);
-            CGImageRef img = CGImageCreate(_buffer->w, _buffer->h, 8, 32, _buffer->w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, 0, kCGRenderingIntentDefault);
-            CGContextDrawImage(ctx, CGRectMake(0, 0, [self frame].size.width, [self frame].size.height), img);
-            CGColorSpaceRelease(s);
-            CGDataProviderRelease(p);
-            CGImageRelease(img);
+    CGContextRef ctx = [[NSGraphicsContext currentContext] graphicsPort];
+    CGColorSpaceRef s = CGColorSpaceCreateDeviceRGB();
+    CGDataProviderRef p = CGDataProviderCreateWithData(NULL, _buffer->buf, _buffer->w * _buffer->h * 3, NULL);
+    CGImageRef img = CGImageCreate(_buffer->w, _buffer->h, 8, 32, _buffer->w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, 0, kCGRenderingIntentDefault);
+    CGContextDrawImage(ctx, CGRectMake(0, 0, [self frame].size.width, [self frame].size.height), img);
+    CGColorSpaceRelease(s);
+    CGDataProviderRelease(p);
+    CGImageRelease(img);
 #endif
 }
 
@@ -4665,7 +4643,14 @@ mipmapLevel:0
   [_track release];
   if (_custom_cursor && _cursor)
     [_cursor release];
+#if defined(HAL_DEBUG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-missing-super-calls"
+#endif
 }
+#if defined(HAL_DEBUG)
+#pragma clang diagnostic pop
+#endif
 @end
 
 @protocol AppViewDelegate <NSObject>
@@ -4675,57 +4660,68 @@ mipmapLevel:0
 @end
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate, AppViewDelegate>
-@property (unsafe_unretained) NSWindow* window;
-@property (unsafe_unretained) AppView* view;
-@property (nonatomic) screen_t parent;
-@property BOOL closed;
+@property (class, unsafe_unretained, assign, readonly) NSWindow* appwindow;
+@property (class, unsafe_unretained, assign, readonly) AppView* appview;
+@property (class, nonatomic) screen_t parent;
+@property (class) BOOL closed;
 @end
 
+#if defined(HAL_DEBUG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-property-implementation"
+#endif
 @implementation AppDelegate
-@synthesize window = _window;
-@synthesize view = _view;
-@synthesize parent = _parent;
-@synthesize closed = _closed;
+#if defined(HAL_DEBUG)
+#pragma clang diagnostic pop
+#endif
+static NSWindow* _appwindow = nil;
+-(NSWindow*)appwindow { return _appwindow; }
+static AppView* _appview = nil;
+-(AppView*)appview { return _appview; }
+static screen_t _parent = nil;
+-(screen_t)parent { return _parent; }
+static BOOL _closed = NO;
+-(BOOL)closed { return _closed; }
 
 -(id)initWithSize:(NSSize)windowSize styleMask:(i16)flags title:(const char*)windowTitle {
   NSWindowStyleMask styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
   NSRect frameRect = NSMakeRect(0, 0, windowSize.width, windowSize.height);
 
-  _window = [[NSWindow alloc] initWithContentRect:frameRect
+  _appwindow = [[NSWindow alloc] initWithContentRect:frameRect
     styleMask:styleMask
     backing:NSBackingStoreBuffered
     defer:NO];
-  if (!_window) {
+  if (!_appwindow) {
     hal_release();
-    error_handle(OSX_WINDOW_CREATION_FAILED, "[_window initWithContentRect] failed");
+    error_handle(OSX_WINDOW_CREATION_FAILED, "[_appwindow initWithContentRect] failed");
     return nil;
   }
 
-  [_window setAcceptsMouseMovedEvents:YES];
-  [_window setRestorable:NO];
-  [_window setTitle:(windowTitle ? @(windowTitle) : [[NSProcessInfo processInfo] processName])];
-  [_window setReleasedWhenClosed:NO];
+  [_appwindow setAcceptsMouseMovedEvents:YES];
+  [_appwindow setRestorable:NO];
+  [_appwindow setTitle:(windowTitle ? @(windowTitle) : [[NSProcessInfo processInfo] processName])];
+  [_appwindow setReleasedWhenClosed:NO];
 
   if (!active_window)
-    [_window center];
+    [_appwindow center];
   else {
     AppDelegate* tmp = (AppDelegate*)active_window->window;
-    NSPoint tmp_p = [[tmp window] frame].origin;
-    [_window setFrameOrigin:NSMakePoint(tmp_p.x + 20, tmp_p.y - 20 - [tmp titlebarHeight])];
+    NSPoint tmp_p = [[tmp appwindow] frame].origin;
+    [_appwindow setFrameOrigin:NSMakePoint(tmp_p.x + 20, tmp_p.y - 20 - [tmp titlebarHeight])];
   }
 
-  _view = [[AppView alloc] initWithFrame:frameRect];
-  if (!_view) {
+  _appview = [[AppView alloc] initWithFrame:frameRect];
+  if (!_appview) {
     hal_release();
-    error_handle(OSX_WINDOW_CREATION_FAILED, "[_view initWithFrame] failed");
+    error_handle(OSX_WINDOW_CREATION_FAILED, "[_appview initWithFrame] failed");
     return nil;
   }
-  [_view setDelegate:self];
-  [_view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+  [_appview setDelegate:self];
+  [_appview setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
 
-  [_window setContentView:_view];
-  [_window setDelegate:self];
-  [_window performSelectorOnMainThread:@selector(makeKeyAndOrderFront:) withObject:nil waitUntilDone:YES];
+  [_appwindow setContentView:_appview];
+  [_appwindow setDelegate:self];
+  [_appwindow performSelectorOnMainThread:@selector(makeKeyAndOrderFront:) withObject:nil waitUntilDone:YES];
 
   _closed = NO;
   return self;
@@ -4736,7 +4732,7 @@ mipmapLevel:0
 }
 
 - (CGFloat)titlebarHeight {
-  return _window.frame.size.height - [_window contentRectForFrameRect: _window.frame].size.height;
+  return _appwindow.frame.size.height - [_appwindow contentRectForFrameRect: _appwindow.frame].size.height;
 }
 
 - (void)windowWillClose:(NSNotification*)notification {
@@ -4753,9 +4749,9 @@ mipmapLevel:0
 
 - (void)windowDidResize:(NSNotification*)notification {
   static CGSize size;
-  size = [_view frame].size;
+  size = [_appview frame].size;
 #if defined(HAL_METAL)
-  [_view updateMTKViewport:size];
+  [_appview updateMTKViewport:size];
 #endif
   _parent->w = (i32)roundf(size.width);
   _parent->h = (i32)roundf(size.height);
@@ -4767,7 +4763,7 @@ mipmapLevel:0
 #endif
 @end
 
-bool hal_screen(struct screen_t** s, const char* t, i32 w, i32 h, i16 flags) {
+HALDEF bool hal_screen(struct screen_t** s, const char* t, i32 w, i32 h, i16 flags) {
   if (!keycodes_init) {
     memset(keycodes,  -1, sizeof(keycodes));
 
@@ -4906,7 +4902,7 @@ bool hal_screen(struct screen_t** s, const char* t, i32 w, i32 h, i16 flags) {
     return false;
   }
   memset(screen, 0, sizeof(*screen));
-  screen->id = (i32)[[app window] windowNumber];
+  screen->id = (i32)[[app appwindow] windowNumber];
   screen->w  = w;
   screen->h  = h;
   screen->window = (void*)app;
@@ -4920,7 +4916,7 @@ bool hal_screen(struct screen_t** s, const char* t, i32 w, i32 h, i16 flags) {
 
 #define SET_DEFAULT_APP_ICON [NSApp setApplicationIconImage:[NSImage imageNamed:@"NSApplicationIcon"]]
 
-void hal_screen_icon_buf(screen_t s, surface_t b) {
+HALDEF void hal_screen_icon_buf(screen_t s, surface_t b) {
   if (!b || !b->buf) {
     SET_DEFAULT_APP_ICON;
     return;
@@ -4935,7 +4931,7 @@ void hal_screen_icon_buf(screen_t s, surface_t b) {
   [NSApp setApplicationIconImage:img];
 }
 
-void hal_screen_icon(screen_t s, const char* p) {
+HALDEF void hal_screen_icon(screen_t s, const char* p) {
   if (!p) {
     SET_DEFAULT_APP_ICON;
     return;
@@ -4951,39 +4947,39 @@ void hal_screen_icon(screen_t s, const char* p) {
   [img release];
 }
 
-void hal_screen_title(screen_t s, const char* t) {
-  [[(AppDelegate*)s->window window] setTitle:@(t)];
+HALDEF void hal_screen_title(screen_t s, const char* t) {
+  [[(AppDelegate*)s->window appwindow] setTitle:@(t)];
 }
 
-void hal_screen_destroy(struct screen_t** s) {
+HALDEF void hal_screen_destroy(struct screen_t** s) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   struct screen_t* screen = *s;
   AppDelegate* app = (AppDelegate*)screen->window;
   if (app) {
-    [[app view] dealloc];
-    [[app window] close];
+    [[app appview] dealloc];
+    [[app appwindow] close];
   }
   HAL_SAFE_FREE(app);
   HAL_SAFE_FREE(screen);
   [pool drain];
 }
 
-bool hal_closed(screen_t s) {
+HALDEF bool hal_closed(screen_t s) {
   return (bool)[(AppDelegate*)s->window closed];
 }
 
-void hal_cursor_lock(bool locked) {
+HALDEF void hal_cursor_lock(bool locked) {
 #warning TODO: Figure this out
 }
 
-void hal_cursor_visible(bool shown) {
+HALDEF void hal_cursor_visible(bool shown) {
   if (shown)
     [NSCursor unhide];
   else
     [NSCursor hide];
 }
 
-void hal_cursor_icon(screen_t s, CURSOR_TYPE t) {
+HALDEF void hal_cursor_icon(screen_t s, CURSOR_TYPE t) {
   if (!s) {
     error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon() failed: Invalid screen");
     return;
@@ -4994,10 +4990,10 @@ void hal_cursor_icon(screen_t s, CURSOR_TYPE t) {
     error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon() failed: Invalid screen");
     return;
   }
-  [[app view] setRegularCursor:t];
+  [[app appview] setRegularCursor:t];
 }
 
-void hal_cursor_custom_icon(screen_t s, const char* p) {
+HALDEF void hal_cursor_custom_icon(screen_t s, const char* p) {
   if (!s || !p) {
     error_handle(CURSOR_MOD_FAILED, "hal_cursor_custom_icon() failed: Invalid parameters");
     return;
@@ -5015,11 +5011,11 @@ void hal_cursor_custom_icon(screen_t s, const char* p) {
     error_handle(CURSOR_MOD_FAILED, "hal_cursor_custom_icon() failed: Invalid screen");
     return;
   }
-  [[app view] setCustomCursor:img];
+  [[app appview] setCustomCursor:img];
   [img release];
 }
 
-void hal_cursor_custom_icon_buf(screen_t s, surface_t b) {
+HALDEF void hal_cursor_custom_icon_buf(screen_t s, surface_t b) {
   if (!s || !b) {
     error_handle(CURSOR_MOD_FAILED, "hal_cursor_custom_icon_buf() failed: Invalid parameters");
     return;
@@ -5037,33 +5033,40 @@ void hal_cursor_custom_icon_buf(screen_t s, surface_t b) {
     error_handle(CURSOR_MOD_FAILED, "hal_cursor_custom_icon_buf() failed: Invalid screen");
     return;
   }
-  [[app view] setCustomCursor:img];
+  [[app appview] setCustomCursor:img];
   [img release];
 }
 
-void hal_cursor_pos(i32* x, i32* y) {
+HALDEF void hal_cursor_pos(i32* x, i32* y) {
   const NSPoint _p = [NSEvent mouseLocation];
   if (x)
     *x = _p.x;
   if (y)
-    *y = [[(AppDelegate*)active_window->window window] screen].frame.size.height - _p.y;
+    *y = [[(AppDelegate*)active_window->window appwindow] screen].frame.size.height - _p.y;
 }
 
-void hal_cursor_set_pos(i32 x, i32 y) {
+HALDEF void hal_cursor_set_pos(i32 x, i32 y) {
   CGPoint _p;
   _p.x = x;
   _p.y = y;
   CGWarpMouseCursorPosition(_p);
 }
 
-void hal_poll(void) {
+HALDEF void hal_poll(void) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   NSEvent* e = nil;
   while ((e = [NSApp nextEventMatchingMask:NSEventMaskAny
         untilDate:[NSDate distantPast]
         inMode:NSDefaultRunLoopMode
         dequeue:YES])) {
+#if defined(HAL_DEBUG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wswitch"
+#endif
     switch ([e type]) {
+#if defined(HAL_DEBUG)
+#pragma clang diagnostic pop
+#endif
       case NSEventTypeKeyUp:
       case NSEventTypeKeyDown:
         CBCALL(keyboard_callback, translate_key([e keyCode]), translate_mod([e modifierFlags]), ([e type] == NSEventTypeKeyDown));
@@ -5090,8 +5093,8 @@ void hal_poll(void) {
         if (!active_window)
           break;
         app = (AppDelegate*)active_window->window;
-        if ([[app view] mouse_in_window])
-          CBCALL(mouse_move_callback, [e locationInWindow].x, (i32)([[app view] frame].size.height - roundf([e locationInWindow].y)), 0, 0);
+        if ([[app appview] mouse_in_window])
+          CBCALL(mouse_move_callback, [e locationInWindow].x, (i32)([[app appview] frame].size.height - roundf([e locationInWindow].y)), 0, 0);
         break;
       }
     }
@@ -5100,18 +5103,18 @@ void hal_poll(void) {
   [pool release];
 }
 
-void hal_flush(screen_t s, surface_t b) {
+HALDEF void hal_flush(screen_t s, surface_t b) {
   if (!s || !b)
     return;
   AppDelegate* tmp = (AppDelegate*)s->window;
   if (!tmp)
     return;
   if (b)
-    [tmp view].buffer = b;
-  [[tmp view] setNeedsDisplay:YES];
+    [[tmp appview] setBuffer:b];
+  [[tmp appview] setNeedsDisplay:YES];
 }
 
-void hal_release() {
+HALDEF void hal_release() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   // Felt cute might delete later
   [pool drain];
@@ -5126,75 +5129,3 @@ void hal_release() {
 #endif
 #endif // HAL_IMPLEMENTATION
 
-/*              /$$$$$$$$ /$$   /$$ /$$$$$$$
- *             | $$_____/| $$$ | $$| $$__  $$
- *             | $$      | $$$$| $$| $$  \ $$
- *             | $$$$$   | $$ $$ $$| $$  | $$
- *             | $$__/   | $$  $$$$| $$  | $$
- *             | $$      | $$\  $$$| $$  | $$
- *             | $$$$$$$$| $$ \  $$| $$$$$$$/
- *             |________/|__/  \__/|_______/
- *
- *
- *
- *                     /$$$$$$  /$$$$$$$$
- *                    /$$__  $$| $$_____/
- *                   | $$  \ $$| $$
- *                   | $$  | $$| $$$$$
- *                   | $$  | $$| $$__/
- *                   | $$  | $$| $$
- *                   |  $$$$$$/| $$
- *                    \______/ |__/
- *
- *
- *
- *   /$$$$$$   /$$$$$$  /$$   /$$ /$$$$$$$   /$$$$$$  /$$$$$$$$
- *  /$$__  $$ /$$__  $$| $$  | $$| $$__  $$ /$$__  $$| $$_____/
- * | $$  \__/| $$  \ $$| $$  | $$| $$  \ $$| $$  \__/| $$
- * |  $$$$$$ | $$  | $$| $$  | $$| $$$$$$$/| $$      | $$$$$
- *  \____  $$| $$  | $$| $$  | $$| $$__  $$| $$      | $$__/
- *  /$$  \ $$| $$  | $$| $$  | $$| $$  \ $$| $$    $$| $$
- * |  $$$$$$/|  $$$$$$/|  $$$$$$/| $$  | $$|  $$$$$$/| $$$$$$$$
- *  \______/  \______/  \______/ |__/  |__/ \______/ |________/
- */
-
-#if defined(HAL_DEBUG)
-#include <stdio.h>
-
-static screen_t win;
-static surface_t buf;
-static bool running = true;
-
-#define SW 575
-#define SH 500
-
-void on_error(ERROR_TYPE type, const char* msg, const char* file, const char* func, i32 line) {
-  fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
-#if defined(HAL_DIALOGS)
-  hal_alert(ALERT_ERROR, ALERT_OK, "ERROR! See logs for info");
-  abort();
-#endif
-}
-
-int main(int argc, const char* argv[]) {
-  hal_error_callback(on_error);
-
-  hal_screen(&win, "test",  SW, SH, RESIZABLE);
-
-  hal_surface(&buf, SW, SH);
-  hal_fill(buf, RED);
-
-  surface_t img;
-  hal_bmp(&img, "/Users/roryb/git/hal/old/test/resources/Uncompressed-24.bmp");
-  hal_paste(buf, img, 10, 10);
-
-  while (!hal_closed(win) && running) {
-    hal_poll();
-    hal_flush(win, buf);
-  }
-
-  hal_destroy(&buf);
-  hal_screen_destroy(&win);
-  return 0;
-}
-#endif
