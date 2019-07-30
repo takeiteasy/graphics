@@ -6,3 +6,4 @@ build/
 old/
 hal_h.h
 VERSION
+Makefile

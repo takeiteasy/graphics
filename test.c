@@ -1,4 +1,5 @@
-#include "../hal.h"
+#include <stdio.h>
+#include "hal.h"
 
 static screen_t win;
 static surface_t buf;
@@ -19,6 +20,8 @@ int main(int argc, const char* argv[]) {
   hal_error_callback(on_error);
 
   hal_screen(&win, "test",  SW, SH, RESIZABLE);
+  
+  hal_cursor_lock(true);
 
   hal_surface(&buf, SW, SH);
   hal_fill(buf, RED);
