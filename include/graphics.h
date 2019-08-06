@@ -238,6 +238,7 @@ extern "C" {
    * @brief A list of different error types the library can generate
    */
   typedef enum {
+    UNKNOWN_ERROR,
     OUT_OF_MEMEORY,
     FILE_OPEN_FAILED,
     INVALID_BMP,
@@ -812,7 +813,7 @@ extern "C" {
     KB_KEY_8 = 56,
     KB_KEY_9 = 57,
     KB_KEY_SEMICOLON = 59,
-    KB_KEY_EQUAL = 61,
+    KB_KEY_EQUALS = 61,
     KB_KEY_A = 65,
     KB_KEY_B = 66,
     KB_KEY_C = 67,
@@ -905,7 +906,7 @@ extern "C" {
     KB_KEY_KP_SUBTRACT = 333,
     KB_KEY_KP_ADD = 334,
     KB_KEY_KP_ENTER = 335,
-    KB_KEY_KP_EQUAL = 336,
+    KB_KEY_KP_EQUALS = 336,
     KB_KEY_LEFT_SHIFT = 340,
     KB_KEY_LEFT_CONTROL = 341,
     KB_KEY_LEFT_ALT = 342,
@@ -954,7 +955,8 @@ extern "C" {
   X(mouse_move, (void*, i32, i32, i32, i32)) \
   X(scroll, (void*, KEY_MOD, float, float)) \
   X(focus, (void*, bool)) \
-  X(resize, (void*, i32, i32))
+  X(resize, (void*, i32, i32)) \
+  X(closed, (void*))
 
 #define X(a, b) \
   void(*a##_cb)b,
@@ -966,6 +968,7 @@ extern "C" {
    * @param scroll Mouse scroll callback
    * @param focus Window focus/blur callback
    * @param resize Window resize callback
+   * @param closed Window closed callback
    * @param s Screen object
    */
   HALDEF void hal_screen_callbacks(XMAP_SCREEN_CB screen_t screen);
@@ -1028,13 +1031,7 @@ extern "C" {
    * @param s Screen object
    * @param b Surface object
    */
-  HALDEF void hal_screen_icon_buf(screen_t s, surface_t b);
-  /*!
-   * @discussion Set window icon from file
-   * @param s Screen object
-   * @param p Path to icon file
-   */
-  HALDEF void hal_screen_icon(screen_t s, const char* p);
+  HALDEF void hal_screen_icon(screen_t s, surface_t b);
   /*!
    * @discussion Set window title
    * @param s Screen object
@@ -1083,17 +1080,11 @@ extern "C" {
    */
   HALDEF void hal_cursor_icon(screen_t s, CURSOR_TYPE t);
   /*!
-   * @discussion Change cursor icon to icon from file
-   * @param s Screen object
-   * @param p Path to icon file
-   */
-  HALDEF void hal_cursor_custom_icon(screen_t s, const char* p);
-  /*!
    * @discussion Change cursor icon to icon from surface object
    * @param s Screen object
    * @param b Surface object
    */
-  HALDEF void hal_cursor_custom_icon_buf(screen_t s, surface_t b);
+  HALDEF void hal_cursor_custom_icon(screen_t s, surface_t b);
   /*!
    * @discussion Get cursor position
    * @param x Integer to set

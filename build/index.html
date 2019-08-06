@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Emscripten-Generated Code</title>
+    <script type="text/javascript" src="dat.gui.js"></script>
+    <script type="text/javascript" src="stats.js"></script>
+    <script type="text/javascript" src="ansi_up.js"></script>
+    <link rel="stylesheet" type="text/css" href="hal.css">
+    <script type="text/javascript" src="hal.js"></script>
+  </head>
+  <body>
+    <div class="info" id="status">Downloading...</div>
+    <div class="info">
+      <progress value="0" max="100" id="progress" hidden=1></progress>
+    </div>
+    <div id="canvas_border">
+      <canvas class="emscripten resize_canvas" id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
+    </div>
+    <div class="hide_output" id="output_border"></div>
+    <script async type="text/javascript" src="index.js"></script>
+  </body>
+</html>
+

@@ -855,7 +855,7 @@ HALDEF bool hal_bmp(surface_t* s, const char* path) {
     return false;
   }
 
-#warning TODO: Add support for OS/2 bitmaps
+#warning TODO: hal_bmp() add support for OS/2 bitmaps
 
   u8* color_map = NULL;
   i32 color_map_size = 0;
@@ -884,7 +884,7 @@ HALDEF bool hal_bmp(surface_t* s, const char* path) {
         case 1:
         case 4:
         case 8:
-#warning TODO: Add 1, 4 & 8 bpp support
+#warning TODO: hal_bmp() add 1, 4 & 8 bpp support
           error_handle(UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
           hal_destroy(s);
           break;
@@ -909,7 +909,7 @@ HALDEF bool hal_bmp(surface_t* s, const char* path) {
     case 1: // RLE8
     case 2: // RLE4
     default:
-#warning TODO: Add RLE support
+#warning TODO: hal_bmp() add RLE support
       error_handle(UNSUPPORTED_BMP, "bmp() failed. Unsupported compression: %d", info.compression);
       HAL_SAFE_FREE(color_map);
       hal_destroy(s);
@@ -1563,7 +1563,7 @@ static i32 extra_font_lookup[10] = {
 
 #if !defined(HAL_NO_TEXT_COLOR_PARSING)
 static inline i32 read_color(const char* str, i32* col, i32* len) {
-#warning TODO: Alpha value wrong?
+#warning TODO: read_color() alpha value wrong?
   const char* c = str;
   if (*c != '(')
     return 0;
@@ -1939,7 +1939,7 @@ HALDEF bool hal_bdf(struct bdf_t** _out, const char* path) {
   }
   out->chars = HAL_MALLOC(out->n_chars * sizeof(bdf_char_t));
   if (!out->chars) {
-    free(out->encoding_table);
+    HAL_SAFE_FREE(out->encoding_table);
     error_handle(OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
@@ -2560,7 +2560,7 @@ HALDEF bool hal_gif(gif_t* _g, const char* path) {
 }
 
 HALDEF bool hal_save_gif(gif_t* g, const char* path) {
-#warning TODO: Reimplement hal_save_gif
+#warning TODO: hal_save_gif() reimplement
   return false
 }
 
@@ -2703,6 +2703,8 @@ struct screen_t {
     void *window, *parent;
 };
 
+static screen_t active_window = NULL;
+
 #define X(a, b) \
   void(*a##_cb)b,
 void hal_screen_callbacks(XMAP_SCREEN_CB screen_t screen) {
@@ -2733,7 +2735,7 @@ HALDEF void hal_screen_size(screen_t s, i32* w, i32* h) {
 
 #define CBCALL(x, ...) \
   if (active_window && active_window->x) \
-  active_window->x(active_window->parent, __VA_ARGS__);
+    active_window->x(active_window->parent, __VA_ARGS__);
 
 #if defined(HAL_OPENGL)
 #if defined(HAL_OSX)
@@ -2893,7 +2895,7 @@ static inline bool init_gl(i32 w, i32 h, GLuint* _vao, GLuint* _shader, GLuint* 
     GL_LIST
 #undef GLE
 #endif
-      dll_loaded = true;
+    dll_loaded = true;
   }
 
   glClearColor(0.f, 0.f, 0.f, 1.f);
@@ -3136,8 +3138,6 @@ static inline NSImage* create_cocoa_image(surface_t s) {
   [nsi addRepresentation:nsbir];
   return nsi;
 }
-
-static screen_t active_window = NULL;
 
 @protocol AppViewDelegate;
 
@@ -3557,14 +3557,18 @@ static screen_t active_window = NULL;
 }
 
 - (void)windowWillClose:(NSNotification*)notification {
+  if (active_window && active_window->closed_callback)
+    active_window->closed_callback(active_window->parent);
   _closed = YES;
 }
 
 - (void)windowDidBecomeKey:(NSNotification*)notification {
   active_window = _parent;
+  CBCALL(focus_callback, true);
 }
 
 - (void)windowDidResignKey:(NSNotification*)notification {
+  CBCALL(focus_callback, false);
   active_window = NULL;
 }
 
@@ -3628,7 +3632,7 @@ bool hal_screen(struct screen_t** s, const char* t, int w, int h, short flags) {
     keycodes[0x27] = KB_KEY_APOSTROPHE;
     keycodes[0x2A] = KB_KEY_BACKSLASH;
     keycodes[0x2B] = KB_KEY_COMMA;
-    keycodes[0x18] = KB_KEY_EQUAL;
+    keycodes[0x18] = KB_KEY_EQUALS;
     keycodes[0x32] = KB_KEY_GRAVE_ACCENT;
     keycodes[0x21] = KB_KEY_LEFT_BRACKET;
     keycodes[0x1B] = KB_KEY_MINUS;
@@ -3699,7 +3703,7 @@ bool hal_screen(struct screen_t** s, const char* t, int w, int h, short flags) {
     keycodes[0x41] = KB_KEY_KP_DECIMAL;
     keycodes[0x4B] = KB_KEY_KP_DIVIDE;
     keycodes[0x4C] = KB_KEY_KP_ENTER;
-    keycodes[0x51] = KB_KEY_KP_EQUAL;
+    keycodes[0x51] = KB_KEY_KP_EQUALS;
     keycodes[0x43] = KB_KEY_KP_MULTIPLY;
     keycodes[0x4E] = KB_KEY_KP_SUBTRACT;
     keycodes_init = true;
@@ -3716,7 +3720,7 @@ bool hal_screen(struct screen_t** s, const char* t, int w, int h, short flags) {
     return false;
   }
   
-  struct screen_t* screen = *s = malloc(sizeof(struct screen_t));
+  struct screen_t* screen = *s = HAL_MALLOC(sizeof(struct screen_t));
   if (!screen) {
     hal_release();
     error_handle(OUT_OF_MEMEORY, "malloc failed");
@@ -3737,7 +3741,7 @@ bool hal_screen(struct screen_t** s, const char* t, int w, int h, short flags) {
 
 #define SET_DEFAULT_APP_ICON [NSApp setApplicationIconImage:[NSImage imageNamed:@"NSApplicationIcon"]]
 
-void hal_screen_icon_buf(screen_t s, surface_t b) {
+void hal_screen_icon(screen_t s, surface_t b) {
   if (!b || !b->buf) {
     SET_DEFAULT_APP_ICON;
     return;
@@ -3752,22 +3756,6 @@ void hal_screen_icon_buf(screen_t s, surface_t b) {
   [NSApp setApplicationIconImage:img];
 }
 
-void hal_screen_icon(screen_t s, const char* p) {
-  if (!p) {
-    SET_DEFAULT_APP_ICON;
-    return;
-  }
-  
-  NSImage* img = [[NSImage alloc] initWithContentsOfFile:@(p)];
-  if (!img) {
-    error_handle(WINDOW_ICON_FAILED, "hal_screen_icon() failed: Couldn't set window icon from \"%s\"\n", p);
-    SET_DEFAULT_APP_ICON;
-    return;
-  }
-  [NSApp setApplicationIconImage:img];
-  [img release];
-}
-
 void hal_screen_title(screen_t s, const char* t) {
   [[(AppDelegate*)s->window window] setTitle:@(t)];
 }
@@ -3780,8 +3768,8 @@ void hal_screen_destroy(struct screen_t** s) {
     [[app view] dealloc];
     [[app window] close];
   }
-  free(app);
-  free(screen);
+  HAL_SAFE_FREE(app);
+  HAL_SAFE_FREE(screen);
   [pool drain];
 }
 
@@ -3817,29 +3805,7 @@ void hal_cursor_icon(screen_t s, CURSOR_TYPE t) {
   [[app view] setRegularCursor:t];
 }
 
-void hal_cursor_icon_custom(screen_t s, const char* p) {
-  if (!s || !p) {
-    error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon_custom() failed: Invalid parameters");
-    return;
-  }
-  
-  NSImage* img = [[NSImage alloc] initWithContentsOfFile:@(p)];
-  if (!img) {
-    error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon_custom() failed: Couldn't set cursor from \"%s\"\n", p);
-    return;
-  }
-  
-  AppDelegate* app = (AppDelegate*)s->window;
-  if (!app) {
-    [img release];
-    error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon_custom() failed: Invalid screen");
-    return;
-  }
-  [[app view] setCustomCursor:img];
-  [img release];
-}
-
-void hal_cursor_icon_custom_buf(screen_t s, surface_t b) {
+void hal_cursor_icon_custom(screen_t s, surface_t b) {
   if (!s || !b) {
     error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon_custom_buf() failed: Invalid parameters");
     return;
@@ -3940,10 +3906,564 @@ void hal_release() {
   [pool drain];
 }
 #elif defined(HAL_WINDOWS)
-// TODO: Reimplement
+#error TODO: HAL_WINDOWS reimplement
 #elif defined(HAL_LINUX)
-// TODO: Reimplement
+#error TODO: HAL_LINUX reimplement
+#elif defined(HAL_EMCC)
+
+#if !defined(HAL_CANVAS_ID)
+#define HAL_CANVAS_ID "#canvas"
+#endif
+
+#include <stdio.h>
+#include <emscripten.h>
+#include <string.h>
+#include <emscripten/html5.h>
+
+static i32 screen_w, screen_h, canvas_w, canvas_h;
+static bool mouse_in_canvas = true;
+
+static KEY_MOD translate_mod(bool ctrl, bool shift, bool alt, bool meta) {
+  return (KEY_MOD)((ctrl ? KB_MOD_CONTROL : 0) | (shift ? KB_MOD_SHIFT : 0) | (alt ? KB_MOD_ALT : 0) | (meta ? KB_MOD_SUPER : 0));
+}
+
+static KEY_SYM translate_key(i32 key) {
+  return (key >= 222 ? KB_KEY_UNKNOWN : keycodes[key]);
+}
+
+static EM_BOOL key_callback(int type, const EmscriptenKeyboardEvent* e, void* user_data) {
+  static KEY_MOD mod;
+  mod = translate_mod(e->ctrlKey, e->shiftKey, e->altKey, e->metaKey);
+  CBCALL(keyboard_callback, translate_key(e->keyCode), mod, (type == EMSCRIPTEN_EVENT_KEYDOWN));
+#warning TODO: key_callback() change to KB_MOD_CONTROL for Windows/Linux
+  return (e->keyCode == 82 && mod == KB_MOD_SUPER ? false : true);
+}
+
+static EM_BOOL mouse_callback(int type, const EmscriptenMouseEvent* e, void* user_data) {
+  switch (type) {
+    case EMSCRIPTEN_EVENT_MOUSEDOWN:
+      if (mouse_in_canvas && e->buttons != 0)
+        CBCALL(mouse_button_callback, (MOUSE_BTN)(e->button + 1), translate_mod(e->ctrlKey, e->shiftKey, e->altKey, e->metaKey), true);
+      break;
+    case EMSCRIPTEN_EVENT_MOUSEUP:
+      if (mouse_in_canvas)
+        CBCALL(mouse_button_callback, (MOUSE_BTN)(e->button + 1), translate_mod(e->ctrlKey, e->shiftKey, e->altKey, e->metaKey), false);
+      break;
+    case EMSCRIPTEN_EVENT_MOUSEMOVE:
+      if (mouse_in_canvas)
+#warning TODO: mouse_callback() modify cursor xy if canvas scaled
+        CBCALL(mouse_move_callback, e->clientX - (screen_w / 2) + (canvas_w / 2), e->clientY, e->movementX, e->movementY);
+      break;
+    case EMSCRIPTEN_EVENT_MOUSEENTER:
+      mouse_in_canvas = true;
+      return true;
+    case EMSCRIPTEN_EVENT_MOUSELEAVE:
+      mouse_in_canvas = false;
+      return false;
+    case EMSCRIPTEN_EVENT_CLICK:
+    case EMSCRIPTEN_EVENT_DBLCLICK:
+    default:
+      return false;
+  }
+  return true;
+}
+
+static EM_BOOL wheel_callback(int type, const EmscriptenWheelEvent* e, void* user_data) {
+  if (!mouse_in_canvas)
+    return false;
+  CBCALL(scroll_callback, translate_mod(e->mouse.ctrlKey, e->mouse.shiftKey, e->mouse.altKey, e->mouse.metaKey), e->deltaX, e->deltaY);
+  return true;
+}
+
+static EM_BOOL uievent_callback(int type, const EmscriptenUiEvent* e, void* user_data) {
+  screen_w = e->documentBodyClientWidth;
+  screen_h = e->documentBodyClientHeight;
+  static double css_w, css_h;
+  emscripten_get_element_css_size(HAL_CANVAS_ID, &css_w, &css_h);
+  canvas_w = (i32)css_w;
+  canvas_h = (i32)css_h;
+  return true;
+}
+
+static EM_BOOL focusevent_callback(int type, const EmscriptenFocusEvent* e, void* user_data) {
+  CBCALL(focus_callback, (type == EMSCRIPTEN_EVENT_FOCUS));
+  return true;
+}
+
+static EM_BOOL fullscreenchange_callback(int type, const EmscriptenFullscreenChangeEvent* e, void* user_data) {
+  /*printf("%s, isFullscreen: %d, fullscreenEnabled: %d, fs element nodeName: \"%s\", fs element id: \"%s\". New size: %dx%d pixels. Screen size: %dx%d pixels.\n",
+         emscripten_event_type_to_string(eventType), e->isFullscreen, e->fullscreenEnabled, e->nodeName, e->id, e->elementWidth, e->elementHeight, e->screenWidth, e->screenHeight);*/
+#warning TODO: fullscreenchange_callback() implement fullscreen
+  return 0;
+}
+
+static EM_BOOL pointerlockchange_callback(int type, const EmscriptenPointerlockChangeEvent* e, void* user_data) {
+  /*printf("%s, isActive: %d, pointerlock element nodeName: \"%s\", id: \"%s\"\n",
+         emscripten_event_type_to_string(eventType), e->isActive, e->nodeName, e->id);*/
+#warning TODO: pointerlockchange_callback() implement cursor lock
+  return 0;
+}
+
+static const char* beforeunload_callback(int eventType, const void *reserved, void *userData) {
+  return "Do you really want to leave the page?";
+}
+
+static EM_BOOL webglcontext_callback(int eventType, const void *reserved, void *userData) {
+  /*printf("%s.\n", emscripten_event_type_to_string(eventType));*/
+#warning TODO: webglcontext_callback() implement GL emscripten context?
+  return 0;
+}
+
+bool hal_screen(screen_t* s, const char* t, i32 w, i32 h, i16 flags) {
+  static bool window_already_open = false;
+  if (window_already_open || active_window) {
+#warning TODO: hal_screen() handle error
+    return false;
+  }
+  
+  struct screen_t* screen = *s = active_window = HAL_MALLOC(sizeof(struct screen_t));
+  if (!screen) {
+    hal_release();
+    error_handle(OUT_OF_MEMEORY, "malloc failed");
+    return false;
+  }
+  
+  keycodes[0] = KB_KEY_UNKNOWN;
+  keycodes[1] = KB_KEY_UNKNOWN;
+  keycodes[2] = KB_KEY_UNKNOWN;
+  keycodes[3] = KB_KEY_UNKNOWN;
+  keycodes[4] = KB_KEY_UNKNOWN;
+  keycodes[5] = KB_KEY_UNKNOWN;
+  keycodes[6] = KB_KEY_UNKNOWN;
+  keycodes[7] = KB_KEY_UNKNOWN;
+  keycodes[8] = KB_KEY_BACKSPACE;
+  keycodes[9] = KB_KEY_TAB;
+  keycodes[10] = KB_KEY_UNKNOWN;
+  keycodes[11] = KB_KEY_UNKNOWN;
+  keycodes[12] = KB_KEY_UNKNOWN;
+  keycodes[13] = KB_KEY_ENTER;
+  keycodes[14] = KB_KEY_UNKNOWN;
+  keycodes[15] = KB_KEY_UNKNOWN;
+  keycodes[16] = KB_KEY_LEFT_SHIFT;
+  keycodes[17] = KB_KEY_LEFT_CONTROL;
+  keycodes[18] = KB_KEY_LEFT_ALT;
+  keycodes[19] = KB_KEY_PAUSE;
+  keycodes[20] = KB_KEY_CAPS_LOCK;
+  keycodes[21] = KB_KEY_UNKNOWN;
+  keycodes[22] = KB_KEY_UNKNOWN;
+  keycodes[23] = KB_KEY_UNKNOWN;
+  keycodes[24] = KB_KEY_UNKNOWN;
+  keycodes[25] = KB_KEY_UNKNOWN;
+  keycodes[26] = KB_KEY_UNKNOWN;
+  keycodes[27] = KB_KEY_ESCAPE;
+  keycodes[28] = KB_KEY_UNKNOWN;
+  keycodes[29] = KB_KEY_UNKNOWN;
+  keycodes[30] = KB_KEY_UNKNOWN;
+  keycodes[31] = KB_KEY_UNKNOWN;
+  keycodes[32] = KB_KEY_SPACE;
+  keycodes[33] = KB_KEY_PAGE_UP;
+  keycodes[34] = KB_KEY_PAGE_DOWN;
+  keycodes[35] = KB_KEY_END;
+  keycodes[36] = KB_KEY_HOME;
+  keycodes[37] = KB_KEY_LEFT;
+  keycodes[38] = KB_KEY_UP;
+  keycodes[39] = KB_KEY_RIGHT;
+  keycodes[40] = KB_KEY_DOWN;
+  keycodes[41] = KB_KEY_UNKNOWN;
+  keycodes[42] = KB_KEY_UNKNOWN;
+  keycodes[43] = KB_KEY_UNKNOWN;
+  keycodes[44] = KB_KEY_UNKNOWN;
+  keycodes[45] = KB_KEY_INSERT;
+  keycodes[46] = KB_KEY_DELETE;
+  keycodes[47] = KB_KEY_UNKNOWN;
+  keycodes[48] = KB_KEY_0;
+  keycodes[49] = KB_KEY_1;
+  keycodes[50] = KB_KEY_2;
+  keycodes[51] = KB_KEY_3;
+  keycodes[52] = KB_KEY_4;
+  keycodes[53] = KB_KEY_5;
+  keycodes[54] = KB_KEY_6;
+  keycodes[55] = KB_KEY_7;
+  keycodes[56] = KB_KEY_8;
+  keycodes[57] = KB_KEY_9;
+  keycodes[58] = KB_KEY_UNKNOWN;
+  keycodes[59] = KB_KEY_SEMICOLON;
+  keycodes[60] = KB_KEY_UNKNOWN;
+  keycodes[61] = KB_KEY_EQUALS;
+  keycodes[62] = KB_KEY_UNKNOWN;
+  keycodes[63] = KB_KEY_UNKNOWN;
+  keycodes[64] = KB_KEY_UNKNOWN;
+  keycodes[65] = KB_KEY_A;
+  keycodes[66] = KB_KEY_B;
+  keycodes[67] = KB_KEY_C;
+  keycodes[68] = KB_KEY_D;
+  keycodes[69] = KB_KEY_E;
+  keycodes[70] = KB_KEY_F;
+  keycodes[71] = KB_KEY_G;
+  keycodes[72] = KB_KEY_H;
+  keycodes[73] = KB_KEY_I;
+  keycodes[74] = KB_KEY_J;
+  keycodes[75] = KB_KEY_K;
+  keycodes[76] = KB_KEY_L;
+  keycodes[77] = KB_KEY_M;
+  keycodes[78] = KB_KEY_N;
+  keycodes[79] = KB_KEY_O;
+  keycodes[80] = KB_KEY_P;
+  keycodes[81] = KB_KEY_Q;
+  keycodes[82] = KB_KEY_R;
+  keycodes[83] = KB_KEY_S;
+  keycodes[84] = KB_KEY_T;
+  keycodes[85] = KB_KEY_U;
+  keycodes[86] = KB_KEY_V;
+  keycodes[87] = KB_KEY_W;
+  keycodes[88] = KB_KEY_X;
+  keycodes[89] = KB_KEY_Y;
+  keycodes[90] = KB_KEY_Z;
+  keycodes[91] = KB_KEY_UNKNOWN;
+  keycodes[92] = KB_KEY_UNKNOWN;
+  keycodes[93] = KB_KEY_UNKNOWN;
+  keycodes[94] = KB_KEY_UNKNOWN;
+  keycodes[95] = KB_KEY_UNKNOWN;
+  keycodes[96] = KB_KEY_KP_0;
+  keycodes[97] = KB_KEY_KP_1;
+  keycodes[98] = KB_KEY_KP_2;
+  keycodes[99] = KB_KEY_KP_3;
+  keycodes[100] = KB_KEY_KP_4;
+  keycodes[101] = KB_KEY_KP_5;
+  keycodes[102] = KB_KEY_KP_6;
+  keycodes[103] = KB_KEY_KP_7;
+  keycodes[104] = KB_KEY_KP_8;
+  keycodes[105] = KB_KEY_KP_9;
+  keycodes[106] = KB_KEY_KP_MULTIPLY;
+  keycodes[107] = KB_KEY_KP_ADD;
+  keycodes[108] = KB_KEY_UNKNOWN;
+  keycodes[109] = KB_KEY_KP_SUBTRACT;
+  keycodes[110] = KB_KEY_KP_DECIMAL;
+  keycodes[111] = KB_KEY_KP_DIVIDE;
+  keycodes[112] = KB_KEY_F1;
+  keycodes[113] = KB_KEY_F2;
+  keycodes[114] = KB_KEY_F3;
+  keycodes[115] = KB_KEY_F4;
+  keycodes[116] = KB_KEY_F5;
+  keycodes[117] = KB_KEY_F6;
+  keycodes[118] = KB_KEY_F7;
+  keycodes[119] = KB_KEY_F8;
+  keycodes[120] = KB_KEY_F9;
+  keycodes[121] = KB_KEY_F10;
+  keycodes[122] = KB_KEY_F11;
+  keycodes[123] = KB_KEY_F12;
+  keycodes[124] = KB_KEY_F13;
+  keycodes[125] = KB_KEY_F14;
+  keycodes[126] = KB_KEY_F15;
+  keycodes[127] = KB_KEY_F16;
+  keycodes[128] = KB_KEY_F17;
+  keycodes[129] = KB_KEY_F18;
+  keycodes[130] = KB_KEY_F19;
+  keycodes[131] = KB_KEY_F20;
+  keycodes[132] = KB_KEY_F21;
+  keycodes[133] = KB_KEY_F22;
+  keycodes[134] = KB_KEY_F23;
+  keycodes[135] = KB_KEY_F24;
+  keycodes[136] = KB_KEY_UNKNOWN;
+  keycodes[137] = KB_KEY_UNKNOWN;
+  keycodes[138] = KB_KEY_UNKNOWN;
+  keycodes[139] = KB_KEY_UNKNOWN;
+  keycodes[140] = KB_KEY_UNKNOWN;
+  keycodes[141] = KB_KEY_UNKNOWN;
+  keycodes[142] = KB_KEY_UNKNOWN;
+  keycodes[143] = KB_KEY_UNKNOWN;
+  keycodes[144] = KB_KEY_NUM_LOCK;
+  keycodes[145] = KB_KEY_SCROLL_LOCK;
+  keycodes[146] = KB_KEY_UNKNOWN;
+  keycodes[147] = KB_KEY_UNKNOWN;
+  keycodes[148] = KB_KEY_UNKNOWN;
+  keycodes[149] = KB_KEY_UNKNOWN;
+  keycodes[150] = KB_KEY_UNKNOWN;
+  keycodes[151] = KB_KEY_UNKNOWN;
+  keycodes[152] = KB_KEY_UNKNOWN;
+  keycodes[153] = KB_KEY_UNKNOWN;
+  keycodes[154] = KB_KEY_UNKNOWN;
+  keycodes[155] = KB_KEY_UNKNOWN;
+  keycodes[156] = KB_KEY_UNKNOWN;
+  keycodes[157] = KB_KEY_UNKNOWN;
+  keycodes[158] = KB_KEY_UNKNOWN;
+  keycodes[159] = KB_KEY_UNKNOWN;
+  keycodes[160] = KB_KEY_UNKNOWN;
+  keycodes[161] = KB_KEY_UNKNOWN;
+  keycodes[162] = KB_KEY_UNKNOWN;
+  keycodes[163] = KB_KEY_UNKNOWN;
+  keycodes[164] = KB_KEY_UNKNOWN;
+  keycodes[165] = KB_KEY_UNKNOWN;
+  keycodes[166] = KB_KEY_UNKNOWN;
+  keycodes[167] = KB_KEY_UNKNOWN;
+  keycodes[168] = KB_KEY_UNKNOWN;
+  keycodes[169] = KB_KEY_UNKNOWN;
+  keycodes[170] = KB_KEY_UNKNOWN;
+  keycodes[171] = KB_KEY_UNKNOWN;
+  keycodes[172] = KB_KEY_UNKNOWN;
+  keycodes[173] = KB_KEY_MINUS;
+  keycodes[174] = KB_KEY_UNKNOWN;
+  keycodes[175] = KB_KEY_UNKNOWN;
+  keycodes[176] = KB_KEY_UNKNOWN;
+  keycodes[177] = KB_KEY_UNKNOWN;
+  keycodes[178] = KB_KEY_UNKNOWN;
+  keycodes[179] = KB_KEY_UNKNOWN;
+  keycodes[180] = KB_KEY_UNKNOWN;
+  keycodes[181] = KB_KEY_UNKNOWN;
+  keycodes[182] = KB_KEY_UNKNOWN;
+  keycodes[183] = KB_KEY_UNKNOWN;
+  keycodes[184] = KB_KEY_UNKNOWN;
+  keycodes[185] = KB_KEY_UNKNOWN;
+  keycodes[186] = KB_KEY_SEMICOLON;
+  keycodes[187] = KB_KEY_EQUALS;
+  keycodes[188] = KB_KEY_COMMA;
+  keycodes[189] = KB_KEY_MINUS;
+  keycodes[190] = KB_KEY_PERIOD;
+  keycodes[191] = KB_KEY_SLASH;
+  keycodes[192] = KB_KEY_GRAVE_ACCENT;
+  keycodes[193] = KB_KEY_UNKNOWN;
+  keycodes[194] = KB_KEY_UNKNOWN;
+  keycodes[195] = KB_KEY_UNKNOWN;
+  keycodes[196] = KB_KEY_UNKNOWN;
+  keycodes[197] = KB_KEY_UNKNOWN;
+  keycodes[198] = KB_KEY_UNKNOWN;
+  keycodes[199] = KB_KEY_UNKNOWN;
+  keycodes[200] = KB_KEY_UNKNOWN;
+  keycodes[201] = KB_KEY_UNKNOWN;
+  keycodes[202] = KB_KEY_UNKNOWN;
+  keycodes[203] = KB_KEY_UNKNOWN;
+  keycodes[204] = KB_KEY_UNKNOWN;
+  keycodes[205] = KB_KEY_UNKNOWN;
+  keycodes[206] = KB_KEY_UNKNOWN;
+  keycodes[207] = KB_KEY_UNKNOWN;
+  keycodes[208] = KB_KEY_UNKNOWN;
+  keycodes[209] = KB_KEY_UNKNOWN;
+  keycodes[210] = KB_KEY_UNKNOWN;
+  keycodes[211] = KB_KEY_UNKNOWN;
+  keycodes[212] = KB_KEY_UNKNOWN;
+  keycodes[213] = KB_KEY_UNKNOWN;
+  keycodes[214] = KB_KEY_UNKNOWN;
+  keycodes[215] = KB_KEY_UNKNOWN;
+  keycodes[216] = KB_KEY_UNKNOWN;
+  keycodes[217] = KB_KEY_UNKNOWN;
+  keycodes[218] = KB_KEY_UNKNOWN;
+  keycodes[219] = KB_KEY_LEFT_BRACKET;
+  keycodes[220] = KB_KEY_BACKSLASH;
+  keycodes[221] = KB_KEY_RIGHT_BRACKET;
+  keycodes[222] = KB_KEY_APOSTROPHE;
+  
+  emscripten_set_keypress_callback(0, 0, 1, key_callback);
+  emscripten_set_keydown_callback(0, 0, 1, key_callback);
+  emscripten_set_keyup_callback(0, 0, 1, key_callback);
+  
+  emscripten_set_click_callback(HAL_CANVAS_ID, 0, 1, mouse_callback);
+  emscripten_set_mousedown_callback(HAL_CANVAS_ID, 0, 1, mouse_callback);
+  emscripten_set_mouseup_callback(HAL_CANVAS_ID, 0, 1, mouse_callback);
+  emscripten_set_dblclick_callback(HAL_CANVAS_ID, 0, 1, mouse_callback);
+  emscripten_set_mousemove_callback(HAL_CANVAS_ID, 0, 1, mouse_callback);
+  emscripten_set_mouseenter_callback(HAL_CANVAS_ID, 0, 1, mouse_callback);
+  emscripten_set_mouseleave_callback(HAL_CANVAS_ID, 0, 1, mouse_callback);
+  emscripten_set_mouseover_callback(HAL_CANVAS_ID, 0, 1, mouse_callback);
+  emscripten_set_mouseout_callback(HAL_CANVAS_ID, 0, 1, mouse_callback);
+  
+  emscripten_set_wheel_callback(0, 0, 1, wheel_callback);
+  
+  emscripten_set_resize_callback(0, 0, 1, uievent_callback);
+  emscripten_set_scroll_callback(0, 0, 1, uievent_callback);
+  
+  emscripten_set_blur_callback(0, 0, 1, focusevent_callback);
+  emscripten_set_focus_callback(0, 0, 1, focusevent_callback);
+  emscripten_set_focusin_callback(0, 0, 1, focusevent_callback);
+  emscripten_set_focusout_callback(0, 0, 1, focusevent_callback);
+  
+  EmscriptenFullscreenChangeEvent fsce;
+  EMSCRIPTEN_RESULT ret = emscripten_get_fullscreen_status(&fsce);
+  if (ret == EMSCRIPTEN_RESULT_SUCCESS)
+    fullscreenchange_callback(EMSCRIPTEN_EVENT_FULLSCREENCHANGE, &fsce, 0);
+  
+  emscripten_set_fullscreenchange_callback(0, 0, 1, fullscreenchange_callback);
+  
+  emscripten_request_fullscreen(0, 1);
+  emscripten_exit_fullscreen();
+  
+  EmscriptenPointerlockChangeEvent plce;
+  ret = emscripten_get_pointerlock_status(&plce);
+  if (ret == EMSCRIPTEN_RESULT_SUCCESS)
+    pointerlockchange_callback(EMSCRIPTEN_EVENT_POINTERLOCKCHANGE, &plce, 0);
+  
+  emscripten_set_pointerlockchange_callback(0, 0, 1, pointerlockchange_callback);
+  
+  emscripten_request_pointerlock(0, 1);
+  emscripten_exit_pointerlock();
+  
+  emscripten_set_beforeunload_callback(0, beforeunload_callback);
+  
+  emscripten_set_webglcontextlost_callback(0, 0, 1, webglcontext_callback);
+  emscripten_set_webglcontextrestored_callback(0, 0, 1, webglcontext_callback);
+  
+  EM_ASM(Module['noExitRuntime'] = true);
+  
+  if (t)
+    hal_screen_title(NULL, t);
+  
+  double css_w, css_h;
+  emscripten_set_canvas_element_size(HAL_CANVAS_ID, w, h);
+  emscripten_get_element_css_size(HAL_CANVAS_ID, &css_w, &css_h);
+  canvas_w  = (i32)css_w;
+  canvas_h = (i32)css_h;
+  screen_w = EM_ASM_INT_V({ return window.innerWidth; });
+  screen_h = EM_ASM_INT_V({ return window.innerHeight; });
+  
+  window_already_open = true;
+  return true;
+}
+
+void hal_screen_icon(screen_t s, surface_t b) {
+#warning hal_screen_icon() unsupported on emscripten
+}
+
+void hal_screen_title(screen_t s, const char* t) {
+#warning hal_screen_title() not working
+  EM_ASM({
+    if (typeof Module['setWindowTitle'] !== 'undefined') {
+      Module['setWindowTitle'](UTF8ToString($0));
+    }
+  }, t);
+}
+
+void hal_screen_destroy(screen_t* s) {
+  struct screen_t* screen = *s;
+  HAL_SAFE_FREE(screen);
+}
+
+bool hal_closed(screen_t s) {
+  return false;
+}
+
+void hal_cursor_lock(bool locked) {
+#warning TODO: hal_cursor_lock() handle errors
+  if (locked)
+    emscripten_request_pointerlock(NULL, 1);
+  else
+    emscripten_exit_pointerlock();
+}
+
+static const char* cursor = "default";
+static bool cursor_custom = false;
+
+void hal_cursor_visible(bool show) {
+  EM_ASM({
+    if (Module['canvas']) {
+      Module['canvas'].style['cursor'] = ($1 ? UTF8ToString($0) : 'none');
+    }
+  }, cursor, show);
+}
+
+void hal_cursor_icon(screen_t s, CURSOR_TYPE t) {
+  if (cursor_custom && cursor)
+    HAL_SAFE_FREE(cursor);
+  cursor_custom = false;
+  
+  switch (t) {
+    default:
+    case CURSOR_ARROW:
+      cursor = "default";
+    case CURSOR_WAIT:
+      cursor = "wait";
+      break;
+    case CURSOR_WAITARROW:
+      cursor = "progress";
+      break;
+    case CURSOR_IBEAM:
+      cursor = "text";
+      break;
+    case CURSOR_CROSSHAIR:
+      cursor = "crosshair";
+      break;
+    case CURSOR_SIZENWSE:
+      cursor = "nwse-resize";
+      break;
+    case CURSOR_SIZENESW:
+      cursor = "nesw-resize";
+      break;
+    case CURSOR_SIZEWE:
+      cursor = "ew-resize";
+      break;
+    case CURSOR_SIZENS:
+      cursor = "ns-resize";
+      break;
+    case CURSOR_SIZEALL:
+      cursor = "move";
+      break;
+    case CURSOR_NO:
+      cursor = "not-allowed";
+      break;
+    case CURSOR_HAND:
+      cursor = "pointer";
+      break;
+  }
+  hal_cursor_visible(true);
+}
+
+void hal_cursor_custom_icon(screen_t s, surface_t b) {
+  if (cursor_custom && cursor)
+    HAL_SAFE_FREE(cursor);
+  
+  hal_cursor_visible(true);
+}
+
+void hal_cursor_pos(i32* x, i32* y) {
+#warning hal_cursor_pos() not implemented
+}
+
+void hal_cursor_set_pos(i32 x, i32 y) {
+#warning hal_cursor_set_pos() not implemented
+}
+
+void hal_poll(void) {
+#warning TODO: hal_poll() make stats.js optional
+  EM_ASM({
+    stats.begin();
+  });
+}
+
+void hal_flush(screen_t s, surface_t b) {
+  EM_ASM({
+    var w = $0;
+    var h = $1;
+    var buf = $2;
+    var src = buf >> 2;
+    var canvas = document.getElementById("canvas");
+    var ctx = canvas.getContext("2d");
+    var img = ctx.createImageData(w, h);
+    var data = img.data;
+    
+    var i = 0;
+    var j = data.length;
+    while (i < j) {
+      var val = HEAP32[src];
+      data[i  ] = (val >> 16) & 0xFF;
+      data[i+1] = (val >> 8) & 0xFF;
+      data[i+2] = val & 0xFF;
+#if defined(HAL_NO_ALPHA)
+      data[i+3] = 0xFF;
 #else
-#error Unsupported operating system
+      data[i+3] = (val >> 24) & 0xFF;
+#endif
+      src++;
+      i += 4;
+    }
+
+    ctx.putImageData(img, 0, 0);
+#warning TODO: hal_flush() make stats.js optional
+    stats.end();
+  }, b->w, b->h, b->buf);
+}
+
+void hal_release(void) {
+  return;
+}
+#else
+#error Unsupported operating system, sorry
 #endif
 #endif
