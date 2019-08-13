@@ -3789,6 +3789,25 @@ void hal_window_title(window_t s, const char* t) {
   [[(AppDelegate*)s->window window] setTitle:@(t)];
 }
 
+void hal_window_position(window_t s, int* x, int*  y) {
+  static NSRect frame;
+  frame = [[(AppDelegate*)s->window window] frame];
+  if (x)
+    *x = frame.origin.x;
+  if (y)
+    *y = frame.origin.y;
+}
+
+void hal_screen_size(window_t s, int* w, int* h) {
+  static NSRect frame;
+  frame = [[[(AppDelegate*)s->window window] screen] frame];
+  if (w)
+    *w = frame.size.width;
+  if (h)
+    *h = frame.size.height;
+}
+
+
 void hal_window_destroy(struct window_t** s) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   struct window_t* window = *s;
@@ -3862,7 +3881,7 @@ void hal_cursor_pos(int* x, int* y) {
   if (x)
     *x = _p.x;
   if (y)
-    *y = [[(AppDelegate*)active_window->window window] window].frame.size.height - _p.y;
+    *y = [[(AppDelegate*)active_window->window window] screen].frame.size.height - _p.y;
 }
 
 void hal_cursor_set_pos(int x, int y) {
@@ -3949,7 +3968,7 @@ void hal_release() {
 #include <string.h>
 #include <emscripten/html5.h>
 
-static i32 window_w, window_h, canvas_w, canvas_h, cursor_x, cursor_y;
+static i32 window_w, window_h, canvas_w, canvas_h, canvas_x, canvas_y, cursor_x, cursor_y;
 static bool mouse_in_canvas = true, fullscreen = false;
 
 static KEY_MOD translate_mod(bool ctrl, bool shift, bool alt, bool meta) {
@@ -4008,6 +4027,8 @@ static EM_BOOL wheel_callback(int type, const EmscriptenWheelEvent* e, void* use
 static EM_BOOL uievent_callback(int type, const EmscriptenUiEvent* e, void* user_data) {
   window_w = EM_ASM_INT_V({ return window.innerWidth; });
   window_h = EM_ASM_INT_V({ return window.innerHeight; });
+  canvas_x = EM_ASM_INT({ return document.getElementById('canvas').getBoundingClientRect().left });
+  canvas_y = EM_ASM_INT({ return document.getElementById('canvas').getBoundingClientRect().top });
   if (fullscreen) {
     canvas_w  = window_w;
     canvas_h = window_h;
@@ -4367,9 +4388,9 @@ void hal_window_position(window_t _, int* x, int*  y) {
   if (!active_window)
     return;
   if (x)
-    *x = EM_ASM_INT({ return document.getElementById('canvas').getBoundingClientRect().left });
+    *x = canvas_x;
   if (y)
-    *y = EM_ASM_INT({ return document.getElementById('canvas').getBoundingClientRect().top });;
+    *y = canvas_y;
 }
 
 void hal_screen_size(window_t _, int* w, int* h) {

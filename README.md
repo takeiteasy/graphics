@@ -26,7 +26,7 @@ No external libraries are used unless you want to use the alternate backends. I 
 
 On OS X you'll have to link Cocoa framework ```-framework Cocoa``` and include the ```-x objective-c -fno-objc-arc``` flags. If you're using OpenGL backend ```-framework OpenGL``` and ```-framework Metal -framework MetalKit``` for Metal. Also, if you're using XCode you'll also have to disable modules in the build settings, becuase modules imports curses with stdio for some reason.
 
-NOTE: On OS X 10.14, something changed and CoreGraphics isn't working like it used to. So if you're using 10.14 Metal is now the default rending backend. See above.
+**NOTE**: On OS X 10.14, something changed and CoreGraphics isn't working like it used to. So if you're using 10.14 Metal is now the default rending backend. See above.
 
 On Linux you'll have to link libX11 and libm ```-lX11 -lm```, and if you're using the OpenGL backend include ```-ld -lGL```. **NOTE**: X11 can't automatically strech stuff being rendered like ```StretchDIBits``` and ```CGContextDrawImage``` can - so resizing the window is disabled (_until I can find a solution_) unless you're using the OpenGL backend.
 
@@ -38,18 +38,10 @@ On Windows (Visual Studio) you'll have to add ```/utf-8``` to the command line o
 -  Ubuntu 19 x86_64 (Linux 4.13.0-16) (Inside VM only) (clang)
 
 
-## Screenshots
+## Screenshot
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshots/screenshot_osx.png">
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshots/screenshot_win.png">
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshots/screenshot_nix.png">
+  <img src="https://raw.githubusercontent.com/takeiteasy/graphics.h/master/screenshot.png">
 </p>
 
 

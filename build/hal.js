@@ -1,4 +1,4 @@
-var gui = undefined, stats = undefined, ansi_up = new AnsiUp();
+var stats = undefined, ansi_up = new AnsiUp();
 var hal_settings = function() {
   this.resize_canvas = true;
   this.lock_cursor = false;
