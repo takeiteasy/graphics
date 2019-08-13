@@ -934,20 +934,20 @@ extern "C" {
     KB_MOD_NUM_LOCK = 0x0020
   } KEY_MOD;
 
-  typedef struct screen_t* screen_t;
+  typedef struct window_t* window_t;
 
   /*!
-   * @discussion Set "parent" for a screen object. The parent pointer will be passed to screen callbacks.
-   * @param s Screen object
+   * @discussion Set "parent" for a window object. The parent pointer will be passed to window callbacks.
+   * @param s Window object
    * @param p Pointer to parent
    */
-  HALDEF void hal_screen_set_parent(screen_t s, void* p);
+  HALDEF void hal_window_set_parent(window_t s, void* p);
   /*!
-   * @discussion Get parent point from screen object
-   * @param s Screen object
+   * @discussion Get parent point from window object
+   * @param s Window object
    * @return Point to parent
    */
-  HALDEF void* hal_screen_parent(screen_t s);
+  HALDEF void* hal_window_parent(window_t s);
 
 #define XMAP_SCREEN_CB \
   X(keyboard, (void*, KEY_SYM, KEY_MOD, bool)) \
@@ -961,7 +961,7 @@ extern "C" {
 #define X(a, b) \
   void(*a##_cb)b,
   /*!
-   * @discussion Set callbacks for screen object
+   * @discussion Set callbacks for window object
    * @param keyboard Keyboard callback
    * @param mouse_button Mouse click callback
    * @param mouse_move Mouse movement callback
@@ -969,12 +969,12 @@ extern "C" {
    * @param focus Window focus/blur callback
    * @param resize Window resize callback
    * @param closed Window closed callback
-   * @param s Screen object
+   * @param s Window object
    */
-  HALDEF void hal_screen_callbacks(XMAP_SCREEN_CB screen_t screen);
+  HALDEF void hal_window_callbacks(XMAP_SCREEN_CB window_t window);
 #undef X
 #define X(a, b) \
-  HALDEF void hal_##a##_callback(screen_t screen, void(*a##_cb)b);
+  HALDEF void hal_##a##_callback(window_t window, void(*a##_cb)b);
   XMAP_SCREEN_CB
 #undef X
 
@@ -1017,51 +1017,65 @@ extern "C" {
   } WINDOW_FLAGS;
 
   /*!
-   * @discussion Create a new screen object
-   * @param s Screen object to be allocated
+   * @discussion Create a new window object
+   * @param s Window object to be allocated
    * @param t Window title
    * @param w Window width
    * @param h Window height
    * @param flags Window flags
    * @return Boolean of success
    */
-  HALDEF bool hal_screen(screen_t* s, const char* t, i32 w, i32 h, i16 flags);
+  HALDEF bool hal_window(window_t* s, const char* t, i32 w, i32 h, i16 flags);
   /*!
    * @discussion Set window icon from surface object
-   * @param s Screen object
+   * @param s Window object
    * @param b Surface object
    */
-  HALDEF void hal_screen_icon(screen_t s, surface_t b);
+  HALDEF void hal_window_icon(window_t s, surface_t b);
   /*!
    * @discussion Set window title
-   * @param s Screen object
+   * @param s Window object
    * @param t New title
    */
-  HALDEF void hal_screen_title(screen_t s, const char* t);
+  HALDEF void hal_window_title(window_t s, const char* t);
   /*!
-   * @discussion Destroy window object
-   * @param s Screen object
+   * @discussion Get the position of a window object
+   * @param s Window object
+   * @param x Pointer to int to set
+   * @param y Pointer to int to set
    */
-  HALDEF void hal_screen_destroy(screen_t* s);
+  HALDEF void hal_window_position(window_t s, int* x, int*  y);
   /*!
-   * @discussion Unique window ID for screen object
-   * @param s Screen object
-   * @return Unique ID of screen object
-   */
-  HALDEF i32  hal_screen_id(screen_t s);
-  /*!
-   * @discussion Get size of window
-   * @param s Screen object
+   * @discussion Get the size of the screen a window is on
+   * @param s Window object
    * @param w Pointer to int to set
    * @param h Pointer to int to set
    */
-  HALDEF void hal_screen_size(screen_t s, i32* w, i32* h);
+  HALDEF void hal_screen_size(window_t s, int* w, int* h);
+  /*!
+   * @discussion Destroy window object
+   * @param s Window object
+   */
+  HALDEF void hal_window_destroy(window_t* s);
+  /*!
+   * @discussion Unique window ID for window object
+   * @param s Window object
+   * @return Unique ID of window object
+   */
+  HALDEF i32  hal_window_id(window_t s);
+  /*!
+   * @discussion Get size of window
+   * @param s Window object
+   * @param w Pointer to int to set
+   * @param h Pointer to int to set
+   */
+  HALDEF void hal_window_size(window_t s, i32* w, i32* h);
   /*!
    * @discussion Check if a window is still open
-   * @param s Screen object
+   * @param s Window object
    * @return Boolean if window is open
    */
-  HALDEF bool hal_closed(screen_t s);
+  HALDEF bool hal_closed(window_t s);
 
   /*!
    * @discussion Lock or unlock cursor movement to active window
@@ -1075,16 +1089,16 @@ extern "C" {
   HALDEF void hal_cursor_visible(bool show);
   /*!
    * @discussion Change cursor icon to system icon
-   * @param s Screen object
+   * @param s Window object
    * @param t Type of cursor
    */
-  HALDEF void hal_cursor_icon(screen_t s, CURSOR_TYPE t);
+  HALDEF void hal_cursor_icon(window_t s, CURSOR_TYPE t);
   /*!
    * @discussion Change cursor icon to icon from surface object
-   * @param s Screen object
+   * @param s Window object
    * @param b Surface object
    */
-  HALDEF void hal_cursor_custom_icon(screen_t s, surface_t b);
+  HALDEF void hal_cursor_custom_icon(window_t s, surface_t b);
   /*!
    * @discussion Get cursor position
    * @param x Integer to set
@@ -1104,10 +1118,10 @@ extern "C" {
   HALDEF void hal_poll(void);
   /*!
    * @discussion Draw surface object to window
-   * @param s Screen object
+   * @param s Window object
    * @param b Surface object
    */
-  HALDEF void hal_flush(screen_t s, surface_t b);
+  HALDEF void hal_flush(window_t s, surface_t b);
   /*!
    * @discussion Release anything allocated by this library
    */

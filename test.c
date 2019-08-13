@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "hal.h"
 
-static screen_t win;
+static window_t win;
 static surface_t buf;
 static bool running = true;
 
@@ -25,7 +25,13 @@ void on_mouse_btn(void* _, MOUSE_BTN btn, KEY_MOD mod, bool down) {
 }
 
 void on_mouse_move(void* _, int x, int y, int dx, int dy) {
+#if defined(HAL_EMCC)
+  static int wx, wy;
+  hal_window_position(win, &wx, &wy);
+  printf("mouse move: %d,%d - %d,%d\n", x - wx, y - wy, dx, dy);
+#else
   printf("mouse move: %d,%d - %d,%d\n", x, y, dx, dy);
+#endif
 }
 
 void on_scroll(void* _, KEY_MOD mod, float dx, float dy) {
@@ -36,7 +42,7 @@ void on_focus(void* _, bool focused) {
   printf("%s\n", (focused ? "FOCUSED" : "UNFOCUSED"));
 }
 
-void on_resize(void* data, int w, int h) {
+void on_resize(void* _, int w, int h) {
   printf("resize: %d %d\n", w, h);
 }
 
@@ -56,12 +62,9 @@ void loop() {
 int main(int argc, const char* argv[]) {
   hal_error_callback(on_error);
 
-  hal_screen(&win, "test",  SW, SH, RESIZABLE);
-  hal_screen_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, on_closed, win);
-  
-  hal_closed_callback(win, on_closed);
-  
-  hal_screen_icon(NULL, NULL);
+  hal_window(&win, "test",  SW, SH, FULLSCREEN);
+  hal_window_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, on_closed, win);
+  hal_cursor_icon(win, CURSOR_HAND);
 
   hal_surface(&buf, SW, SH);
   hal_fill(buf, RED);
@@ -82,7 +85,7 @@ int main(int argc, const char* argv[]) {
 #endif
 
   hal_destroy(&buf);
-  hal_screen_destroy(&win);
+  hal_window_destroy(&win);
   return 0;
 }
 

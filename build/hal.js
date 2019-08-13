@@ -1,6 +1,5 @@
 var gui = undefined, stats = undefined, ansi_up = new AnsiUp();
 var hal_settings = function() {
-  this.fullscreen = undefined; 
   this.resize_canvas = true;
   this.lock_cursor = false;
   this.show_stdout = false;
@@ -29,6 +28,13 @@ function remove_class(el, className) {
     var reg = new RegExp('(\\s|^)' + className + '(\\s|$)');
     el.className = el.className.replace(reg, ' ');
   }
+}
+
+function toggle_class(el, className) {
+  if (has_class(el, className))
+    remove_class(el, className)
+  else
+    add_class(el, className)
 }
 
 document.addEventListener("DOMContentLoaded", function(e) {
@@ -112,30 +118,6 @@ document.addEventListener("DOMContentLoaded", function(e) {
   var output_border = document.getElementById('output_border');
   var canvas = document.getElementById('canvas');
 
-  settings.fullscreen = function() {
-    Module.requestFullscreen(settings.resize_canvas, false); 
-  };
-
-  gui = new dat.GUI();
-  var f0 = gui.addFolder('Settings');
-  f0.add(settings, 'fullscreen');
-  f0.add(settings, 'resize_canvas').onChange(function(v) {
-    if (has_class(canvas, 'resize_canvas'))
-      remove_class(canvas, 'resize_canvas')
-    else
-      add_class(canvas, 'resize_canvas')
-  });
-  f0.add(settings, 'lock_cursor').onChange(function(v) {
-    // TODO: Need to look this up
-  });
-  f0.add(settings, 'show_stdout').onChange(function(v) {
-    if (has_class(output_border, 'hide_output'))
-      remove_class(output_border, 'hide_output')
-    else
-      add_class(output_border, 'hide_output')
-  });
-  f0.open();  
-  
   stats = new Stats();
   stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
   document.body.appendChild(stats.dom);

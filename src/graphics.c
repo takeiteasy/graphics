@@ -2692,7 +2692,7 @@ SKIP_FILTERS:
 static i16 keycodes[512];
 static bool keycodes_init = false;
 
-struct screen_t {
+struct window_t {
   i32 id, w, h;
 
 #define X(a, b) \
@@ -2703,30 +2703,30 @@ struct screen_t {
     void *window, *parent;
 };
 
-static screen_t active_window = NULL;
+static window_t active_window = NULL;
 
 #define X(a, b) \
   void(*a##_cb)b,
-void hal_screen_callbacks(XMAP_SCREEN_CB screen_t screen) {
+void hal_window_callbacks(XMAP_SCREEN_CB window_t window) {
 #undef X
 #define X(a, b) \
-  screen->a##_callback = a##_cb;
+  window->a##_callback = a##_cb;
   XMAP_SCREEN_CB
 #undef X
 }
 
 #define X(a, b)\
-  void hal_##a##_callback(screen_t screen, void(*a##_cb)b) { \
-    screen->a##_callback = a##_cb; \
+  void hal_##a##_callback(window_t window, void(*a##_cb)b) { \
+    window->a##_callback = a##_cb; \
   }
 XMAP_SCREEN_CB
 #undef X
 
-HALDEF i32 hal_screen_id(screen_t s) {
+HALDEF i32 hal_window_id(window_t s) {
   return s->id;
 }
 
-HALDEF void hal_screen_size(screen_t s, i32* w, i32* h) {
+HALDEF void hal_window_size(window_t s, i32* w, i32* h) {
   if (w)
     *w = s->w;
   if (h)
@@ -3494,7 +3494,7 @@ static inline NSImage* create_cocoa_image(surface_t s) {
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate, AppViewDelegate>
 @property (unsafe_unretained) NSWindow* window;
 @property (weak) AppView* view;
-@property (nonatomic) screen_t parent;
+@property (nonatomic) window_t parent;
 @property BOOL closed;
 @end
 
@@ -3505,7 +3505,16 @@ static inline NSImage* create_cocoa_image(surface_t s) {
 @synthesize closed = _closed;
 
 -(id)initWithSize:(NSSize)windowSize styleMask:(short)flags title:(const char*)windowTitle {
-  NSWindowStyleMask styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
+  NSWindowStyleMask styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
+  flags |= (flags & FULLSCREEN ? (BORDERLESS | RESIZABLE | FULLSCREEN_DESKTOP) : 0);
+  styleMask |= (flags & RESIZABLE ? NSWindowStyleMaskResizable : 0);
+  styleMask |= (flags & BORDERLESS ? NSWindowStyleMaskFullSizeContentView : 0);
+  if (flags & FULLSCREEN_DESKTOP) {
+    NSRect f = [[NSScreen mainScreen] frame];
+    windowSize.width = f.size.width;
+    windowSize.height = f.size.height;
+    styleMask |= NSWindowStyleMaskFullSizeContentView;
+  }
   NSRect frameRect = NSMakeRect(0, 0, windowSize.width, windowSize.height);
   
   _window = [[NSWindow alloc] initWithContentRect:frameRect
@@ -3518,10 +3527,30 @@ static inline NSImage* create_cocoa_image(surface_t s) {
     return nil;
   }
   
+  if (flags & ALWAYS_ON_TOP)
+    [_window setLevel:NSFloatingWindowLevel];
+  
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7
+  if (flags & FULLSCREEN) {
+    [_window setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
+    [_window performSelectorOnMainThread: @selector(toggleFullScreen:) withObject:_window waitUntilDone:NO];
+  }
+#else
+#warning Fullscreen is unsupported on OSX versions < 10.7
+#endif
+  
   [_window setAcceptsMouseMovedEvents:YES];
   [_window setRestorable:NO];
   [_window setTitle:(windowTitle ? @(windowTitle) : [[NSProcessInfo processInfo] processName])];
   [_window setReleasedWhenClosed:NO];
+  
+  if (flags & BORDERLESS && flags & ~FULLSCREEN) {
+    [_window setTitle:@""];
+    [_window setTitlebarAppearsTransparent:YES];
+    [[_window standardWindowButton:NSWindowZoomButton] setHidden:YES];
+    [[_window standardWindowButton:NSWindowCloseButton] setHidden:YES];
+    [[_window standardWindowButton:NSWindowMiniaturizeButton] setHidden:YES];
+  }
   
   if (!active_window)
     [_window center];
@@ -3548,7 +3577,7 @@ static inline NSImage* create_cocoa_image(surface_t s) {
   return self;
 }
 
-- (void)setParent:(screen_t)screen {
+- (void)setParent:(window_t)screen {
   _parent = screen;
 }
 
@@ -3588,7 +3617,7 @@ static inline NSImage* create_cocoa_image(surface_t s) {
 #endif
 @end
 
-bool hal_screen(struct screen_t** s, const char* t, int w, int h, short flags) {
+bool hal_window(struct window_t** s, const char* t, int w, int h, short flags) {
   if (!keycodes_init) {
     memset(keycodes,  -1, sizeof(keycodes));
     
@@ -3720,19 +3749,19 @@ bool hal_screen(struct screen_t** s, const char* t, int w, int h, short flags) {
     return false;
   }
   
-  struct screen_t* screen = *s = HAL_MALLOC(sizeof(struct screen_t));
-  if (!screen) {
+  struct window_t* window = *s = HAL_MALLOC(sizeof(struct window_t));
+  if (!window) {
     hal_release();
     error_handle(OUT_OF_MEMEORY, "malloc failed");
     return false;
   }
-  memset(screen, 0, sizeof(*screen));
-  screen->id = (int)[[app window] windowNumber];
-  screen->w  = w;
-  screen->h  = h;
-  screen->window = (void*)app;
-  active_window = screen;
-  [app setParent:screen];
+  memset(window, 0, sizeof(*window));
+  window->id = (int)[[app window] windowNumber];
+  window->w  = w;
+  window->h  = h;
+  window->window = (void*)app;
+  active_window = window;
+  [app setParent:window];
   
   [NSApp activateIgnoringOtherApps:YES];
   [pool drain];
@@ -3741,7 +3770,7 @@ bool hal_screen(struct screen_t** s, const char* t, int w, int h, short flags) {
 
 #define SET_DEFAULT_APP_ICON [NSApp setApplicationIconImage:[NSImage imageNamed:@"NSApplicationIcon"]]
 
-void hal_screen_icon(screen_t s, surface_t b) {
+void hal_window_icon(window_t s, surface_t b) {
   if (!b || !b->buf) {
     SET_DEFAULT_APP_ICON;
     return;
@@ -3749,31 +3778,31 @@ void hal_screen_icon(screen_t s, surface_t b) {
   
   NSImage* img = create_cocoa_image(b);
   if (!img)  {
-    error_handle(WINDOW_ICON_FAILED, "hal_screen_icon_b() failed: Couldn't set window icon");
+    error_handle(WINDOW_ICON_FAILED, "hal_window_icon_b() failed: Couldn't set window icon");
     SET_DEFAULT_APP_ICON;
     return;
   }
   [NSApp setApplicationIconImage:img];
 }
 
-void hal_screen_title(screen_t s, const char* t) {
+void hal_window_title(window_t s, const char* t) {
   [[(AppDelegate*)s->window window] setTitle:@(t)];
 }
 
-void hal_screen_destroy(struct screen_t** s) {
+void hal_window_destroy(struct window_t** s) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-  struct screen_t* screen = *s;
-  AppDelegate* app = (AppDelegate*)screen->window;
+  struct window_t* window = *s;
+  AppDelegate* app = (AppDelegate*)window->window;
   if (app) {
     [[app view] dealloc];
     [[app window] close];
   }
   HAL_SAFE_FREE(app);
-  HAL_SAFE_FREE(screen);
+  HAL_SAFE_FREE(window);
   [pool drain];
 }
 
-bool hal_closed(screen_t s) {
+bool hal_closed(window_t s) {
   return (bool)[(AppDelegate*)s->window closed];
 }
 
@@ -3791,21 +3820,21 @@ void hal_cursor_visible(bool shown) {
     [NSCursor hide];
 }
 
-void hal_cursor_icon(screen_t s, CURSOR_TYPE t) {
+void hal_cursor_icon(window_t s, CURSOR_TYPE t) {
   if (!s) {
-    error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon() failed: Invalid screen");
+    error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon() failed: Invalid window");
     return;
   }
   
   AppDelegate* app = (AppDelegate*)s->window;
   if (!app) {
-    error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon() failed: Invalid screen");
+    error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon() failed: Invalid window");
     return;
   }
   [[app view] setRegularCursor:t];
 }
 
-void hal_cursor_icon_custom(screen_t s, surface_t b) {
+void hal_cursor_icon_custom(window_t s, surface_t b) {
   if (!s || !b) {
     error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon_custom_buf() failed: Invalid parameters");
     return;
@@ -3820,7 +3849,7 @@ void hal_cursor_icon_custom(screen_t s, surface_t b) {
   AppDelegate* app = (AppDelegate*)s->window;
   if (!app) {
     [img release];
-    error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon_custom_buf() failed: Invalid screen");
+    error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon_custom_buf() failed: Invalid window");
     return;
   }
   [[app view] setCustomCursor:img];
@@ -3833,7 +3862,7 @@ void hal_cursor_pos(int* x, int* y) {
   if (x)
     *x = _p.x;
   if (y)
-    *y = [[(AppDelegate*)active_window->window window] screen].frame.size.height - _p.y;
+    *y = [[(AppDelegate*)active_window->window window] window].frame.size.height - _p.y;
 }
 
 void hal_cursor_set_pos(int x, int y) {
@@ -3889,7 +3918,7 @@ void hal_poll(void) {
   [pool release];
 }
 
-void hal_flush(screen_t s, surface_t b) {
+void hal_flush(window_t s, surface_t b) {
   if (!s || !b)
     return;
   AppDelegate* tmp = (AppDelegate*)s->window;
@@ -3920,8 +3949,8 @@ void hal_release() {
 #include <string.h>
 #include <emscripten/html5.h>
 
-static i32 screen_w, screen_h, canvas_w, canvas_h;
-static bool mouse_in_canvas = true;
+static i32 window_w, window_h, canvas_w, canvas_h, cursor_x, cursor_y;
+static bool mouse_in_canvas = true, fullscreen = false;
 
 static KEY_MOD translate_mod(bool ctrl, bool shift, bool alt, bool meta) {
   return (KEY_MOD)((ctrl ? KB_MOD_CONTROL : 0) | (shift ? KB_MOD_SHIFT : 0) | (alt ? KB_MOD_ALT : 0) | (meta ? KB_MOD_SUPER : 0));
@@ -3950,9 +3979,10 @@ static EM_BOOL mouse_callback(int type, const EmscriptenMouseEvent* e, void* use
         CBCALL(mouse_button_callback, (MOUSE_BTN)(e->button + 1), translate_mod(e->ctrlKey, e->shiftKey, e->altKey, e->metaKey), false);
       break;
     case EMSCRIPTEN_EVENT_MOUSEMOVE:
+      cursor_x = e->clientX;
+      cursor_y = e->clientY;
       if (mouse_in_canvas)
-#warning TODO: mouse_callback() modify cursor xy if canvas scaled
-        CBCALL(mouse_move_callback, e->clientX - (screen_w / 2) + (canvas_w / 2), e->clientY, e->movementX, e->movementY);
+        CBCALL(mouse_move_callback, e->clientX, e->clientY, e->movementX, e->movementY);
       break;
     case EMSCRIPTEN_EVENT_MOUSEENTER:
       mouse_in_canvas = true;
@@ -3963,7 +3993,7 @@ static EM_BOOL mouse_callback(int type, const EmscriptenMouseEvent* e, void* use
     case EMSCRIPTEN_EVENT_CLICK:
     case EMSCRIPTEN_EVENT_DBLCLICK:
     default:
-      return false;
+      return true;
   }
   return true;
 }
@@ -3976,12 +4006,17 @@ static EM_BOOL wheel_callback(int type, const EmscriptenWheelEvent* e, void* use
 }
 
 static EM_BOOL uievent_callback(int type, const EmscriptenUiEvent* e, void* user_data) {
-  screen_w = e->documentBodyClientWidth;
-  screen_h = e->documentBodyClientHeight;
-  static double css_w, css_h;
-  emscripten_get_element_css_size(HAL_CANVAS_ID, &css_w, &css_h);
-  canvas_w = (i32)css_w;
-  canvas_h = (i32)css_h;
+  window_w = EM_ASM_INT_V({ return window.innerWidth; });
+  window_h = EM_ASM_INT_V({ return window.innerHeight; });
+  if (fullscreen) {
+    canvas_w  = window_w;
+    canvas_h = window_h;
+  } else {
+    static double css_w, css_h;
+    emscripten_get_element_css_size(HAL_CANVAS_ID, &css_w, &css_h);
+    canvas_w  = (i32)css_w;
+    canvas_h = (i32)css_h;
+  }
   return true;
 }
 
@@ -3991,40 +4026,35 @@ static EM_BOOL focusevent_callback(int type, const EmscriptenFocusEvent* e, void
 }
 
 static EM_BOOL fullscreenchange_callback(int type, const EmscriptenFullscreenChangeEvent* e, void* user_data) {
-  /*printf("%s, isFullscreen: %d, fullscreenEnabled: %d, fs element nodeName: \"%s\", fs element id: \"%s\". New size: %dx%d pixels. Screen size: %dx%d pixels.\n",
-         emscripten_event_type_to_string(eventType), e->isFullscreen, e->fullscreenEnabled, e->nodeName, e->id, e->elementWidth, e->elementHeight, e->screenWidth, e->screenHeight);*/
-#warning TODO: fullscreenchange_callback() implement fullscreen
-  return 0;
+  fullscreen = e->isFullscreen;
+  return true;
 }
 
 static EM_BOOL pointerlockchange_callback(int type, const EmscriptenPointerlockChangeEvent* e, void* user_data) {
-  /*printf("%s, isActive: %d, pointerlock element nodeName: \"%s\", id: \"%s\"\n",
-         emscripten_event_type_to_string(eventType), e->isActive, e->nodeName, e->id);*/
-#warning TODO: pointerlockchange_callback() implement cursor lock
-  return 0;
+  return true;
 }
 
-static const char* beforeunload_callback(int eventType, const void *reserved, void *userData) {
+static const char* beforeunload_callback(int type, const void* reserved, void* user_data) {
   return "Do you really want to leave the page?";
 }
 
-static EM_BOOL webglcontext_callback(int eventType, const void *reserved, void *userData) {
+static EM_BOOL webglcontext_callback(int type, const void* reserved, void* user_data) {
   /*printf("%s.\n", emscripten_event_type_to_string(eventType));*/
 #warning TODO: webglcontext_callback() implement GL emscripten context?
   return 0;
 }
 
-bool hal_screen(screen_t* s, const char* t, i32 w, i32 h, i16 flags) {
+bool hal_window(window_t* s, const char* t, i32 w, i32 h, i16 flags) {
   static bool window_already_open = false;
   if (window_already_open || active_window) {
-#warning TODO: hal_screen() handle error
+#warning TODO: hal_window() handle error
     return false;
   }
   
-  struct screen_t* screen = *s = active_window = HAL_MALLOC(sizeof(struct screen_t));
-  if (!screen) {
+  struct window_t* window = *s = active_window = HAL_MALLOC(sizeof(struct window_t));
+  if (!window) {
     hal_release();
-    error_handle(OUT_OF_MEMEORY, "malloc failed");
+    error_handle(OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
   
@@ -4276,25 +4306,9 @@ bool hal_screen(screen_t* s, const char* t, i32 w, i32 h, i16 flags) {
   emscripten_set_focusin_callback(0, 0, 1, focusevent_callback);
   emscripten_set_focusout_callback(0, 0, 1, focusevent_callback);
   
-  EmscriptenFullscreenChangeEvent fsce;
-  EMSCRIPTEN_RESULT ret = emscripten_get_fullscreen_status(&fsce);
-  if (ret == EMSCRIPTEN_RESULT_SUCCESS)
-    fullscreenchange_callback(EMSCRIPTEN_EVENT_FULLSCREENCHANGE, &fsce, 0);
-  
-  emscripten_set_fullscreenchange_callback(0, 0, 1, fullscreenchange_callback);
-  
-  emscripten_request_fullscreen(0, 1);
-  emscripten_exit_fullscreen();
-  
-  EmscriptenPointerlockChangeEvent plce;
-  ret = emscripten_get_pointerlock_status(&plce);
-  if (ret == EMSCRIPTEN_RESULT_SUCCESS)
-    pointerlockchange_callback(EMSCRIPTEN_EVENT_POINTERLOCKCHANGE, &plce, 0);
+  emscripten_set_fullscreenchange_callback(HAL_CANVAS_ID, 0, 1, fullscreenchange_callback);
   
   emscripten_set_pointerlockchange_callback(0, 0, 1, pointerlockchange_callback);
-  
-  emscripten_request_pointerlock(0, 1);
-  emscripten_exit_pointerlock();
   
   emscripten_set_beforeunload_callback(0, beforeunload_callback);
   
@@ -4303,45 +4317,81 @@ bool hal_screen(screen_t* s, const char* t, i32 w, i32 h, i16 flags) {
   
   EM_ASM(Module['noExitRuntime'] = true);
   
-  if (t)
-    hal_screen_title(NULL, t);
+#if defined(HAL_OPENGL)
   
-  double css_w, css_h;
+#endif
+  
+  if (t)
+    hal_window_title(NULL, t);
+  
   emscripten_set_canvas_element_size(HAL_CANVAS_ID, w, h);
-  emscripten_get_element_css_size(HAL_CANVAS_ID, &css_w, &css_h);
-  canvas_w  = (i32)css_w;
-  canvas_h = (i32)css_h;
-  screen_w = EM_ASM_INT_V({ return window.innerWidth; });
-  screen_h = EM_ASM_INT_V({ return window.innerHeight; });
+  EMSCRIPTEN_FULLSCREEN_SCALE fs_scale = EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT;
+  bool fs = false, soft_fs = false;
+  if (flags & FULLSCREEN_DESKTOP) {
+    fs_scale = EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH;
+    fs = true;
+  }
+  if (flags & FULLSCREEN) {
+    fs_scale = EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH;
+    fs = soft_fs = true;
+  }
+  if (fs) {
+    EmscriptenFullscreenStrategy fsf;
+    memset(&fsf, 0, sizeof(fsf));
+    fsf.scaleMode = fs_scale;
+    fsf.canvasResolutionScaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE;
+    fsf.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST;
+    fsf.canvasResizedCallback = uievent_callback;
+    if (soft_fs)
+      emscripten_enter_soft_fullscreen(0, &fsf);
+    else
+      emscripten_request_fullscreen_strategy(0, 1, &fsf);
+  }
+  uievent_callback(0, NULL, NULL);
   
   window_already_open = true;
   return true;
 }
 
-void hal_screen_icon(screen_t s, surface_t b) {
-#warning hal_screen_icon() unsupported on emscripten
+void hal_window_icon(window_t _, surface_t __) {
+#warning hal_window_icon() unsupported on emscripten
 }
 
-void hal_screen_title(screen_t s, const char* t) {
-#warning hal_screen_title() not working
+void hal_window_title(window_t _, const char* t) {
   EM_ASM({
-    if (typeof Module['setWindowTitle'] !== 'undefined') {
-      Module['setWindowTitle'](UTF8ToString($0));
-    }
+    setWindowTitle(UTF8ToString($0));
   }, t);
 }
 
-void hal_screen_destroy(screen_t* s) {
-  struct screen_t* screen = *s;
-  HAL_SAFE_FREE(screen);
+void hal_window_position(window_t _, int* x, int*  y) {
+  if (!active_window)
+    return;
+  if (x)
+    *x = EM_ASM_INT({ return document.getElementById('canvas').getBoundingClientRect().left });
+  if (y)
+    *y = EM_ASM_INT({ return document.getElementById('canvas').getBoundingClientRect().top });;
 }
 
-bool hal_closed(screen_t s) {
+void hal_screen_size(window_t _, int* w, int* h) {
+  if (!active_window)
+    return;
+  if (w)
+    *w = window_w;
+  if (h)
+    *h = window_h;
+}
+
+void hal_window_destroy(window_t* s) {
+  struct window_t* window = *s;
+  HAL_SAFE_FREE(window);
+}
+
+bool hal_closed(window_t _) {
   return false;
 }
 
 void hal_cursor_lock(bool locked) {
-#warning TODO: hal_cursor_lock() handle errors
+#warning hal_cursor_lock() unsupported on emscripten
   if (locked)
     emscripten_request_pointerlock(NULL, 1);
   else
@@ -4359,7 +4409,7 @@ void hal_cursor_visible(bool show) {
   }, cursor, show);
 }
 
-void hal_cursor_icon(screen_t s, CURSOR_TYPE t) {
+void hal_cursor_icon(window_t _, CURSOR_TYPE t) {
   if (cursor_custom && cursor)
     HAL_SAFE_FREE(cursor);
   cursor_custom = false;
@@ -4405,29 +4455,70 @@ void hal_cursor_icon(screen_t s, CURSOR_TYPE t) {
   hal_cursor_visible(true);
 }
 
-void hal_cursor_custom_icon(screen_t s, surface_t b) {
+void hal_cursor_custom_icon(window_t _, surface_t b) {
   if (cursor_custom && cursor)
     HAL_SAFE_FREE(cursor);
   
+  cursor = (const char*)EM_ASM_INT({
+    var w = $0;
+    var h = $1;
+    var pixels = $2;
+    var ctx = canvas.getContext("2d");
+    var canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    var image = ctx.createImageData(w, h);
+    var data = image.data;
+    var src = pixels >> 2;
+    var dst = 0;
+    var num = data.length;
+    while (dst < num) {
+      var val = HEAP32[src];
+      data[dst  ] = (val >> 16) & 0xFF;
+      data[dst+1] = (val >> 8) & 0xFF;
+      data[dst+2] = val & 0xFF;
+      data[dst+3] = 0xFF;
+      src++;
+      dst += 4;
+    }
+    
+    ctx.putImageData(image, 0, 0);
+    var url = "url(" + canvas.toDataURL() + "), auto";
+    var url_buf = _malloc(url.length + 1);
+    stringToUTF8(url, url_buf, url.length + 1);
+    
+    return url_buf;
+  }, b->w, b->h, b->buf);
+  if (!cursor) {
+    error_handle(UNKNOWN_ERROR, "hal_cursor_custom_icon() failed");
+    cursor = "default";
+    cursor_custom = false;
+    return;
+  }
+  cursor_custom = true;
   hal_cursor_visible(true);
 }
 
 void hal_cursor_pos(i32* x, i32* y) {
-#warning hal_cursor_pos() not implemented
+  if (x)
+    *x = cursor_x;
+  if (y)
+    *y = cursor_y;
 }
 
-void hal_cursor_set_pos(i32 x, i32 y) {
-#warning hal_cursor_set_pos() not implemented
+void hal_cursor_set_pos(i32 _, i32 __) {
+#warning hal_cursor_set_pos() unsupported on emscripten
 }
 
 void hal_poll(void) {
-#warning TODO: hal_poll() make stats.js optional
+#if defined(HAL_DEBUG) && defined(HAL_EMCC_HTML)
   EM_ASM({
     stats.begin();
   });
+#endif
 }
 
-void hal_flush(screen_t s, surface_t b) {
+void hal_flush(window_t _, surface_t b) {
   EM_ASM({
     var w = $0;
     var h = $1;
@@ -4445,18 +4536,15 @@ void hal_flush(screen_t s, surface_t b) {
       data[i  ] = (val >> 16) & 0xFF;
       data[i+1] = (val >> 8) & 0xFF;
       data[i+2] = val & 0xFF;
-#if defined(HAL_NO_ALPHA)
       data[i+3] = 0xFF;
-#else
-      data[i+3] = (val >> 24) & 0xFF;
-#endif
       src++;
       i += 4;
     }
 
     ctx.putImageData(img, 0, 0);
-#warning TODO: hal_flush() make stats.js optional
+#if defined(HAL_DEBUG) && defined(HAL_EMCC_HTML)
     stats.end();
+#endif
   }, b->w, b->h, b->buf);
 }
 

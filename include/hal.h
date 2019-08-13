@@ -54,8 +54,6 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
-  
-#define HAL_METAL
 
 #if defined(__EMSCRIPTEN__) || defined(EMSCRIPTEN)
 #define HAL_EMCC
