@@ -769,7 +769,6 @@ extern "C" {
   HALDEF char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...);
 #endif
 
-#if !defined(HAL_NO_WINDOW)
   /*!
    * @typedef MOUSE_BTN
    * @brief A list of mouse buttons
@@ -1062,7 +1061,7 @@ extern "C" {
    * @param s Window object
    * @return Unique ID of window object
    */
-  HALDEF i32  hal_window_id(window_t s);
+  HALDEF i32 hal_window_id(window_t s);
   /*!
    * @discussion Get size of window
    * @param s Window object
@@ -1126,7 +1125,6 @@ extern "C" {
    * @discussion Release anything allocated by this library
    */
   HALDEF void hal_release(void);
-#endif
 
 #if defined(__cplusplus)
 }

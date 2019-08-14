@@ -116,20 +116,18 @@ struct surface_t {
   i32 *buf, w, h;
 };
 
-HALDEF void hal_surface_size(surface_t s, i32* w, i32* h) {
-  if (!s || !s->buf || (!w && !h))
-    return;
+void hal_surface_size(surface_t s, i32* w, i32* h) {
   if (w)
     *w = s->w;
   if (h)
     *h = s->h;
 }
 
-HALDEF i32* hal_surface_raw(surface_t s) {
-  return (!s || !s->buf ? NULL : s->buf);
+i32* hal_surface_raw(surface_t s) {
+  return s->buf;
 }
 
-HALDEF bool hal_surface(surface_t* _s, u32 w, u32 h) {
+bool hal_surface(surface_t* _s, u32 w, u32 h) {
   surface_t s = *_s = HAL_MALLOC(sizeof(struct surface_t));
   if (!s) {
     error_handle(OUT_OF_MEMEORY, "malloc() failed");
@@ -148,7 +146,7 @@ HALDEF bool hal_surface(surface_t* _s, u32 w, u32 h) {
   return true;
 }
 
-HALDEF void hal_destroy(surface_t* _s) {
+void hal_destroy(surface_t* _s) {
   surface_t s = *_s;
   if (!s)
     return;
@@ -157,7 +155,7 @@ HALDEF void hal_destroy(surface_t* _s) {
   *_s = NULL;
 }
 
-HALDEF void hal_fill(surface_t s, i32 col) {
+void hal_fill(surface_t s, i32 col) {
   for (i32 i = 0; i < s->w * s->h; ++i)
     s->buf[i] = col;
 }
@@ -209,19 +207,17 @@ static inline void flood_fn(surface_t s, i32 x, i32 y, i32 new, i32 old) {
   }
 }
 
-HALDEF void hal_flood(surface_t s, i32 x, i32 y, i32 col) {
-  if (!s || !s->buf || x < 0 || y < 0 || x >= s->w || y >= s->h)
+void hal_flood(surface_t s, i32 x, i32 y, i32 col) {
+  if (x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
   flood_fn(s, x, y, col, XYGET(s, x, y));
 }
 
-HALDEF void hal_cls(surface_t s) {
-  if (!s || !s->buf)
-    return;
+void hal_cls(surface_t s) {
   memset(s->buf, 0, s->w * s->h * sizeof(i32));
 }
 
-HALDEF void hal_pset(surface_t s, i32 x, i32 y, i32 c) {
+void hal_pset(surface_t s, i32 x, i32 y, i32 c) {
   if (x >= 0 && y >= 0 && x < s->w && y < s->h)
     s->buf[y * s->w + x] = c;
 }
@@ -245,13 +241,11 @@ static inline void blend(surface_t s, i32 x, i32 y, i32 c) {
 }
 #endif
 
-HALDEF i32 hal_pget(surface_t s, i32 x, i32 y) {
+i32 hal_pget(surface_t s, i32 x, i32 y) {
   return (!s || !s->buf || x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
 }
 
-HALDEF bool hal_paste(surface_t dst, surface_t src, i32 x, i32 y) {
-  if (!dst || !dst->buf || !src || !src->buf)
-    return false;
+bool hal_paste(surface_t dst, surface_t src, i32 x, i32 y) {
   if (x > dst->w || x < 0 || y > dst->h || y < 0)
     return false;
 
@@ -273,9 +267,7 @@ HALDEF bool hal_paste(surface_t dst, surface_t src, i32 x, i32 y) {
   return true;
 }
 
-HALDEF bool hal_clip_paste(surface_t dst, surface_t src, i32 x, i32 y, i32 rx, i32 ry, i32 rw, i32 rh) {
-  if (!dst || !dst->buf || !src || !src->buf)
-    return false;
+bool hal_clip_paste(surface_t dst, surface_t src, i32 x, i32 y, i32 rx, i32 ry, i32 rw, i32 rh) {
   if (rx == rw || ry == rh)
     return false;
 
@@ -316,7 +308,7 @@ HALDEF bool hal_clip_paste(surface_t dst, surface_t src, i32 x, i32 y, i32 rx, i
   return true;
 }
 
-HALDEF bool hal_reset(surface_t s, i32 nw, i32 nh) {
+bool hal_reset(surface_t s, i32 nw, i32 nh) {
   size_t sz = nw * nh * sizeof(u32) + 1;
   i32* tmp = HAL_REALLOC(s->buf, sz);
   if (!tmp) {
@@ -330,7 +322,7 @@ HALDEF bool hal_reset(surface_t s, i32 nw, i32 nh) {
   return true;
 }
 
-HALDEF bool hal_copy(surface_t a, surface_t* b) {
+bool hal_copy(surface_t a, surface_t* b) {
   if (!hal_surface(b, a->w, a->h))
     return false;
   surface_t tmp = *b;
@@ -338,14 +330,14 @@ HALDEF bool hal_copy(surface_t a, surface_t* b) {
   return !!tmp->buf;
 }
 
-HALDEF void hal_passthru(surface_t s, i32 (*fn)(i32 x, i32 y, i32 col)) {
+void hal_passthru(surface_t s, i32 (*fn)(i32 x, i32 y, i32 col)) {
   i32 x, y;
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
       hal_pset(s, x, y, fn(x, y, XYGET(s, x, y)));
 }
 
-HALDEF bool hal_resize(surface_t a, i32 nw, i32 nh, surface_t* b) {
+bool hal_resize(surface_t a, i32 nw, i32 nh, surface_t* b) {
   if (!hal_surface(b, nw, nh))
     return false;
 
@@ -367,7 +359,7 @@ HALDEF bool hal_resize(surface_t a, i32 nw, i32 nh, surface_t* b) {
   return true;
 }
 
-HALDEF bool hal_rotate(surface_t a, float angle, surface_t* b) {
+bool hal_rotate(surface_t a, float angle, surface_t* b) {
   float theta = HAL_D2R(angle);
   float c = cosf(theta), s = sinf(theta);
   float r[3][2] = {
@@ -566,7 +558,7 @@ static inline oct_node_t* node_fold(oct_node_t* p) {
   return q;
 }
 
-HALDEF void color_replace(oct_node_t* root, i32* buf) {
+void color_replace(oct_node_t* root, i32* buf) {
   u8 i, bit;
   i32 c = *buf;
   i32 r = R(c), g = G(c), b = B(c);
@@ -581,7 +573,7 @@ HALDEF void color_replace(oct_node_t* root, i32* buf) {
   *buf = RGB((i32)root->r, (i32)root->g, (i32)root->b);
 }
 
-HALDEF void hal_quantize(surface_t a, i32 n_colors, surface_t* b) {
+void hal_quantize(surface_t a, i32 n_colors, surface_t* b) {
   surface_t tmp = (b ? *b : NULL);
   if (!tmp)
     tmp = a;
@@ -658,10 +650,7 @@ static inline void hal_hline(surface_t s, i32 y, i32 x0, i32 x1, i32 col) {
     blend(s, x, y, col);
 }
 
-HALDEF void hal_line(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 col) {
-  if (!s || !s->buf)
-    return;
-
+void hal_line(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 col) {
   if (x0 == x1)
     hal_vline(s, x0, y0, y1, col);
   if (y0 == y1)
@@ -678,10 +667,7 @@ HALDEF void hal_line(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 col) {
   }
 }
 
-HALDEF void hal_circle(surface_t s, i32 xc, i32 yc, i32 r, i32 col, bool fill) {
-  if (!s || !s->buf)
-    return;
-
+void hal_circle(surface_t s, i32 xc, i32 yc, i32 r, i32 col, bool fill) {
   i32 x = -r, y = 0, err = 2 - 2 * r; /* II. Quadrant */
   do {
     blend(s, xc - x, yc + y, col);    /*   I. Quadrant */
@@ -702,10 +688,7 @@ HALDEF void hal_circle(surface_t s, i32 xc, i32 yc, i32 r, i32 col, bool fill) {
   } while (x < 0);
 }
 
-HALDEF void hal_rect(surface_t s, i32 x, i32 y, i32 w, i32 h, i32 col, bool fill) {
-  if (!s || !s->buf)
-    return;
-
+void hal_rect(surface_t s, i32 x, i32 y, i32 w, i32 h, i32 col, bool fill) {
   if (x < 0) {
     w += x;
     x  = 0;
@@ -743,7 +726,7 @@ HALDEF void hal_rect(surface_t s, i32 x, i32 y, i32 w, i32 h, i32 col, bool fill
     b = temp;          \
   } while(0)
 
-HALDEF void hal_tri(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 x2, i32 y2, i32 col, bool fill) {
+void hal_tri(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 x2, i32 y2, i32 col, bool fill) {
   if (y0 ==  y1 && y0 ==  y2)
     return;
   if (fill) {
@@ -823,7 +806,7 @@ typedef struct {
   memcpy(d, b + off, s); \
   off += s;
 
-HALDEF bool hal_bmp(surface_t* s, const char* path) {
+bool hal_bmp(surface_t* s, const char* path) {
   FILE* fp = fopen(path, "rb");
   if (!fp) {
     error_handle(FILE_OPEN_FAILED, "fopen() failed: %s", path);
@@ -920,7 +903,7 @@ HALDEF bool hal_bmp(surface_t* s, const char* path) {
   return true;
 }
 
-HALDEF bool hal_save_bmp(surface_t s, const char* path) {
+bool hal_save_bmp(surface_t s, const char* path) {
   const i32 filesize = 54 + 3 * s->w * s->h;
   u8* img = HAL_MALLOC(3 * s->w * s->h);
   if (!img) {
@@ -1647,7 +1630,7 @@ static inline void str_size(const char* str, i32* w, i32* h) {
   *h = l;
 }
 
-HALDEF i32 ctoi(const char* c, i32* out) {
+i32 ctoi(const char* c, i32* out) {
   i32 u = *c, l = 1;
   if ((u & 0xC0) == 0xC0) {
     i32 a = (u & 0x20) ? ((u & 0x10) ? ((u & 0x08) ? ((u & 0x04) ? 6 : 5) : 4) : 3) : 2;
@@ -1686,7 +1669,7 @@ static inline i32 letter_index(i32 c) {
   }
 }
 
-HALDEF void hal_ascii(surface_t s, i8 ch, i32 x, i32 y, i32 fg, i32 bg) {
+void hal_ascii(surface_t s, i8 ch, i32 x, i32 y, i32 fg, i32 bg) {
   i32 c = letter_index((i32)ch), i, j;
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 8; ++j) {
@@ -1701,7 +1684,7 @@ HALDEF void hal_ascii(surface_t s, i8 ch, i32 x, i32 y, i32 fg, i32 bg) {
   }
 }
 
-HALDEF i32 hal_character(surface_t s, const char* ch, i32 x, i32 y, i32 fg, i32 bg) {
+i32 hal_character(surface_t s, const char* ch, i32 x, i32 y, i32 fg, i32 bg) {
   i32 u = -1;
   i32 l = ctoi(ch, &u);
   i32 uc = letter_index(u), i, j;
@@ -1719,7 +1702,7 @@ HALDEF i32 hal_character(surface_t s, const char* ch, i32 x, i32 y, i32 fg, i32 
   return l;
 }
 
-HALDEF void hal_writeln(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* str) {
+void hal_writeln(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* str) {
   const char* c = str;
   i32 u = x, v = y, col, len;
   while (c && *c != '\0')
@@ -1752,7 +1735,7 @@ HALDEF void hal_writeln(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* s
     }
 }
 
-HALDEF void hal_writelnf(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...) {
+void hal_writelnf(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...) {
   i8* buffer = NULL;
   i32 buffer_size = 0;
 
@@ -1773,7 +1756,7 @@ HALDEF void hal_writelnf(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* 
   HAL_SAFE_FREE(buffer);
 }
 
-HALDEF void hal_string(surface_t* s, i32 fg, i32 bg, const char* str) {
+void hal_string(surface_t* s, i32 fg, i32 bg, const char* str) {
   i32 w, h;
   str_size(str, &w, &h);
   hal_surface(s, w * 8, h * LINE_HEIGHT);
@@ -1781,7 +1764,7 @@ HALDEF void hal_string(surface_t* s, i32 fg, i32 bg, const char* str) {
   hal_writeln(*s, 0, 0, fg, bg, str);
 }
 
-HALDEF void hal_stringf(surface_t* s, i32 fg, i32 bg, const char* fmt, ...) {
+void hal_stringf(surface_t* s, i32 fg, i32 bg, const char* fmt, ...) {
   i8* buffer = NULL;
   i32 buffer_size = 0;
 
@@ -1805,7 +1788,7 @@ HALDEF void hal_stringf(surface_t* s, i32 fg, i32 bg, const char* fmt, ...) {
 
 static i32 ticks_started = 0;
 
-HALDEF i64 hal_ticks() {
+i64 hal_ticks() {
 #if defined(HAL_WINDOWS)
   static LARGE_INTEGER ticks_start;
   if (!ticks_started) {
@@ -1831,7 +1814,7 @@ HALDEF i64 hal_ticks() {
 #endif
 }
 
-HALDEF void hal_delay(i64 ms) {
+void hal_delay(i64 ms) {
 #if defined(HAL_WINDOWS)
   Sleep((DWORD)ms);
 #else
@@ -1864,7 +1847,7 @@ struct bdf_t {
   i32 n_chars;
 };
 
-HALDEF void hal_bdf_destroy(struct bdf_t** _f) {
+void hal_bdf_destroy(struct bdf_t** _f) {
   if (!*_f)
     return;
 
@@ -1891,7 +1874,7 @@ static inline i32 htoi(const char* p) {
   return (*p <= '9' ? *p - '0' : (*p <= 'F' ? *p - 'A' + 10 : *p - 'a' + 10));
 }
 
-HALDEF bool hal_bdf(struct bdf_t** _out, const char* path) {
+bool hal_bdf(struct bdf_t** _out, const char* path) {
   struct bdf_t* out = *_out = HAL_MALLOC(sizeof(struct bdf_t));
   if (!out) {
     error_handle(OUT_OF_MEMEORY, "malloc() failed");
@@ -2037,7 +2020,7 @@ HALDEF bool hal_bdf(struct bdf_t** _out, const char* path) {
   return true;
 }
 
-HALDEF i32 hal_bdf_character(surface_t s, struct bdf_t* f, const char* ch, i32 x, i32 y, i32 fg, i32 bg) {
+i32 hal_bdf_character(surface_t s, struct bdf_t* f, const char* ch, i32 x, i32 y, i32 fg, i32 bg) {
   i32 u = -1, i, j, n;
   i32 l = ctoi(ch, &u);
   for (i = 0; i < f->n_chars; ++i)
@@ -2059,7 +2042,7 @@ HALDEF i32 hal_bdf_character(surface_t s, struct bdf_t* f, const char* ch, i32 x
   return l;
 }
 
-HALDEF void hal_bdf_writeln(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg, const char* str) {
+void hal_bdf_writeln(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg, const char* str) {
   const char* c = (const char*)str;
   i32 u = x, v = y, col, len;
   while (c && *c != '\0') {
@@ -2095,7 +2078,7 @@ HALDEF void hal_bdf_writeln(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg, 
   }
 }
 
-HALDEF void hal_bdf_writelnf(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...) {
+void hal_bdf_writelnf(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...) {
   i8* buffer = NULL;
   i32 buffer_size = 0;
 
@@ -2116,7 +2099,7 @@ HALDEF void hal_bdf_writelnf(surface_t s, struct bdf_t* f, i32 x, i32 y, i32 fg,
   HAL_SAFE_FREE(buffer);
 }
 
-HALDEF void hal_bdf_string(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* str) {
+void hal_bdf_string(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* str) {
   i32 w, h;
   str_size(str, &w, &h);
   hal_surface(s, w * 8, h * LINE_HEIGHT);
@@ -2124,7 +2107,7 @@ HALDEF void hal_bdf_string(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const 
   hal_bdf_writeln(*s, f, 0, 0, fg, bg, str);
 }
 
-HALDEF void hal_bdf_stringf(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* fmt, ...) {
+void hal_bdf_stringf(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* fmt, ...) {
   i8* buffer = NULL;
   i32 buffer_size = 0;
 
@@ -2161,43 +2144,43 @@ struct gif_t {
   surface_t* surfaces;
 };
 
-HALDEF i32 hal_gif_delay(gif_t g) {
+i32 hal_gif_delay(gif_t g) {
   return g->delay;
 }
 
-HALDEF i32 hal_gif_total_frames(gif_t g) {
+i32 hal_gif_total_frames(gif_t g) {
   return g->frames;
 }
 
-HALDEF i32 hal_gif_current_frame(gif_t g) {
+i32 hal_gif_current_frame(gif_t g) {
   return g->frame;
 }
 
-HALDEF void hal_gif_size(gif_t g, i32* w, i32* h) {
+void hal_gif_size(gif_t g, i32* w, i32* h) {
   if (w)
     *w = g->w;
   if (h)
     *h = g->h;
 }
 
-HALDEF i32 hal_gif_next_frame(gif_t g) {
+i32 hal_gif_next_frame(gif_t g) {
   g->frame++;
   if (g->frame >= g->frames)
     g->frame = 0;
   return g->frame;
 }
 
-HALDEF void hal_gif_set_frame(gif_t g, i32 n) {
+void hal_gif_set_frame(gif_t g, i32 n) {
   if (n >= g->frames || n < 0)
     return;
   g->frame = n;
 }
 
-HALDEF surface_t hal_gif_frame(gif_t g) {
+surface_t hal_gif_frame(gif_t g) {
   return g->surfaces[g->frame];
 }
 
-HALDEF void hal_gif_create(gif_t* _g, i32 w, i32 h, i32 delay, i32 frames, ...) {
+void hal_gif_create(gif_t* _g, i32 w, i32 h, i32 delay, i32 frames, ...) {
   gif_t g = *_g = HAL_MALLOC(sizeof(gif_t));
   if (!g) {
     error_handle(OUT_OF_MEMEORY, "malloc() failed");
@@ -2463,7 +2446,7 @@ typedef struct {
 } gif_data_t;
 #pragma pack(pop)
 
-HALDEF void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
+void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
   u32 *pict, *prev, x, y, yoff, iter, ifin, dsrc, ddst;
   gif_data_t* gif = (gif_data_t*)data;
 
@@ -2523,7 +2506,7 @@ HALDEF void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
 #undef BGRA
 }
 
-HALDEF bool hal_gif(gif_t* _g, const char* path) {
+bool hal_gif(gif_t* _g, const char* path) {
   gif_t g = *_g = HAL_MALLOC(sizeof(struct gif_t));
 
   FILE* fp = fopen(path, "rb");
@@ -2559,12 +2542,12 @@ HALDEF bool hal_gif(gif_t* _g, const char* path) {
   return true;
 }
 
-HALDEF bool hal_save_gif(gif_t* g, const char* path) {
+bool hal_save_gif(gif_t* g, const char* path) {
 #warning TODO: hal_save_gif() reimplement
   return false
 }
 
-HALDEF void hal_gif_destroy(gif_t* _g) {
+void hal_gif_destroy(gif_t* _g) {
   gif_t g = *_g;
   if (!g)
     return;
@@ -2576,6 +2559,7 @@ HALDEF void hal_gif_destroy(gif_t* _g) {
 #endif // HAL_GIF
 
 #if !defined(HAL_NO_ALERTS)
+#if defined(HAL_OSX) && !defined(HAL_EXTERNAL_WINDOW)
 #include <AppKit/AppKit.h>
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_12
@@ -2584,7 +2568,7 @@ HALDEF void hal_gif_destroy(gif_t* _g) {
 #define NSAlertStyleCritical NSCriticalAlertStyle
 #endif
 
-HALDEF bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
+bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   NSAlert* alert = [[NSAlert alloc] init];
 
   switch (lvl) {
@@ -2627,7 +2611,7 @@ HALDEF bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return result;
 }
 
-HALDEF char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...) {
+char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...) {
   NSSavePanel* panel = nil;
   NSOpenPanel* open_panel = nil;
   NSMutableArray* file_types = nil;
@@ -2686,6 +2670,22 @@ SKIP_FILTERS:
     [file_types release];
   return result;
 }
+#elif defined(HAL_EMCC)
+bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
+  i8 buffer[BUFSIZ];
+  va_list args;
+  va_start(args, fmt);
+  vsprintf(buffer, fmt, args);
+  va_end(args);
+  return EM_ASM_INT({ confirm(UTF8ToString($0)); }, buffer);
+}
+
+char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...) {
+  return NULL;
+}
+#else
+#error Dialogs are unsupported on this platform
+#endif
 #endif // HAL_NO_ALERTS
 
 #if !defined(HAL_NO_WINDOW)
@@ -2695,38 +2695,35 @@ static bool keycodes_init = false;
 struct window_t {
   i32 id, w, h;
 
-#define X(a, b) \
-  void(*a##_callback)b;
+#define X(a, b) void(*a##_callback)b;
   XMAP_SCREEN_CB
 #undef X
 
-    void *window, *parent;
+  void *window, *parent;
 };
 
 static window_t active_window = NULL;
 
-#define X(a, b) \
-  void(*a##_cb)b,
+#define X(a, b) void(*a##_cb)b,
 void hal_window_callbacks(XMAP_SCREEN_CB window_t window) {
 #undef X
-#define X(a, b) \
-  window->a##_callback = a##_cb;
+#define X(a, b) window->a##_callback = a##_cb;
   XMAP_SCREEN_CB
 #undef X
 }
 
-#define X(a, b)\
-  void hal_##a##_callback(window_t window, void(*a##_cb)b) { \
-    window->a##_callback = a##_cb; \
-  }
+#define X(a, b) \
+void hal_##a##_callback(window_t window, void(*a##_cb)b) { \
+  window->a##_callback = a##_cb; \
+}
 XMAP_SCREEN_CB
 #undef X
 
-HALDEF i32 hal_window_id(window_t s) {
+i32 hal_window_id(window_t s) {
   return s->id;
 }
 
-HALDEF void hal_window_size(window_t s, i32* w, i32* h) {
+void hal_window_size(window_t s, i32* w, i32* h) {
   if (w)
     *w = s->w;
   if (h)
@@ -3033,7 +3030,7 @@ static inline void free_gl(GLuint vao, GLuint shader, GLuint texture) {
 }
 #endif
 
-#if defined(HAL_OSX)
+#if defined(HAL_OSX) && !defined(HAL_EXTERNAL_WINDOW)
 #include <Cocoa/Cocoa.h>
 #if defined(HAL_METAL)
 #include <MetalKit/MetalKit.h>
@@ -3107,16 +3104,16 @@ static inline NSImage* create_cocoa_image(surface_t s) {
     return nil;
 
   NSBitmapImageRep* nsbir = [[[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
-                                                                    pixelsWide:s->w
-                                                                    pixelsHigh:s->h
-                                                                 bitsPerSample:8
-                                                               samplesPerPixel:4
-                                                                      hasAlpha:YES
-                                                                      isPlanar:NO
-                                                                colorSpaceName:NSDeviceRGBColorSpace
-                                                                  bitmapFormat:NSBitmapFormatAlphaNonpremultiplied
-                                                                   bytesPerRow:0
-                                                                  bitsPerPixel:0] autorelease];
+                                                                     pixelsWide:s->w
+                                                                     pixelsHigh:s->h
+                                                                  bitsPerSample:8
+                                                                samplesPerPixel:4
+                                                                       hasAlpha:YES
+                                                                       isPlanar:NO
+                                                                 colorSpaceName:NSDeviceRGBColorSpace
+                                                                   bitmapFormat:NSBitmapFormatAlphaNonpremultiplied
+                                                                    bytesPerRow:0
+                                                                   bitsPerPixel:0] autorelease];
   if (!nsbir)
     return nil;
 
@@ -3840,11 +3837,6 @@ void hal_cursor_visible(bool shown) {
 }
 
 void hal_cursor_icon(window_t s, CURSOR_TYPE t) {
-  if (!s) {
-    error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon() failed: Invalid window");
-    return;
-  }
-  
   AppDelegate* app = (AppDelegate*)s->window;
   if (!app) {
     error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon() failed: Invalid window");
@@ -3854,11 +3846,6 @@ void hal_cursor_icon(window_t s, CURSOR_TYPE t) {
 }
 
 void hal_cursor_icon_custom(window_t s, surface_t b) {
-  if (!s || !b) {
-    error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon_custom_buf() failed: Invalid parameters");
-    return;
-  }
-  
   NSImage* img = create_cocoa_image(b);
   if (!img) {
     error_handle(CURSOR_MOD_FAILED, "hal_cursor_icon_custom_buf() failed: Couldn't set cursor from buffer");
@@ -3888,7 +3875,7 @@ void hal_cursor_set_pos(int x, int y) {
   CGWarpMouseCursorPosition((CGPoint){ x, y });
 }
 
-void hal_poll(void) {
+void hal_poll() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   NSEvent* e = nil;
   while ((e = [NSApp nextEventMatchingMask:NSEventMaskAny
@@ -3938,8 +3925,6 @@ void hal_poll(void) {
 }
 
 void hal_flush(window_t s, surface_t b) {
-  if (!s || !b)
-    return;
   AppDelegate* tmp = (AppDelegate*)s->window;
   if (!tmp)
     return;
@@ -3953,15 +3938,82 @@ void hal_release() {
   // Felt cute might delete later
   [pool drain];
 }
-#elif defined(HAL_WINDOWS)
-#error TODO: HAL_WINDOWS reimplement
-#elif defined(HAL_LINUX)
+#elif defined(HAL_WINDOWS) && !defined(HAL_EXTERNAL_WINDOW)
+bool hal_window(struct window_t** s, const char* t, int w, int h, short flags) {
+  return true;
+}
+
+void hal_window_icon(window_t s, surface_t b) {
+  
+}
+
+void hal_window_title(window_t s, const char* t) {
+  
+}
+
+void hal_window_position(window_t s, int* x, int*  y) {
+  
+}
+
+void hal_screen_size(window_t s, int* w, int* h) {
+  
+}
+
+
+void hal_window_destroy(struct window_t** s) {
+  
+}
+
+bool hal_closed(window_t s) {
+  return false;
+}
+
+void hal_cursor_lock(bool locked) {
+  
+}
+
+void hal_cursor_visible(bool shown) {
+  
+}
+
+void hal_cursor_icon(window_t s, CURSOR_TYPE t) {
+  
+}
+
+void hal_cursor_icon_custom(window_t s, surface_t b) {
+  
+}
+
+void hal_cursor_pos(int* x, int* y) {
+  
+}
+
+void hal_cursor_set_pos(int x, int y) {
+  
+}
+
+void hal_poll() {
+  
+}
+
+void hal_flush(window_t s, surface_t b) {
+  
+}
+
+void hal_release() {
+  
+}
+#elif defined(HAL_LINUX) && !defined(HAL_EXTERNAL_WINDOW)
 #error TODO: HAL_LINUX reimplement
 #elif defined(HAL_EMCC)
 
-#if !defined(HAL_CANVAS_ID)
-#define HAL_CANVAS_ID "#canvas"
+#if !defined(HAL_CANVAS_NAME)
+#if defined(HAL_CANVAS_ID)
+#error HAL_CANVAS_ID cannot be pre-defined unless HAL_CANVAS_NAME is also pre-defined
 #endif
+#define HAL_CANVAS_NAME "canvas"
+#endif
+#define HAL_CANVAS_ID "#" HAL_CANVAS_NAME
 
 #include <stdio.h>
 #include <emscripten.h>
@@ -3976,15 +4028,41 @@ static KEY_MOD translate_mod(bool ctrl, bool shift, bool alt, bool meta) {
 }
 
 static KEY_SYM translate_key(i32 key) {
-  return (key >= 222 ? KB_KEY_UNKNOWN : keycodes[key]);
+  return (key > 222 || key < 8 ? KB_KEY_UNKNOWN : keycodes[key]);
 }
 
 static EM_BOOL key_callback(int type, const EmscriptenKeyboardEvent* e, void* user_data) {
   static KEY_MOD mod;
+  static KEY_SYM sym;
   mod = translate_mod(e->ctrlKey, e->shiftKey, e->altKey, e->metaKey);
-  CBCALL(keyboard_callback, translate_key(e->keyCode), mod, (type == EMSCRIPTEN_EVENT_KEYDOWN));
-#warning TODO: key_callback() change to KB_MOD_CONTROL for Windows/Linux
-  return (e->keyCode == 82 && mod == KB_MOD_SUPER ? false : true);
+  sym = translate_key(e->keyCode);
+  CBCALL(keyboard_callback, sym, mod, (type == EMSCRIPTEN_EVENT_KEYDOWN));
+
+  switch (sym) {
+    case KB_KEY_R: // Reload
+    case KB_KEY_W: // Close tab (Just in case)
+    case KB_KEY_Q: // Close window (Just in case)
+#if defined(HAL_OSX)
+      return (mod == KB_MOD_SUPER);
+#else
+      return (mod == KB_MOD_CONTROL);
+#endif
+#if defined(HAL_DEBUG) && defined(HAL_EMCC_HTML)
+    case KB_KEY_F12: // Developer tools Edge
+      return true;
+    case KB_KEY_I: // Developer tools Chrome/Firefox
+    case KB_KEY_J: // Developer tools Chrome
+    case KB_KEY_C: // Developer tools Safari/Firefox
+    case KB_KEY_K: // Developer tools Firefox
+#if defined(HAL_OSX)
+      return (mod == (KB_MOD_SUPER & KB_MOD_ALT));
+#else
+      return (mod == (KB_MOD_SUPER & KB_MOD_SHIFT));
+#endif
+#endif
+    default:
+      return false;
+  }
 }
 
 static EM_BOOL mouse_callback(int type, const EmscriptenMouseEvent* e, void* user_data) {
@@ -4027,8 +4105,8 @@ static EM_BOOL wheel_callback(int type, const EmscriptenWheelEvent* e, void* use
 static EM_BOOL uievent_callback(int type, const EmscriptenUiEvent* e, void* user_data) {
   window_w = EM_ASM_INT_V({ return window.innerWidth; });
   window_h = EM_ASM_INT_V({ return window.innerHeight; });
-  canvas_x = EM_ASM_INT({ return document.getElementById('canvas').getBoundingClientRect().left });
-  canvas_y = EM_ASM_INT({ return document.getElementById('canvas').getBoundingClientRect().top });
+  canvas_x = EM_ASM_INT({ return Module['canvas'].getBoundingClientRect().left });
+  canvas_y = EM_ASM_INT({ return Module['canvas'].getBoundingClientRect().top });
   if (fullscreen) {
     canvas_w  = window_w;
     canvas_h = window_h;
@@ -4060,8 +4138,7 @@ static const char* beforeunload_callback(int type, const void* reserved, void* u
 }
 
 static EM_BOOL webglcontext_callback(int type, const void* reserved, void* user_data) {
-  /*printf("%s.\n", emscripten_event_type_to_string(eventType));*/
-#warning TODO: webglcontext_callback() implement GL emscripten context?
+#warning TODO: webglcontext_callback() handle error
   return 0;
 }
 
@@ -4079,38 +4156,18 @@ bool hal_window(window_t* s, const char* t, i32 w, i32 h, i16 flags) {
     return false;
   }
   
-  keycodes[0] = KB_KEY_UNKNOWN;
-  keycodes[1] = KB_KEY_UNKNOWN;
-  keycodes[2] = KB_KEY_UNKNOWN;
-  keycodes[3] = KB_KEY_UNKNOWN;
-  keycodes[4] = KB_KEY_UNKNOWN;
-  keycodes[5] = KB_KEY_UNKNOWN;
-  keycodes[6] = KB_KEY_UNKNOWN;
-  keycodes[7] = KB_KEY_UNKNOWN;
+  for (int i = 0; i < KB_KEY_LAST; ++i)
+    keycodes[i] = KB_KEY_UNKNOWN;
+  
   keycodes[8] = KB_KEY_BACKSPACE;
   keycodes[9] = KB_KEY_TAB;
-  keycodes[10] = KB_KEY_UNKNOWN;
-  keycodes[11] = KB_KEY_UNKNOWN;
-  keycodes[12] = KB_KEY_UNKNOWN;
   keycodes[13] = KB_KEY_ENTER;
-  keycodes[14] = KB_KEY_UNKNOWN;
-  keycodes[15] = KB_KEY_UNKNOWN;
   keycodes[16] = KB_KEY_LEFT_SHIFT;
   keycodes[17] = KB_KEY_LEFT_CONTROL;
   keycodes[18] = KB_KEY_LEFT_ALT;
   keycodes[19] = KB_KEY_PAUSE;
   keycodes[20] = KB_KEY_CAPS_LOCK;
-  keycodes[21] = KB_KEY_UNKNOWN;
-  keycodes[22] = KB_KEY_UNKNOWN;
-  keycodes[23] = KB_KEY_UNKNOWN;
-  keycodes[24] = KB_KEY_UNKNOWN;
-  keycodes[25] = KB_KEY_UNKNOWN;
-  keycodes[26] = KB_KEY_UNKNOWN;
   keycodes[27] = KB_KEY_ESCAPE;
-  keycodes[28] = KB_KEY_UNKNOWN;
-  keycodes[29] = KB_KEY_UNKNOWN;
-  keycodes[30] = KB_KEY_UNKNOWN;
-  keycodes[31] = KB_KEY_UNKNOWN;
   keycodes[32] = KB_KEY_SPACE;
   keycodes[33] = KB_KEY_PAGE_UP;
   keycodes[34] = KB_KEY_PAGE_DOWN;
@@ -4120,13 +4177,8 @@ bool hal_window(window_t* s, const char* t, i32 w, i32 h, i16 flags) {
   keycodes[38] = KB_KEY_UP;
   keycodes[39] = KB_KEY_RIGHT;
   keycodes[40] = KB_KEY_DOWN;
-  keycodes[41] = KB_KEY_UNKNOWN;
-  keycodes[42] = KB_KEY_UNKNOWN;
-  keycodes[43] = KB_KEY_UNKNOWN;
-  keycodes[44] = KB_KEY_UNKNOWN;
   keycodes[45] = KB_KEY_INSERT;
   keycodes[46] = KB_KEY_DELETE;
-  keycodes[47] = KB_KEY_UNKNOWN;
   keycodes[48] = KB_KEY_0;
   keycodes[49] = KB_KEY_1;
   keycodes[50] = KB_KEY_2;
@@ -4137,13 +4189,8 @@ bool hal_window(window_t* s, const char* t, i32 w, i32 h, i16 flags) {
   keycodes[55] = KB_KEY_7;
   keycodes[56] = KB_KEY_8;
   keycodes[57] = KB_KEY_9;
-  keycodes[58] = KB_KEY_UNKNOWN;
   keycodes[59] = KB_KEY_SEMICOLON;
-  keycodes[60] = KB_KEY_UNKNOWN;
   keycodes[61] = KB_KEY_EQUALS;
-  keycodes[62] = KB_KEY_UNKNOWN;
-  keycodes[63] = KB_KEY_UNKNOWN;
-  keycodes[64] = KB_KEY_UNKNOWN;
   keycodes[65] = KB_KEY_A;
   keycodes[66] = KB_KEY_B;
   keycodes[67] = KB_KEY_C;
@@ -4170,11 +4217,6 @@ bool hal_window(window_t* s, const char* t, i32 w, i32 h, i16 flags) {
   keycodes[88] = KB_KEY_X;
   keycodes[89] = KB_KEY_Y;
   keycodes[90] = KB_KEY_Z;
-  keycodes[91] = KB_KEY_UNKNOWN;
-  keycodes[92] = KB_KEY_UNKNOWN;
-  keycodes[93] = KB_KEY_UNKNOWN;
-  keycodes[94] = KB_KEY_UNKNOWN;
-  keycodes[95] = KB_KEY_UNKNOWN;
   keycodes[96] = KB_KEY_KP_0;
   keycodes[97] = KB_KEY_KP_1;
   keycodes[98] = KB_KEY_KP_2;
@@ -4187,7 +4229,6 @@ bool hal_window(window_t* s, const char* t, i32 w, i32 h, i16 flags) {
   keycodes[105] = KB_KEY_KP_9;
   keycodes[106] = KB_KEY_KP_MULTIPLY;
   keycodes[107] = KB_KEY_KP_ADD;
-  keycodes[108] = KB_KEY_UNKNOWN;
   keycodes[109] = KB_KEY_KP_SUBTRACT;
   keycodes[110] = KB_KEY_KP_DECIMAL;
   keycodes[111] = KB_KEY_KP_DIVIDE;
@@ -4215,56 +4256,9 @@ bool hal_window(window_t* s, const char* t, i32 w, i32 h, i16 flags) {
   keycodes[133] = KB_KEY_F22;
   keycodes[134] = KB_KEY_F23;
   keycodes[135] = KB_KEY_F24;
-  keycodes[136] = KB_KEY_UNKNOWN;
-  keycodes[137] = KB_KEY_UNKNOWN;
-  keycodes[138] = KB_KEY_UNKNOWN;
-  keycodes[139] = KB_KEY_UNKNOWN;
-  keycodes[140] = KB_KEY_UNKNOWN;
-  keycodes[141] = KB_KEY_UNKNOWN;
-  keycodes[142] = KB_KEY_UNKNOWN;
-  keycodes[143] = KB_KEY_UNKNOWN;
   keycodes[144] = KB_KEY_NUM_LOCK;
   keycodes[145] = KB_KEY_SCROLL_LOCK;
-  keycodes[146] = KB_KEY_UNKNOWN;
-  keycodes[147] = KB_KEY_UNKNOWN;
-  keycodes[148] = KB_KEY_UNKNOWN;
-  keycodes[149] = KB_KEY_UNKNOWN;
-  keycodes[150] = KB_KEY_UNKNOWN;
-  keycodes[151] = KB_KEY_UNKNOWN;
-  keycodes[152] = KB_KEY_UNKNOWN;
-  keycodes[153] = KB_KEY_UNKNOWN;
-  keycodes[154] = KB_KEY_UNKNOWN;
-  keycodes[155] = KB_KEY_UNKNOWN;
-  keycodes[156] = KB_KEY_UNKNOWN;
-  keycodes[157] = KB_KEY_UNKNOWN;
-  keycodes[158] = KB_KEY_UNKNOWN;
-  keycodes[159] = KB_KEY_UNKNOWN;
-  keycodes[160] = KB_KEY_UNKNOWN;
-  keycodes[161] = KB_KEY_UNKNOWN;
-  keycodes[162] = KB_KEY_UNKNOWN;
-  keycodes[163] = KB_KEY_UNKNOWN;
-  keycodes[164] = KB_KEY_UNKNOWN;
-  keycodes[165] = KB_KEY_UNKNOWN;
-  keycodes[166] = KB_KEY_UNKNOWN;
-  keycodes[167] = KB_KEY_UNKNOWN;
-  keycodes[168] = KB_KEY_UNKNOWN;
-  keycodes[169] = KB_KEY_UNKNOWN;
-  keycodes[170] = KB_KEY_UNKNOWN;
-  keycodes[171] = KB_KEY_UNKNOWN;
-  keycodes[172] = KB_KEY_UNKNOWN;
   keycodes[173] = KB_KEY_MINUS;
-  keycodes[174] = KB_KEY_UNKNOWN;
-  keycodes[175] = KB_KEY_UNKNOWN;
-  keycodes[176] = KB_KEY_UNKNOWN;
-  keycodes[177] = KB_KEY_UNKNOWN;
-  keycodes[178] = KB_KEY_UNKNOWN;
-  keycodes[179] = KB_KEY_UNKNOWN;
-  keycodes[180] = KB_KEY_UNKNOWN;
-  keycodes[181] = KB_KEY_UNKNOWN;
-  keycodes[182] = KB_KEY_UNKNOWN;
-  keycodes[183] = KB_KEY_UNKNOWN;
-  keycodes[184] = KB_KEY_UNKNOWN;
-  keycodes[185] = KB_KEY_UNKNOWN;
   keycodes[186] = KB_KEY_SEMICOLON;
   keycodes[187] = KB_KEY_EQUALS;
   keycodes[188] = KB_KEY_COMMA;
@@ -4272,32 +4266,6 @@ bool hal_window(window_t* s, const char* t, i32 w, i32 h, i16 flags) {
   keycodes[190] = KB_KEY_PERIOD;
   keycodes[191] = KB_KEY_SLASH;
   keycodes[192] = KB_KEY_GRAVE_ACCENT;
-  keycodes[193] = KB_KEY_UNKNOWN;
-  keycodes[194] = KB_KEY_UNKNOWN;
-  keycodes[195] = KB_KEY_UNKNOWN;
-  keycodes[196] = KB_KEY_UNKNOWN;
-  keycodes[197] = KB_KEY_UNKNOWN;
-  keycodes[198] = KB_KEY_UNKNOWN;
-  keycodes[199] = KB_KEY_UNKNOWN;
-  keycodes[200] = KB_KEY_UNKNOWN;
-  keycodes[201] = KB_KEY_UNKNOWN;
-  keycodes[202] = KB_KEY_UNKNOWN;
-  keycodes[203] = KB_KEY_UNKNOWN;
-  keycodes[204] = KB_KEY_UNKNOWN;
-  keycodes[205] = KB_KEY_UNKNOWN;
-  keycodes[206] = KB_KEY_UNKNOWN;
-  keycodes[207] = KB_KEY_UNKNOWN;
-  keycodes[208] = KB_KEY_UNKNOWN;
-  keycodes[209] = KB_KEY_UNKNOWN;
-  keycodes[210] = KB_KEY_UNKNOWN;
-  keycodes[211] = KB_KEY_UNKNOWN;
-  keycodes[212] = KB_KEY_UNKNOWN;
-  keycodes[213] = KB_KEY_UNKNOWN;
-  keycodes[214] = KB_KEY_UNKNOWN;
-  keycodes[215] = KB_KEY_UNKNOWN;
-  keycodes[216] = KB_KEY_UNKNOWN;
-  keycodes[217] = KB_KEY_UNKNOWN;
-  keycodes[218] = KB_KEY_UNKNOWN;
   keycodes[219] = KB_KEY_LEFT_BRACKET;
   keycodes[220] = KB_KEY_BACKSLASH;
   keycodes[221] = KB_KEY_RIGHT_BRACKET;
@@ -4385,8 +4353,6 @@ void hal_window_title(window_t _, const char* t) {
 }
 
 void hal_window_position(window_t _, int* x, int*  y) {
-  if (!active_window)
-    return;
   if (x)
     *x = canvas_x;
   if (y)
@@ -4394,8 +4360,6 @@ void hal_window_position(window_t _, int* x, int*  y) {
 }
 
 void hal_screen_size(window_t _, int* w, int* h) {
-  if (!active_window)
-    return;
   if (w)
     *w = window_w;
   if (h)
@@ -4575,4 +4539,90 @@ void hal_release(void) {
 #else
 #error Unsupported operating system, sorry
 #endif
+#else // This is just a dummy
+struct window_t {};
+
+#define X(a, b) void(*a##_cb)b,
+void hal_window_callbacks(XMAP_SCREEN_CB window_t a) {
+#undef X
+  return;
+}
+
+#define X(a, b) \
+void hal_##a##_callback(window_t window, void(*a##_cb)b) { \
+  return; \
+}
+XMAP_SCREEN_CB
+#undef X
+
+i32 hal_window_id(window_t a) {
+  return 0;
+}
+
+void hal_window_size(window_t a, i32* b, i32* c) {
+  return;
+}
+
+bool hal_window(window_t* a, const char* b, i32 c, i32 d, i16 e) {
+  return true;
+}
+
+void hal_window_icon(window_t a, surface_t b) {
+  return;
+}
+
+void hal_window_title(window_t a, const char* b) {
+  return;
+}
+
+void hal_window_position(window_t a, int* b, int*  c) {
+  return;
+}
+
+void hal_screen_size(window_t a, int* b, int* c) {
+  return;
+}
+
+void hal_window_destroy(window_t* a) {
+  return;
+}
+
+bool hal_closed(window_t a) {
+  return false;
+}
+
+void hal_cursor_lock(bool a) {
+  return;
+}
+
+void hal_cursor_visible(bool a) {
+  return;
+}
+
+void hal_cursor_icon(window_t a, CURSOR_TYPE b) {
+  return;
+}
+
+void hal_cursor_custom_icon(window_t a, surface_t b) {
+  return;
+}
+
+void hal_cursor_pos(i32* a, i32* b) {
+  return;
+}
+
+void hal_cursor_set_pos(i32 a, i32 b) {
+}
+
+void hal_poll() {
+  return;
+}
+
+void hal_flush(window_t a, surface_t b) {
+  return;
+}
+
+void hal_release() {
+  return;
+}
 #endif

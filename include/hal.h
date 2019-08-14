@@ -58,7 +58,10 @@ extern "C" {
 #if defined(__EMSCRIPTEN__) || defined(EMSCRIPTEN)
 #define HAL_EMCC
 #include <emscripten/emscripten.h>
-#elif defined(__gnu_linux__) || defined(__linux__) || defined(__unix__)
+#define HAL_EXTERNAL_WINDOW
+#endif
+  
+#if defined(__gnu_linux__) || defined(__linux__) || defined(__unix__)
 #define HAL_LINUX
 #elif defined(macintosh) || defined(Macintosh) || (defined(__APPLE__) && defined(__MACH__))
 #define HAL_OSX
