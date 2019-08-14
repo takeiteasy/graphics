@@ -132,6 +132,16 @@ extern "C" {
 #define HAL_VERSION_GIT "unknown"
 #endif
 
+// Taken from: https://stackoverflow.com/a/1911632
+#if _MSC_VER
+#define STRINGISE_IMPL(x) #x
+#define STRINGISE(x) STRINGISE_IMPL(x)
+#define FILE_LINE_LINK __FILE__ "(" STRINGISE(__LINE__) ") : "
+#define WARN(exp) (FILE_LINE_LINK "WARNING: " exp)
+#else
+#define WARN(exp) ("WARNING: " exp)
+#endif
+
 #if defined(HAL_ONLY_GRAPHICS)  || \
     defined(HAL_ONLY_AUDIO)     || \
     defined(HAL_ONLY_THREADS)   || \

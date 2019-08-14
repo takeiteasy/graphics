@@ -10,3 +10,4 @@ Makefile
 hal.xcodeproj/
 hal.xcodeproj/*
 tmp/
+*.obj

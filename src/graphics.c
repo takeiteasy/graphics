@@ -228,16 +228,16 @@ void hal_pset(surface_t s, i32 x, i32 y, i32 c) {
 #define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
 
 static inline void blend(surface_t s, i32 x, i32 y, i32 c) {
-  i32 a = A(c);
+  i32 a = HAL_A(c);
   if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
 
   i32* p = &s->buf[y * s->w + x];
-  i32  b = A(*p);
-  *p = (a == 255 || !b) ? c : RGBA(BLEND(R(c), R(*p), a, b),
-                                   BLEND(G(c), G(*p), a, b),
-                                   BLEND(B(c), B(*p), a, b),
-                                   a + (b * (255 - a) >> 8));
+  i32  b = HAL_A(*p);
+  *p = (a == 255 || !b) ? c : HAL_RGBA(BLEND(HAL_R(c), HAL_R(*p), a, b),
+                                       BLEND(HAL_G(c), HAL_G(*p), a, b),
+                                       BLEND(HAL_B(c), HAL_B(*p), a, b),
+                                       a + (b * (255 - a) >> 8));
 }
 #endif
 
@@ -525,7 +525,7 @@ static inline void free_node(oct_node_pool_t* pool) {
 static inline oct_node_t* node_insert(oct_node_pool_t* pool, oct_node_t* root, i32* buf) {
   u8 i, bit, depth = 0;
   i32 c = *buf;
-  i32 r = R(c), g = G(c), b = B(c);
+  i32 r = HAL_R(c), g = HAL_G(c), b = HAL_B(c);
 
   for (bit = 1 << 7; ++depth < 8; bit >>= 1) {
     i = !!(r & bit) * 4 + !!(g & bit) * 2 + !!(b & bit);
@@ -561,7 +561,7 @@ static inline oct_node_t* node_fold(oct_node_t* p) {
 void color_replace(oct_node_t* root, i32* buf) {
   u8 i, bit;
   i32 c = *buf;
-  i32 r = R(c), g = G(c), b = B(c);
+  i32 r = HAL_R(c), g = HAL_G(c), b = HAL_B(c);
 
   for (bit = 1 << 7; bit; bit >>= 1) {
     i = !!(r & bit) * 4 + !!(g & bit) * 2 + !!(b & bit);
@@ -570,7 +570,7 @@ void color_replace(oct_node_t* root, i32* buf) {
     root = root->kids[i];
   }
 
-  *buf = RGB((i32)root->r, (i32)root->g, (i32)root->b);
+  *buf = HAL_RGB((i32)root->r, (i32)root->g, (i32)root->b);
 }
 
 void hal_quantize(surface_t a, i32 n_colors, surface_t* b) {
@@ -838,7 +838,7 @@ bool hal_bmp(surface_t* s, const char* path) {
     return false;
   }
 
-#warning TODO: hal_bmp() add support for OS/2 bitmaps
+#pragma message WARN("TODO: hal_bmp() add support for OS/2 bitmaps")
 
   u8* color_map = NULL;
   i32 color_map_size = 0;
@@ -867,7 +867,7 @@ bool hal_bmp(surface_t* s, const char* path) {
         case 1:
         case 4:
         case 8:
-#warning TODO: hal_bmp() add 1, 4 & 8 bpp support
+#pragma message WARN("TODO: hal_bmp() add 1, 4 & 8 bpp support")
           error_handle(UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
           hal_destroy(s);
           break;
@@ -877,7 +877,7 @@ bool hal_bmp(surface_t* s, const char* path) {
           for (y = 0; y < info.height; ++y) {
             for (x = 0; x < info.width; ++x) {
               i = (x + y * info.width) * p;
-              (*s)->buf[(info.height - y) * info.width + x] = RGBA(data[off + i + 2], data[off + i + 1], data[off + i], (p == 3 ? 255 : data[off + i + 3]));
+              (*s)->buf[(info.height - y) * info.width + x] = HAL_RGBA(data[off + i + 2], data[off + i + 1], data[off + i], (p == 3 ? 255 : data[off + i + 3]));
             }
             off += ((4 - (info.width * p) % 4) % 4);
           }
@@ -892,7 +892,7 @@ bool hal_bmp(surface_t* s, const char* path) {
     case 1: // RLE8
     case 2: // RLE4
     default:
-#warning TODO: hal_bmp() add RLE support
+#pragma message WARN("TODO: hal_bmp() add RLE support")
       error_handle(UNSUPPORTED_BMP, "bmp() failed. Unsupported compression: %d", info.compression);
       HAL_SAFE_FREE(color_map);
       hal_destroy(s);
@@ -917,9 +917,9 @@ bool hal_save_bmp(surface_t s, const char* path) {
     for (j = s->h; j > 0; --j) {
       y = (s->h - 1) - j;
       c = XYGET(s, i, y);
-      img[(i + y * s->w) * 3 + 2] = (u8)R(c);
-      img[(i + y * s->w) * 3 + 1] = (u8)G(c);
-      img[(i + y * s->w) * 3 + 0] = (u8)B(c);
+      img[(i + y * s->w) * 3 + 2] = (u8)HAL_R(c);
+      img[(i + y * s->w) * 3 + 1] = (u8)HAL_G(c);
+      img[(i + y * s->w) * 3 + 0] = (u8)HAL_B(c);
     }
   }
 
@@ -1546,7 +1546,7 @@ static i32 extra_font_lookup[10] = {
 
 #if !defined(HAL_NO_TEXT_COLOR_PARSING)
 static inline i32 read_color(const char* str, i32* col, i32* len) {
-#warning TODO: read_color() alpha value wrong?
+#pragma message WARN("TODO: read_color() alpha value wrong?")
   const char* c = str;
   if (*c != '(')
     return 0;
@@ -1585,7 +1585,7 @@ static inline i32 read_color(const char* str, i32* col, i32* len) {
     c++;
   }
 
-  *col = RGBA(atoi(rgba[0]), atoi(rgba[1]), atoi(rgba[2]), atoi(rgba[3]));
+  *col = HAL_RGBA(atoi(rgba[0]), atoi(rgba[1]), atoi(rgba[2]), atoi(rgba[3]));
   return 1;
 }
 #endif // !defined(HAL_NO_TEXT_COLOR_PARSING)
@@ -2543,7 +2543,7 @@ bool hal_gif(gif_t* _g, const char* path) {
 }
 
 bool hal_save_gif(gif_t* g, const char* path) {
-#warning TODO: hal_save_gif() reimplement
+#pragma message WARN("TODO: hal_save_gif() reimplement")
   return false
 }
 
@@ -2678,6 +2678,14 @@ bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   vsprintf(buffer, fmt, args);
   va_end(args);
   return EM_ASM_INT({ confirm(UTF8ToString($0)); }, buffer);
+}
+
+char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...) {
+  return NULL;
+}
+#elif defined(HAL_WINDOWS)
+bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
+  return false;
 }
 
 char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...) {
@@ -3122,10 +3130,10 @@ static inline NSImage* create_cocoa_image(surface_t s) {
   for(i32 i = 0; i < s->h; ++i) {
     for (i32 j = 0; j < s->w; j++) {
       c = XYGET(s, j, i);
-      rgba[4 * offset]     = R(c);
-      rgba[4 * offset + 1] = G(c);
-      rgba[4 * offset + 2] = B(c);
-      rgba[4 * offset + 3] = A(c);
+      rgba[4 * offset]     = HAL_R(c);
+      rgba[4 * offset + 1] = HAL_G(c);
+      rgba[4 * offset + 2] = HAL_B(c);
+      rgba[4 * offset + 3] = HAL_A(c);
       offset++;
     }
   }
@@ -3533,7 +3541,7 @@ static inline NSImage* create_cocoa_image(surface_t s) {
     [_window performSelectorOnMainThread: @selector(toggleFullScreen:) withObject:_window waitUntilDone:NO];
   }
 #else
-#warning Fullscreen is unsupported on OSX versions < 10.7
+#pragma message WARN("Fullscreen is unsupported on OSX versions < 10.7")
 #endif
   
   [_window setAcceptsMouseMovedEvents:YES];
@@ -4138,14 +4146,14 @@ static const char* beforeunload_callback(int type, const void* reserved, void* u
 }
 
 static EM_BOOL webglcontext_callback(int type, const void* reserved, void* user_data) {
-#warning TODO: webglcontext_callback() handle error
+#pragma message WARN("TODO: webglcontext_callback() handle error")
   return 0;
 }
 
 bool hal_window(window_t* s, const char* t, i32 w, i32 h, i16 flags) {
   static bool window_already_open = false;
   if (window_already_open || active_window) {
-#warning TODO: hal_window() handle error
+#pragma message WARN("TODO: hal_window() handle error")
     return false;
   }
   
@@ -4343,7 +4351,7 @@ bool hal_window(window_t* s, const char* t, i32 w, i32 h, i16 flags) {
 }
 
 void hal_window_icon(window_t _, surface_t __) {
-#warning hal_window_icon() unsupported on emscripten
+#pragma message WARN("hal_window_icon() unsupported on emscripten")
 }
 
 void hal_window_title(window_t _, const char* t) {
@@ -4376,7 +4384,7 @@ bool hal_closed(window_t _) {
 }
 
 void hal_cursor_lock(bool locked) {
-#warning hal_cursor_lock() unsupported on emscripten
+#pragma message WARN("hal_cursor_lock() unsupported on emscripten")
   if (locked)
     emscripten_request_pointerlock(NULL, 1);
   else
@@ -4492,7 +4500,7 @@ void hal_cursor_pos(i32* x, i32* y) {
 }
 
 void hal_cursor_set_pos(i32 _, i32 __) {
-#warning hal_cursor_set_pos() unsupported on emscripten
+#pragma message WARN("hal_cursor_set_pos() unsupported on emscripten")
 }
 
 void hal_poll(void) {

@@ -3,5 +3,4 @@ examples/3rdparty/* linguist-vendored
 tools/* linguist-vendored=false
 *.c linguist-language=C
 *.h linguist-language=C
-build/ansi_up.js linguist-vendored
 build/stats.js linguist-vendored
