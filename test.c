@@ -72,8 +72,10 @@ int main(int argc, const char* argv[]) {
   surface_t img;
 #if defined(HAL_EMCC)
   hal_bmp(&img, "old/test/resources/Uncompressed-24.bmp");
-#else
+#elif defined(HAL_OSX)
   hal_bmp(&img, "/Users/roryb/git/hal/old/test/resources/Uncompressed-24.bmp");
+#elif defined(HAL_WINDOWS)
+  hal_bmp(&img, "Z:\\hal\\old\\test\\resources\\Uncompressed-24.bmp");
 #endif
   hal_paste(buf, img, 10, 10);
 

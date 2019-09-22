@@ -57,14 +57,6 @@ extern "C" {
 
 #include "hal.h"
 
-#if defined(_MSC_VER) && _MSC_VER <= 1600
-#define bool int
-#define true 1
-#define false 0
-#else
-#include <stdbool.h>
-#endif
-
 #define HAL_RGBA(r, g, b, a) ((((u32)(a)) << 24) | (((u32)(r)) << 16) | (((u32)(g)) << 8) | (b))
 #define HAL_RGB(r, g, b) (HAL_RGBA((r), (g), (b), 255))
 #define HAL_R(v) (((v) >> 16) & 0xFF)

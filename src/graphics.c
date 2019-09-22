@@ -3757,7 +3757,7 @@ bool hal_window(struct window_t** s, const char* t, int w, int h, short flags) {
   struct window_t* window = *s = HAL_MALLOC(sizeof(struct window_t));
   if (!window) {
     hal_release();
-    error_handle(OUT_OF_MEMEORY, "malloc failed");
+    error_handle(OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
   memset(window, 0, sizeof(*window));
@@ -3947,7 +3947,385 @@ void hal_release() {
   [pool drain];
 }
 #elif defined(HAL_WINDOWS) && !defined(HAL_EXTERNAL_WINDOW)
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
+typedef struct {
+  WNDCLASS wnd;
+  HWND hwnd;
+  HDC hdc;
+  BITMAPINFO* bmpinfo;
+  bool mouse_inside;
+} win32_window_t;
+
+typedef struct win32_node {
+  struct window_t* win;
+  struct win32_node* next;
+} win32_node_t;
+static win32_node_t* win32_head = NULL;
+
+void add_win_node(struct window_t* win) {
+  win32_node_t *cur = win32_head, *tmp = NULL;
+  if (!win32_head) {
+    win32_head = HAL_MALLOC(sizeof(win32_node_t));
+    if (!win32_head) {
+      error_handle(OUT_OF_MEMEORY, "malloc() failed");
+      return;
+    }
+    win32_head->win = win;
+    win32_head->next = NULL;
+  } else {
+    do {
+      tmp = cur;
+      cur = cur->next;
+    } while (cur);
+    
+    win32_node_t* new = HAL_MALLOC(sizeof(win32_node_t));
+    if (!new) {
+      error_handle(OUT_OF_MEMEORY, "malloc() failed");
+      return;
+    }
+    new->next = NULL;
+    new->win = win;
+    tmp->next = new;
+  }
+}
+
+void free_win_node(win32_node_t** node) {
+  win32_node_t* n = *node;
+  if (n->win)
+    hal_window_destroy(&n->win);
+  HAL_SAFE_FREE(n);
+}
+
+void del_win_node(struct window_t* win) {
+  win32_node_t *cur = win32_head, *prev = NULL;
+  do {
+    if (cur->win == win)
+      break;
+    prev = cur;
+    cur = cur->next;
+  } while (cur);
+  
+  if (cur == win32_head) {
+    prev = win32_head;
+    win32_head = cur->next;
+    free_win_node(&prev);
+    return;
+  }
+  if (!cur->next) {
+    prev->next = NULL;
+    free_win_node(&cur);
+    return;
+  }
+  prev->next = cur->next;
+  free_win_node(&cur);
+}
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+  static LRESULT res = 0;
+  switch (message) {
+    case WM_PAINT:
+      break;
+    case WM_DESTROY:
+    case WM_CLOSE:
+      break;
+    case WM_KEYDOWN:
+    case WM_SYSKEYDOWN:
+    case WM_KEYUP:
+    case WM_SYSKEYUP:
+      break;
+    case WM_CHAR:
+    case WM_SYSCHAR:
+    case WM_UNICHAR:
+      break;
+    case WM_LBUTTONUP:
+    case WM_RBUTTONUP:
+    case WM_MBUTTONUP:
+    case WM_XBUTTONUP:
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONDBLCLK:
+    case WM_RBUTTONDOWN:
+    case WM_RBUTTONDBLCLK:
+    case WM_MBUTTONDOWN:
+    case WM_MBUTTONDBLCLK:
+    case WM_XBUTTONDOWN:
+    case WM_XBUTTONDBLCLK:
+      break;
+    case WM_MOUSEWHEEL:
+      break;
+    case WM_MOUSEHWHEEL:
+      break;
+    case WM_MOUSEMOVE:
+      break;
+    case WM_MOUSELEAVE:
+      break;
+    case WM_SIZE:
+      break;
+    case WM_SETFOCUS:
+      break;
+    case WM_KILLFOCUS:
+      break;
+    default:
+      res = DefWindowProc(hWnd, message, wParam, lParam);
+  }
+  return res;
+}
+
 bool hal_window(struct window_t** s, const char* t, int w, int h, short flags) {
+  if (!keycodes_init) {
+    memset(keycodes, -1, sizeof(keycodes));
+    
+    keycodes[0x00B] = KB_KEY_0;
+    keycodes[0x002] = KB_KEY_1;
+    keycodes[0x003] = KB_KEY_2;
+    keycodes[0x004] = KB_KEY_3;
+    keycodes[0x005] = KB_KEY_4;
+    keycodes[0x006] = KB_KEY_5;
+    keycodes[0x007] = KB_KEY_6;
+    keycodes[0x008] = KB_KEY_7;
+    keycodes[0x009] = KB_KEY_8;
+    keycodes[0x00A] = KB_KEY_9;
+    keycodes[0x01E] = KB_KEY_A;
+    keycodes[0x030] = KB_KEY_B;
+    keycodes[0x02E] = KB_KEY_C;
+    keycodes[0x020] = KB_KEY_D;
+    keycodes[0x012] = KB_KEY_E;
+    keycodes[0x021] = KB_KEY_F;
+    keycodes[0x022] = KB_KEY_G;
+    keycodes[0x023] = KB_KEY_H;
+    keycodes[0x017] = KB_KEY_I;
+    keycodes[0x024] = KB_KEY_J;
+    keycodes[0x025] = KB_KEY_K;
+    keycodes[0x026] = KB_KEY_L;
+    keycodes[0x032] = KB_KEY_M;
+    keycodes[0x031] = KB_KEY_N;
+    keycodes[0x018] = KB_KEY_O;
+    keycodes[0x019] = KB_KEY_P;
+    keycodes[0x010] = KB_KEY_Q;
+    keycodes[0x013] = KB_KEY_R;
+    keycodes[0x01F] = KB_KEY_S;
+    keycodes[0x014] = KB_KEY_T;
+    keycodes[0x016] = KB_KEY_U;
+    keycodes[0x02F] = KB_KEY_V;
+    keycodes[0x011] = KB_KEY_W;
+    keycodes[0x02D] = KB_KEY_X;
+    keycodes[0x015] = KB_KEY_Y;
+    keycodes[0x02C] = KB_KEY_Z;
+    
+    keycodes[0x028] = KB_KEY_APOSTROPHE;
+    keycodes[0x02B] = KB_KEY_BACKSLASH;
+    keycodes[0x033] = KB_KEY_COMMA;
+    keycodes[0x00D] = KB_KEY_EQUALS;
+    keycodes[0x029] = KB_KEY_GRAVE_ACCENT;
+    keycodes[0x01A] = KB_KEY_LEFT_BRACKET;
+    keycodes[0x00C] = KB_KEY_MINUS;
+    keycodes[0x034] = KB_KEY_PERIOD;
+    keycodes[0x01B] = KB_KEY_RIGHT_BRACKET;
+    keycodes[0x027] = KB_KEY_SEMICOLON;
+    keycodes[0x035] = KB_KEY_SLASH;
+    keycodes[0x056] = KB_KEY_WORLD_2;
+    
+    keycodes[0x00E] = KB_KEY_BACKSPACE;
+    keycodes[0x153] = KB_KEY_DELETE;
+    keycodes[0x14F] = KB_KEY_END;
+    keycodes[0x01C] = KB_KEY_ENTER;
+    keycodes[0x001] = KB_KEY_ESCAPE;
+    keycodes[0x147] = KB_KEY_HOME;
+    keycodes[0x152] = KB_KEY_INSERT;
+    keycodes[0x15D] = KB_KEY_MENU;
+    keycodes[0x151] = KB_KEY_PAGE_DOWN;
+    keycodes[0x149] = KB_KEY_PAGE_UP;
+    keycodes[0x045] = KB_KEY_PAUSE;
+    keycodes[0x146] = KB_KEY_PAUSE;
+    keycodes[0x039] = KB_KEY_SPACE;
+    keycodes[0x00F] = KB_KEY_TAB;
+    keycodes[0x03A] = KB_KEY_CAPS_LOCK;
+    keycodes[0x145] = KB_KEY_NUM_LOCK;
+    keycodes[0x046] = KB_KEY_SCROLL_LOCK;
+    keycodes[0x03B] = KB_KEY_F1;
+    keycodes[0x03C] = KB_KEY_F2;
+    keycodes[0x03D] = KB_KEY_F3;
+    keycodes[0x03E] = KB_KEY_F4;
+    keycodes[0x03F] = KB_KEY_F5;
+    keycodes[0x040] = KB_KEY_F6;
+    keycodes[0x041] = KB_KEY_F7;
+    keycodes[0x042] = KB_KEY_F8;
+    keycodes[0x043] = KB_KEY_F9;
+    keycodes[0x044] = KB_KEY_F10;
+    keycodes[0x057] = KB_KEY_F11;
+    keycodes[0x058] = KB_KEY_F12;
+    keycodes[0x064] = KB_KEY_F13;
+    keycodes[0x065] = KB_KEY_F14;
+    keycodes[0x066] = KB_KEY_F15;
+    keycodes[0x067] = KB_KEY_F16;
+    keycodes[0x068] = KB_KEY_F17;
+    keycodes[0x069] = KB_KEY_F18;
+    keycodes[0x06A] = KB_KEY_F19;
+    keycodes[0x06B] = KB_KEY_F20;
+    keycodes[0x06C] = KB_KEY_F21;
+    keycodes[0x06D] = KB_KEY_F22;
+    keycodes[0x06E] = KB_KEY_F23;
+    keycodes[0x076] = KB_KEY_F24;
+    keycodes[0x038] = KB_KEY_LEFT_ALT;
+    keycodes[0x01D] = KB_KEY_LEFT_CONTROL;
+    keycodes[0x02A] = KB_KEY_LEFT_SHIFT;
+    keycodes[0x15B] = KB_KEY_LEFT_SUPER;
+    keycodes[0x137] = KB_KEY_PRINT_SCREEN;
+    keycodes[0x138] = KB_KEY_RIGHT_ALT;
+    keycodes[0x11D] = KB_KEY_RIGHT_CONTROL;
+    keycodes[0x036] = KB_KEY_RIGHT_SHIFT;
+    keycodes[0x15C] = KB_KEY_RIGHT_SUPER;
+    keycodes[0x150] = KB_KEY_DOWN;
+    keycodes[0x14B] = KB_KEY_LEFT;
+    keycodes[0x14D] = KB_KEY_RIGHT;
+    keycodes[0x148] = KB_KEY_UP;
+    
+    keycodes[0x052] = KB_KEY_KP_0;
+    keycodes[0x04F] = KB_KEY_KP_1;
+    keycodes[0x050] = KB_KEY_KP_2;
+    keycodes[0x051] = KB_KEY_KP_3;
+    keycodes[0x04B] = KB_KEY_KP_4;
+    keycodes[0x04C] = KB_KEY_KP_5;
+    keycodes[0x04D] = KB_KEY_KP_6;
+    keycodes[0x047] = KB_KEY_KP_7;
+    keycodes[0x048] = KB_KEY_KP_8;
+    keycodes[0x049] = KB_KEY_KP_9;
+    keycodes[0x04E] = KB_KEY_KP_ADD;
+    keycodes[0x053] = KB_KEY_KP_DECIMAL;
+    keycodes[0x135] = KB_KEY_KP_DIVIDE;
+    keycodes[0x11C] = KB_KEY_KP_ENTER;
+    keycodes[0x037] = KB_KEY_KP_MULTIPLY;
+    keycodes[0x04A] = KB_KEY_KP_SUBTRACT;
+    
+    keycodes_init = true;
+  }
+  
+  win32_window_t* win = HAL_MALLOC(sizeof(win32_window_t));
+  if (!win) {
+    error_handle(OUT_OF_MEMEORY, "malloc() failed");
+    return false;
+  }
+  memset(win, 0, sizeof(*win));
+  
+  RECT rect = { 0 };
+  int  x, y;
+  long style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
+  if (flags & FULLSCREEN) {
+    flags = FULLSCREEN;
+    x = 0;
+    y = 0;
+    rect.right  = GetSystemMetrics(SM_CXSCREEN);
+    rect.bottom = GetSystemMetrics(SM_CYSCREEN);
+    style = WS_POPUP & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
+    
+    DEVMODE settings;
+    EnumDisplaySettings(0, 0, &settings);
+    settings.dmPelsWidth  = GetSystemMetrics(SM_CXSCREEN);
+    settings.dmPelsHeight = GetSystemMetrics(SM_CYSCREEN);
+    settings.dmBitsPerPel = 32;
+    settings.dmFields     = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+    
+    if (ChangeDisplaySettings(&settings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
+      flags = FULLSCREEN_DESKTOP;
+  }
+  if (flags & BORDERLESS)
+    style = WS_POPUP;
+  if (flags & RESIZABLE)
+    style |= WS_MAXIMIZEBOX | WS_SIZEBOX;
+  if (flags & FULLSCREEN_DESKTOP) {
+    style = WS_OVERLAPPEDWINDOW;
+    
+    w  = GetSystemMetrics(SM_CXFULLSCREEN);
+    h = GetSystemMetrics(SM_CYFULLSCREEN);
+    
+    rect.right  = w;
+    rect.bottom = h;
+    AdjustWindowRect(&rect, style, 0);
+    if (rect.left < 0) {
+      w += rect.left * 2;
+      rect.right += rect.left;
+      rect.left = 0;
+    }
+    if (rect.bottom > h) {
+      h -= (rect.bottom - h);
+      rect.bottom += (rect.bottom - h);
+      rect.top = 0;
+    }
+    x = 0;
+    y = 0;
+  }
+  else if (!(flags & FULLSCREEN)) {
+    rect.right  = w;
+    rect.bottom = h;
+    
+    AdjustWindowRect(&rect, style, 0);
+    
+    rect.right  -= rect.left;
+    rect.bottom -= rect.top;
+    
+    x = (GetSystemMetrics(SM_CXSCREEN) - rect.right) / 2;
+    y = (GetSystemMetrics(SM_CYSCREEN) - rect.bottom + rect.top) / 2;
+  }
+  
+  win->wnd.style         = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
+  win->wnd.lpfnWndProc   = WndProc;
+  win->wnd.hCursor       = LoadCursor(0, IDC_ARROW);
+  win->wnd.lpszClassName = t;
+  if (!RegisterClass(&win->wnd)) {
+    hal_release();
+    HAL_SAFE_FREE(win);
+    error_handle(WIN_WINDOW_CREATION_FAILED, "RegisterClass() failed: %s", GetLastError());
+    return false;
+  }
+  HINSTANCE hinst = GetModuleHandle(NULL);
+  win->hwnd = CreateWindow(t, t, style, x, y, rect.right, rect.bottom, NULL, NULL, hinst, NULL);
+  if (!win->hwnd) {
+    hal_release();
+    HAL_SAFE_FREE(win);
+    error_handle(WIN_WINDOW_CREATION_FAILED, "CreateWindowEx() failed: %s", GetLastError());
+    return false;
+  }
+  win->hdc = GetDC(win->hwnd);
+  
+  win->bmpinfo = HAL_MALLOC(sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
+  if (!win->bmpinfo) {
+    hal_release();
+    HAL_SAFE_FREE(win);
+    error_handle(OUT_OF_MEMEORY, "malloc() failed");
+    return false;
+  }
+  win->bmpinfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  win->bmpinfo->bmiHeader.biPlanes = 1;
+  win->bmpinfo->bmiHeader.biBitCount = 32;
+  win->bmpinfo->bmiHeader.biCompression = BI_BITFIELDS;
+  win->bmpinfo->bmiHeader.biWidth = w;
+  win->bmpinfo->bmiHeader.biHeight = -h;
+  win->bmpinfo->bmiColors[0].rgbRed = 0xFF;
+  win->bmpinfo->bmiColors[1].rgbGreen = 0xFF;
+  win->bmpinfo->bmiColors[2].rgbBlue = 0xFF;
+  
+  ShowWindow(win->hwnd, SW_NORMAL);
+  if (flags & ALWAYS_ON_TOP)
+    SetWindowPos(win->hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+  SetFocus(win->hwnd);
+  
+  struct window_t* window = *s = HAL_MALLOC(sizeof(struct window_t));
+  if (!window) {
+    hal_release();
+    HAL_SAFE_FREE(win);
+    error_handle(OUT_OF_MEMEORY, "malloc() failed");
+    return false;
+  }
+  memset(window, 0, sizeof(*window));
+  static int id_counter = 0;
+  window->id = id_counter++;
+  window->w  = rect.right;
+  window->h  = rect.bottom;
+  window->window = (void*)win;
+  active_window = window;
+  add_win_node(window);
   return true;
 }
 
@@ -3966,7 +4344,6 @@ void hal_window_position(window_t s, int* x, int*  y) {
 void hal_screen_size(window_t s, int* w, int* h) {
   
 }
-
 
 void hal_window_destroy(struct window_t** s) {
   
@@ -4001,15 +4378,34 @@ void hal_cursor_set_pos(int x, int y) {
 }
 
 void hal_poll() {
-  
+  win32_node_t* cur = win32_head;
+  while (cur) {
+    static win32_window_t* win = NULL;
+    win = (win32_window_t*)cur->win->window;
+    
+    MSG msg;
+    if (PeekMessage(&msg, win->hwnd, 0, 0, PM_REMOVE)) {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
+    cur = cur->next;
+  }
 }
 
 void hal_flush(window_t s, surface_t b) {
-  
+  static win32_window_t* win = NULL;
+  win = (win32_window_t*)s->window;
+  InvalidateRect(win->hwnd, 0x0, TRUE);
+  SendMessage(win->hwnd, WM_PAINT, 0, 0); 
 }
 
 void hal_release() {
-  
+  win32_node_t* node = win32_head, *tmp = NULL;
+  do {
+    tmp = node;
+    node = node->next;
+    free_win_node(&tmp);
+  } while (node);
 }
 #elif defined(HAL_LINUX) && !defined(HAL_EXTERNAL_WINDOW)
 #error TODO: HAL_LINUX reimplement

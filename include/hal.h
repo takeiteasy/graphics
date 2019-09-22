@@ -92,6 +92,14 @@ extern "C" {
   typedef signed long long   i64;
   typedef unsigned long long u64;
 
+#if defined(_MSC_VER)
+#define bool int
+#define true 1
+#define false 0
+#else
+#include <stdbool.h>
+#endif
+  
 #if !defined(HALDEF)
 #if defined(HAL_STATIC)
 #define HALDEF static

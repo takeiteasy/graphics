@@ -1,2 +1,7 @@
 @ECHO OFF
-cl -I "include" test.c src\graphics.c /link /subsystem:windows user32.lib /entry:mainCRTStartup /utf-8 /OUT:build/test.exe
+pushd "%~dp0"
+call "C:\\Program Files (x86)\\Microsoft Visual C++ Build Tools\\vcbuildtools.bat" amd64
+popd
+cd build
+cl /EHsc /Zi /W4 /utf-8 -I "../include" ../test.c ../src/graphics.c /link /subsystem:console user32.lib gdi32.lib
+cd ..
