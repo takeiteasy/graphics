@@ -63,7 +63,7 @@ int main(int argc, const char* argv[]) {
   hal_error_callback(on_error);
 
   hal_window(&win, "test",  SW, SH, DEFAULT);
-  hal_window_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, on_closed, win);
+  //hal_window_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, on_closed, win);
   hal_cursor_icon(win, CURSOR_HAND);
 
   hal_surface(&buf, SW, SH);

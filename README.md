@@ -11,7 +11,7 @@ Designed to be a drop-in and use with little hassle sort of deal. I don't know i
 - Multiple Windows
 - Keyboard, mouse and window events.
 - Text rendering via in-built font (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8)) or BDF files
-- BMP (24 or 32 bpp uncompressed) and GIF loading (adapted from [hidefromkgb/gif_load](https://github.com/hidefromkgb/gif_load))
+- BMP (24 or 32 bpp uncompressed)
 - Message box & dialog support (adapted from [AndrewBelt/osdialog](https://github.com/AndrewBelt/osdialog))
 
 

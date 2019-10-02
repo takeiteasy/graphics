@@ -242,11 +242,6 @@ extern "C" {
     BDF_TOO_MANY_BITMAPS,
     BDF_UNKNOWN_CHAR,
 #endif
-#if defined(HAL_GIF)
-    GIF_LOAD_FAILED,
-    GIF_SAVE_INVALID_SIZE,
-    GIF_SAVE_FAILED,
-#endif
 #if defined(HAL_OPENGL)
     GL_SHADER_ERROR,
 #endif
@@ -622,88 +617,6 @@ extern "C" {
    * @param fmt Format string
    */
   HALDEF void hal_bdf_stringf(surface_t* s, bdf_t f, i32 fg, i32 bg, const char* fmt, ...);
-#endif
-
-#if defined(HAL_GIF)
-  /*!
-   * @typedef gif_t
-   * @brief GIF image object
-   */
-  typedef struct gif_t* gif_t;
-
-  /*!
-   * @discussion Get the delay between frames for a GIF
-   * @param g GIF object
-   * @return Frame delay for GIF
-   */
-  HALDEF i32 hal_gif_delay(gif_t g);
-  /*!
-   * @discussion Get the total frames for a GIF
-   * @param g GIF object
-   * @return Total frames for GIF
-   */
-  HALDEF i32 hal_gif_total_frames(gif_t g);
-  /*!
-   * @discussion Get GIF object's current frame
-   * @param g GIF object
-   * @return Current frame index
-   */
-  HALDEF i32 hal_gif_current_frame(gif_t g);
-  /*!
-   * @discussion Get GIF object's dimentions
-   * @param g GIF object
-   * @param w Pointer to int to set
-   * @param h Pointer to int to set
-   */
-  HALDEF void hal_gif_size(gif_t g, i32* w, i32* h);
-  /*!
-   * @discussion Advance GIF frame
-   * @param g GIF object
-   * @return New current frame index
-   */
-  HALDEF i32 hal_gif_next_frame(gif_t g);
-  /*!
-   * @discussion Get the current frame for GIF object
-   * @param g GIF object
-   * @param n New index
-   */
-  HALDEF void hal_gif_set_frame(gif_t g, i32 n);
-  /*!
-   * @discussion Get the surface object for GIF object's current frame
-   * @param g GIF object
-   * @return Pointer to surface object for GIF's current frame
-   */
-  surface_t hal_gif_frame(gif_t g);
-  /*!
-   * @discussion Create a new GIF object from surface objects
-   * @param g GIF object to be allocated
-   * @param w GIF object width
-   * @param h GIF object height
-   * @param delay GIF object's frame delay
-   * @param frames Total number of frames
-   * @param ... Surface objects
-   */
-  HALDEF void hal_gif_create(gif_t* g, i32 w, i32 h, i32 delay, i32 frames, ...);
-
-  /*!
-   * @discussion Load GIF from path
-   * @param g GIF object to be allocated
-   * @param path Path to GIF file
-   * @return Boolean of success
-   */
-  HALDEF bool hal_gif(gif_t* g, const char* path);
-  /*!
-   * @discussion Save GIF to path
-   * @param g GIF object
-   * @param path Path to save GIF file
-   * @return Boolean of success
-   */
-  HALDEF bool hal_save_gif(gif_t* g, const char* path);
-  /*!
-   * @discussion Destroy GIF object
-   * @param g Pointer to GIF object
-   */
-  HALDEF void hal_gif_destroy(gif_t* g);
 #endif
 
 #if !defined(HAL_NO_ALERTS)
@@ -1122,4 +1035,3 @@ extern "C" {
 }
 #endif
 #endif // graphics_h
-

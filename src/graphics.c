@@ -2129,435 +2129,6 @@ void hal_bdf_stringf(surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* 
 }
 #endif // HAL_BDF
 
-#if defined(HAL_GIF)
-#include <stdint.h>
-#ifndef GIF_MGET
-#define GIF_MGET(m,s,a,c) m = HAL_REALLOC((c)? 0 : m, (c)? s : 0UL);
-#endif
-#ifndef GIF_BIGE
-#define GIF_BIGE 0
-#endif
-#define _GIF_SWAP(h) ((GIF_BIGE)? ((u16)(h << 8) | (h >> 8)) : h)
-
-struct gif_t {
-  i32 delay, frames, frame, w, h;
-  surface_t* surfaces;
-};
-
-i32 hal_gif_delay(gif_t g) {
-  return g->delay;
-}
-
-i32 hal_gif_total_frames(gif_t g) {
-  return g->frames;
-}
-
-i32 hal_gif_current_frame(gif_t g) {
-  return g->frame;
-}
-
-void hal_gif_size(gif_t g, i32* w, i32* h) {
-  if (w)
-    *w = g->w;
-  if (h)
-    *h = g->h;
-}
-
-i32 hal_gif_next_frame(gif_t g) {
-  g->frame++;
-  if (g->frame >= g->frames)
-    g->frame = 0;
-  return g->frame;
-}
-
-void hal_gif_set_frame(gif_t g, i32 n) {
-  if (n >= g->frames || n < 0)
-    return;
-  g->frame = n;
-}
-
-surface_t hal_gif_frame(gif_t g) {
-  return g->surfaces[g->frame];
-}
-
-void hal_gif_create(gif_t* _g, i32 w, i32 h, i32 delay, i32 frames, ...) {
-  gif_t g = *_g = HAL_MALLOC(sizeof(gif_t));
-  if (!g) {
-    error_handle(OUT_OF_MEMEORY, "malloc() failed");
-    *_g = NULL;
-    return;
-  }
-  g->delay = delay;
-  g->frame = 0;
-  g->frames = frames;
-  g->h = h;
-  g->w = w;
-  g->surfaces = HAL_MALLOC(g->frames * sizeof(surface_t));
-  if (!g->surfaces) {
-    error_handle(OUT_OF_MEMEORY, "malloc() failed");
-    HAL_SAFE_FREE(g);
-    *_g = NULL;
-    return;
-  }
-
-  va_list ap;
-  va_start(ap, frames);
-  for (i32 i = 0; i < frames; ++i) {
-    surface_t tmp = va_arg(ap, surface_t);
-    hal_copy(tmp, &g->surfaces[i]);
-  }
-  va_end(ap);
-}
-
-#pragma pack(push, 1)
-struct GIF_WHDR {              /** ======== frame writer info: ======== **/
-  i64 xdim, ydim, clrs,        /** global dimensions, palette size      **/
-      bkgd, tran,              /** background index, transparent index  **/
-      intr, mode,              /** interlace flag, frame blending mode  **/
-      frxd, fryd, frxo, fryo,  /** current frame dimensions and offset  **/
-      time, ifrm, nfrm;        /** delay, frame number, frame count     **/
-  u8 *bptr;                    /** frame pixel indices or metadata      **/
-  struct {                     /** [==== GIF RGB palette element: ====] **/
-    u8 R, G, B;                /** [color values - red, green, blue   ] **/
-  } *cpal;                     /** current palette                      **/
-};
-#pragma pack(pop)
-
-enum {GIF_NONE = 0, GIF_CURR = 1, GIF_BKGD = 2, GIF_PREV = 3};
-
-static inline i64 _GIF_SkipChunk(u8 **buff, i64 size) {
-  i64 skip;
-
-  for (skip = 2, ++size, ++(*buff); ((size -= skip) > 0) && (skip > 1);
-      *buff += (skip = 1 + **buff));
-  return size;
-}
-
-static inline i64 _GIF_LoadHeader(unsigned gflg, u8 **buff, void **rpal,
-    unsigned fflg, i64 *size, i64 flen) {
-  if (flen && (!(*buff += flen) || ((*size -= flen) <= 0)))
-    return -2;        /** v--[ 0x80: "palette is present" flag ]--, **/
-  if (flen && (fflg & 0x80)) {     /** local palette has priority | **/
-    *rpal = *buff;            /** [ 3L: 3 u8 color channels ]--,  | **/
-    *buff += (flen = 2 << (fflg & 7)) * 3L;             /** <--|  | **/
-    return ((*size -= flen * 3L) > 0)? flen : -1;       /** <--'  | **/
-  }     /** no local palette found, checking for the global one   | **/
-  return (gflg & 0x80)? (2 << (gflg & 7)) : 0;          /** <-----' **/
-}
-
-static inline i64 _GIF_LoadFrame(u8 **buff, i64 *size,
-    u8 *bptr, u8 *blen) {
-  typedef u16 GIF_H;
-  const i64 GIF_HLEN = sizeof(GIF_H),  /** to rid the scope of sizeof **/
-        GIF_CLEN = 1 << 12;         /** code table length: 4096 items **/
-  GIF_H accu, mask; /** bit accumulator / bit mask                    **/
-  i64  ctbl, iter,  /** last code table index / index string iterator **/
-       prev, curr,  /** codes from the stream: previous / current     **/
-       ctsz, ccsz,  /** code table bit sizes: min LZW / current       **/
-       bseq, bszc;  /** counters: block sequence / bit size           **/
-  u32 *code = (u32*)bptr - GIF_CLEN;           /** code table pointer **/
-
-  /** preparing initial values **/
-  if ((--(*size) <= GIF_HLEN) || !*++(*buff))
-    return -4; /** unexpected end of the stream: insufficient size **/
-  mask = (GIF_H)((1 << (ccsz = (ctsz = *(*buff - 1)) + 1)) - 1);
-  if ((ctsz < 2) || (ctsz > 8))
-    return -3; /** min LZW size is out of its nominal [2; 8] bounds **/
-  if ((ctbl = (1L << ctsz)) != (mask & _GIF_SWAP(*(GIF_H*)(*buff + 1))))
-    return -2; /** initial code is not equal to min LZW size **/
-  for (curr = ++ctbl; curr; code[--curr] = 0); /** actual color codes **/
-
-  /** getting codes from stream (--size makes up for end-of-stream mark) **/
-  for (--(*size), bszc = -ccsz, prev = curr = 0;
-      ((*size -= (bseq = *(*buff)++) + 1) >= 0) && bseq; *buff += bseq)
-    for (; bseq > 0; bseq -= GIF_HLEN, *buff += GIF_HLEN)
-      for (accu = (GIF_H)(_GIF_SWAP(*(GIF_H*)*buff)
-            & ((bseq < GIF_HLEN)? ((1U << (8 * bseq)) - 1U) : ~0U)),
-          curr |= accu << (ccsz + bszc), accu = (GIF_H)(accu >> -bszc),
-          bszc += 8 * ((bseq < GIF_HLEN)? bseq : GIF_HLEN);
-          bszc >= 0; bszc -= ccsz, prev = curr, curr = accu,
-          accu = (GIF_H)(accu >> ccsz))
-        if (((curr &= mask) & ~1L) == (1L << ctsz)) {
-          if (~(ctbl = curr + 1) & 1) /** end-of-data code (ED). **/
-            /** -1: no end-of-stream mark after ED; 1: decoded **/
-            return (*((*buff += bseq + 1) - 1))? -1 : 1;
-          mask = (GIF_H)((1 << (ccsz = ctsz + 1)) - 1);
-        } /** ^- table drop code (TD). TD = 1 << ctsz, ED = TD + 1 **/
-        else { /** single-pixel (SP) or multi-pixel (MP) code. **/
-          if (ctbl < GIF_CLEN) { /** is the code table full? **/
-            if ((ctbl == mask) && (ctbl < GIF_CLEN - 1)) {
-              mask = (GIF_H)(mask + mask + 1);
-              ccsz++; /** yes; extending **/
-            } /** prev = TD? => curr < ctbl = prev **/
-            code[ctbl] = (u32)prev + (code[prev] & 0xFFF000);
-          } /** appending SP / MP decoded pixels to the frame **/
-          prev = (i64)code[iter = (ctbl > curr)? curr : prev];
-          if ((bptr += (prev = (prev >> 12) & 0xFFF)) > blen)
-            continue; /** skipping pixels above frame capacity **/
-          for (prev++; (iter &= 0xFFF) >> ctsz;
-              *bptr-- = (u8)((iter = (i64)code[iter]) >> 24));
-          (bptr += prev)[-prev] = (u8)iter;
-          if (ctbl < GIF_CLEN) { /** appending the code table **/
-            if (ctbl == curr)
-              *bptr++ = (u8)iter;
-            else if (ctbl < curr)
-              return -5; /** wrong code in the stream **/
-            code[ctbl++] += ((u32)iter << 24) + 0x1000;
-          }
-        } /** 0: no ED before end-of-stream mark; -4: see above **/
-  return (++(*size) >= 0)? 0 : -4; /** ^- N.B.: 0 error is recoverable **/
-}
-
-static inline i64 GIF_Load(void *data, i64 size,
-    void (*gwfr)(void*, struct GIF_WHDR*),
-    void (*eamf)(void*, struct GIF_WHDR*),
-    void *anim, i64 skip) {
-  const i64    GIF_BLEN = (1 << 12) * sizeof(u32);
-  const u8 GIF_EHDM = 0x21, /** extension header mark **/
-        GIF_FHDM = 0x2C,    /** frame header mark **/
-        GIF_EOFM = 0x3B,    /** end-of-file mark **/
-        GIF_EGCM = 0xF9,    /** extension: graphics control mark **/
-        GIF_EAMM = 0xFF;    /** extension: app metadata mark **/
-#pragma pack(push, 1)
-  struct GIF_GHDR {            /** ========== GLOBAL GIF HEADER: ========== **/
-    u8 head[6];                /** 'GIF87a' / 'GIF89a' header signature     **/
-    u16 xdim, ydim;            /** total image width, total image height    **/
-    u8 flgs;                   /** FLAGS:
-                                   GlobalPlt    bit 7     1: global palette exists
-                                   0: local in each frame
-                                   ClrRes       bit 6-4   bits/channel = ClrRes+1
-                                   [reserved]   bit 3     0
-                                   PixelBits    bit 2-0   |Plt| = 2 * 2^PixelBits **/
-    u8 bkgd, aspr;             /** background color index, aspect ratio     **/
-  } *ghdr = (struct GIF_GHDR*)data;
-  struct GIF_FHDR {            /** ======= GIF FRAME MASTER HEADER: ======= **/
-    u16 frxo, fryo;            /** offset of this frame in a "full" image   **/
-    u16 frxd, fryd;            /** frame width, frame height                **/
-    u8 flgs;                   /** FLAGS:
-                                   LocalPlt     bit 7     1: local palette exists
-                                   0: global is used
-                                   Interlaced   bit 6     1: interlaced frame
-                                   0: non-interlaced frame
-                                   Sorted       bit 5     usually 0
-                                   [reserved]   bit 4-3   [undefined]
-                                   PixelBits    bit 2-0   |Plt| = 2 * 2^PixelBits **/
-  } *fhdr;
-  struct GIF_EGCH {             /** ==== [EXT] GRAPHICS CONTROL HEADER: ==== **/
-    u8 flgs;                    /** FLAGS:
-                                    [reserved]   bit 7-5   [undefined]
-                                    BlendMode    bit 4-2   000: not set; static GIF
-                                    001: leave result as is
-                                    010: restore background
-                                    011: restore previous
-                                    1--: [undefined]
-                                    UserInput    bit 1     1: show frame till input
-                                    0: default; ~99% of GIFs
-                                    TransColor   bit 0     1: got transparent color
-                                    0: frame is fully opaque **/
-    u16 time;                    /** delay in GIF time units; 1 unit = 10 ms  **/
-    u8 tran;                     /** transparent color index                  **/
-  } *egch = 0;
-#pragma pack(pop)
-  struct GIF_WHDR wtmp, whdr = {0};
-  i64 desc, blen;
-  u8 *buff;
-
-  /** checking if the stream is not empty and has a 'GIF8[79]a' signature,
-    the data has sufficient size and frameskip value is non-negative **/
-  if (!ghdr || (size <= (i64)sizeof(*ghdr)) || (*(buff = ghdr->head) != 71)
-      || (buff[1] != 73) || (buff[2] != 70) || (buff[3] != 56) || (skip < 0)
-      || ((buff[4] != 55) && (buff[4] != 57)) || (buff[5] != 97) || !gwfr)
-    return 0;
-
-  buff = (u8*)(ghdr + 1) /** skipping the global header and palette **/
-    + _GIF_LoadHeader(ghdr->flgs, 0, 0, 0, 0, 0L) * 3L;
-  if ((size -= buff - (u8*)ghdr) <= 0)
-    return 0;
-
-  whdr.xdim = _GIF_SWAP(ghdr->xdim);
-  whdr.ydim = _GIF_SWAP(ghdr->ydim);
-  for (whdr.bptr = buff, whdr.bkgd = ghdr->bkgd, blen = --size;
-      (blen >= 0) && ((desc = *whdr.bptr++) != GIF_EOFM); /** sic: '>= 0' **/
-      blen = _GIF_SkipChunk(&whdr.bptr, blen) - 1) /** count all frames **/
-    if (desc == GIF_FHDM) {
-      fhdr = (struct GIF_FHDR*)whdr.bptr;
-      if (_GIF_LoadHeader(ghdr->flgs, &whdr.bptr, (void**)&whdr.cpal,
-            fhdr->flgs, &blen, sizeof(*fhdr)) <= 0)
-        break;
-      whdr.frxd = _GIF_SWAP(fhdr->frxd);
-      whdr.fryd = _GIF_SWAP(fhdr->fryd);
-      whdr.frxo = (whdr.frxd > whdr.frxo)? whdr.frxd : whdr.frxo;
-      whdr.fryo = (whdr.fryd > whdr.fryo)? whdr.fryd : whdr.fryo;
-      whdr.ifrm++;
-    }
-  blen = whdr.frxo * whdr.fryo * (i64)sizeof(*whdr.bptr);
-  GIF_MGET(whdr.bptr, (u64)(blen + GIF_BLEN + 2), anim, 1)
-    whdr.nfrm = (desc != GIF_EOFM)? -whdr.ifrm : whdr.ifrm;
-  for (whdr.bptr += GIF_BLEN, whdr.ifrm = -1; blen /** load all frames **/
-      && (skip < ((whdr.nfrm < 0)? -whdr.nfrm : whdr.nfrm)) && (size >= 0);
-      size = (desc != GIF_EOFM)? ((desc != GIF_FHDM) || (skip > whdr.ifrm))?
-      _GIF_SkipChunk(&buff, size) - 1 : size - 1 : -1)
-    if ((desc = *buff++) == GIF_FHDM) { /** found a frame **/
-      whdr.intr = !!((fhdr = (struct GIF_FHDR*)buff)->flgs & 0x40);
-      *(void**)&whdr.cpal = (void*)(ghdr + 1); /** interlaced? -^ **/
-      whdr.clrs = _GIF_LoadHeader(ghdr->flgs, &buff, (void**)&whdr.cpal,
-          fhdr->flgs, &size, sizeof(*fhdr));
-      if ((skip <= ++whdr.ifrm) && ((whdr.clrs <= 0)
-            ||  (_GIF_LoadFrame(&buff, &size,
-                whdr.bptr, whdr.bptr + blen) < 0)))
-        size = -(whdr.ifrm--) - 1; /** failed to load the frame **/
-      else if (skip <= whdr.ifrm) {
-        whdr.frxd = _GIF_SWAP(fhdr->frxd);
-        whdr.fryd = _GIF_SWAP(fhdr->fryd);
-        whdr.frxo = _GIF_SWAP(fhdr->frxo);
-        whdr.fryo = _GIF_SWAP(fhdr->fryo);
-        whdr.time = (egch)? _GIF_SWAP(egch->time) : 0;
-        whdr.tran = (egch && (egch->flgs & 0x01))? egch->tran : -1;
-        whdr.time = (egch && (egch->flgs & 0x02))? -whdr.time - 1
-          : whdr.time;
-        whdr.mode = (egch && !(egch->flgs & 0x10))?
-          (egch->flgs & 0x0C) >> 2 : GIF_NONE;
-        egch = 0;
-        wtmp = whdr;
-        gwfr(anim, &wtmp); /** passing the frame to the caller **/
-      }
-    }
-    else if (desc == GIF_EHDM) { /** found an extension **/
-      if (*buff == GIF_EGCM) /** graphics control ext. **/
-        egch = (struct GIF_EGCH*)(buff + 1 + 1);
-      else if ((*buff == GIF_EAMM) && eamf) { /** app metadata ext. **/
-        wtmp = whdr;
-        wtmp.bptr = buff + 1 + 1; /** just passing the raw chunk **/
-        eamf(anim, &wtmp);
-      }
-    }
-  whdr.bptr -= GIF_BLEN; /** for excess pixel codes ----v (here & above) **/
-  GIF_MGET(whdr.bptr, (u64)(blen + GIF_BLEN + 2), anim, 0)
-    return (whdr.nfrm < 0)? (skip - whdr.ifrm - 1) : (whdr.ifrm + 1);
-}
-
-#undef _GIF_SWAP
-
-#pragma pack(push, 1)
-typedef struct {
-  void *data, *pict, *prev;
-  u64 size, last;
-  gif_t out;
-} gif_data_t;
-#pragma pack(pop)
-
-void load_gif_frame(void* data, struct GIF_WHDR* whdr) {
-  u32 *pict, *prev, x, y, yoff, iter, ifin, dsrc, ddst;
-  gif_data_t* gif = (gif_data_t*)data;
-
-#define BGRA(i) \
-  ((whdr->bptr[i] == whdr->tran)? 0 : \
-   ((u32)(whdr->cpal[whdr->bptr[i]].R << ((GIF_BIGE)? 8 : 16)) \
-|  (u32)(whdr->cpal[whdr->bptr[i]].G << ((GIF_BIGE)? 16 : 8))  \
-|  (u32)(whdr->cpal[whdr->bptr[i]].B << ((GIF_BIGE)? 24 : 0))  \
-|  ((GIF_BIGE)? 0xFF : 0xFF000000)))
-
-  if (!whdr->ifrm) {
-    gif->out->delay = (i32)whdr->time;
-    gif->out->w = (i32)whdr->xdim;
-    gif->out->h = (i32)whdr->ydim;
-    gif->out->frames = (i32)whdr->nfrm;
-    gif->out->frame  = 0;
-    ddst = (u32)(whdr->xdim * whdr->ydim);
-    gif->pict = HAL_MALLOC(ddst * sizeof(u32));
-    gif->prev = HAL_MALLOC(ddst * sizeof(u32));
-    gif->out->surfaces = HAL_MALLOC(gif->out->frames * sizeof(surface_t));
-  }
-
-  pict = (u32*)gif->pict;
-  ddst = (u32)(whdr->xdim * whdr->fryo + whdr->frxo);
-  ifin = (!(iter = (whdr->intr)? 0 : 4))? 4 : 5; /** interlacing support **/
-  for (dsrc = (u32)-1; iter < ifin; iter++)
-    for (yoff = 16U >> ((iter > 1)? iter : 1), y = (8 >> iter) & 7;
-        y < (u32)whdr->fryd; y += yoff)
-      for (x = 0; x < (u32)whdr->frxd; x++)
-        if (whdr->tran != (i64)whdr->bptr[++dsrc])
-          pict[(u32)whdr->xdim * y + x + ddst] = BGRA(dsrc);
-
-  i32 this = (i32)whdr->ifrm;
-  hal_surface(&gif->out->surfaces[this], gif->out->w, gif->out->h);
-  memcpy(gif->out->surfaces[this]->buf, pict, whdr->xdim * whdr->ydim * sizeof(u32));
-
-  if ((whdr->mode == GIF_PREV) && !gif->last) {
-    whdr->frxd = whdr->xdim;
-    whdr->fryd = whdr->ydim;
-    whdr->mode = GIF_BKGD;
-    ddst = 0;
-  }
-  else {
-    gif->last = (whdr->mode == GIF_PREV) ? gif->last : (u64)(whdr->ifrm + 1);
-    pict = (u32*)((whdr->mode == GIF_PREV)? gif->pict : gif->prev);
-    prev = (u32*)((whdr->mode == GIF_PREV)? gif->prev : gif->pict);
-    for (x = (u32)(whdr->xdim * whdr->ydim); --x;
-        pict[x - 1] = prev[x - 1]);
-  }
-
-  if (whdr->mode == GIF_BKGD) /** cutting a hole for the next frame **/
-    for (whdr->bptr[0] = (u8)((whdr->tran >= 0)?
-          whdr->tran : whdr->bkgd), y = 0,
-        pict = (u32*)gif->pict; y < (u32)whdr->fryd; y++)
-      for (x = 0; x < (u32)whdr->frxd; x++)
-        pict[(u32)whdr->xdim * y + x + ddst] = BGRA(0);
-#undef BGRA
-}
-
-bool hal_gif(gif_t* _g, const char* path) {
-  gif_t g = *_g = HAL_MALLOC(sizeof(struct gif_t));
-
-  FILE* fp = fopen(path, "rb");
-  if (!fp) {
-    error_handle(FILE_OPEN_FAILED, "fopen() failed: %s", path);
-    return false;
-  }
-
-  fseek(fp, 0, SEEK_END);
-  size_t length = ftell(fp);
-  rewind(fp);
-
-  u8* data = HAL_MALLOC((length + 1) * sizeof(u8));
-  if (!data) {
-    error_handle(OUT_OF_MEMEORY, "malloc() failed");
-    return false;
-  }
-  fread(data, 1, length, fp);
-  fclose(fp);
-
-  gif_data_t tmp;
-  tmp.data = data;
-  tmp.size = length;
-  tmp.out  = g;
-  if (!GIF_Load(data, length, load_gif_frame, 0, (void*)&tmp, 0L)) {
-    error_handle(GIF_LOAD_FAILED, "GIF_Load() failed");
-    return false;
-  }
-
-  HAL_SAFE_FREE(tmp.data);
-  HAL_SAFE_FREE(tmp.prev);
-  HAL_SAFE_FREE(tmp.pict);
-  return true;
-}
-
-bool hal_save_gif(gif_t* g, const char* path) {
-#pragma message WARN("TODO: hal_save_gif() reimplement")
-  return false
-}
-
-void hal_gif_destroy(gif_t* _g) {
-  gif_t g = *_g;
-  if (!g)
-    return;
-  for (i32 i = 0; i < g->frames; ++i)
-    hal_destroy(&g->surfaces[i]);
-  HAL_SAFE_FREE(g->surfaces);
-  HAL_SAFE_FREE(g);
-}
-#endif // HAL_GIF
-
 #if !defined(HAL_NO_ALERTS)
 #if defined(HAL_OSX) && !defined(HAL_EXTERNAL_WINDOW)
 #include <AppKit/AppKit.h>
@@ -4073,6 +3644,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
   return res;
 }
 
+HWND        hwnd;
+WNDCLASS    wc;
+HDC         hdc;
+BITMAPINFO  *bitmapInfo;
+
 bool hal_window(struct window_t** s, const char* t, int w, int h, short flags) {
   if (!keycodes_init) {
     memset(keycodes, -1, sizeof(keycodes));
@@ -4202,130 +3778,41 @@ bool hal_window(struct window_t** s, const char* t, int w, int h, short flags) {
     keycodes_init = true;
   }
   
-  win32_window_t* win = HAL_MALLOC(sizeof(win32_window_t));
-  if (!win) {
-    error_handle(OUT_OF_MEMEORY, "malloc() failed");
-    return false;
-  }
-  memset(win, 0, sizeof(*win));
-  
   RECT rect = { 0 };
   int  x, y;
-  long style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
-  if (flags & FULLSCREEN) {
-    flags = FULLSCREEN;
-    x = 0;
-    y = 0;
-    rect.right  = GetSystemMetrics(SM_CXSCREEN);
-    rect.bottom = GetSystemMetrics(SM_CYSCREEN);
-    style = WS_POPUP & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
-    
-    DEVMODE settings;
-    EnumDisplaySettings(0, 0, &settings);
-    settings.dmPelsWidth  = GetSystemMetrics(SM_CXSCREEN);
-    settings.dmPelsHeight = GetSystemMetrics(SM_CYSCREEN);
-    settings.dmBitsPerPel = 32;
-    settings.dmFields     = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
-    
-    if (ChangeDisplaySettings(&settings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
-      flags = FULLSCREEN_DESKTOP;
-  }
-  if (flags & BORDERLESS)
-    style = WS_POPUP;
-  if (flags & RESIZABLE)
-    style |= WS_MAXIMIZEBOX | WS_SIZEBOX;
-  if (flags & FULLSCREEN_DESKTOP) {
-    style = WS_OVERLAPPEDWINDOW;
-    
-    w  = GetSystemMetrics(SM_CXFULLSCREEN);
-    h = GetSystemMetrics(SM_CYFULLSCREEN);
-    
-    rect.right  = w;
-    rect.bottom = h;
-    AdjustWindowRect(&rect, style, 0);
-    if (rect.left < 0) {
-      w += rect.left * 2;
-      rect.right += rect.left;
-      rect.left = 0;
-    }
-    if (rect.bottom > h) {
-      h -= (rect.bottom - h);
-      rect.bottom += (rect.bottom - h);
-      rect.top = 0;
-    }
-    x = 0;
-    y = 0;
-  }
-  else if (!(flags & FULLSCREEN)) {
-    rect.right  = w;
-    rect.bottom = h;
-    
-    AdjustWindowRect(&rect, style, 0);
-    
-    rect.right  -= rect.left;
-    rect.bottom -= rect.top;
-    
-    x = (GetSystemMetrics(SM_CXSCREEN) - rect.right) / 2;
-    y = (GetSystemMetrics(SM_CYSCREEN) - rect.bottom + rect.top) / 2;
-  }
   
-  win->wnd.style         = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
-  win->wnd.lpfnWndProc   = WndProc;
-  win->wnd.hCursor       = LoadCursor(0, IDC_ARROW);
-  win->wnd.lpszClassName = t;
-  if (!RegisterClass(&win->wnd)) {
-    hal_release();
-    HAL_SAFE_FREE(win);
-    error_handle(WIN_WINDOW_CREATION_FAILED, "RegisterClass() failed: %s", GetLastError());
-    return false;
-  }
-  HINSTANCE hinst = GetModuleHandle(NULL);
-  win->hwnd = CreateWindow(t, t, style, x, y, rect.right, rect.bottom, NULL, NULL, hinst, NULL);
-  if (!win->hwnd) {
-    hal_release();
-    HAL_SAFE_FREE(win);
-    error_handle(WIN_WINDOW_CREATION_FAILED, "CreateWindowEx() failed: %s", GetLastError());
-    return false;
-  }
-  win->hdc = GetDC(win->hwnd);
+  long s_window_style = WS_POPUP | WS_SYSMENU | WS_CAPTION;
+  wc.style         = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
+  wc.lpfnWndProc   = WndProc;
+  wc.hCursor       = LoadCursor(0, IDC_ARROW);
+  wc.lpszClassName = t;
+  RegisterClass(&wc);
   
-  win->bmpinfo = HAL_MALLOC(sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
-  if (!win->bmpinfo) {
-    hal_release();
-    HAL_SAFE_FREE(win);
-    error_handle(OUT_OF_MEMEORY, "malloc() failed");
-    return false;
-  }
-  win->bmpinfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-  win->bmpinfo->bmiHeader.biPlanes = 1;
-  win->bmpinfo->bmiHeader.biBitCount = 32;
-  win->bmpinfo->bmiHeader.biCompression = BI_BITFIELDS;
-  win->bmpinfo->bmiHeader.biWidth = w;
-  win->bmpinfo->bmiHeader.biHeight = -h;
-  win->bmpinfo->bmiColors[0].rgbRed = 0xFF;
-  win->bmpinfo->bmiColors[1].rgbGreen = 0xFF;
-  win->bmpinfo->bmiColors[2].rgbBlue = 0xFF;
+  hwnd = CreateWindowEx(0,
+                          t, t,
+                          s_window_style,
+                          x, y,
+                          w, h,
+                          0, 0, 0, 0);
   
-  ShowWindow(win->hwnd, SW_NORMAL);
-  if (flags & ALWAYS_ON_TOP)
-    SetWindowPos(win->hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-  SetFocus(win->hwnd);
-  
-  struct window_t* window = *s = HAL_MALLOC(sizeof(struct window_t));
-  if (!window) {
-    hal_release();
-    HAL_SAFE_FREE(win);
-    error_handle(OUT_OF_MEMEORY, "malloc() failed");
+  if (!hwnd)
     return false;
-  }
-  memset(window, 0, sizeof(*window));
-  static int id_counter = 0;
-  window->id = id_counter++;
-  window->w  = rect.right;
-  window->h  = rect.bottom;
-  window->window = (void*)win;
-  active_window = window;
-  add_win_node(window);
+  
+  ShowWindow(hwnd, SW_NORMAL);
+  
+  bitmapInfo = (BITMAPINFO *) calloc(1, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
+  bitmapInfo->bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
+  bitmapInfo->bmiHeader.biPlanes      = 1;
+  bitmapInfo->bmiHeader.biBitCount    = 32;
+  bitmapInfo->bmiHeader.biCompression = BI_BITFIELDS;
+  bitmapInfo->bmiHeader.biWidth       = w;
+  bitmapInfo->bmiHeader.biHeight      = -(LONG)h;
+  bitmapInfo->bmiColors[0].rgbRed     = 0xff;
+  bitmapInfo->bmiColors[1].rgbGreen   = 0xff;
+  bitmapInfo->bmiColors[2].rgbBlue    = 0xff;
+  
+  hdc = GetDC(hwnd);
+  
   return true;
 }
 
@@ -4378,34 +3865,19 @@ void hal_cursor_set_pos(int x, int y) {
 }
 
 void hal_poll() {
-  win32_node_t* cur = win32_head;
-  while (cur) {
-    static win32_window_t* win = NULL;
-    win = (win32_window_t*)cur->win->window;
-    
-    MSG msg;
-    if (PeekMessage(&msg, win->hwnd, 0, 0, PM_REMOVE)) {
-      TranslateMessage(&msg);
-      DispatchMessage(&msg);
-    }
-    cur = cur->next;
+  MSG msg;
+  if (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
   }
 }
 
 void hal_flush(window_t s, surface_t b) {
-  static win32_window_t* win = NULL;
-  win = (win32_window_t*)s->window;
-  InvalidateRect(win->hwnd, 0x0, TRUE);
-  SendMessage(win->hwnd, WM_PAINT, 0, 0); 
+  
 }
 
 void hal_release() {
-  win32_node_t* node = win32_head, *tmp = NULL;
-  do {
-    tmp = node;
-    node = node->next;
-    free_win_node(&tmp);
-  } while (node);
+  
 }
 #elif defined(HAL_LINUX) && !defined(HAL_EXTERNAL_WINDOW)
 #error TODO: HAL_LINUX reimplement
@@ -4419,9 +3891,7 @@ void hal_release() {
 #endif
 #define HAL_CANVAS_ID "#" HAL_CANVAS_NAME
 
-#include <stdio.h>
 #include <emscripten.h>
-#include <string.h>
 #include <emscripten/html5.h>
 
 static i32 window_w, window_h, canvas_w, canvas_h, canvas_x, canvas_y, cursor_x, cursor_y;
@@ -5016,6 +4486,7 @@ void hal_cursor_pos(i32* a, i32* b) {
 }
 
 void hal_cursor_set_pos(i32 a, i32 b) {
+  return;
 }
 
 void hal_poll() {
