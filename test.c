@@ -1,14 +1,14 @@
 #include <stdio.h>
 #include "hal.h"
 
-static window_t win;
-static surface_t buf;
+static struct window_t win;
+static struct surface_t buf;
 static bool running = true;
 
 #define SW 575
 #define SH 500
 
-void on_error(ERROR_TYPE type, const char* msg, const char* file, const char* func, i32 line) {
+void on_error(HAL_ERROR type, const char* msg, const char* file, const char* func, i32 line) {
   fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
 #if defined(HAL_DIALOGS)
   hal_alert(ALERT_ERROR, ALERT_OK, "ERROR! See logs for info");
@@ -56,20 +56,20 @@ void on_closed(void* _) {
 
 void loop() {
   hal_poll();
-  hal_flush(win, buf);
+  hal_flush(&win, &buf);
 }
 
 int main(int argc, const char* argv[]) {
   hal_error_callback(on_error);
 
   hal_window(&win, "test",  SW, SH, DEFAULT);
-  //hal_window_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, on_closed, win);
-  hal_cursor_icon(win, CURSOR_HAND);
+  hal_window_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, on_closed, &win);
+  hal_cursor_icon(&win, CURSOR_HAND);
 
   hal_surface(&buf, SW, SH);
-  hal_fill(buf, RED);
+  hal_fill(&buf, RED);
 
-  surface_t img;
+  struct surface_t img;
 #if defined(HAL_EMCC)
   hal_bmp(&img, "old/test/resources/Uncompressed-24.bmp");
 #elif defined(HAL_OSX)
@@ -77,15 +77,27 @@ int main(int argc, const char* argv[]) {
 #elif defined(HAL_WINDOWS)
   hal_bmp(&img, "Z:\\hal\\old\\test\\resources\\Uncompressed-24.bmp");
 #endif
-  hal_paste(buf, img, 10, 10);
+  hal_paste(&buf, &img, 10, 10);
+  
+  struct bdf_t font;
+#if defined(HAL_EMCC)
+  hal_bdf(&font, "old/test/resources/tewi.bdf");
+#elif defined(HAL_OSX)
+  hal_bdf(&font, "/Users/roryb/git/hal/old/test/resources/tewi.bdf");
+#elif defined(HAL_WINDOWS)
+  hal_bdf(&font, "Z:\\hal\\old\\test\\resources\\tewi.bdf");
+#endif
+  hal_bdf_writelnf(&buf, &font, 10, 10, WHITE, BLACK, "This is a test! %d", 42);
 
 #if defined(HAL_EMCC)
   emscripten_set_main_loop(loop, 0, 1);
 #else
-  while (!hal_closed(win) && running)
+  while (!hal_closed(&win) && running)
     loop();
 #endif
 
+  hal_destroy(&img);
+  hal_bdf_destroy(&font);
   hal_destroy(&buf);
   hal_window_destroy(&win);
   return 0;

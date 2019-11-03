@@ -46,7 +46,6 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
  */
 
 #ifndef graphics_h
@@ -224,66 +223,6 @@ extern "C" {
 #define BLIT_CHROMA_KEY -16711936
 #endif
 #endif
-
-  /*!
-   * @typedef ERROR_TYPE
-   * @brief A list of different error types the library can generate
-   */
-  typedef enum {
-    UNKNOWN_ERROR,
-    OUT_OF_MEMEORY,
-    FILE_OPEN_FAILED,
-    INVALID_BMP,
-    UNSUPPORTED_BMP,
-    INVALID_PARAMETERS,
-#if defined(HAL_BDF)
-    BDF_NO_CHAR_SIZE,
-    BDF_NO_CHAR_LENGTH,
-    BDF_TOO_MANY_BITMAPS,
-    BDF_UNKNOWN_CHAR,
-#endif
-#if defined(HAL_OPENGL)
-    GL_SHADER_ERROR,
-#endif
-#if !defined(HAL_OSX)
-    GL_LOAD_DL_FAILED,
-    GL_GET_PROC_ADDR_FAILED,
-#else
-    CURSOR_MOD_FAILED,
-#if defined(HAL_METAL)
-    MTK_LIBRARY_ERROR,
-    MTK_CREATE_PIPELINE_FAILED,
-#endif
-    OSX_WINDOW_CREATION_FAILED,
-    OSX_APPDEL_CREATION_FAILED,
-    OSX_FULLSCREEN_FAILED,
-#endif
-#if defined(HAL_WINDOWS)
-#if defined(HAL_DX9)
-#elif defined(HAL_OPENGL)
-    WIN_GL_PF_ERROR,
-#endif
-    WIN_WINDOW_CREATION_FAILED,
-    WIN_FULLSCREEN_FAILED,
-#elif defined(HAL_LINUX)
-    NIX_CURSOR_PIXMAP_ERROR,
-    NIX_OPEN_DISPLAY_FAILED,
-#if defined(HAL_OPENGL)
-    NIX_GL_FB_ERROR,
-    NIX_GL_CONTEXT_ERROR,
-#endif
-    NIX_WINDOW_CREATION_FAILED,
-#endif
-    WINDOW_ICON_FAILED,
-    CUSTOM_CURSOR_NOT_CREATED
-  } ERROR_TYPE;
-
-  /*!
-   * @discussion Callback for errors inside library
-   * @param cb Function pointer to callback
-   */
-  HALDEF void  hal_error_callback(void(*cb)(ERROR_TYPE, const char*, const char*, const char*, i32));
-
   /*!
    * @typedef surface_t
    * @brief An object to hold image data
@@ -291,7 +230,9 @@ extern "C" {
    * @constant w Width of image
    * @constant h Height of image
    */
-  typedef struct surface_t* surface_t;
+  struct surface_t {
+	i32 *buf, w, h;
+  };
 
   /*!
    * @discussion Get size of given surface
@@ -299,13 +240,13 @@ extern "C" {
    * @param w Pointer to int to set
    * @param h Pointer to int to set
    */
-  HALDEF void hal_surface_size(surface_t s, int* w, int* h);
+  HALDEF void hal_surface_size(struct surface_t* s, int* w, int* h);
   /*!
    * @discussion Get pointer to buffer of given surface
    * @param s Surface object
    * @return The pointer to surface buffer
    */
-  HALDEF i32* hal_surface_raw(surface_t s);
+  HALDEF i32* hal_surface_raw(struct surface_t* s);
   /*!
    * @discussion Create a new surface
    * @param s Pointer to surface object to create
@@ -313,19 +254,19 @@ extern "C" {
    * @param h Height of new surface
    * @return Boolean for success
    */
-  HALDEF bool hal_surface(surface_t* s, u32 w, u32 h);
+  HALDEF bool hal_surface(struct surface_t* s, u32 w, u32 h);
   /*!
    * @discussion Destroy a surface
    * @param s Pointer to pointer to surface object
    */
-  HALDEF void hal_destroy(surface_t* s);
+  HALDEF void hal_destroy(struct surface_t* s);
 
   /*!
    * @discussion Fill a surface with a given colour
    * @param s Surface object
    * @param col Colour to set
    */
-  HALDEF void hal_fill(surface_t s, i32 col);
+  HALDEF void hal_fill(struct surface_t* s, i32 col);
   /*!
    * @discussion Flood portion of surface with given colour
    * @param s Surface object
@@ -333,12 +274,12 @@ extern "C" {
    * @param y Y position
    * @param col Colour to set
    */
-  HALDEF void hal_flood(surface_t s, i32 x, i32 y, i32 col);
+  HALDEF void hal_flood(struct surface_t* s, i32 x, i32 y, i32 col);
   /*!
    * @discussion Clear a surface, zero the buffer
    * @param s Surface object
    */
-  HALDEF void hal_cls(surface_t s);
+  HALDEF void hal_cls(struct surface_t* s);
   /*!
    * @discussion Set surface pixel colour
    * @param s Surface object
@@ -346,7 +287,7 @@ extern "C" {
    * @param y Y position
    * @param col Colour to set
    */
-  HALDEF void hal_pset(surface_t s, i32 x, i32 y, i32 col);
+  HALDEF void hal_pset(struct surface_t* s, i32 x, i32 y, i32 col);
   /*!
    * @discussion Get surface pixel colour
    * @param s Surface object
@@ -354,7 +295,7 @@ extern "C" {
    * @param y Y position
    * @return Pixel colour
    */
-  HALDEF i32  hal_pget(surface_t s, i32 x, i32 y);
+  HALDEF i32  hal_pget(struct surface_t* s, i32 x, i32 y);
   /*!
    * @discussion Blit one surface onto another at point
    * @param dst Surface to blit to
@@ -363,7 +304,7 @@ extern "C" {
    * @param y Y position
    * @return Boolean of success
    */
-  HALDEF bool hal_paste(surface_t dst, surface_t src, i32 x, i32 y);
+  HALDEF bool hal_paste(struct surface_t* dst, struct surface_t* src, i32 x, i32 y);
   /*!
    * @discussion Blit one surface onto another at point with clipping rect
    * @param dst Surface to blit to
@@ -376,7 +317,7 @@ extern "C" {
    * @param rh Clip rect height
    * @return Boolean of success
    */
-  HALDEF bool hal_clip_paste(surface_t dst, surface_t src, i32 x, i32 y, i32 rx, i32 ry, i32 rw, i32 rh);
+  HALDEF bool hal_clip_paste(struct surface_t* dst, struct surface_t* src, i32 x, i32 y, i32 rx, i32 ry, i32 rw, i32 rh);
   /*!
    * @discussion Reallocate a surface
    * @param s Surface object
@@ -384,20 +325,20 @@ extern "C" {
    * @param nh New height
    * @return Boolean of success
    */
-  HALDEF bool hal_reset(surface_t s, i32 nw, i32 nh);
+  HALDEF bool hal_reset(struct surface_t* s, i32 nw, i32 nh);
   /*!
    * @discussion Create a copy of a surface
    * @param a Original surface object
    * @param b New surface object to be allocated
    * @return Boolean of success
    */
-  HALDEF bool hal_copy(surface_t a, surface_t* b);
+  HALDEF bool hal_copy(struct surface_t* a, struct surface_t* b);
   /*!
    * @discussion Loop through each pixel of surface and run position and colour through a callback. Return value of the callback is the new colour at the position
    * @param s Surface object
    * @param fn Callback function
    */
-  HALDEF void hal_passthru(surface_t s, i32(*fn)(i32 x, i32 y, i32 col));
+  HALDEF void hal_passthru(struct surface_t* s, i32(*fn)(i32 x, i32 y, i32 col));
   /*!
    * @discussion Resize (and scale) surface to given size
    * @param a Original surface object
@@ -406,7 +347,7 @@ extern "C" {
    * @param b New surface object to be allocated
    * @return Boolean of success
    */
-  HALDEF bool hal_resize(surface_t a, i32 nw, i32 nh, surface_t* b);
+  HALDEF bool hal_resize(struct surface_t* a, i32 nw, i32 nh, struct surface_t* b);
   /*!
    * @discussion Rotate a surface by a given degree
    * @param a Original surface object
@@ -414,14 +355,14 @@ extern "C" {
    * @param b New surface object to be allocated
    * @return Boolean of success
    */
-  HALDEF bool hal_rotate(surface_t a, float angle, surface_t* b);
+  HALDEF bool hal_rotate(struct surface_t* a, float angle, struct surface_t* b);
   /*!
    * @discussion https://en.wikipedia.org/wiki/Color_quantization
    * @param a Original surface object
    * @param n_colors Maximum colours
    * @param b New surface object to be allocated
    */
-  HALDEF void hal_quantize(surface_t a, i32 n_colors, surface_t* b);
+  HALDEF void hal_quantize(struct surface_t* a, i32 n_colors, struct surface_t* b);
 
   /*!
    * @discussion Simple Bresenham line
@@ -432,7 +373,7 @@ extern "C" {
    * @param y1 Vector B Y position
    * @param col Colour of line
    */
-  HALDEF void hal_line(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 col);
+  HALDEF void hal_line(struct surface_t* s, i32 x0, i32 y0, i32 x1, i32 y1, i32 col);
   /*!
    * @discussion Draw a circle
    * @param s Surface object
@@ -442,7 +383,7 @@ extern "C" {
    * @param col Colour of cricle
    * @param fill Fill circle boolean
    */
-  HALDEF void hal_circle(surface_t s, i32 xc, i32 yc, i32 r, i32 col, bool fill);
+  HALDEF void hal_circle(struct surface_t* s, i32 xc, i32 yc, i32 r, i32 col, bool fill);
   /*!
    * @discussion Draw a rectangle
    * @param x X position
@@ -452,7 +393,7 @@ extern "C" {
    * @param col Colour of rectangle
    * @param fill Fill rectangle boolean
    */
-  HALDEF void hal_rect(surface_t s, i32 x, i32 y, i32 w, i32 h, i32 col, bool fill);
+  HALDEF void hal_rect(struct surface_t* s, i32 x, i32 y, i32 w, i32 h, i32 col, bool fill);
   /*!
    * @discussion Draw a triangle
    * @param s Surface object
@@ -465,7 +406,7 @@ extern "C" {
    * @param col Colour of line
    * @param fill Fill triangle boolean
    */
-  HALDEF void hal_tri(surface_t s, i32 x0, i32 y0, i32 x1, i32 y1, i32 x2, i32 y2, i32 col, bool fill);
+  HALDEF void hal_tri(struct surface_t* s, i32 x0, i32 y0, i32 x1, i32 y1, i32 x2, i32 y2, i32 col, bool fill);
 
   /*!
    * @discussion Load BMP file from path
@@ -473,7 +414,7 @@ extern "C" {
    * @param path Path to BMP file
    * @return Boolean of success
    */
-  HALDEF bool hal_bmp(surface_t* s, const char* path);
+  HALDEF bool hal_bmp(struct surface_t* s, const char* path);
 
 #if !defined(HAL_NO_TEXT)
   /*!
@@ -485,7 +426,7 @@ extern "C" {
    * @param fg Foreground colour
    * @param bg Background colour
    */
-  HALDEF void hal_ascii(surface_t s, i8 ch, i32 x, i32 y, i32 fg, i32 bg);
+  HALDEF void hal_ascii(struct surface_t* s, u8 ch, i32 x, i32 y, i32 fg, i32 bg);
   /*!
    * @discussion Draw first character (ASCII or Unicode) from string using default in-built font
    * @param s Surface object
@@ -496,7 +437,7 @@ extern "C" {
    * @param bg Background colour
    * @return Returns length of character
    */
-  HALDEF i32 hal_character(surface_t s, const char* ch, i32 x, i32 y, i32 fg, i32 bg);
+  HALDEF i32 hal_character(struct surface_t* s, const char* ch, i32 x, i32 y, i32 fg, i32 bg);
   /*!
    * @discussion Draw a string using default in-built font
    * @param s Surface object
@@ -506,7 +447,7 @@ extern "C" {
    * @param bg Background colour
    * @param str String to write
    */
-  HALDEF void hal_writeln(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* str);
+  HALDEF void hal_writeln(struct surface_t* s, i32 x, i32 y, i32 fg, i32 bg, const char* str);
   /*!
    * @discussion Draw a string using default in-built font
    * @param s Surface object
@@ -516,7 +457,7 @@ extern "C" {
    * @param bg Background colour
    * @param fmt Format string
    */
-  HALDEF void hal_writelnf(surface_t s, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...);
+  HALDEF void hal_writelnf(struct surface_t* s, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...);
   /*!
    * @discussion Create a surface object for text using default in-built font
    * @param s Surface object to be allocated
@@ -524,7 +465,7 @@ extern "C" {
    * @param bg Background colour
    * @param str String to write
    */
-  HALDEF void hal_string(surface_t* s, i32 fg, i32 bg, const char* str);
+  HALDEF void hal_string(struct surface_t* s, i32 fg, i32 bg, const char* str);
   /*!
    * @discussion Create a surface object for formatted text using default in-built font
    * @param s Surface object to be allocated
@@ -532,7 +473,7 @@ extern "C" {
    * @param bg Background colour
    * @param fmt Format string
    */
-  HALDEF void hal_stringf(surface_t* s, i32 fg, i32 bg, const char* fmt, ...);
+  HALDEF void hal_stringf(struct surface_t* s, i32 fg, i32 bg, const char* fmt, ...);
 #endif
 
   /*!
@@ -545,26 +486,150 @@ extern "C" {
    * @param ms Durection in milliseconds
    */
   HALDEF void hal_delay(i64 ms);
+  
+#if defined(HAL_MT_SURFACE) && !defined(HAL_NO_THREADS)
+  #include "threads.h"
+#if defined(HAL_OSX)
+  /* Without this, the hal_mtx_t typedef isn't recognised in the header
+   * I genuinely don't understand wtf to do here, but this worked. */
+#pragma clang module import Darwin.POSIX.pthread.pthread
+  typedef pthread_mutex_t hal_mtx_t;
+#endif
+  /*!
+   * @typedef mt_surface_t
+   * @brief An object to hold image data
+   * @constant surface Surface object
+   * @constant lock Main lock
+   * @constant slock Array of locks for surface
+   */
+  struct mt_surface_t {
+	struct surface_t surface;
+	hal_mtx_t lock, *slock;
+  };
+  
+  /*!
+   * @discussion Create a new surface
+   * @param s Multi-threaded surface object
+   * @param w Width of new surface
+   * @param h Height of new surface
+   * @return Boolean for success
+   */
+  HALDEF bool hal_mt_surface(struct mt_surface_t* s, u32 w, u32 h);
+  /*!
+   * @discussion Destroy a surface
+   * @param s Pointer to multi-threaded surface object
+   */
+  HALDEF void hal_mt_destroy(struct mt_surface_t* s);
+  
+  /*!
+   * @discussion Fill a surface with a given colour
+   * @param s Multi-threaded surface object
+   * @param col Colour to set
+   */
+  HALDEF void hal_mt_fill(struct mt_surface_t* s, i32 col);
+  /*!
+   * @discussion Set surface pixel colour
+   * @param s Multi-threaded surface object
+   * @param x X position
+   * @param y Y position
+   * @param col Colour to set
+   */
+  HALDEF void hal_mt_pset(struct mt_surface_t* s, i32 x, i32 y, i32 col);
+  /*!
+   * @discussion Get surface pixel colour
+   * @param s Multi-threaded surface object
+   * @param x X position
+   * @param y Y position
+   * @return Pixel colour
+   */
+  HALDEF i32  hal_mt_pget(struct mt_surface_t* s, i32 x, i32 y);
+  /*!
+   * @discussion Blit one surface onto another at point
+   * @param dst Multi-threaded surface to blit to
+   * @param src Surface to blit
+   * @param x X position
+   * @param y Y position
+   * @return Boolean of success
+   */
+  HALDEF bool hal_mt_paste(struct mt_surface_t* dst, struct surface_t* src, i32 x, i32 y);
+  /*!
+   * @discussion Blit one surface onto another at point with clipping rect
+   * @param dst Multi-threaded surface to blit to
+   * @param src Surface to blit
+   * @param x X position
+   * @param y Y position
+   * @param rx Clip rect X
+   * @param ry Clip rect Y
+   * @param rw Clip rect width
+   * @param rh Clip rect height
+   * @return Boolean of success
+   */
+  HALDEF bool hal_mt_clip_paste(struct mt_surface_t* dst, struct surface_t* src, i32 x, i32 y, i32 rx, i32 ry, i32 rw, i32 rh);
+  /*!
+   * @discussion Reallocate a surface
+   * @param s Multi-threaded surface object
+   * @param nw New width
+   * @param nh New height
+   * @return Boolean of success
+   */
+  HALDEF bool hal_mt_reset(struct mt_surface_t* s, i32 nw, i32 nh);
+  /*!
+   * @discussion Create a copy of a surface
+   * @param a Multi-threaded surface object
+   * @param b New surface object to be allocated
+   * @return Boolean of success
+   */
+  HALDEF bool hal_mt_export(struct mt_surface_t* a, struct surface_t* b);
+  /*!
+   * @discussion Lock the surface
+   * @param s Multi-threaded surface object
+   * @return Boolean of success
+   */
+  HALDEF bool hal_mt_lock(struct mt_surface_t* s);
+  /*!
+   * @discussion Lock the surface
+   * @param s Multi-threaded surface object
+   * @return Boolean of success
+   */
+  HALDEF bool hal_mt_unlock(struct mt_surface_t* s);
+  /*!
+   * @discussion Unlock the surface
+   * @param s Multi-threaded surface object
+   * @return Boolean of success
+   */
+  HALDEF bool hal_mt_trylock(struct mt_surface_t* s);
+#endif
 
-#if defined(HAL_BDF)
+#if !defined(HAL_BDF)
   /*!
    * @typedef bdf_t
    * @brief BDF font object
    */
-  typedef struct bdf_t* bdf_t;
+  struct bdf_char_t {
+	u32 width;
+	u8* bitmap;
+	i32 bb_x, bb_y, bb_w, bb_h;
+  };
+  
+  struct bdf_t {
+	i32 fbb_x, fbb_y, fbb_w, fbb_h;
+	u32* encoding_table;
+	struct bdf_char_t* chars;
+	i32 n_chars;
+  };
 
   /*!
    * @discussion Destroy a BDF font object
    * @param f Pointer to BDF font object
    */
-  HALDEF void hal_bdf_destroy(bdf_t* f);
+  HALDEF void hal_bdf_destroy(struct bdf_t* f);
   /*!
    * @discussion Load a BDF font from path
    * @param out BDF object to be allocated
    * @param path Path of BDF file
    * @return Boolean of success
    */
-  HALDEF bool hal_bdf(bdf_t* out, const char* path);
+  HALDEF bool hal_bdf(struct bdf_t* out, const char* path);
   /*!
    * @discussion Draw a string using BDF font
    * @param s Surface object
@@ -576,7 +641,7 @@ extern "C" {
    * @param bg Background colour
    * @return Returns length of character
    */
-  HALDEF i32 hal_bdf_character(surface_t s, bdf_t f, const char* ch, i32 x, i32 y, i32 fg, i32 bg);
+  HALDEF i32 hal_bdf_character(struct surface_t* s, struct bdf_t* f, const char* ch, i32 x, i32 y, i32 fg, i32 bg);
   /*!
    * @discussion Draw a string using BDF font object
    * @param s Surface object
@@ -587,7 +652,7 @@ extern "C" {
    * @param bg Background colour
    * @param str String to write
    */
-  HALDEF void hal_bdf_writeln(surface_t s, bdf_t f, i32 x, i32 y, i32 fg, i32 bg, const char* str);
+  HALDEF void hal_bdf_writeln(struct surface_t* s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg, const char* str);
   /*!
    * @discussion Draw a formatted string using BDF font object
    * @param s Surface object
@@ -598,7 +663,7 @@ extern "C" {
    * @param bg Background colour
    * @param fmt Format string
    */
-  HALDEF void hal_bdf_writelnf(surface_t s, bdf_t f, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...);
+  HALDEF void hal_bdf_writelnf(struct surface_t* s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...);
   /*!
    * @discussion Create a surface object for text using BDF font object
    * @param s Surface object to be allocated
@@ -607,7 +672,7 @@ extern "C" {
    * @param bg Background colour
    * @param str String to write
    */
-  HALDEF void hal_bdf_string(surface_t* s, bdf_t f, i32 fg, i32 bg, const char* str);
+  HALDEF void hal_bdf_string(struct surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* str);
   /*!
    * @discussion Create a surface object for formatted text using BDF font object
    * @param s Surface object to be allocated
@@ -616,7 +681,7 @@ extern "C" {
    * @param bg Background colour
    * @param fmt Format string
    */
-  HALDEF void hal_bdf_stringf(surface_t* s, bdf_t f, i32 fg, i32 bg, const char* fmt, ...);
+  HALDEF void hal_bdf_stringf(struct surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* fmt, ...);
 #endif
 
 #if !defined(HAL_NO_ALERTS)
@@ -838,21 +903,6 @@ extern "C" {
     KB_MOD_NUM_LOCK = 0x0020
   } KEY_MOD;
 
-  typedef struct window_t* window_t;
-
-  /*!
-   * @discussion Set "parent" for a window object. The parent pointer will be passed to window callbacks.
-   * @param s Window object
-   * @param p Pointer to parent
-   */
-  HALDEF void hal_window_set_parent(window_t s, void* p);
-  /*!
-   * @discussion Get parent point from window object
-   * @param s Window object
-   * @return Point to parent
-   */
-  HALDEF void* hal_window_parent(window_t s);
-
 #define XMAP_SCREEN_CB \
   X(keyboard, (void*, KEY_SYM, KEY_MOD, bool)) \
   X(mouse_button, (void*, MOUSE_BTN, KEY_MOD, bool)) \
@@ -861,6 +911,29 @@ extern "C" {
   X(focus, (void*, bool)) \
   X(resize, (void*, i32, i32)) \
   X(closed, (void*))
+  
+  struct window_t {
+	i32 id, w, h;
+	
+#define X(a, b) void(*a##_callback)b;
+	XMAP_SCREEN_CB
+#undef X
+	
+	void *window, *parent;
+  };
+
+  /*!
+   * @discussion Set "parent" for a window object. The parent pointer will be passed to window callbacks.
+   * @param s Window object
+   * @param p Pointer to parent
+   */
+  HALDEF void hal_window_set_parent(struct window_t* s, void* p);
+  /*!
+   * @discussion Get parent point from window object
+   * @param s Window object
+   * @return Point to parent
+   */
+  HALDEF void* hal_window_parent(struct window_t* s);
 
 #define X(a, b) \
   void(*a##_cb)b,
@@ -875,10 +948,10 @@ extern "C" {
    * @param closed Window closed callback
    * @param s Window object
    */
-  HALDEF void hal_window_callbacks(XMAP_SCREEN_CB window_t window);
+  HALDEF void hal_window_callbacks(XMAP_SCREEN_CB struct window_t* window);
 #undef X
 #define X(a, b) \
-  HALDEF void hal_##a##_callback(window_t window, void(*a##_cb)b);
+  HALDEF void hal_##a##_callback(struct window_t* window, void(*a##_cb)b);
   XMAP_SCREEN_CB
 #undef X
 
@@ -929,57 +1002,57 @@ extern "C" {
    * @param flags Window flags
    * @return Boolean of success
    */
-  HALDEF bool hal_window(window_t* s, const char* t, i32 w, i32 h, i16 flags);
+  HALDEF bool hal_window(struct window_t* s, const char* t, i32 w, i32 h, i16 flags);
   /*!
    * @discussion Set window icon from surface object
    * @param s Window object
    * @param b Surface object
    */
-  HALDEF void hal_window_icon(window_t s, surface_t b);
+  HALDEF void hal_window_icon(struct window_t* s, struct surface_t* b);
   /*!
    * @discussion Set window title
    * @param s Window object
    * @param t New title
    */
-  HALDEF void hal_window_title(window_t s, const char* t);
+  HALDEF void hal_window_title(struct window_t* s, const char* t);
   /*!
    * @discussion Get the position of a window object
    * @param s Window object
    * @param x Pointer to int to set
    * @param y Pointer to int to set
    */
-  HALDEF void hal_window_position(window_t s, int* x, int*  y);
+  HALDEF void hal_window_position(struct window_t* s, int* x, int*  y);
   /*!
    * @discussion Get the size of the screen a window is on
    * @param s Window object
    * @param w Pointer to int to set
    * @param h Pointer to int to set
    */
-  HALDEF void hal_screen_size(window_t s, int* w, int* h);
+  HALDEF void hal_screen_size(struct window_t* s, int* w, int* h);
   /*!
    * @discussion Destroy window object
    * @param s Window object
    */
-  HALDEF void hal_window_destroy(window_t* s);
+  HALDEF void hal_window_destroy(struct window_t* s);
   /*!
    * @discussion Unique window ID for window object
    * @param s Window object
    * @return Unique ID of window object
    */
-  HALDEF i32 hal_window_id(window_t s);
+  HALDEF i32 hal_window_id(struct window_t* s);
   /*!
    * @discussion Get size of window
    * @param s Window object
    * @param w Pointer to int to set
    * @param h Pointer to int to set
    */
-  HALDEF void hal_window_size(window_t s, i32* w, i32* h);
+  HALDEF void hal_window_size(struct window_t* s, i32* w, i32* h);
   /*!
    * @discussion Check if a window is still open
    * @param s Window object
    * @return Boolean if window is open
    */
-  HALDEF bool hal_closed(window_t s);
+  HALDEF bool hal_closed(struct window_t* s);
 
   /*!
    * @discussion Lock or unlock cursor movement to active window
@@ -996,13 +1069,13 @@ extern "C" {
    * @param s Window object
    * @param t Type of cursor
    */
-  HALDEF void hal_cursor_icon(window_t s, CURSOR_TYPE t);
+  HALDEF void hal_cursor_icon(struct window_t* s, CURSOR_TYPE t);
   /*!
    * @discussion Change cursor icon to icon from surface object
    * @param s Window object
    * @param b Surface object
    */
-  HALDEF void hal_cursor_custom_icon(window_t s, surface_t b);
+  HALDEF void hal_cursor_custom_icon(struct window_t* s, struct surface_t* b);
   /*!
    * @discussion Get cursor position
    * @param x Integer to set
@@ -1025,7 +1098,7 @@ extern "C" {
    * @param s Window object
    * @param b Surface object
    */
-  HALDEF void hal_flush(window_t s, surface_t b);
+  HALDEF void hal_flush(struct window_t* s, struct surface_t* b);
   /*!
    * @discussion Release anything allocated by this library
    */

@@ -46,7 +46,6 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
  */
 
 #ifndef hal_h
@@ -76,6 +75,10 @@ extern "C" {
 #else
 #error "Must define all or none of HAL_MALLOC, HAL_FREE, and HAL_REALLOC (or HAL_REALLOC_SIZED)."
 #endif
+  
+#if defined(DEBUG) && !defined(HAL_DEBUG)
+#define HAL_DEBUG
+#endif
 
 #if !defined(HAL_MALLOC)
 #define HAL_MALLOC(sz)       malloc(sz)
@@ -99,6 +102,7 @@ extern "C" {
 #else
 #include <stdbool.h>
 #endif
+#include <stdarg.h>
   
 #if !defined(HALDEF)
 #if defined(HAL_STATIC)
@@ -191,6 +195,59 @@ extern "C" {
 // #if !defined(HAL_NO_FILESYSTEM)
 // #include "filesystem.h"
 // #endif
+  
+  /*!
+   * @typedef ERROR_TYPE
+   * @brief A list of different error types the library can generate
+   */
+  typedef enum {
+	UNKNOWN_ERROR,
+	OUT_OF_MEMEORY,
+	FILE_OPEN_FAILED,
+	INVALID_BMP,
+	UNSUPPORTED_BMP,
+	INVALID_PARAMETERS,
+	BDF_NO_CHAR_SIZE,
+	BDF_NO_CHAR_LENGTH,
+	BDF_TOO_MANY_BITMAPS,
+	BDF_UNKNOWN_CHAR,
+	GL_SHADER_ERROR,
+	GL_LOAD_DL_FAILED,
+	GL_GET_PROC_ADDR_FAILED,
+	CURSOR_MOD_FAILED,
+	MTK_LIBRARY_ERROR,
+	MTK_CREATE_PIPELINE_FAILED,
+	OSX_WINDOW_CREATION_FAILED,
+	OSX_APPDEL_CREATION_FAILED,
+	OSX_FULLSCREEN_FAILED,
+	WIN_GL_PF_ERROR,
+	WIN_WINDOW_CREATION_FAILED,
+	WIN_FULLSCREEN_FAILED,
+	NIX_CURSOR_PIXMAP_ERROR,
+	NIX_OPEN_DISPLAY_FAILED,
+	NIX_GL_FB_ERROR,
+	NIX_GL_CONTEXT_ERROR,
+	NIX_WINDOW_CREATION_FAILED,
+	WINDOW_ICON_FAILED,
+	CUSTOM_CURSOR_NOT_CREATED
+  } HAL_ERROR;
+  
+  /*!
+   * @discussion Callback for errors inside library
+   * @param cb Function pointer to callback
+   */
+  HALDEF void hal_error_callback(void(*cb)(HAL_ERROR, const char*, const char*, const char*, i32));
+  
+  /*!
+   * @discussion Internal function to send an error to the error callback
+   * @param type The HAL_ERROR produced
+   * @param file The file the error occured in
+   * @param func The Function error occured in
+   * @param line The line number the error occured on
+   * @param msg Formatted error description
+   */
+  void hal_error(HAL_ERROR type, const char* file, const char* func, i32 line, const char* msg, ...);
+#define HAL_ERROR(A, ...) hal_error((A), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
   
 #if defined(__cplusplus)
 }
