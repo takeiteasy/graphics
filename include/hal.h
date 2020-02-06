@@ -85,15 +85,11 @@ extern "C" {
 #define HAL_REALLOC(p,newsz) realloc(p,newsz)
 #define HAL_FREE(p)          free(p)
 #endif
-
-  typedef signed char        i8;
-  typedef unsigned char      u8;
-  typedef signed short       i16;
-  typedef unsigned short     u16;
-  typedef signed int         i32;
-  typedef unsigned int       u32;
-  typedef signed long long   i64;
-  typedef unsigned long long u64;
+#define HAL_SAFE_FREE(x) \
+if ((x)) { \
+  free((void*)(x)); \
+  (x) = NULL; \
+}
 
 #if defined(_MSC_VER)
 #define bool int
@@ -196,6 +192,8 @@ extern "C" {
 // #include "filesystem.h"
 // #endif
   
+#define HAL_ERROR(A, ...) hal_error((A), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+  
   /*!
    * @typedef ERROR_TYPE
    * @brief A list of different error types the library can generate
@@ -230,14 +228,13 @@ extern "C" {
 	NIX_WINDOW_CREATION_FAILED,
 	WINDOW_ICON_FAILED,
 	CUSTOM_CURSOR_NOT_CREATED
-  } HAL_ERROR;
+  } HAL_ERROR_TYPE;
   
   /*!
    * @discussion Callback for errors inside library
    * @param cb Function pointer to callback
    */
-  HALDEF void hal_error_callback(void(*cb)(HAL_ERROR, const char*, const char*, const char*, i32));
-  
+  HALDEF void hal_error_callback(void(*cb)(HAL_ERROR_TYPE, const char*, const char*, const char*, int));
   /*!
    * @discussion Internal function to send an error to the error callback
    * @param type The HAL_ERROR produced
@@ -246,8 +243,19 @@ extern "C" {
    * @param line The line number the error occured on
    * @param msg Formatted error description
    */
-  void hal_error(HAL_ERROR type, const char* file, const char* func, i32 line, const char* msg, ...);
-#define HAL_ERROR(A, ...) hal_error((A), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+  void hal_error(HAL_ERROR_TYPE type, const char* file, const char* func, int line, const char* msg, ...);
+  /*!
+   * @discussion Get current CPU time
+   * @return CPU time
+   */
+  HALDEF long ticks(void);
+  /*!
+   * @discussion Sleep in milliseconds
+   * @param ms Durection in milliseconds
+   */
+  HALDEF void delay(long ms);
+  HALDEF long pref_counter(void);
+  HALDEF long pref_freq(void);
   
 #if defined(__cplusplus)
 }

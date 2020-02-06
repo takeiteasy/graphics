@@ -83,41 +83,28 @@
 #define HAL_D2R(a) ((a) * M_PI / 180.0)
 #define HAL_R2D(a) ((a) * 180.0 / M_PI)
 
-#define HAL_SAFE_FREE(x) \
-  if ((x)) {  \
-    HAL_FREE((x)); \
-    (x) = NULL; \
-  }
-
 #if defined(HAL_DEBUG) || defined(DEBUG) || defined(HAL_ENABLE_SANITY_CHECK)
-#define SANITY_CHECK(x) \
-  if (!(x)) { \
-	HAL_ERROR(INVALID_PARAMETERS, "Invalid parameters, interal sanity check error"); \
-	abort(); \
-  }
+#define SANITY_CHECK(x)
 #else
 #define SANITY_CHECK(x)
 #endif
 #define STSC(x) ((x) && ((x)->buf))
 
-void hal_surface_size(struct surface_t* s, i32* w, i32* h) {
+void surface_size(struct surface_t* s, unsigned int* w, unsigned int* h) {
   if (w)
     *w = s->w;
   if (h)
     *h = s->h;
 }
 
-i32* hal_surface_raw(struct surface_t* s) {
+int* surface_raw(struct surface_t* s) {
   return s->buf;
 }
 
-bool hal_surface(struct surface_t* s, u32 w, u32 h) {
-  SANITY_CHECK(s);
-  if (s->buf)
-	hal_destroy(s);
+bool surface(struct surface_t* s, unsigned int w, unsigned int h) {
   s->w = w;
   s->h = h;
-  size_t sz = w * h * sizeof(u32) + 1;
+  size_t sz = w * h * sizeof(unsigned int) + 1;
   s->buf = HAL_MALLOC(sz);
   if (!s->buf) {
     HAL_ERROR(OUT_OF_MEMEORY, "malloc() failed");
@@ -128,25 +115,23 @@ bool hal_surface(struct surface_t* s, u32 w, u32 h) {
   return true;
 }
 
-void hal_destroy(struct surface_t* s) {
-  SANITY_CHECK(STSC(s));
+void surface_destroy(struct surface_t* s) {
   HAL_SAFE_FREE(s->buf);
   memset(s, 0, sizeof(struct surface_t));
 }
 
-void hal_fill(struct surface_t* s, i32 col) {
-  SANITY_CHECK(STSC(s));
-  for (i32 i = 0; i < s->w * s->h; ++i)
+void fill(struct surface_t* s, int col) {
+  for (int i = 0; i < s->w * s->h; ++i)
     s->buf[i] = col;
 }
 
 #define XYGET(s, x, y) ((s)->buf[(y) * (s)->w + (x)])
 
-static inline void flood_fn(struct surface_t* s, i32 x, i32 y, i32 new, i32 old) {
+static inline void flood_fn(struct surface_t* s, int x, int y, int new, int old) {
   if (new == old || XYGET(s, x, y) != old)
     return;
 
-  i32 x1 = x;
+  int x1 = x;
   while (x1 < s->w && XYGET(s, x1, y) == old) {
     XYGET(s, x1, y) = new;
     x1++;
@@ -187,35 +172,37 @@ static inline void flood_fn(struct surface_t* s, i32 x, i32 y, i32 new, i32 old)
   }
 }
 
-void hal_flood(struct surface_t* s, i32 x, i32 y, i32 col) {
-  SANITY_CHECK(STSC(s));
+void flood(struct surface_t* s, int x, int y, int col) {
   if (x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
   flood_fn(s, x, y, col, XYGET(s, x, y));
 }
 
-void hal_cls(struct surface_t* s) {
-  SANITY_CHECK(STSC(s));
-  memset(s->buf, 0, s->w * s->h * sizeof(i32));
+void cls(struct surface_t* s) {
+  memset(s->buf, 0, s->w * s->h * sizeof(int));
 }
 
-void hal_pset(struct surface_t* s, i32 x, i32 y, i32 c) {
+void pset(struct surface_t* s, int x, int y, int c) {
   if (x >= 0 && y >= 0 && x < s->w && y < s->h)
     s->buf[y * s->w + x] = c;
 }
 
 #if defined(HAL_NO_ALPHA)
-#define blend(s, x, y, c) hal_pset((s), (x), (y), (c))
+#define blend(s, x, y, c) pset((s), (x), (y), (c))
 #else
 #define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
 
-static inline void blend(struct surface_t* s, i32 x, i32 y, i32 c) {
-  i32 a = HAL_A(c);
+static inline void blend(struct surface_t* s, int x, int y, int c) {
+  if (!s)
+	return;
+  int a = HAL_A(c);
   if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
 
-  i32* p = &s->buf[y * s->w + x];
-  i32  b = HAL_A(*p);
+  int* p = &s->buf[y * s->w + x];
+  if (!p)
+	return;
+  int  b = HAL_A(*p);
   *p = (a == 255 || !b) ? c : HAL_RGBA(BLEND(HAL_R(c), HAL_R(*p), a, b),
                                        BLEND(HAL_G(c), HAL_G(*p), a, b),
                                        BLEND(HAL_B(c), HAL_B(*p), a, b),
@@ -223,18 +210,14 @@ static inline void blend(struct surface_t* s, i32 x, i32 y, i32 c) {
 }
 #endif
 
-i32 hal_pget(struct surface_t* s, i32 x, i32 y) {
-  SANITY_CHECK(STSC(s));
-  return (!s || !s->buf || x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
+int pget(struct surface_t* s, int x, int y) {
+    return (!s || !s->buf || x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
 }
 
-bool hal_paste(struct surface_t* dst, struct surface_t* src, i32 x, i32 y) {
+bool paste(struct surface_t* dst, struct surface_t* src, int x, int y) {
   SANITY_CHECK(STSC(dst) && STSC(src));
   
-  if (x > dst->w || x < 0 || y > dst->h || y < 0)
-    return false;
-
-  i32 ox, oy, c;
+  int ox, oy, c;
   for (ox = 0; ox < src->w; ++ox) {
     for (oy = 0; oy < src->h; ++oy) {
       if (oy > dst->h)
@@ -252,13 +235,13 @@ bool hal_paste(struct surface_t* dst, struct surface_t* src, i32 x, i32 y) {
   return true;
 }
 
-bool hal_clip_paste(struct surface_t* dst, struct surface_t* src, i32 x, i32 y, i32 rx, i32 ry, i32 rw, i32 rh) {
+bool clip_paste(struct surface_t* dst, struct surface_t* src, int x, int y, int rx, int ry, int rw, int rh) {
   SANITY_CHECK(STSC(dst) && STSC(src));
   
   if (rx == rw || ry == rh)
     return false;
 
-  i32 ox = x,  oy = y,
+  int ox = x,  oy = y,
       fx = rx, fy = ry,
       w  = rw, h  = rh;
 
@@ -273,7 +256,7 @@ bool hal_clip_paste(struct surface_t* dst, struct surface_t* src, i32 x, i32 y, 
     oy = 0;
   }
 
-  i32 to_x = ox + w, to_y = oy + h;
+  int to_x = ox + w, to_y = oy + h;
   if (to_x > dst->w)
     w += (dst->w - to_x);
   if (to_y > dst->h)
@@ -282,7 +265,7 @@ bool hal_clip_paste(struct surface_t* dst, struct surface_t* src, i32 x, i32 y, 
   if (ox > dst->w || oy > dst->h || to_x < 0 || to_y < 0)
     return false;
 
-  i32 _x, _y, c;
+  int _x, _y, c;
   for (_x = 0; _x < w; ++_x)
     for (_y = 0; _y < h; ++_y) {
       c = XYGET(src, fx + _x, fy + _y);
@@ -295,10 +278,9 @@ bool hal_clip_paste(struct surface_t* dst, struct surface_t* src, i32 x, i32 y, 
   return true;
 }
 
-bool hal_reset(struct surface_t* s, i32 nw, i32 nh) {
-  SANITY_CHECK(STSC(s));
-  size_t sz = nw * nh * sizeof(u32) + 1;
-  i32* tmp = HAL_REALLOC(s->buf, sz);
+bool reset(struct surface_t* s, int nw, int nh) {
+    size_t sz = nw * nh * sizeof(unsigned int) + 1;
+  int* tmp = HAL_REALLOC(s->buf, sz);
   if (!tmp) {
     HAL_ERROR(OUT_OF_MEMEORY, "realloc() failed");
     return false;
@@ -310,35 +292,35 @@ bool hal_reset(struct surface_t* s, i32 nw, i32 nh) {
   return true;
 }
 
-bool hal_copy(struct surface_t* a, struct surface_t* b) {
+bool copy(struct surface_t* a, struct surface_t* b) {
   SANITY_CHECK(STSC(a) && STSC(b));
-  if (!hal_surface(b, a->w, a->h))
+  if (!surface(b, a->w, a->h))
     return false;
-  memcpy(b->buf, a->buf, a->w * a->h * sizeof(u32) + 1);
+  memcpy(b->buf, a->buf, a->w * a->h * sizeof(unsigned int) + 1);
   return !!b->buf;
 }
 
-void hal_passthru(struct surface_t* s, i32 (*fn)(i32 x, i32 y, i32 col)) {
+void passthru(struct surface_t* s, int (*fn)(int x, int y, int col)) {
   SANITY_CHECK(STSC(s) && fn);
-  i32 x, y;
+  int x, y;
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
-      hal_pset(s, x, y, fn(x, y, XYGET(s, x, y)));
+      pset(s, x, y, fn(x, y, XYGET(s, x, y)));
 }
 
-bool hal_resize(struct surface_t* a, i32 nw, i32 nh, struct surface_t* b) {
+bool resize(struct surface_t* a, int nw, int nh, struct surface_t* b) {
   SANITY_CHECK(STSC(a) && STSC(b));
-  if (!hal_surface(b, nw, nh))
+  if (!surface(b, nw, nh))
     return false;
   
-  i32 x_ratio = (i32)((a->w << 16) / nw) + 1;
-  i32 y_ratio = (i32)((a->h << 16) / nh) + 1;
-  i32 x2, y2, i, j;
+  int x_ratio = (int)((a->w << 16) / nw) + 1;
+  int y_ratio = (int)((a->h << 16) / nh) + 1;
+  int x2, y2, i, j;
   for (i = 0; i < nh; ++i) {
-    i32* t = b->buf + i * nw;
+    int* t = b->buf + i * nw;
     y2 = ((i * y_ratio) >> 16);
-    i32* p = a->buf + y2 * a->w;
-    i32 rat = 0;
+    int* p = a->buf + y2 * a->w;
+    int rat = 0;
     for (j = 0; j < nw; ++j) {
       x2 = (rat >> 16);
       *t++ = p[x2];
@@ -348,7 +330,7 @@ bool hal_resize(struct surface_t* a, i32 nw, i32 nh, struct surface_t* b) {
   return true;
 }
 
-bool hal_rotate(struct surface_t* a, float angle, struct surface_t* b) {
+bool rotate(struct surface_t* a, float angle, struct surface_t* b) {
   SANITY_CHECK(STSC(a) && STSC(b));
   
   float theta = HAL_D2R(angle);
@@ -367,12 +349,12 @@ bool hal_rotate(struct surface_t* a, float angle, struct surface_t* b) {
     (theta > 3.14159 && theta < 4.71239 ? 0.f : HAL_MAX(r[0][1], HAL_MAX(r[1][1], r[2][1])))
   }};
 
-  i32 dw = (i32)ceil(fabsf(mm[1][0]) - mm[0][0]);
-  i32 dh = (i32)ceil(fabsf(mm[1][1]) - mm[0][1]);
-  if (!hal_surface(b, dw, dh))
+  int dw = (int)ceil(fabsf(mm[1][0]) - mm[0][0]);
+  int dh = (int)ceil(fabsf(mm[1][1]) - mm[0][1]);
+  if (!surface(b, dw, dh))
     return false;
 
-  i32 x, y, sx, sy;
+  int x, y, sx, sy;
   for (x = 0; x < dw; ++x)
     for (y = 0; y < dh; ++y) {
       sx = ((x + mm[0][0]) * c + (y + mm[0][1]) * s);
@@ -385,35 +367,35 @@ bool hal_rotate(struct surface_t* a, float angle, struct surface_t* b) {
 }
 
 typedef struct oct_node_t {
-  i64 r, g, b; /* sum of all child node colors */
-  i32 count, heap_idx;
-  u8 n_kids, kid_idx, flags, depth;
+  long long r, g, b; /* sum of all child node colors */
+  int count, heap_idx;
+  unsigned char n_kids, kid_idx, flags, depth;
   struct oct_node_t *kids[8], *parent;
 } oct_node_t;
 
 typedef struct {
-  i32 alloc, n;
+  int alloc, n;
   oct_node_t** buf;
 } node_heap;
 
 typedef struct {
   oct_node_t* pool;
-  i32 len;
+  int len;
 } oct_node_pool_t;
 
-static inline i32 cmp_node(oct_node_t* a, oct_node_t* b) {
+static inline int cmp_node(oct_node_t* a, oct_node_t* b) {
   if (a->n_kids < b->n_kids)
     return -1;
   if (a->n_kids > b->n_kids)
     return 1;
 
-  i32 ac = a->count >> a->depth;
-  i32 bc = b->count >> b->depth;
+  int ac = a->count >> a->depth;
+  int bc = b->count >> b->depth;
   return ac < bc ? -1 : ac > bc;
 }
 
 static inline void down_heap(node_heap* h, oct_node_t* p) {
-  i32 n = p->heap_idx, m;
+  int n = p->heap_idx, m;
 
   while (1) {
     m = n * 2;
@@ -435,7 +417,7 @@ static inline void down_heap(node_heap* h, oct_node_t* p) {
 }
 
 static inline void up_heap(node_heap* h, oct_node_t* p) {
-  i32 n = p->heap_idx;
+  int n = p->heap_idx;
   oct_node_t* prev;
 
   while (n > 1) {
@@ -487,7 +469,7 @@ static inline oct_node_t* pop_heap(node_heap* h) {
   return ret;
 }
 
-static inline oct_node_t* node_new(oct_node_pool_t* pool, u8 idx, u8 depth, oct_node_t* p) {
+static inline oct_node_t* node_new(oct_node_pool_t* pool, unsigned char idx, unsigned char depth, oct_node_t* p) {
   if (pool->len <= 1) {
     oct_node_t* p = HAL_MALLOC(2048 * sizeof(oct_node_t));
     p->parent = pool->pool;
@@ -513,10 +495,10 @@ static inline void free_node(oct_node_pool_t* pool) {
   }
 }
 
-static inline oct_node_t* node_insert(oct_node_pool_t* pool, oct_node_t* root, i32* buf) {
-  u8 i, bit, depth = 0;
-  i32 c = *buf;
-  i32 r = HAL_R(c), g = HAL_G(c), b = HAL_B(c);
+static inline oct_node_t* node_insert(oct_node_pool_t* pool, oct_node_t* root, int* buf) {
+  unsigned char i, bit, depth = 0;
+  int c = *buf;
+  int r = HAL_R(c), g = HAL_G(c), b = HAL_B(c);
 
   for (bit = 1 << 7; ++depth < 8; bit >>= 1) {
     i = !!(r & bit) * 4 + !!(g & bit) * 2 + !!(b & bit);
@@ -549,10 +531,10 @@ static inline oct_node_t* node_fold(oct_node_t* p) {
   return q;
 }
 
-void color_replace(oct_node_t* root, i32* buf) {
-  u8 i, bit;
-  i32 c = *buf;
-  i32 r = HAL_R(c), g = HAL_G(c), b = HAL_B(c);
+void color_replace(oct_node_t* root, int* buf) {
+  unsigned char i, bit;
+  int c = *buf;
+  int r = HAL_R(c), g = HAL_G(c), b = HAL_B(c);
 
   for (bit = 1 << 7; bit; bit >>= 1) {
     i = !!(r & bit) * 4 + !!(g & bit) * 2 + !!(b & bit);
@@ -561,13 +543,13 @@ void color_replace(oct_node_t* root, i32* buf) {
     root = root->kids[i];
   }
 
-  *buf = HAL_RGB((i32)root->r, (i32)root->g, (i32)root->b);
+  *buf = HAL_RGB((int)root->r, (int)root->g, (int)root->b);
 }
 
-void hal_quantize(struct surface_t* a, i32 n_colors, struct surface_t* b) {
+void quantize(struct surface_t* a, int n_colors, struct surface_t* b) {
   SANITY_CHECK(STSC(a) && STSC(b));
 
-  i32 i, *buf = a->buf;
+  int i, *buf = a->buf;
   node_heap heap = { 0, 0, 0 };
   oct_node_pool_t pool = { NULL, 0 };
 
@@ -594,9 +576,7 @@ void hal_quantize(struct surface_t* a, i32 n_colors, struct surface_t* b) {
   HAL_SAFE_FREE(heap.buf);
 }
 
-static inline void hal_vline(struct surface_t* s, i32 x, i32 y0, i32 y1, i32 col) {
-  SANITY_CHECK(STSC(s));
-  
+static inline void vline(struct surface_t* s, int x, int y0, int y1, int col) {
   if (y1 < y0) {
     y0 += y1;
     y1  = y0 - y1;
@@ -611,13 +591,11 @@ static inline void hal_vline(struct surface_t* s, i32 x, i32 y0, i32 y1, i32 col
   if (y1 >= s->h)
     y1 = s->h - 1;
 
-  for(i32 y = y0; y <= y1; y++)
+  for(int y = y0; y <= y1; y++)
     blend(s, x, y, col);
 }
 
-static inline void hal_hline(struct surface_t* s, i32 y, i32 x0, i32 x1, i32 col) {
-  SANITY_CHECK(STSC(s));
-  
+static inline void hline(struct surface_t* s, int y, int x0, int x1, int col) {
   if (x1 < x0) {
     x0 += x1;
     x1  = x0 - x1;
@@ -632,32 +610,28 @@ static inline void hal_hline(struct surface_t* s, i32 y, i32 x0, i32 x1, i32 col
   if (x1 >= s->w)
     x1 = s->w - 1;
 
-  for(i32 x = x0; x <= x1; x++)
+  for(int x = x0; x <= x1; x++)
     blend(s, x, y, col);
 }
 
-void hal_line(struct surface_t* s, i32 x0, i32 y0, i32 x1, i32 y1, i32 col) {
+void line(struct surface_t* s, int x0, int y0, int x1, int y1, int col) {
   if (x0 == x1)
-    hal_vline(s, x0, y0, y1, col);
+    vline(s, x0, y0, y1, col);
   if (y0 == y1)
-    hal_hline(s, y0, x0, x1, col);
-  SANITY_CHECK(STSC(s));
-
-  i32 dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-  i32 dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-  i32 err = (dx > dy ? dx : -dy) / 2;
+    hline(s, y0, x0, x1, col);
+    int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+  int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+  int err = (dx > dy ? dx : -dy) / 2;
 
   while (blend(s, x0, y0, col), x0 != x1 || y0 != y1) {
-    i32 e2 = err;
+    int e2 = err;
     if (e2 > -dx) { err -= dy; x0 += sx; }
     if (e2 <  dy) { err += dx; y0 += sy; }
   }
 }
 
-void hal_circle(struct surface_t* s, i32 xc, i32 yc, i32 r, i32 col, bool fill) {
-  SANITY_CHECK(STSC(s));
-  
-  i32 x = -r, y = 0, err = 2 - 2 * r; /* II. Quadrant */
+void circle(struct surface_t* s, int xc, int yc, int r, int col, bool fill) {
+  int x = -r, y = 0, err = 2 - 2 * r; /* II. Quadrant */
   do {
     blend(s, xc - x, yc + y, col);    /*   I. Quadrant */
     blend(s, xc - y, yc - x, col);    /*  II. Quadrant */
@@ -665,8 +639,8 @@ void hal_circle(struct surface_t* s, i32 xc, i32 yc, i32 r, i32 col, bool fill) 
     blend(s, xc + y, yc + x, col);    /*  IV. Quadrant */
 
     if (fill) {
-      hal_hline(s, yc - y, xc - x, xc + x, col);
-      hal_hline(s, yc + y, xc - x, xc + x, col);
+      hline(s, yc - y, xc - x, xc + x, col);
+      hline(s, yc + y, xc - x, xc + x, col);
     }
 
     r = err;
@@ -677,9 +651,7 @@ void hal_circle(struct surface_t* s, i32 xc, i32 yc, i32 r, i32 col, bool fill) 
   } while (x < 0);
 }
 
-void hal_rect(struct surface_t* s, i32 x, i32 y, i32 w, i32 h, i32 col, bool fill) {
-  SANITY_CHECK(STSC(s));
-  
+void rect(struct surface_t* s, int x, int y, int w, int h, int col, bool fill) {
   if (x < 0) {
     w += x;
     x  = 0;
@@ -701,25 +673,23 @@ void hal_rect(struct surface_t* s, i32 x, i32 y, i32 w, i32 h, i32 col, bool fil
 
   if (fill) {
     for (; y < h; ++y)
-      hal_hline(s, y, x, w, col);
+      hline(s, y, x, w, col);
   } else {
-    hal_hline(s, y, x, w, col);
-    hal_hline(s, h, x, w, col);
-    hal_vline(s, x, y, h, col);
-    hal_vline(s, w, y, h, col);
+    hline(s, y, x, w, col);
+    hline(s, h, x, w, col);
+    vline(s, x, y, h, col);
+    vline(s, w, y, h, col);
   }
 }
 
 #define HAL_SWAP(a, b) \
   do {                 \
-    i32 temp = a;      \
+    int temp = a;      \
     a = b;             \
     b = temp;          \
   } while(0)
 
-void hal_tri(struct surface_t* s, i32 x0, i32 y0, i32 x1, i32 y1, i32 x2, i32 y2, i32 col, bool fill) {
-  SANITY_CHECK(STSC(s));
-  
+void tri(struct surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col, bool fill) {
   if (y0 ==  y1 && y0 ==  y2)
     return;
   if (fill) {
@@ -736,16 +706,16 @@ void hal_tri(struct surface_t* s, i32 x0, i32 y0, i32 x1, i32 y1, i32 x2, i32 y2
       HAL_SWAP(y1, y2);
     }
 
-    i32 total_height = y2 - y0, i, j;
+    int total_height = y2 - y0, i, j;
     for (i = 0; i < total_height; ++i) {
       bool second_half = i > y1 - y0 || y1 == y0;
-      i32 segment_height = second_half ? y2 - y1 : y1 - y0;
+      int segment_height = second_half ? y2 - y1 : y1 - y0;
       float alpha = (float)i / total_height;
       float beta  = (float)(i - (second_half ? y1 - y0 : 0)) / segment_height;
-      i32 ax = x0 + (x2 - x0) * alpha;
-      i32 ay = y0 + (y2 - y0) * alpha;
-      i32 bx = second_half ? x1 + (x2 - x1) : x0 + (x1 - x0) * beta;
-      i32 by = second_half ? y1 + (y2 - y1) : y0 + (y1 - y0) * beta;
+      int ax = x0 + (x2 - x0) * alpha;
+      int ay = y0 + (y2 - y0) * alpha;
+      int bx = second_half ? x1 + (x2 - x1) : x0 + (x1 - x0) * beta;
+      int by = second_half ? y1 + (y2 - y1) : y0 + (y1 - y0) * beta;
       if (ax > bx) {
         HAL_SWAP(ax, bx);
         HAL_SWAP(ay, by);
@@ -754,9 +724,9 @@ void hal_tri(struct surface_t* s, i32 x0, i32 y0, i32 x1, i32 y1, i32 x2, i32 y2
         blend(s, j, y0 + i, col);
     }
   } else {
-    hal_line(s, x0, y0, x1, y1, col);
-    hal_line(s, x1, y1, x2, y2, col);
-    hal_line(s, x2, y2, x0, y0, col);
+    line(s, x0, y0, x1, y1, col);
+    line(s, x1, y1, x2, y2, col);
+    line(s, x2, y2, x0, y0, col);
   }
 }
 
@@ -768,40 +738,38 @@ void hal_tri(struct surface_t* s, i32 x0, i32 y0, i32 x1, i32 y1, i32 x2, i32 y2
 
 #pragma pack(1)
 typedef struct {
-  u16 type; /* Magic identifier */
-  u32 size; /* File size in bytes */
-  u32 reserved;
-  u32 offset; /* Offset to image data, bytes */
+  unsigned short type; /* Magic identifier */
+  unsigned int size; /* File size in bytes */
+  unsigned int reserved;
+  unsigned int offset; /* Offset to image data, bytes */
 } ALIGN_STRUCT(2) BMPHEADER;
 #pragma pack()
 
 typedef struct {
-  u32 size; /* Header size in bytes */
-  i32 width, height; /* Width and height of image */
-  u16 planes; /* Number of colour planes */
-  u16 bits; /* Bits per pixel */
-  u32 compression; /* Compression type */
-  u32 image_size; /* Image size in bytes */
-  i32 xresolution, yresolution; /* Pixels per meter */
-  u32 ncolours; /* Number of colours */
-  u32 important_colours; /* Important colours */
+  unsigned int size; /* Header size in bytes */
+  int width, height; /* Width and height of image */
+  unsigned short planes; /* Number of colour planes */
+  unsigned short bits; /* Bits per pixel */
+  unsigned int compression; /* Compression type */
+  unsigned int image_size; /* Image size in bytes */
+  int xresolution, yresolution; /* Pixels per meter */
+  unsigned int ncolours; /* Number of colours */
+  unsigned int important_colours; /* Important colours */
 } BMPINFOHEADER;
 
 typedef struct {
-  u32 size; /* size of bitmap core header */
-  u16 width; /* image with */
-  u16 height; /* image height */
-  u16 planes; /* must be equal to 1 */
-  u16 count; /* bits per pixel */
+  unsigned int size; /* size of bitmap core header */
+  unsigned short width; /* image with */
+  unsigned short height; /* image height */
+  unsigned short planes; /* must be equal to 1 */
+  unsigned short count; /* bits per pixel */
 } BMPCOREHEADER;
 
 #define BMP_GET(d, b, s) \
   memcpy(d, b + off, s); \
   off += s;
 
-bool hal_bmp(struct surface_t* s, const char* path) {
-  SANITY_CHECK(s);
-  
+bool bmp(struct surface_t* s, const char* path) {
   FILE* fp = fopen(path, "rb");
   if (!fp) {
     HAL_ERROR(FILE_OPEN_FAILED, "fopen() failed: %s", path);
@@ -812,7 +780,7 @@ bool hal_bmp(struct surface_t* s, const char* path) {
   size_t length = ftell(fp);
   rewind(fp);
 
-  u8* data = HAL_MALLOC((length + 1) * sizeof(u8));
+  unsigned char* data = HAL_MALLOC((length + 1) * sizeof(unsigned char));
   if (!data) {
     HAL_ERROR(OUT_OF_MEMEORY, "malloc() failed");
     return false;
@@ -820,12 +788,12 @@ bool hal_bmp(struct surface_t* s, const char* path) {
   fread(data, 1, length, fp);
   fclose(fp);
 
-  i32 off = 0;
+  int off = 0;
   BMPHEADER header;
   BMPINFOHEADER info;
   //BMPCOREHEADER core;
   BMP_GET(&header, data, sizeof(BMPHEADER));
-  //i32 info_pos = off;
+  //int info_pos = off;
   BMP_GET(&info, data, sizeof(BMPINFOHEADER));
 
   if (header.type != 0x4D42) {
@@ -833,13 +801,13 @@ bool hal_bmp(struct surface_t* s, const char* path) {
     return false;
   }
 
-#pragma message WARN("TODO: hal_bmp() add support for OS/2 bitmaps")
+#pragma message WARN("TODO: bmp() add support for OS/2 bitmaps")
 
-  u8* color_map = NULL;
-  i32 color_map_size = 0;
+  unsigned char* color_map = NULL;
+  int color_map_size = 0;
   if (info.bits <= 8) {
     color_map_size = (1 << info.bits) * 4;
-    color_map = HAL_MALLOC(color_map_size * sizeof(u8));
+    color_map = HAL_MALLOC(color_map_size * sizeof(unsigned char));
     if (!color_map) {
       HAL_ERROR(OUT_OF_MEMEORY, "malloc() failed");
       return false;
@@ -847,24 +815,24 @@ bool hal_bmp(struct surface_t* s, const char* path) {
     BMP_GET(color_map, data, color_map_size);
   }
 
-  if (!hal_surface(s, info.width, info.height)) {
+  if (!surface(s, info.width, info.height)) {
     HAL_SAFE_FREE(color_map);
     HAL_ERROR(OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
 
   off = header.offset;
-  i32 i, p, x, y, sz = info.width * info.height;
-  u8 color;
+  int i, p, x, y, sz = info.width * info.height;
+  unsigned char color;
   switch (info.compression) {
     case 0: // RGB
       switch (info.bits) { // BPP
         case 1:
         case 4:
         case 8:
-#pragma message WARN("TODO: hal_bmp() add 1, 4 & 8 bpp support")
+#pragma message WARN("TODO: bmp() add 1, 4 & 8 bpp support")
           HAL_ERROR(UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
-          hal_destroy(s);
+          surface_destroy(s);
           break;
         case 24:
         case 32:
@@ -880,17 +848,17 @@ bool hal_bmp(struct surface_t* s, const char* path) {
         default:
           HAL_ERROR(UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
           HAL_SAFE_FREE(color_map);
-          hal_destroy(s);
+          surface_destroy(s);
           return false;
       }
       break;
     case 1: // RLE8
     case 2: // RLE4
     default:
-#pragma message WARN("TODO: hal_bmp() add RLE support")
+#pragma message WARN("TODO: bmp() add RLE support")
       HAL_ERROR(UNSUPPORTED_BMP, "bmp() failed. Unsupported compression: %d", info.compression);
       HAL_SAFE_FREE(color_map);
-      hal_destroy(s);
+      surface_destroy(s);
       return false;
   }
 
@@ -898,57 +866,55 @@ bool hal_bmp(struct surface_t* s, const char* path) {
   return true;
 }
 
-bool hal_save_bmp(struct surface_t* s, const char* path) {
-  SANITY_CHECK(STSC(s));
-  
-  const i32 filesize = 54 + 3 * s->w * s->h;
-  u8* img = HAL_MALLOC(3 * s->w * s->h);
+bool save_bmp(struct surface_t* s, const char* path) {
+  const int filesize = 54 + 3 * s->w * s->h;
+  unsigned char* img = HAL_MALLOC(3 * s->w * s->h);
   if (!img) {
     HAL_ERROR(OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
   memset(img, 0, 3 * s->w * s->h);
 
-  i32 i, j, y, c;
+  int i, j, y, c;
   for (i = 0; i < s->w; ++i) {
     for (j = s->h; j > 0; --j) {
       y = (s->h - 1) - j;
       c = XYGET(s, i, y);
-      img[(i + y * s->w) * 3 + 2] = (u8)HAL_R(c);
-      img[(i + y * s->w) * 3 + 1] = (u8)HAL_G(c);
-      img[(i + y * s->w) * 3 + 0] = (u8)HAL_B(c);
+      img[(i + y * s->w) * 3 + 2] = (unsigned char)HAL_R(c);
+      img[(i + y * s->w) * 3 + 1] = (unsigned char)HAL_G(c);
+      img[(i + y * s->w) * 3 + 0] = (unsigned char)HAL_B(c);
     }
   }
 
-  u8 header[14] = {
+  unsigned char header[14] = {
     'B', 'M',
     0,  0, 0, 0,
     0,  0,
     0,  0,
     54, 0, 0, 0
   };
-  u8 info[40] = {
+  unsigned char info[40] = {
     40, 0, 0, 0,
     0,  0, 0, 0,
     0,  0, 0, 0,
     1,  0,
     24, 0
   };
-  u8 pad[3] = { 0, 0, 0 };
+  unsigned char pad[3] = { 0, 0, 0 };
 
-  header[2]  = (u8)(filesize);
-  header[3]  = (u8)(filesize >> 8);
-  header[4]  = (u8)(filesize >> 16);
-  header[5]  = (u8)(filesize >> 24);
+  header[2]  = (unsigned char)(filesize);
+  header[3]  = (unsigned char)(filesize >> 8);
+  header[4]  = (unsigned char)(filesize >> 16);
+  header[5]  = (unsigned char)(filesize >> 24);
 
-  info[4]  = (u8)(s->w);
-  info[5]  = (u8)(s->w >> 8);
-  info[6]  = (u8)(s->w >> 16);
-  info[7]  = (u8)(s->w >> 24);
-  info[8]  = (u8)(s->h);
-  info[9]  = (u8)(s->h >> 8);
-  info[10] = (u8)(s->h >> 16);
-  info[11] = (u8)(s->h >> 24);
+  info[4]  = (unsigned char)(s->w);
+  info[5]  = (unsigned char)(s->w >> 8);
+  info[6]  = (unsigned char)(s->w >> 16);
+  info[7]  = (unsigned char)(s->w >> 24);
+  info[8]  = (unsigned char)(s->h);
+  info[9]  = (unsigned char)(s->h >> 8);
+  info[10] = (unsigned char)(s->h >> 16);
+  info[11] = (unsigned char)(s->h >> 24);
 
   FILE* fp = fopen(path, "wb");
   if (!fp) {
@@ -970,7 +936,7 @@ bool hal_save_bmp(struct surface_t* s, const char* path) {
 }
 
 #if !defined(HAL_NO_TEXT)
-static u8 font[540][8] = {
+static unsigned char font[540][8] = {
   // Latin 0 - 94
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+0020 (space)
   { 0x18, 0x3C, 0x3C, 0x18, 0x18, 0x00, 0x18, 0x00 },   // U+0021 (!)
@@ -1528,7 +1494,7 @@ static u8 font[540][8] = {
   { 0x00, 0x07, 0x00, 0x33, 0x33, 0x3E, 0x30, 0x1F }    // U+ (y grave)
 };
 
-static i32 extra_font_lookup[10] = {
+static int extra_font_lookup[10] = {
   8359,
   402,
   9078,
@@ -1542,12 +1508,12 @@ static i32 extra_font_lookup[10] = {
 };
 
 #if !defined(HAL_NO_TEXT_COLOR_PARSING)
-static inline i32 read_color(const char* str, i32* col, i32* len) {
+static inline int read_color(const char* str, int* col, int* len) {
 #pragma message WARN("TODO: read_color() alpha value wrong?")
   const char* c = str;
   if (*c != '(')
     return 0;
-  i32 _len = 0;
+  int _len = 0;
   while (c) {
     _len++;
     if (*c == ')' || _len > 17)
@@ -1561,14 +1527,14 @@ static inline i32 read_color(const char* str, i32* col, i32* len) {
     return 1; // Skip colour parsing
 
   c = str + 1;
-  u8 rgba[4][4] = {
+  unsigned char rgba[4][4] = {
     "0",
     "0",
     "0",
     "255"
   };
-  i32 n = 0;
-  for (i32 i = 0, j = 0, k = 0; i < (_len - 2); ++i) {
+  int n = 0;
+  for (int i = 0, j = 0, k = 0; i < (_len - 2); ++i) {
     if (*c == ',') {
       k++;
       n++;
@@ -1590,9 +1556,9 @@ static inline i32 read_color(const char* str, i32* col, i32* len) {
 }
 #endif // !defined(HAL_NO_TEXT_COLOR_PARSING)
 
-static inline void str_size(const char* str, i32* w, i32* h) {
+static inline void str_size(const char* str, int* w, int* h) {
   const char* s = (const char*)str;
-  i32 n = 0, m = 0, l = 1, c, len;
+  int n = 0, m = 0, l = 1, c, len;
   while (s && *s != '\0') {
     c = *s;
     if (c >= 0 && c <= 127) {
@@ -1630,13 +1596,13 @@ static inline void str_size(const char* str, i32* w, i32* h) {
   *h = l;
 }
 
-i32 ctoi(const char* c, i32* out) {
-  i32 u = *c, l = 1;
+int ctoi(const char* c, int* out) {
+  int u = *c, l = 1;
   if ((u & 0xC0) == 0xC0) {
-    i32 a = (u & 0x20) ? ((u & 0x10) ? ((u & 0x08) ? ((u & 0x04) ? 6 : 5) : 4) : 3) : 2;
+    int a = (u & 0x20) ? ((u & 0x10) ? ((u & 0x08) ? ((u & 0x04) ? 6 : 5) : 4) : 3) : 2;
     if (a < 6 || !(u & 0x02)) {
       u = ((u << (a + 1)) & 0xFF) >> (a + 1);
-      for (i32 b = 1; b < a; ++b)
+      for (int b = 1; b < a; ++b)
         u = (u << 6) | (c[l++] & 0x3F);
     }
   }
@@ -1646,7 +1612,7 @@ i32 ctoi(const char* c, i32* out) {
 
 #define LINE_HEIGHT 10
 
-static inline i32 letter_index(i32 c) {
+static inline int letter_index(int c) {
   if (c >= 32 && c <= 126) // Latin
     return c - 32;
   else if (c >= 9600 && c <= 9631) // Blocks
@@ -1662,15 +1628,15 @@ static inline i32 letter_index(i32 c) {
   else if (c >= 161 && c <= 255) // Latin extended
     return (c - 161) + 435;
   else {
-    for (i32 i = 0; i < 10; ++i)
+    for (int i = 0; i < 10; ++i)
       if (extra_font_lookup[i] == c)
         return 530 + i;
     return 0;
   }
 }
 
-void hal_ascii(struct surface_t* s, u8 ch, i32 x, i32 y, i32 fg, i32 bg) {
-  i32 c = letter_index((i32)ch), i, j;
+void ascii(struct surface_t* s, unsigned char ch, int x, int y, int fg, int bg) {
+  int c = letter_index((int)ch), i, j;
   for (i = 0; i < 8; ++i) {
     for (j = 0; j < 8; ++j) {
       if (font[c][i] & 1 << j) {
@@ -1684,17 +1650,15 @@ void hal_ascii(struct surface_t* s, u8 ch, i32 x, i32 y, i32 fg, i32 bg) {
   }
 }
 
-i32 hal_character(struct surface_t* s, const char* ch, i32 x, i32 y, i32 fg, i32 bg) {
-  i32 u = -1;
-  i32 l = ctoi(ch, &u);
-  i32 uc = letter_index(u), i, j;
+int character(struct surface_t* s, const char* ch, int x, int y, int fg, int bg) {
+  int u = -1;
+  int l = ctoi(ch, &u);
+  int uc = letter_index(u), i, j;
   for (i = 0; i < 8; ++i)
     for (j = 0; j < 8; ++j) {
       if (font[uc][i] & 1 << j)
         blend(s, x + j, y + i, fg);
       else {
-        if (bg == -1)
-          continue;
         blend(s, x + j, y + i, bg);
       }
     }
@@ -1702,10 +1666,9 @@ i32 hal_character(struct surface_t* s, const char* ch, i32 x, i32 y, i32 fg, i32
   return l;
 }
 
-void hal_writeln(struct surface_t* s, i32 x, i32 y, i32 fg, i32 bg, const char* str) {
-  SANITY_CHECK(STSC(s));
-  const char* c = str;
-  i32 u = x, v = y, col, len;
+void writeln(struct surface_t* s, int x, int y, int fg, int bg, const char* str) {
+    const char* c = str;
+  int u = x, v = y, col, len;
   while (c && *c != '\0')
     switch (*c) {
       case '\n':
@@ -1730,20 +1693,19 @@ void hal_writeln(struct surface_t* s, i32 x, i32 y, i32 fg, i32 bg, const char* 
         break;
 #endif
       default:
-        c += hal_character(s, c, u, v, fg, bg);
+        c += character(s, c, u, v, fg, bg);
         u += 8;
         break;
     }
 }
 
-void hal_writelnf(struct surface_t* s, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...) {
-  SANITY_CHECK(STSC(s));
-  char* buffer = NULL;
-  i32 buffer_size = 0;
+void writelnf(struct surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...) {
+    char* buffer = NULL;
+  int buffer_size = 0;
 
   va_list argptr;
   va_start(argptr, fmt);
-  i32 length = vsnprintf(buffer, buffer_size, fmt, argptr);
+  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
   va_end(argptr);
 
   if (length + 1 > buffer_size) {
@@ -1754,27 +1716,25 @@ void hal_writelnf(struct surface_t* s, i32 x, i32 y, i32 fg, i32 bg, const char*
     va_end(argptr);
   }
 
-  hal_writeln(s, x, y, fg, bg, buffer);
+  writeln(s, x, y, fg, bg, buffer);
   HAL_SAFE_FREE(buffer);
 }
 
-void hal_string(struct surface_t* s, i32 fg, i32 bg, const char* str) {
-  SANITY_CHECK(STSC(s));
-  i32 w, h;
+void string(struct surface_t* s, int fg, int bg, const char* str) {
+    int w, h;
   str_size(str, &w, &h);
-  hal_surface(s, w * 8, h * LINE_HEIGHT);
-  hal_fill(s, (bg == -1 ? 0 : bg));
-  hal_writeln(s, 0, 0, fg, bg, str);
+  surface(s, w * 8, h * LINE_HEIGHT);
+  fill(s, (bg == -1 ? 0 : bg));
+  writeln(s, 0, 0, fg, bg, str);
 }
 
-void hal_stringf(struct surface_t* s, i32 fg, i32 bg, const char* fmt, ...) {
-  SANITY_CHECK(STSC(s));
-  u8* buffer = NULL;
-  i32 buffer_size = 0;
+void stringf(struct surface_t* s, int fg, int bg, const char* fmt, ...) {
+    unsigned char* buffer = NULL;
+  int buffer_size = 0;
 
   va_list argptr;
   va_start(argptr, fmt);
-  i32 length = vsnprintf((char*)buffer, buffer_size, fmt, argptr);
+  int length = vsnprintf((char*)buffer, buffer_size, fmt, argptr);
   va_end(argptr);
 
   if (length + 1 > buffer_size) {
@@ -1785,179 +1745,10 @@ void hal_stringf(struct surface_t* s, i32 fg, i32 bg, const char* fmt, ...) {
     va_end(argptr);
   }
 
-  hal_string(s, fg, bg, (char*)buffer);
+  string(s, fg, bg, (char*)buffer);
   HAL_SAFE_FREE(buffer);
 }
 #endif // !defined(HAL_NO_TEXT)
-
-static i32 ticks_started = 0;
-
-/*! TODO: Edit & add high platform specific high frequency timer. Also move to hal.c */
-i64 hal_ticks() {
-#if defined(HAL_WINDOWS)
-  static LARGE_INTEGER ticks_start;
-  if (!ticks_started) {
-    QueryPerformanceCounter(&ticks_start);
-    ticks_started = 1;
-  }
-
-  LARGE_INTEGER ticks_now, freq;
-  QueryPerformanceCounter(&ticks_now);
-  QueryPerformanceFrequency(&freq);
-
-  return ((ticks_now.QuadPart - ticks_start.QuadPart) * 1000) / freq.QuadPart;
-#else
-  static struct timespec ticks_start;
-  if (!ticks_started) {
-    clock_gettime(CLOCK_MONOTONIC, &ticks_start);
-    ticks_started = 1;
-  }
-
-  struct timespec ticks_now;
-  clock_gettime(CLOCK_MONOTONIC, &ticks_now);
-  return ((ticks_now.tv_sec * 1000) + (ticks_now.tv_nsec / 1000000)) - ((ticks_start.tv_sec * 1000) + (ticks_start.tv_nsec / 1000000));
-#endif
-}
-
-void hal_delay(i64 ms) {
-#if defined(HAL_WINDOWS)
-  Sleep((DWORD)ms);
-#else
-  usleep((u32)(ms * 1000));
-#endif
-}
-
-/*! NOTE: This is experimental, dunno how it's gonna turn out */
-#if defined(HAL_MT_SURFACE) && !defined(HAL_NO_THREADS)
-bool hal_mt_surface(struct mt_surface_t* s, u32 w, u32 h) {
-  SANITY_CHECK(s);
-  if (!hal_surface(&s->surface, w, h))
-	return false;
-  
-  s->slock = HAL_MALLOC(w * h * sizeof(hal_mtx_t) + 1);
-  if (!s->slock) {
-	HAL_ERROR(OUT_OF_MEMEORY, "malloc() failed");
-	return false;
-  }
-  for (int i = 0; i < w * h + 1; ++i) {
-	if (hal_mtx_init(&s->slock[i], MTX_PLAIN) != THRD_SUCCESS) {
-	  HAL_ERROR(OUT_OF_MEMEORY, "hal_mtx_init() failed");
-	  return false;
-	}
-  }
-  if (hal_mtx_init(&s->lock, MTX_PLAIN) != THRD_SUCCESS) {
-	HAL_ERROR(OUT_OF_MEMEORY, "hal_mtx_init() failed");
-	return false;
-  }
-  return true;
-}
-
-#define MTSC(X) ((X) && ((X)->slock) && ((X)->surface.buf))
-void hal_mt_destroy(struct mt_surface_t* s) {
-  SANITY_CHECK(MTSC(s));
-  while (!hal_mtx_trylock(&s->lock));
-  hal_mtx_destroy(&s->lock);
-  for (int i = 0; i < s->surface.w * s->surface.h; ++i)
-	hal_mtx_destroy(&s->slock[i]);
-  HAL_SAFE_FREE(s->slock);
-  hal_destroy(&s->surface);
-  memset(s, 0, sizeof(struct mt_surface_t));
-}
-
-typedef struct {
-  struct mt_surface_t* surface;
-  int x, y, c;
-} mt_thrd_arg;
-
-int mt_fill_line(void* arg) {
-  mt_thrd_arg* a = (mt_thrd_arg*)arg;
-  for (int i = 0; i < a->x; ++i)
-	hal_mt_pset(a->surface, i, a->y, a->c);
-  return 0;
-}
-
-void hal_mt_fill(struct mt_surface_t* s, i32 col) {
-  SANITY_CHECK(MTSC(s));
-  const int w = s->surface.w;
-  int i;
-  mt_thrd_arg args[w];
-  hal_thrd_t thrds[w];
-  for (i = 0; i < w; ++i) {
-	args[i].surface = s;
-	args[i].x = 0;
-	args[i].y = 0;
-	args[i].c = col;
-	hal_thrd_create(&thrds[i], mt_fill_line, (void*)&args[i]);
-  }
-  for (i = 0; i < w; ++i)
-	hal_thrd_join(thrds[i], NULL);
-}
-
-void hal_mt_pset(struct mt_surface_t* s, i32 x, i32 y, i32 col) {
-  SANITY_CHECK(MTSC(s));
-  while (!hal_mtx_trylock(&s->lock));
-  hal_mtx_t* mtx = &s->slock[y * s->surface.w + x];
-  hal_mtx_lock(mtx);
-  hal_pset(&s->surface, x, y, col);
-  hal_mtx_unlock(mtx);
-}
-
-i32  hal_mt_pget(struct mt_surface_t* s, i32 x, i32 y) {
-  SANITY_CHECK(MTSC(s));
-  while (!hal_mtx_trylock(&s->lock));
-  hal_mtx_t* mtx = &s->slock[y * s->surface.w + x];
-  hal_mtx_lock(mtx);
-  int ret = hal_pget(&s->surface, x, y);
-  hal_mtx_unlock(mtx);
-  return ret;
-}
-
-bool hal_mt_paste(struct mt_surface_t* dst, struct surface_t* src, i32 x, i32 y) {
-  return true;
-}
-
-bool hal_mt_clip_paste(struct mt_surface_t* dst, struct surface_t* src, i32 x, i32 y, i32 rx, i32 ry, i32 rw, i32 rh) {
-  return true;
-}
-
-bool hal_mt_reset(struct mt_surface_t* s, i32 nw, i32 nh) {
-  SANITY_CHECK(MTSC(s));
-  hal_mtx_lock(&s->lock);
-  if (!hal_reset(&s->surface, nw, nh))
-	return false;
-  i32* tmp = HAL_REALLOC(s->slock, nw * nh * sizeof(u32) + 1);
-  if (!tmp) {
-	HAL_ERROR(OUT_OF_MEMEORY, "realloc() failed");
-	return false;
-  }
-  hal_mtx_unlock(&s->lock);
-  return true;
-}
-
-bool hal_mt_export(struct mt_surface_t* a, struct surface_t* b) {
-  bool ret = true;
-  SANITY_CHECK(MTSC(a) && STSC(b));
-  hal_mtx_lock(&a->lock);
-  ret = hal_copy(&a->surface, b);
-  hal_mtx_unlock(&a->lock);
-  return ret;
-}
-
-bool hal_mt_lock(struct mt_surface_t* s) {
-  SANITY_CHECK(MTSC(s));
-  return (bool)hal_mtx_lock(&s->lock);
-}
-
-bool hal_mt_unlock(struct mt_surface_t* s) {
-  SANITY_CHECK(MTSC(s));
-  return (bool)hal_mtx_unlock(&s->lock);
-}
-
-bool hal_mt_trylock(struct mt_surface_t* s) {
-  SANITY_CHECK(MTSC(s));
-  return (bool)hal_mtx_trylock(&s->lock);
-}
-#endif
 
 #define HAL_BDF
 #if defined(HAL_BDF) && !defined(HAL_NO_TEXT)
@@ -1972,9 +1763,8 @@ bool hal_mt_trylock(struct mt_surface_t* s) {
   p = strtok(NULL, " \t\n\r"); \
   (x) = atoi(p);
 
-void hal_bdf_destroy(struct bdf_t* f) {
-  SANITY_CHECK(f);
-  for (i32 i = 0; i < f->n_chars; ++i)
+void bdf_destroy(struct bdf_t* f) {
+    for (int i = 0; i < f->n_chars; ++i)
     if (f->chars[i].bitmap) {
       HAL_SAFE_FREE(f->chars[i].bitmap);
       f->chars[i].bitmap = NULL;
@@ -1990,14 +1780,12 @@ void hal_bdf_destroy(struct bdf_t* f) {
   memset(f, 0, sizeof(sizeof(struct bdf_t)));
 }
 
-static inline i32 htoi(const char* p) {
+static inline int htoi(const char* p) {
   return (*p <= '9' ? *p - '0' : (*p <= 'F' ? *p - 'A' + 10 : *p - 'a' + 10));
 }
 
-bool hal_bdf(struct bdf_t* out, const char* path) {
-  SANITY_CHECK(out);
-
-  FILE* fp = fopen(path, "r");
+bool bdf(struct bdf_t* out, const char* path) {
+    FILE* fp = fopen(path, "r");
   if (!fp) {
     HAL_ERROR(FILE_OPEN_FAILED, "fopen() failed: %s", path);
     return false;
@@ -2031,7 +1819,7 @@ bool hal_bdf(struct bdf_t* out, const char* path) {
     return false;
   }
 
-  out->encoding_table = HAL_MALLOC(out->n_chars * sizeof(u32));
+  out->encoding_table = HAL_MALLOC(out->n_chars * sizeof(unsigned int));
   if (!out->encoding_table) {
     HAL_ERROR(OUT_OF_MEMEORY, "malloc() failed");
     return false;
@@ -2043,7 +1831,7 @@ bool hal_bdf(struct bdf_t* out, const char* path) {
     return false;
   }
 
-  i32 encoding = 0, width = -1, scanline = -1, i, j, n = 0;
+  int encoding = 0, width = -1, scanline = -1, i, j, n = 0;
   for (;;) {
     if (!fgets(buf, sizeof(buf), fp))
       break;
@@ -2061,12 +1849,12 @@ bool hal_bdf(struct bdf_t* out, const char* path) {
       BDF_READ_INT(out->chars[n].bb_y);
     } else if (!strcasecmp(s, "BITMAP")) {
       if (n == out->n_chars) {
-        hal_bdf_destroy(out);
+        bdf_destroy(out);
         HAL_ERROR(BDF_TOO_MANY_BITMAPS, "bdf() failed: More bitmaps than characters for %s", path);
         return false;
       }
       if (width == -1) {
-        hal_bdf_destroy(out);
+        bdf_destroy(out);
         HAL_ERROR(BDF_UNKNOWN_CHAR, "bdf() failed: Unknown character with for %s", path);
         return false;
       }
@@ -2078,9 +1866,9 @@ bool hal_bdf(struct bdf_t* out, const char* path) {
       if (out->chars[n].bb_x + out->chars[n].bb_w > width)
         width = out->chars[n].bb_x + out->chars[n].bb_w;
 
-      out->chars[n].bitmap = HAL_MALLOC(((out->fbb_w + 7) / 8) * out->fbb_h * sizeof(u8));
+      out->chars[n].bitmap = HAL_MALLOC(((out->fbb_w + 7) / 8) * out->fbb_h * sizeof(unsigned char));
       if (!out->chars[n].bitmap) {
-        hal_bdf_destroy(out);
+        bdf_destroy(out);
         HAL_ERROR(OUT_OF_MEMEORY, "malloc() failed");
         return false;
       }
@@ -2094,7 +1882,7 @@ bool hal_bdf(struct bdf_t* out, const char* path) {
         if (out->chars[n].bb_x < 0 || out->chars[n].bb_x > 7)
           continue;
 
-        i32 x, y, c, o;
+        int x, y, c, o;
         for (y = 0; y < out->fbb_h; ++y) {
           o = 0;
           for (x = 0; x < out->fbb_w; x += 8) {
@@ -2136,34 +1924,34 @@ bool hal_bdf(struct bdf_t* out, const char* path) {
   return true;
 }
 
-i32 hal_bdf_character(struct surface_t* s, struct bdf_t* f, const char* ch, i32 x, i32 y, i32 fg, i32 bg) {
+int bdf_character(struct surface_t* s, struct bdf_t* f, const char* ch, int x, int y, int fg, int bg) {
   SANITY_CHECK(STSC(s) && f);
   
-  i32 u = -1, i, j, n;
-  i32 l = ctoi(ch, &u);
+  int u = -1, i, j, n;
+  int l = ctoi(ch, &u);
   for (i = 0; i < f->n_chars; ++i)
     if (f->encoding_table[i] == u) {
       n = i;
       break;
     }
 
-  i32 yoffset = f->fbb_h - f->chars[n].bb_h + (f->fbb_y - f->chars[n].bb_y), xx, yy, cc;
+  int yoffset = f->fbb_h - f->chars[n].bb_h + (f->fbb_y - f->chars[n].bb_y), xx, yy, cc;
   for (yy = 0; yy < f->fbb_h; ++yy) {
     for (xx = 0; xx < f->fbb_w; xx += 8) {
       cc = (yy < yoffset || yy > yoffset + f->chars[n].bb_h ? 0 : f->chars[n].bitmap[(yy - yoffset) * ((f->fbb_w + 7) / 8) + xx / 8]);
 
       for (i = 128, j = 0; i; i /= 2, ++j)
-		hal_pset(s, x + j, y + yy, (cc & i ? fg : bg));
+		pset(s, x + j, y + yy, (cc & i ? fg : bg));
     }
   }
 
   return l;
 }
 
-void hal_bdf_writeln(struct surface_t* s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg, const char* str) {
+void bdf_writeln(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* str) {
   SANITY_CHECK(STSC(s) && f);
   const char* c = (const char*)str;
-  i32 u = x, v = y, col, len;
+  int u = x, v = y, col, len;
   while (c && *c != '\0') {
     switch (*c) {
       case '\n':
@@ -2190,21 +1978,21 @@ void hal_bdf_writeln(struct surface_t* s, struct bdf_t* f, i32 x, i32 y, i32 fg,
         break;
 #endif
       default:
-        c += hal_bdf_character(s, f, c, u, v, fg, bg);
+        c += bdf_character(s, f, c, u, v, fg, bg);
         u += 8;
         break;
     }
   }
 }
 
-void hal_bdf_writelnf(struct surface_t* s, struct bdf_t* f, i32 x, i32 y, i32 fg, i32 bg, const char* fmt, ...) {
+void bdf_writelnf(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...) {
   SANITY_CHECK(STSC(s) && f);
   char* buffer = NULL;
-  i32 buffer_size = 0;
+  int buffer_size = 0;
 
   va_list argptr;
   va_start(argptr, fmt);
-  i32 length = vsnprintf(buffer, buffer_size, fmt, argptr);
+  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
   va_end(argptr);
 
   if (length + 1 > buffer_size) {
@@ -2215,27 +2003,27 @@ void hal_bdf_writelnf(struct surface_t* s, struct bdf_t* f, i32 x, i32 y, i32 fg
     va_end(argptr);
   }
 
-  hal_bdf_writeln(s, f, x, y, fg, bg, buffer);
+  bdf_writeln(s, f, x, y, fg, bg, buffer);
   HAL_SAFE_FREE(buffer);
 }
 
-void hal_bdf_string(struct surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* str) {
+void bdf_string(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* str) {
   SANITY_CHECK(s && f);
-  i32 w, h;
+  int w, h;
   str_size(str, &w, &h);
-  hal_surface(s, w * 8, h * LINE_HEIGHT);
-  hal_fill(s, (bg == -1 ? 0 : bg));
-  hal_bdf_writeln(s, f, 0, 0, fg, bg, str);
+  surface(s, w * 8, h * LINE_HEIGHT);
+  fill(s, (bg == -1 ? 0 : bg));
+  bdf_writeln(s, f, 0, 0, fg, bg, str);
 }
 
-void hal_bdf_stringf(struct surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const char* fmt, ...) {
+void bdf_stringf(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* fmt, ...) {
   SANITY_CHECK(s && f);
   char* buffer = NULL;
-  i32 buffer_size = 0;
+  int buffer_size = 0;
 
   va_list argptr;
   va_start(argptr, fmt);
-  i32 length = vsnprintf(buffer, buffer_size, fmt, argptr);
+  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
   va_end(argptr);
 
   if (length + 1 > buffer_size) {
@@ -2246,7 +2034,7 @@ void hal_bdf_stringf(struct surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const
     va_end(argptr);
   }
 
-  hal_bdf_string(s, f, fg, bg, buffer);
+  bdf_string(s, f, fg, bg, buffer);
   HAL_SAFE_FREE(buffer);
 }
 #endif // HAL_BDF
@@ -2261,7 +2049,7 @@ void hal_bdf_stringf(struct surface_t* s, struct bdf_t* f, i32 fg, i32 bg, const
 #define NSAlertStyleCritical NSCriticalAlertStyle
 #endif
 
-bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
+bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   NSAlert* alert = [[NSAlert alloc] init];
 
   switch (lvl) {
@@ -2304,7 +2092,7 @@ bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return result;
 }
 
-char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...) {
+char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
   NSSavePanel* panel = nil;
   NSOpenPanel* open_panel = nil;
   NSMutableArray* file_types = nil;
@@ -2330,7 +2118,7 @@ char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool
   file_types = [[NSMutableArray alloc] init];
   va_list args;
   va_start(args, nfilters);
-  for (i32 i = 0; i < nfilters; ++i)
+  for (int i = 0; i < nfilters; ++i)
     [file_types addObject:@(va_arg(args, const char*))];
   va_end(args);
   [panel setAllowedFileTypes:file_types];
@@ -2364,8 +2152,8 @@ SKIP_FILTERS:
   return result;
 }
 #elif defined(HAL_EMCC)
-bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
-  u8 buffer[BUFSIZ];
+bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
+  unsigned char buffer[BUFSIZ];
   va_list args;
   va_start(args, fmt);
   vsprintf(buffer, fmt, args);
@@ -2373,15 +2161,15 @@ bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return EM_ASM_INT({ confirm(UTF8ToString($0)); }, buffer);
 }
 
-char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...) {
+char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
   return NULL;
 }
 #elif defined(HAL_WINDOWS)
-bool hal_alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
+bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return false;
 }
 
-char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, i32 nfilters, ...) {
+char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
   return NULL;
 }
 #else
@@ -2390,12 +2178,20 @@ char* hal_dialog(DIALOG_ACTION action, const char* path, const char* fname, bool
 #endif // HAL_NO_ALERTS
 
 #if !defined(HAL_NO_WINDOW)
-static i16 keycodes[512];
+static short keycodes[512];
 static bool keycodes_init = false;
 static struct window_t* active_window = NULL;
 
+void window_set_parent(struct window_t* s, void* p) {
+    s->parent = p;
+}
+
+void* window_parent(struct window_t* s) {
+    return s->parent;
+}
+
 #define X(a, b) void(*a##_cb)b,
-void hal_window_callbacks(XMAP_SCREEN_CB struct window_t* window) {
+void window_callbacks(XMAP_SCREEN_CB struct window_t* window) {
 #undef X
 #define X(a, b) window->a##_callback = a##_cb;
   XMAP_SCREEN_CB
@@ -2403,17 +2199,17 @@ void hal_window_callbacks(XMAP_SCREEN_CB struct window_t* window) {
 }
 
 #define X(a, b) \
-void hal_##a##_callback(struct window_t* window, void(*a##_cb)b) { \
+void a##_callback(struct window_t* window, void(*a##_cb)b) { \
   window->a##_callback = a##_cb; \
 }
 XMAP_SCREEN_CB
 #undef X
 
-i32 hal_window_id(struct window_t* s) {
+int window_id(struct window_t* s) {
   return s->id;
 }
 
-void hal_window_size(struct window_t* s, i32* w, i32* h) {
+void window_size(struct window_t* s, int* w, int* h) {
   if (w)
     *w = s->w;
   if (h)
@@ -2503,7 +2299,7 @@ GL_LIST
 
 static inline void print_shader_log(GLuint s) {
   if (glIsShader(s)) {
-    i32 log_len = 0, max_len = 0;
+    int log_len = 0, max_len = 0;
     glGetShaderiv(s, GL_INFO_LOG_LENGTH, &max_len);
     char* log = HAL_MALLOC(sizeof(char) * max_len);
 
@@ -2542,16 +2338,16 @@ static inline GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
   return sp;
 }
 
-static i32 gl3_available = 1;
+static int gl3_available = 1;
 static bool dll_loaded = false;
 
-static inline bool init_gl(i32 w, i32 h, GLuint* _vao, GLuint* _shader, GLuint* _texture) {
+static inline bool init_gl(int w, int h, GLuint* _vao, GLuint* _shader, GLuint* _texture) {
   if (!dll_loaded) {
 #if defined(HAL_WINDOWS)
     HINSTANCE dll = LoadLibraryA("opengl32.dll");
     typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
     if (!dll) {
-      hal_release();
+      release();
       HAL_ERROR(GL_LOAD_DL_FAILED, "LoadLibraryA() failed: opengl32.dll not found");
       return false;
     }
@@ -2568,7 +2364,7 @@ static inline bool init_gl(i32 w, i32 h, GLuint* _vao, GLuint* _shader, GLuint* 
 #elif defined(HAL_LINUX)
       void* libGL = dlopen("libGL.so", RTLD_LAZY);
     if (!libGL) {
-      hal_release();
+      release();
       HAL_ERROR(GL_LOAD_DL_FAILED, "dlopen() failed: libGL.so couldn't be loaded");
       return false;
     }
@@ -2767,8 +2563,8 @@ static const AAPLVertex quad_vertices[] = {
 #define NSBitmapFormatAlphaNonpremultiplied NSAlphaNonpremultipliedBitmapFormat
 #endif
 
-static inline i32 translate_mod(NSUInteger flags) {
-  i32 mods = 0;
+static inline int translate_mod(NSUInteger flags) {
+  int mods = 0;
 
   if (flags & NSEventModifierFlagShift)
     mods |= KB_MOD_SHIFT;
@@ -2784,7 +2580,7 @@ static inline i32 translate_mod(NSUInteger flags) {
   return mods;
 }
 
-static inline i32 translate_key(u32 key) {
+static inline int translate_key(unsigned int key) {
   return (key >= sizeof(keycodes) / sizeof(keycodes[0]) ?  KB_KEY_UNKNOWN : keycodes[key]);
 }
 
@@ -2808,9 +2604,9 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
     return nil;
 
   char* rgba = HAL_MALLOC(s->w * s->h * 4);
-  i32 offset = 0, c;
-  for(i32 i = 0; i < s->h; ++i) {
-    for (i32 j = 0; j < s->w; j++) {
+  int offset = 0, c;
+  for(int i = 0; i < s->h; ++i) {
+    for (int j = 0; j < s->w; j++) {
       c = XYGET(s, j, i);
       rgba[4 * offset]     = HAL_R(c);
       rgba[4 * offset + 1] = HAL_G(c);
@@ -2954,7 +2750,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
                                    options:nil
                                      error:&err];
   if (err || !_library) {
-    hal_release();
+    release();
     HAL_ERROR(MTK_LIBRARY_ERROR, "[device newLibraryWithSource] failed: %s", [[err localizedDescription] UTF8String]);
     return nil;
   }
@@ -2971,7 +2767,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   _pipeline = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor
                                                       error:&err];
   if (err || !_pipeline) {
-    hal_release();
+    release();
     HAL_ERROR(MTK_CREATE_PIPELINE_FAILED, "[device newRenderPipelineStateWithDescriptor] failed: %s", [[err localizedDescription] UTF8String]);
     return nil;
   }
@@ -3180,7 +2976,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate, AppViewDelegate>
 @property (unsafe_unretained) NSWindow* window;
-@property (weak) AppView* view;
+@property (unsafe_unretained) AppView* view;
 @property (nonatomic) struct window_t* parent;
 @property BOOL closed;
 @end
@@ -3209,7 +3005,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
                                           backing:NSBackingStoreBuffered
                                             defer:NO];
   if (!_window) {
-    hal_release();
+    release();
     HAL_ERROR(OSX_WINDOW_CREATION_FAILED, "[_window initWithContentRect] failed");
     return nil;
   }
@@ -3249,7 +3045,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   
   _view = [[AppView alloc] initWithFrame:frameRect];
   if (!_view) {
-    hal_release();
+    release();
     HAL_ERROR(OSX_WINDOW_CREATION_FAILED, "[_view initWithFrame] failed");
     return nil;
   }
@@ -3304,7 +3100,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 #endif
 @end
 
-bool hal_window(struct window_t* s, const char* t, int w, int h, short flags) {
+bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   if (!keycodes_init) {
     memset(keycodes,  -1, sizeof(keycodes));
     
@@ -3431,7 +3227,7 @@ bool hal_window(struct window_t* s, const char* t, int w, int h, short flags) {
   
   AppDelegate* app = [[AppDelegate alloc] initWithSize:NSMakeSize(w, h) styleMask:flags title:t];
   if (!app) {
-    hal_release();
+    release();
     HAL_ERROR(OSX_WINDOW_CREATION_FAILED, "[AppDelegate alloc] failed");
     return false;
   }
@@ -3451,7 +3247,7 @@ bool hal_window(struct window_t* s, const char* t, int w, int h, short flags) {
 
 #define SET_DEFAULT_APP_ICON [NSApp setApplicationIconImage:[NSImage imageNamed:@"NSApplicationIcon"]]
 
-void hal_window_icon(struct window_t* s, struct surface_t* b) {
+void window_icon(struct window_t* s, struct surface_t* b) {
   if (!b || !b->buf) {
     SET_DEFAULT_APP_ICON;
     return;
@@ -3459,18 +3255,18 @@ void hal_window_icon(struct window_t* s, struct surface_t* b) {
   
   NSImage* img = create_cocoa_image(b);
   if (!img)  {
-    HAL_ERROR(WINDOW_ICON_FAILED, "hal_window_icon_b() failed: Couldn't set window icon");
+    HAL_ERROR(WINDOW_ICON_FAILED, "window_icon_b() failed: Couldn't set window icon");
     SET_DEFAULT_APP_ICON;
     return;
   }
   [NSApp setApplicationIconImage:img];
 }
 
-void hal_window_title(struct window_t* s, const char* t) {
+void window_title(struct window_t* s, const char* t) {
   [[(AppDelegate*)s->window window] setTitle:@(t)];
 }
 
-void hal_window_position(struct window_t* s, int* x, int*  y) {
+void window_position(struct window_t* s, int* x, int*  y) {
   static NSRect frame;
   frame = [[(AppDelegate*)s->window window] frame];
   if (x)
@@ -3479,7 +3275,7 @@ void hal_window_position(struct window_t* s, int* x, int*  y) {
     *y = frame.origin.y;
 }
 
-void hal_screen_size(struct window_t* s, int* w, int* h) {
+void screen_size(struct window_t* s, int* w, int* h) {
   static NSRect frame;
   frame = [[[(AppDelegate*)s->window window] screen] frame];
   if (w)
@@ -3489,7 +3285,7 @@ void hal_screen_size(struct window_t* s, int* w, int* h) {
 }
 
 
-void hal_window_destroy(struct window_t* s) {
+void window_destroy(struct window_t* s) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   AppDelegate* app = (AppDelegate*)s->window;
   if (app) {
@@ -3501,51 +3297,51 @@ void hal_window_destroy(struct window_t* s) {
   [pool drain];
 }
 
-bool hal_closed(struct window_t* s) {
+bool closed(struct window_t* s) {
   return (bool)[(AppDelegate*)s->window closed];
 }
 
 static bool cursor_locked = false;
 
-void hal_cursor_lock(bool locked) {
+void cursor_lock(bool locked) {
   cursor_locked = locked;
   CGAssociateMouseAndMouseCursorPosition(!locked);
 }
 
-void hal_cursor_visible(bool shown) {
+void cursor_visible(bool shown) {
   if (shown)
     [NSCursor unhide];
   else
     [NSCursor hide];
 }
 
-void hal_cursor_icon(struct window_t* s, CURSOR_TYPE t) {
+void cursor_icon(struct window_t* s, CURSOR_TYPE t) {
   AppDelegate* app = (AppDelegate*)s->window;
   if (!app) {
-    HAL_ERROR(CURSOR_MOD_FAILED, "hal_cursor_icon() failed: Invalid window");
+    HAL_ERROR(CURSOR_MOD_FAILED, "cursor_icon() failed: Invalid window");
     return;
   }
   [[app view] setRegularCursor:t];
 }
 
-void hal_cursor_icon_custom(struct window_t* s, struct surface_t* b) {
+void cursor_icon_custom(struct window_t* s, struct surface_t* b) {
   NSImage* img = create_cocoa_image(b);
   if (!img) {
-    HAL_ERROR(CURSOR_MOD_FAILED, "hal_cursor_icon_custom_buf() failed: Couldn't set cursor from buffer");
+    HAL_ERROR(CURSOR_MOD_FAILED, "cursor_icon_custom_buf() failed: Couldn't set cursor from buffer");
     return;
   }
   
   AppDelegate* app = (AppDelegate*)s->window;
   if (!app) {
     [img release];
-    HAL_ERROR(CURSOR_MOD_FAILED, "hal_cursor_icon_custom_buf() failed: Invalid window");
+    HAL_ERROR(CURSOR_MOD_FAILED, "cursor_icon_custom_buf() failed: Invalid window");
     return;
   }
   [[app view] setCustomCursor:img];
   [img release];
 }
 
-void hal_cursor_pos(int* x, int* y) {
+void cursor_pos(int* x, int* y) {
   static NSPoint _p = {0,0};
   _p = [NSEvent mouseLocation];
   if (x)
@@ -3554,11 +3350,11 @@ void hal_cursor_pos(int* x, int* y) {
     *y = [[(AppDelegate*)active_window->window window] screen].frame.size.height - _p.y;
 }
 
-void hal_cursor_set_pos(int x, int y) {
+void cursor_set_pos(int x, int y) {
   CGWarpMouseCursorPosition((CGPoint){ x, y });
 }
 
-void hal_poll() {
+void events() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   NSEvent* e = nil;
   while ((e = [NSApp nextEventMatchingMask:NSEventMaskAny
@@ -3595,19 +3391,21 @@ void hal_poll() {
         if (cursor_locked) {
           static NSScreen* s = nil;
           s = [NSScreen mainScreen];
-          hal_cursor_set_pos((int)[s frame].size.width / 2, (int)[s frame].size.height / 2);
+          cursor_set_pos((int)[s frame].size.width / 2, (int)[s frame].size.height / 2);
         }
         if ([[app view] mouse_in_window] || cursor_locked)
           CBCALL(mouse_move_callback, [e locationInWindow].x, (int)([[app view] frame].size.height - roundf([e locationInWindow].y)), [e deltaX], [e deltaY]);
         break;
       }
+	  default:
+		break;
     }
     [NSApp sendEvent:e];
   }
   [pool release];
 }
 
-void hal_flush(struct window_t* s, struct surface_t* b) {
+void flush(struct window_t* s, struct surface_t* b) {
   AppDelegate* tmp = (AppDelegate*)s->window;
   if (!tmp)
     return;
@@ -3616,7 +3414,7 @@ void hal_flush(struct window_t* s, struct surface_t* b) {
   [[tmp view] setNeedsDisplay:YES];
 }
 
-void hal_release() {
+void release() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   // Felt cute might delete later
   [pool drain];
@@ -3670,7 +3468,7 @@ void add_win_node(struct window_t* win) {
 void free_win_node(win32_node_t** node) {
   win32_node_t* n = *node;
   if (n->win)
-    hal_window_destroy(&n->win);
+    window_destroy(&n->win);
   HAL_SAFE_FREE(n);
 }
 
@@ -3753,7 +3551,7 @@ WNDCLASS    wc;
 HDC         hdc;
 BITMAPINFO  *bitmapInfo;
 
-bool hal_window(struct window_t* s, const char* t, int w, int h, short flags) {
+bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   if (!keycodes_init) {
     memset(keycodes, -1, sizeof(keycodes));
     
@@ -3920,55 +3718,55 @@ bool hal_window(struct window_t* s, const char* t, int w, int h, short flags) {
   return true;
 }
 
-void hal_window_icon(struct window_t* s, struct surface_t* b) {
-  
+void window_icon(struct window_t* s, struct surface_t* b) {
+  return;
 }
 
-void hal_window_title(struct window_t* s, const char* t) {
-  
+void window_title(struct window_t* s, const char* t) {
+  return;
 }
 
-void hal_window_position(struct window_t* s, int* x, int*  y) {
-  
+void window_position(struct window_t* s, int* x, int*  y) {
+  return;
 }
 
-void hal_screen_size(struct window_t* s, int* w, int* h) {
-  
+void screen_size(struct window_t* s, int* w, int* h) {
+  return;
 }
 
-void hal_window_destroy(struct window_t* s) {
-  
+void window_destroy(struct window_t* s) {
+  return;
 }
 
-bool hal_closed(struct window_t* s) {
+bool closed(struct window_t* s) {
   return false;
 }
 
-void hal_cursor_lock(bool locked) {
-  
+void cursor_lock(bool locked) {
+  return;
 }
 
-void hal_cursor_visible(bool shown) {
-  
+void cursor_visible(bool shown) {
+  return;
 }
 
-void hal_cursor_icon(struct window_t* s, CURSOR_TYPE t) {
-  
+void cursor_icon(struct window_t* s, CURSOR_TYPE t) {
+  return;
 }
 
-void hal_cursor_icon_custom(struct window_t* s, struct surface_t* b) {
-  
+void cursor_icon_custom(struct window_t* s, struct surface_t* b) {
+  return;
 }
 
-void hal_cursor_pos(int* x, int* y) {
-  
+void cursor_pos(int* x, int* y) {
+  return;
 }
 
-void hal_cursor_set_pos(int x, int y) {
-  
+void cursor_set_pos(int x, int y) {
+  return;
 }
 
-void hal_poll() {
+void poll_events() {
   MSG msg;
   if (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
     TranslateMessage(&msg);
@@ -3976,12 +3774,12 @@ void hal_poll() {
   }
 }
 
-void hal_flush(struct window_t* s, struct surface_t* b) {
-  
+void flush(struct window_t* s, struct surface_t* b) {
+  return;
 }
 
-void hal_release() {
-  
+void release() {
+  return;
 }
 #elif defined(HAL_LINUX) && !defined(HAL_EXTERNAL_WINDOW)
 #error TODO: HAL_LINUX reimplement
@@ -3998,14 +3796,14 @@ void hal_release() {
 #include <emscripten.h>
 #include <emscripten/html5.h>
 
-static i32 window_w, window_h, canvas_w, canvas_h, canvas_x, canvas_y, cursor_x, cursor_y;
+static int window_w, window_h, canvas_w, canvas_h, canvas_x, canvas_y, cursor_x, cursor_y;
 static bool mouse_in_canvas = true, fullscreen = false;
 
 static KEY_MOD translate_mod(bool ctrl, bool shift, bool alt, bool meta) {
   return (KEY_MOD)((ctrl ? KB_MOD_CONTROL : 0) | (shift ? KB_MOD_SHIFT : 0) | (alt ? KB_MOD_ALT : 0) | (meta ? KB_MOD_SUPER : 0));
 }
 
-static KEY_SYM translate_key(i32 key) {
+static KEY_SYM translate_key(int key) {
   return (key > 222 || key < 8 ? KB_KEY_UNKNOWN : keycodes[key]);
 }
 
@@ -4091,8 +3889,8 @@ static EM_BOOL uievent_callback(int type, const EmscriptenUiEvent* e, void* user
   } else {
     static double css_w, css_h;
     emscripten_get_element_css_size(HAL_CANVAS_ID, &css_w, &css_h);
-    canvas_w  = (i32)css_w;
-    canvas_h = (i32)css_h;
+    canvas_w  = (int)css_w;
+    canvas_h = (int)css_h;
   }
   return true;
 }
@@ -4120,16 +3918,16 @@ static EM_BOOL webglcontext_callback(int type, const void* reserved, void* user_
   return 0;
 }
 
-bool hal_window(struct window_t* s, const char* t, i32 w, i32 h, i16 flags) {
+bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   static bool window_already_open = false;
   if (window_already_open || active_window) {
-#pragma message WARN("TODO: hal_window() handle error")
+#pragma message WARN("TODO: window() handle error")
     return false;
   }
   
   struct window_t* window = *s = active_window = HAL_MALLOC(sizeof(struct window_t));
   if (!window) {
-    hal_release();
+    release();
     HAL_ERROR(OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
@@ -4289,7 +4087,7 @@ bool hal_window(struct window_t* s, const char* t, i32 w, i32 h, i16 flags) {
 #endif
   
   if (t)
-    hal_window_title(NULL, t);
+    window_title(NULL, t);
   
   emscripten_set_canvas_element_size(HAL_CANVAS_ID, w, h);
   EMSCRIPTEN_FULLSCREEN_SCALE fs_scale = EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT;
@@ -4320,40 +4118,40 @@ bool hal_window(struct window_t* s, const char* t, i32 w, i32 h, i16 flags) {
   return true;
 }
 
-void hal_window_icon(struct window_t* _, struct surface_t* __) {
-#pragma message WARN("hal_window_icon() unsupported on emscripten")
+void window_icon(struct window_t* _, struct surface_t* __) {
+#pragma message WARN("window_icon() unsupported on emscripten")
 }
 
-void hal_window_title(struct window_t* _, const char* t) {
+void window_title(struct window_t* _, const char* t) {
   EM_ASM({
     setWindowTitle(UTF8ToString($0));
   }, t);
 }
 
-void hal_window_position(struct window_t* _, int* x, int*  y) {
+void window_position(struct window_t* _, int* x, int*  y) {
   if (x)
     *x = canvas_x;
   if (y)
     *y = canvas_y;
 }
 
-void hal_screen_size(struct window_t* _, int* w, int* h) {
+void screen_size(struct window_t* _, int* w, int* h) {
   if (w)
     *w = window_w;
   if (h)
     *h = window_h;
 }
 
-void hal_window_destroy(struct window_t* s) {
+void window_destroy(struct window_t* s) {
   memset(s, 0, sizeof(struct window_t));
 }
 
-bool hal_closed(struct window_t* _) {
+bool closed(struct window_t* _) {
   return false;
 }
 
-void hal_cursor_lock(bool locked) {
-#pragma message WARN("hal_cursor_lock() unsupported on emscripten")
+void cursor_lock(bool locked) {
+#pragma message WARN("cursor_lock() unsupported on emscripten")
   if (locked)
     emscripten_request_pointerlock(NULL, 1);
   else
@@ -4363,7 +4161,7 @@ void hal_cursor_lock(bool locked) {
 static const char* cursor = "default";
 static bool cursor_custom = false;
 
-void hal_cursor_visible(bool show) {
+void cursor_visible(bool show) {
   EM_ASM({
     if (Module['canvas']) {
       Module['canvas'].style['cursor'] = ($1 ? UTF8ToString($0) : 'none');
@@ -4371,7 +4169,7 @@ void hal_cursor_visible(bool show) {
   }, cursor, show);
 }
 
-void hal_cursor_icon(struct window_t* _, CURSOR_TYPE t) {
+void cursor_icon(struct window_t* _, CURSOR_TYPE t) {
   if (cursor_custom && cursor)
     HAL_SAFE_FREE(cursor);
   cursor_custom = false;
@@ -4414,10 +4212,10 @@ void hal_cursor_icon(struct window_t* _, CURSOR_TYPE t) {
       cursor = "pointer";
       break;
   }
-  hal_cursor_visible(true);
+  cursor_visible(true);
 }
 
-void hal_cursor_custom_icon(struct window_t* _, struct surface_t* b) {
+void cursor_custom_icon(struct window_t* _, struct surface_t* b) {
   if (cursor_custom && cursor)
     HAL_SAFE_FREE(cursor);
   
@@ -4452,27 +4250,27 @@ void hal_cursor_custom_icon(struct window_t* _, struct surface_t* b) {
     return url_buf;
   }, b->w, b->h, b->buf);
   if (!cursor) {
-    HAL_ERROR(UNKNOWN_ERROR, "hal_cursor_custom_icon() failed");
+    HAL_ERROR(UNKNOWN_ERROR, "cursor_custom_icon() failed");
     cursor = "default";
     cursor_custom = false;
     return;
   }
   cursor_custom = true;
-  hal_cursor_visible(true);
+  cursor_visible(true);
 }
 
-void hal_cursor_pos(i32* x, i32* y) {
+void cursor_pos(int* x, int* y) {
   if (x)
     *x = cursor_x;
   if (y)
     *y = cursor_y;
 }
 
-void hal_cursor_set_pos(i32 _, i32 __) {
-#pragma message WARN("hal_cursor_set_pos() unsupported on emscripten")
+void cursor_set_pos(int _, int __) {
+#pragma message WARN("cursor_set_pos() unsupported on emscripten")
 }
 
-void hal_poll(void) {
+void poll_events(void) {
 #if defined(HAL_DEBUG) && defined(HAL_EMCC_HTML)
   EM_ASM({
     stats.begin();
@@ -4480,7 +4278,7 @@ void hal_poll(void) {
 #endif
 }
 
-void hal_flush(struct window_t* _, struct surface_t* b) {
+void flush(struct window_t* _, struct surface_t* b) {
   EM_ASM({
     var w = $0;
     var h = $1;
@@ -4510,97 +4308,97 @@ void hal_flush(struct window_t* _, struct surface_t* b) {
   }, b->w, b->h, b->buf);
 }
 
-void hal_release(void) {
+void release(void) {
   return;
 }
 #elif defined(HAL_SIXEL)
 #define X(a, b) void(*a##_cb)b,
-void hal_window_callbacks(XMAP_SCREEN_CB struct window_t* a) {
+void window_callbacks(XMAP_SCREEN_CB struct window_t* a) {
 #undef X
   return;
 }
 
 #define X(a, b) \
-void hal_##a##_callback(struct window_t* window, void(*a##_cb)b) { \
+void ##a##_callback(struct window_t* window, void(*a##_cb)b) { \
 return; \
 }
 XMAP_SCREEN_CB
 #undef X
 
-i32 hal_window_id(struct window_t* a) {
+int window_id(struct window_t* a) {
   return 0;
 }
 
-void hal_window_size(struct window_t* a, i32* b, i32* c) {
+void window_size(struct window_t* a, int* b, int* c) {
   return;
 }
 
-bool hal_window(struct window_t* a, const char* b, i32 c, i32 d, i16 e) {
+bool window(struct window_t* a, const char* b, int c, int d, short e) {
   static bool window_already_open = false;
   if (window_already_open || active_window) {
-#pragma message WARN("TODO: hal_window() handle error")
+#pragma message WARN("TODO: window() handle error")
 	return false;
   }
   return true;
 }
 
-void hal_window_icon(struct window_t* a, struct surface_t* b) {
+void window_icon(struct window_t* a, struct surface_t* b) {
   return;
 }
 
-void hal_window_title(struct window_t* a, const char* b) {
+void window_title(struct window_t* a, const char* b) {
   return;
 }
 
-void hal_window_position(struct window_t* a, int* b, int*  c) {
+void window_position(struct window_t* a, int* b, int*  c) {
   return;
 }
 
-void hal_screen_size(struct window_t* a, int* b, int* c) {
+void screen_size(struct window_t* a, int* b, int* c) {
   return;
 }
 
-void hal_window_destroy(struct window_t* a) {
+void window_destroy(struct window_t* a) {
   return;
 }
 
-bool hal_closed(struct window_t* a) {
+bool closed(struct window_t* a) {
   return false;
 }
 
-void hal_cursor_lock(bool a) {
+void cursor_lock(bool a) {
   return;
 }
 
-void hal_cursor_visible(bool a) {
+void cursor_visible(bool a) {
   return;
 }
 
-void hal_cursor_icon(struct window_t* a, CURSOR_TYPE b) {
+void cursor_icon(struct window_t* a, CURSOR_TYPE b) {
   return;
 }
 
-void hal_cursor_custom_icon(struct window_t* a, struct surface_t* b) {
+void cursor_custom_icon(struct window_t* a, struct surface_t* b) {
   return;
 }
 
-void hal_cursor_pos(i32* a, i32* b) {
+void cursor_pos(int* a, int* b) {
   return;
 }
 
-void hal_cursor_set_pos(i32 a, i32 b) {
+void cursor_set_pos(int a, int b) {
   return;
 }
 
-void hal_poll() {
+void poll_events() {
   return;
 }
 
-void hal_flush(struct window_t* a, struct surface_t* b) {
+void flush(struct window_t* a, struct surface_t* b) {
   return;
 }
 
-void hal_release() {
+void release() {
   return;
 }
 #else
@@ -4608,87 +4406,87 @@ void hal_release() {
 #endif
 #else // This is just a dummy
 #define X(a, b) void(*a##_cb)b,
-void hal_window_callbacks(XMAP_SCREEN_CB struct window_t* a) {
+void window_callbacks(XMAP_SCREEN_CB struct window_t* a) {
 #undef X
   return;
 }
 
 #define X(a, b) \
-void hal_##a##_callback(struct window_t* window, void(*a##_cb)b) { \
+void ##a##_callback(struct window_t* window, void(*a##_cb)b) { \
   return; \
 }
 XMAP_SCREEN_CB
 #undef X
 
-i32 hal_window_id(struct window_t* a) {
+int window_id(struct window_t* a) {
   return 0;
 }
 
-void hal_window_size(struct window_t* a, i32* b, i32* c) {
+void window_size(struct window_t* a, int* b, int* c) {
   return;
 }
 
-bool hal_window(struct window_t* a, const char* b, i32 c, i32 d, i16 e) {
+bool window(struct window_t* a, const char* b, int c, int d, short e) {
   return true;
 }
 
-void hal_window_icon(struct window_t* a, struct surface_t* b) {
+void window_icon(struct window_t* a, struct surface_t* b) {
   return;
 }
 
-void hal_window_title(struct window_t* a, const char* b) {
+void window_title(struct window_t* a, const char* b) {
   return;
 }
 
-void hal_window_position(struct window_t* a, int* b, int*  c) {
+void window_position(struct window_t* a, int* b, int*  c) {
   return;
 }
 
-void hal_screen_size(struct window_t* a, int* b, int* c) {
+void screen_size(struct window_t* a, int* b, int* c) {
   return;
 }
 
-void hal_window_destroy(struct window_t* a) {
+void window_destroy(struct window_t* a) {
   return;
 }
 
-bool hal_closed(struct window_t* a) {
+bool closed(struct window_t* a) {
   return false;
 }
 
-void hal_cursor_lock(bool a) {
+void cursor_lock(bool a) {
   return;
 }
 
-void hal_cursor_visible(bool a) {
+void cursor_visible(bool a) {
   return;
 }
 
-void hal_cursor_icon(struct window_t* a, CURSOR_TYPE b) {
+void cursor_icon(struct window_t* a, CURSOR_TYPE b) {
   return;
 }
 
-void hal_cursor_custom_icon(struct window_t* a, struct surface_t* b) {
+void cursor_custom_icon(struct window_t* a, struct surface_t* b) {
   return;
 }
 
-void hal_cursor_pos(i32* a, i32* b) {
+void cursor_pos(int* a, int* b) {
   return;
 }
 
-void hal_cursor_set_pos(i32 a, i32 b) {
+void cursor_set_pos(int a, int b) {
   return;
 }
 
-void hal_poll() {
+void poll_events() {
   return;
 }
 
-void hal_flush(struct window_t* a, struct surface_t* b) {
+void flush(struct window_t* a, struct surface_t* b) {
   return;
 }
 
-void hal_release() {
+void release() {
   return;
 }
 #endif

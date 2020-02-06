@@ -69,8 +69,8 @@
 
 /* Configuration macro:
  * EMULATED_THREADS_USE_NATIVE_TIMEDLOCK
- *		Use pthread_mutex_timedlock() for `hal_mtx_timedlock()'
- *		Otherwise use hal_mtx_trylock() + *busy loop* emulation.
+ *		Use pthread_mutex_timedlock() for `mtx_timedlock()'
+ *		Otherwise use mtx_trylock() + *busy loop* emulation.
  */
 #if !defined(HAL_OSX) && !defined(__CYGWIN__)
 #define EMULATED_THREADS_USE_NATIVE_TIMEDLOCK
@@ -92,34 +92,34 @@ void* impl_thrd_routine(void* p) {
   return (void*)(long)pack.func(pack.arg);
 }
 
-void hal_call_once(hal_once_flag* flag, void (*func)(void)) {
+void call_once(once_flag* flag, void (*func)(void)) {
   pthread_once(flag, func);
 }
 
-int hal_cnd_broadcast(hal_cnd_t* cond) {
+int cnd_broadcast(cnd_t* cond) {
   if (!cond) return THRD_ERROR;
   pthread_cond_broadcast(cond);
   return THRD_SUCCESS;
 }
 
-void hal_cnd_destroy(hal_cnd_t* cond) {
+void cnd_destroy(cnd_t* cond) {
   assert(cond);
   pthread_cond_destroy(cond);
 }
 
-int hal_cnd_init(hal_cnd_t* cond) {
+int cnd_init(cnd_t* cond) {
   if (!cond) return THRD_ERROR;
   pthread_cond_init(cond, NULL);
   return THRD_SUCCESS;
 }
 
-int hal_cnd_signal(hal_cnd_t* cond) {
+int cnd_signal(cnd_t* cond) {
   if (!cond) return THRD_ERROR;
   pthread_cond_signal(cond);
   return THRD_SUCCESS;
 }
 
-int hal_cnd_timedwait(hal_cnd_t* cond, hal_mtx_t *mtx, const hal_xtime *xt) {
+int cnd_timedwait(cnd_t* cond, mtx_t *mtx, const xtime *xt) {
   struct timespec abs_time;
   int rt;
   if (!cond || !mtx || !xt) return THRD_ERROR;
@@ -129,18 +129,18 @@ int hal_cnd_timedwait(hal_cnd_t* cond, hal_mtx_t *mtx, const hal_xtime *xt) {
   return (rt == 0) ? THRD_SUCCESS : THRD_ERROR;
 }
 
-int hal_cnd_wait(hal_cnd_t* cond, hal_mtx_t *mtx) {
+int cnd_wait(cnd_t* cond, mtx_t *mtx) {
   if (!cond || !mtx) return THRD_ERROR;
   pthread_cond_wait(cond, mtx);
   return THRD_SUCCESS;
 }
 
-void hal_mtx_destroy(hal_mtx_t* mtx) {
+void mtx_destroy(mtx_t* mtx) {
   assert(mtx);
   pthread_mutex_destroy(mtx);
 }
 
-int hal_mtx_init(hal_mtx_t* mtx, int type) {
+int mtx_init(mtx_t* mtx, int type) {
   pthread_mutexattr_t attr;
   if (!mtx) return THRD_ERROR;
   if (type != MTX_PLAIN
@@ -163,13 +163,13 @@ int hal_mtx_init(hal_mtx_t* mtx, int type) {
   return THRD_SUCCESS;
 }
 
-int hal_mtx_lock(hal_mtx_t* mtx) {
+int mtx_lock(mtx_t* mtx) {
   if (!mtx) return THRD_ERROR;
   pthread_mutex_lock(mtx);
   return THRD_SUCCESS;
 }
 
-int hal_mtx_timedlock(hal_mtx_t* mtx, const hal_xtime *xt) {
+int mtx_timedlock(mtx_t* mtx, const xtime *xt) {
   if (!mtx || !xt)
 	return THRD_ERROR;
 #ifdef EMULATED_THREADS_USE_NATIVE_TIMEDLOCK
@@ -184,31 +184,31 @@ int hal_mtx_timedlock(hal_mtx_t* mtx, const hal_xtime *xt) {
 #else
   time_t expire = time(NULL);
   expire += xt->sec;
-  while (hal_mtx_trylock(mtx) != THRD_SUCCESS) {
+  while (mtx_trylock(mtx) != THRD_SUCCESS) {
 	time_t now = time(NULL);
 	if (expire < now)
 	  return THRD_BUSY;
 	  // busy loop!
-	hal_thrd_yield();
+	thrd_yield();
   }
   return THRD_SUCCESS;
 #endif
 }
 
-int hal_mtx_trylock(hal_mtx_t* mtx) {
+int mtx_trylock(mtx_t* mtx) {
   if (!mtx)
 	return THRD_ERROR;
   return (pthread_mutex_trylock(mtx) == 0) ? THRD_SUCCESS : THRD_BUSY;
 }
 
-int hal_mtx_unlock(hal_mtx_t* mtx) {
+int mtx_unlock(mtx_t* mtx) {
   if (!mtx)
 	return THRD_ERROR;
   pthread_mutex_unlock(mtx);
   return THRD_SUCCESS;
 }
 
-int hal_thrd_create(hal_thrd_t* thr, thrd_start_t func, void *arg) {
+int thrd_create(thrd_t* thr, thrd_start_t func, void *arg) {
   struct impl_thrd_param *pack;
   if (!thr)
 	return THRD_ERROR;
@@ -223,23 +223,23 @@ int hal_thrd_create(hal_thrd_t* thr, thrd_start_t func, void *arg) {
   return THRD_SUCCESS;
 }
 
-hal_thrd_t hal_thrd_current(void) {
+thrd_t thrd_current(void) {
   return pthread_self();
 }
 
-int hal_thrd_detach(hal_thrd_t thr) {
+int thrd_detach(thrd_t thr) {
   return (pthread_detach(thr) == 0) ? THRD_SUCCESS : THRD_ERROR;
 }
 
-int hal_thrd_equal(hal_thrd_t thr0, hal_thrd_t thr1) {
+int thrd_equal(thrd_t thr0, thrd_t thr1) {
   return pthread_equal(thr0, thr1);
 }
 
-void hal_thrd_exit(int res) {
+void thrd_exit(int res) {
   pthread_exit((void*)(long)res);
 }
 
-int hal_thrd_join(hal_thrd_t thr, int *res) {
+int thrd_join(thrd_t thr, int *res) {
   void *code;
   if (pthread_join(thr, &code) != 0)
 	return THRD_ERROR;
@@ -248,7 +248,7 @@ int hal_thrd_join(hal_thrd_t thr, int *res) {
   return THRD_SUCCESS;
 }
 
-void hal_thrd_sleep(const hal_xtime *xt) {
+void thrd_sleep(const xtime *xt) {
   struct timespec req;
   assert(xt);
   req.tv_sec = xt->sec;
@@ -256,24 +256,24 @@ void hal_thrd_sleep(const hal_xtime *xt) {
   nanosleep(&req, NULL);
 }
 
-void hal_thrd_yield(void) {
+void thrd_yield(void) {
   sched_yield();
 }
 
-int hal_tss_create(hal_tss_t* key, tss_dtor_t dtor) {
+int tss_create(tss_t* key, tss_dtor_t dtor) {
   if (!key) return THRD_ERROR;
   return (pthread_key_create(key, dtor) == 0) ? THRD_SUCCESS : THRD_ERROR;
 }
 
-void hal_tss_delete(hal_tss_t key) {
+void tss_delete(tss_t key) {
   pthread_key_delete(key);
 }
 
-void* hal_tss_get(hal_tss_t key) {
+void* tss_get(tss_t key) {
   return pthread_getspecific(key);
 }
 
-int hal_tss_set(hal_tss_t key, void *val) {
+int tss_set(tss_t key, void *val) {
   return (pthread_setspecific(key, val) == 0) ? THRD_SUCCESS : THRD_ERROR;
 }
 #elif defined(HAL_WINDOWS)
@@ -286,7 +286,7 @@ int hal_tss_set(hal_tss_t key, void *val) {
  * EMULATED_THREADS_USE_NATIVE_CALL_ONCE
  *		Use native WindowsAPI one-time initialization function.
  *		(requires WinVista or later)
- *		Otherwise emulate by hal_mtx_trylock() + *busy loop* for WinXP.
+ *		Otherwise emulate by mtx_trylock() + *busy loop* for WinXP.
  * EMULATED_THREADS_USE_NATIVE_CV
  *		Use native WindowsAPI condition variable object.
  *		(requires WinVista or later)
@@ -307,7 +307,7 @@ int hal_tss_set(hal_tss_t key, void *val) {
 /* Implementation limits:
  * - Conditionally emulation for "Initialization functions"
  *   (see EMULATED_THREADS_USE_NATIVE_CALL_ONCE macro)
- * - Emulated `hal_mtx_timelock()' with hal_mtx_trylock() + *busy loop*
+ * - Emulated `mtx_timelock()' with mtx_trylock() + *busy loop*
  */
 static void impl_tss_dtor_invoke();  // forward decl.
 
@@ -326,7 +326,7 @@ static unsigned __stdcall impl_thrd_routine(void* p) {
   return (unsigned)code;
 }
 
-static DWORD impl_xtime2msec(const hal_xtime *xt) {
+static DWORD impl_xtime2msec(const xtime *xt) {
   return (DWORD)((xt->sec * 1000u) + (xt->nsec / 1000));
 }
 
@@ -345,7 +345,7 @@ static BOOL CALLBACK impl_call_once_callback(PINIT_ONCE InitOnce, PVOID Paramete
  * The implementation of condition variable is ported from Boost.Interprocess
  * See http://www.boost.org/boost/interprocess/sync/windows/condition.hpp
  */
-static void impl_cond_do_signal(hal_cnd_t* cond, int broadcast) {
+static void impl_cond_do_signal(cnd_t* cond, int broadcast) {
   int nsignal = 0;
   
   EnterCriticalSection(&cond->monitor);
@@ -382,7 +382,7 @@ static void impl_cond_do_signal(hal_cnd_t* cond, int broadcast) {
 	ReleaseSemaphore(cond->sem_queue, nsignal, NULL);
 }
 
-static int impl_cond_do_wait(hal_cnd_t* cond, hal_mtx_t *mtx, const hal_xtime *xt) {
+static int impl_cond_do_wait(cnd_t* cond, mtx_t *mtx, const xtime *xt) {
   int nleft = 0;
   int ngone = 0;
   int timeout = 0;
@@ -435,11 +435,11 @@ static int impl_cond_do_wait(hal_cnd_t* cond, hal_mtx_t *mtx, const hal_xtime *x
 #endif  // ifndef EMULATED_THREADS_USE_NATIVE_CV
 
 static struct impl_tss_dtor_entry {
-  hal_tss_t key;
+  tss_t key;
   tss_dtor_t dtor;
 } impl_tss_dtor_tbl[EMULATED_THREADS_TSS_DTOR_SLOTNUM];
 
-static int impl_tss_dtor_register(hal_tss_t key, tss_dtor_t dtor) {
+static int impl_tss_dtor_register(tss_t key, tss_dtor_t dtor) {
   int i;
   for (i = 0; i < EMULATED_THREADS_TSS_DTOR_SLOTNUM; i++) {
 	if (!impl_tss_dtor_tbl[i].dtor)
@@ -463,7 +463,7 @@ static void impl_tss_dtor_invoke() {
   }
 }
 
-void hal_call_once(hal_once_flag* flag, void (*func)(void)) {
+void call_once(once_flag* flag, void (*func)(void)) {
   assert(!flag && !func);
 #ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
   struct impl_call_once_param param;
@@ -482,7 +482,7 @@ void hal_call_once(hal_once_flag* flag, void (*func)(void)) {
 #endif
 }
 
-int hal_cnd_broadcast(hal_cnd_t* cond) {
+int cnd_broadcast(cnd_t* cond) {
   if (!cond) return thrd_error;
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
   WakeAllConditionVariable(&cond->condvar);
@@ -492,7 +492,7 @@ int hal_cnd_broadcast(hal_cnd_t* cond) {
   return thrd_success;
 }
 
-void hal_cnd_destroy(hal_cnd_t* cond) {
+void cnd_destroy(cnd_t* cond) {
   assert(cond);
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
 	// do nothing
@@ -503,7 +503,7 @@ void hal_cnd_destroy(hal_cnd_t* cond) {
 #endif
 }
 
-int hal_cnd_init(hal_cnd_t* cond) {
+int cnd_init(cnd_t* cond) {
   if (!cond) return thrd_error;
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
   InitializeConditionVariable(&cond->condvar);
@@ -518,7 +518,7 @@ int hal_cnd_init(hal_cnd_t* cond) {
   return thrd_success;
 }
 
-int hal_cnd_signal(hal_cnd_t* cond) {
+int cnd_signal(cnd_t* cond) {
   if (!cond) return thrd_error;
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
   WakeConditionVariable(&cond->condvar);
@@ -528,7 +528,7 @@ int hal_cnd_signal(hal_cnd_t* cond) {
   return thrd_success;
 }
 
-int hal_cnd_timedwait(hal_cnd_t* cond, hal_mtx_t *mtx, const hal_xtime *xt) {
+int cnd_timedwait(cnd_t* cond, mtx_t *mtx, const xtime *xt) {
   if (!cond || !mtx || !xt) return thrd_error;
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
   if (SleepConditionVariableCS(&cond->condvar, &mtx->cs, impl_xtime2msec(xt)))
@@ -539,7 +539,7 @@ int hal_cnd_timedwait(hal_cnd_t* cond, hal_mtx_t *mtx, const hal_xtime *xt) {
 #endif
 }
 
-int hal_cnd_wait(hal_cnd_t* cond, hal_mtx_t *mtx) {
+int cnd_wait(cnd_t* cond, mtx_t *mtx) {
   if (!cond || !mtx) return thrd_error;
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
   SleepConditionVariableCS(&cond->condvar, &mtx->cs, INFINITE);
@@ -549,12 +549,12 @@ int hal_cnd_wait(hal_cnd_t* cond, hal_mtx_t *mtx) {
   return thrd_success;
 }
 
-void hal_mtx_destroy(hal_mtx_t* mtx) {
+void mtx_destroy(mtx_t* mtx) {
   assert(mtx);
   DeleteCriticalSection(&mtx->cs);
 }
 
-int hal_mtx_init(hal_mtx_t* mtx, int type) {
+int mtx_init(mtx_t* mtx, int type) {
   if (!mtx) return thrd_error;
   if (type != mtx_plain && type != mtx_timed && type != mtx_try
 	  && type != (mtx_plain|mtx_recursive)
@@ -565,18 +565,18 @@ int hal_mtx_init(hal_mtx_t* mtx, int type) {
   return thrd_success;
 }
 
-int hal_mtx_lock(hal_mtx_t* mtx) {
+int mtx_lock(mtx_t* mtx) {
   if (!mtx) return thrd_error;
   EnterCriticalSection(&mtx->cs);
   return thrd_success;
 }
 
-int hal_hal_mtx_timedlock(hal_mtx_t* mtx, const hal_xtime *xt) {
+int mtx_timedlock(mtx_t* mtx, const xtime *xt) {
   time_t expire, now;
   if (!mtx || !xt) return thrd_error;
   expire = time(NULL);
   expire += xt->sec;
-  while (hal_mtx_trylock(mtx) != thrd_success) {
+  while (mtx_trylock(mtx) != thrd_success) {
 	now = time(NULL);
 	if (expire < now)
 	  return thrd_busy;
@@ -586,18 +586,18 @@ int hal_hal_mtx_timedlock(hal_mtx_t* mtx, const hal_xtime *xt) {
   return thrd_success;
 }
 
-int hal_mtx_trylock(hal_mtx_t* mtx) {
+int mtx_trylock(mtx_t* mtx) {
   if (!mtx) return thrd_error;
   return TryEnterCriticalSection(&mtx->cs) ? thrd_success : thrd_busy;
 }
 
-int hal_mtx_unlock(hal_mtx_t* mtx) {
+int mtx_unlock(mtx_t* mtx) {
   if (!mtx) return thrd_error;
   LeaveCriticalSection(&mtx->cs);
   return thrd_success;
 }
 
-int hal_thrd_create(hal_thrd_t* thr, thrd_start_t func, void *arg) {
+int thrd_create(thrd_t* thr, thrd_start_t func, void *arg) {
   struct impl_thrd_param *pack;
   uintptr_t handle;
   if (!thr) return thrd_error;
@@ -611,29 +611,29 @@ int hal_thrd_create(hal_thrd_t* thr, thrd_start_t func, void *arg) {
 	  return thrd_nomem;
 	return thrd_error;
   }
-  *thr = (hal_thrd_t)handle;
+  *thr = (thrd_t)handle;
   return thrd_success;
 }
 
-hal_thrd_t hal_thrd_current(void) {
+thrd_t thrd_current(void) {
   return GetCurrentThread();
 }
 
-int hal_thrd_detach(hal_thrd_t thr) {
+int thrd_detach(thrd_t thr) {
   CloseHandle(thr);
   return thrd_success;
 }
 
-int hal_thrd_equal(hal_thrd_t thr0, hal_thrd_t thr1) {
+int thrd_equal(thrd_t thr0, thrd_t thr1) {
   return (thr0 == thr1);
 }
 
-void hal_thrd_exit(int res) {
+void thrd_exit(int res) {
   impl_tss_dtor_invoke();
   _endthreadex((unsigned)res);
 }
 
-int hal_thrd_join(hal_thrd_t thr, int *res) {
+int thrd_join(thrd_t thr, int *res) {
   DWORD w, code;
   w = WaitForSingleObject(thr, INFINITE);
   if (w != WAIT_OBJECT_0)
@@ -649,16 +649,16 @@ int hal_thrd_join(hal_thrd_t thr, int *res) {
   return thrd_success;
 }
 
-void hal_thrd_sleep(const hal_xtime *xt) {
+void thrd_sleep(const xtime *xt) {
   assert(xt);
   Sleep(impl_xtime2msec(xt));
 }
 
-void hal_thrd_yield(void) {
+void thrd_yield(void) {
   SwitchToThread();
 }
 
-int hal_tss_create(hal_tss_t* key, tss_dtor_t dtor) {
+int tss_create(tss_t* key, tss_dtor_t dtor) {
   if (!key) return thrd_error;
   *key = TlsAlloc();
   if (dtor) {
@@ -670,22 +670,22 @@ int hal_tss_create(hal_tss_t* key, tss_dtor_t dtor) {
   return (*key != 0xFFFFFFFF) ? thrd_success : thrd_error;
 }
 
-void hal_tss_delete(hal_tss_t key) {
+void tss_delete(tss_t key) {
   TlsFree(key);
 }
 
-void* hal_tss_get(hal_tss_t key) {
+void* tss_get(tss_t key) {
   return TlsGetValue(key);
 }
 
-int hal_tss_set(hal_tss_t key, void *val) {
+int tss_set(tss_t key, void *val) {
   return TlsSetValue(key, val) ? thrd_success : thrd_error;
 }
 #else
 #error Unsupported operating system, sorry
 #endif
 
-int hal_xtime_get(hal_xtime* xt, int base) {
+int xtime_get(xtime* xt, int base) {
   if (!xt) return 0;
   if (base == TIME_UTC) {
 	xt->sec = time(NULL);

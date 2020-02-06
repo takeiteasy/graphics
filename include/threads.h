@@ -88,7 +88,7 @@ extern "C" {
 #define ONCE_FLAG_INIT {0}
 #endif
 #define TSS_DTOR_ITERATIONS 1
-    typedef struct hal_cnd_t {
+    typedef struct cnd_t {
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
 	CONDITION_VARIABLE condvar;
 #else
@@ -99,22 +99,22 @@ extern "C" {
 	HANDLE sem_gate;
 	CRITICAL_SECTION monitor;
 #endif
-  } hal_cnd_t;
+  } cnd_t;
   
-  typedef HANDLE hal_thrd_t;
+  typedef HANDLE thrd_t;
   
-  typedef DWORD hal_tss_t;
+  typedef DWORD tss_t;
   
-  typedef struct hal_mtx_t {
+  typedef struct mtx_t {
 	CRITICAL_SECTION cs;
-  } hal_mtx_t;
+  } mtx_t;
   
 #ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
-  typedef INIT_ONCE hal_once_flag;
+  typedef INIT_ONCE once_flag;
 #else
-  typedef struct hal_once_flag {
+  typedef struct once_flag {
 	volatile LONG status;
-  } hal_once_flag;
+  } once_flag;
 #endif
   
 #elif defined(HAL_USE_PTHREADS)
@@ -132,11 +132,11 @@ extern "C" {
 #define TSS_DTOR_ITERATIONS 1  // assume TSS dtor MAY be called at least once.
 #endif
   
-  typedef pthread_cond_t  hal_cnd_t;
-  typedef pthread_t       hal_thrd_t;
-  typedef pthread_key_t   hal_tss_t;
-  typedef pthread_mutex_t hal_mtx_t;
-  typedef pthread_once_t  hal_once_flag;
+  typedef pthread_cond_t  cnd_t;
+  typedef pthread_t       thrd_t;
+  typedef pthread_key_t   tss_t;
+  typedef pthread_mutex_t mtx_t;
+  typedef pthread_once_t  once_flag;
   
 #else
 #error Unsupported operating system, sorry
@@ -148,7 +148,7 @@ extern "C" {
   typedef struct xtime {
 	time_t sec;
 	long nsec;
-  } hal_xtime;
+  } xtime;
   
   enum {
 	MTX_PLAIN     = 0,
@@ -165,37 +165,37 @@ extern "C" {
 	THRD_NOMEM        // out of memory
   };
   
-  void hal_call_once(hal_once_flag* flag, void (*func)(void));
+  void call_once(once_flag* flag, void (*func)(void));
   
-  int hal_cnd_broadcast(hal_cnd_t* cond);
-  void hal_cnd_destroy(hal_cnd_t* cond);
-  int hal_cnd_init(hal_cnd_t* cond);
-  int hal_cnd_signal(hal_cnd_t* cond);
-  int hal_cnd_timedwait(hal_cnd_t* cond, hal_mtx_t *mtx, const hal_xtime *xt);
-  int hal_cnd_wait(hal_cnd_t* cond, hal_mtx_t *mtx);
+  int cnd_broadcast(cnd_t* cond);
+  void cnd_destroy(cnd_t* cond);
+  int cnd_init(cnd_t* cond);
+  int cnd_signal(cnd_t* cond);
+  int cnd_timedwait(cnd_t* cond, mtx_t *mtx, const xtime *xt);
+  int cnd_wait(cnd_t* cond, mtx_t *mtx);
   
-  void hal_mtx_destroy(hal_mtx_t* mtx);
-  int hal_mtx_init(hal_mtx_t* mtx, int type);
-  int hal_mtx_lock(hal_mtx_t* mtx);
-  int hal_mtx_timedlock(hal_mtx_t* mtx, const hal_xtime *xt);
-  int hal_mtx_trylock(hal_mtx_t* mtx);
-  int hal_mtx_unlock(hal_mtx_t* mtx);
+  void mtx_destroy(mtx_t* mtx);
+  int mtx_init(mtx_t* mtx, int type);
+  int mtx_lock(mtx_t* mtx);
+  int mtx_timedlock(mtx_t* mtx, const xtime *xt);
+  int mtx_trylock(mtx_t* mtx);
+  int mtx_unlock(mtx_t* mtx);
   
-  int hal_thrd_create(hal_thrd_t* thr, thrd_start_t func, void *arg);
-  hal_thrd_t hal_thrd_current(void);
-  int hal_thrd_detach(hal_thrd_t thr);
-  int hal_thrd_equal(hal_thrd_t thr0, hal_thrd_t thr1);
-  void hal_thrd_exit(int res);
-  int hal_thrd_join(hal_thrd_t thr, int *res);
-  void hal_thrd_sleep(const hal_xtime *xt);
-  void hal_thrd_yield(void);
+  int thrd_create(thrd_t* thr, thrd_start_t func, void *arg);
+  thrd_t thrd_current(void);
+  int thrd_detach(thrd_t thr);
+  int thrd_equal(thrd_t thr0, thrd_t thr1);
+  void thrd_exit(int res);
+  int thrd_join(thrd_t thr, int *res);
+  void thrd_sleep(const xtime *xt);
+  void thrd_yield(void);
   
-  int hal_tss_create(hal_tss_t* key, tss_dtor_t dtor);
-  void hal_tss_delete(hal_tss_t key);
-  void* hal_tss_get(hal_tss_t key);
-  int hal_tss_set(hal_tss_t key, void *val);
+  int tss_create(tss_t* key, tss_dtor_t dtor);
+  void tss_delete(tss_t key);
+  void* tss_get(tss_t key);
+  int tss_set(tss_t key, void *val);
   
-  int hal_xtime_get(hal_xtime* xt, int base);
+  int xtime_get(xtime* xt, int base);
 #if !defined(TIME_UTC)
   enum { TIME_UTC = 1 };
 #endif

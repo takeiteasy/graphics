@@ -8,10 +8,10 @@ static bool running = true;
 #define SW 575
 #define SH 500
 
-void on_error(HAL_ERROR type, const char* msg, const char* file, const char* func, i32 line) {
+void on_error(HAL_ERROR type, const char* msg, const char* file, const char* func, int line) {
   fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
 #if defined(HAL_DIALOGS)
-  hal_alert(ALERT_ERROR, ALERT_OK, "ERROR! See logs for info");
+  alert(ALERT_ERROR, ALERT_OK, "ERROR! See logs for info");
   abort();
 #endif
 }
@@ -27,7 +27,7 @@ void on_mouse_btn(void* _, MOUSE_BTN btn, KEY_MOD mod, bool down) {
 void on_mouse_move(void* _, int x, int y, int dx, int dy) {
 #if defined(HAL_EMCC)
   static int wx, wy;
-  hal_window_position(win, &wx, &wy);
+  window_position(win, &wx, &wy);
   printf("mouse move: %d,%d - %d,%d\n", x - wx, y - wy, dx, dy);
 #else
   printf("mouse move: %d,%d - %d,%d\n", x, y, dx, dy);
@@ -55,51 +55,51 @@ void on_closed(void* _) {
 }
 
 void loop() {
-  hal_poll();
-  hal_flush(&win, &buf);
+  poll_events();
+  flush(&win, &buf);
 }
 
 int main(int argc, const char* argv[]) {
   hal_error_callback(on_error);
 
-  hal_window(&win, "test",  SW, SH, DEFAULT);
-  hal_window_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, on_closed, &win);
-  hal_cursor_icon(&win, CURSOR_HAND);
+  window(&win, "test",  SW, SH, DEFAULT);
+  window_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, on_closed, &win);
+  cursor_icon(&win, CURSOR_HAND);
 
-  hal_surface(&buf, SW, SH);
-  hal_fill(&buf, RED);
+  surface(&buf, SW, SH);
+  fill(&buf, RED);
 
   struct surface_t img;
 #if defined(HAL_EMCC)
-  hal_bmp(&img, "old/test/resources/Uncompressed-24.bmp");
+  bmp(&img, "old/test/resources/Uncompressed-24.bmp");
 #elif defined(HAL_OSX)
-  hal_bmp(&img, "/Users/roryb/git/hal/old/test/resources/Uncompressed-24.bmp");
+  bmp(&img, "/Users/roryb/git/hal/old/test/resources/Uncompressed-24.bmp");
 #elif defined(HAL_WINDOWS)
-  hal_bmp(&img, "Z:\\hal\\old\\test\\resources\\Uncompressed-24.bmp");
+  bmp(&img, "Z:\\hal\\old\\test\\resources\\Uncompressed-24.bmp");
 #endif
-  hal_paste(&buf, &img, 10, 10);
+  paste(&buf, &img, 10, 10);
   
   struct bdf_t font;
 #if defined(HAL_EMCC)
-  hal_bdf(&font, "old/test/resources/tewi.bdf");
+  bdf(&font, "old/test/resources/tewi.bdf");
 #elif defined(HAL_OSX)
-  hal_bdf(&font, "/Users/roryb/git/hal/old/test/resources/tewi.bdf");
+  bdf(&font, "/Users/roryb/git/hal/old/test/resources/tewi.bdf");
 #elif defined(HAL_WINDOWS)
-  hal_bdf(&font, "Z:\\hal\\old\\test\\resources\\tewi.bdf");
+  bdf(&font, "Z:\\hal\\old\\test\\resources\\tewi.bdf");
 #endif
-  hal_bdf_writelnf(&buf, &font, 10, 10, WHITE, BLACK, "This is a test! %d", 42);
+  bdf_writelnf(&buf, &font, 10, 10, WHITE, BLACK, "This is a test! %d", 42);
 
 #if defined(HAL_EMCC)
   emscripten_set_main_loop(loop, 0, 1);
 #else
-  while (!hal_closed(&win) && running)
+  while (!closed(&win) && running)
     loop();
 #endif
 
-  hal_destroy(&img);
-  hal_bdf_destroy(&font);
-  hal_destroy(&buf);
-  hal_window_destroy(&win);
+  destroy(&img);
+  bdf_destroy(&font);
+  destroy(&buf);
+  window_destroy(&win);
   return 0;
 }
 
