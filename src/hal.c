@@ -79,8 +79,8 @@ void hal_error(HAL_ERROR_TYPE type, const char* file, const char* func, int line
   fprintf(stderr, "[%d] from %s in %s() at %d -- %s\n", type, file, func, line, error);
 #endif
   if (__error_callback) {
-	__error_callback(type, (const char*)error, __FILE__, __FUNCTION__, __LINE__);
-	return;
+    __error_callback(type, (const char*)error, __FILE__, __FUNCTION__, __LINE__);
+    return;
   }
   abort();
 }
@@ -99,40 +99,40 @@ static void init_ticks() {
   ticks_started = true;
 #if HAVE_CLOCK_GETTIME
   if (clock_gettime(SDL_MONOTONIC_CLOCK, &start_ts) == 0)
-	has_monotonic_time = SDL_TRUE;
+    has_monotonic_time = SDL_TRUE;
   else
 #elif defined(HAL_OSX)
-	kern_return_t ret = mach_timebase_info(&mach_base_info);
+    kern_return_t ret = mach_timebase_info(&mach_base_info);
   if (ret == 0) {
-	has_monotonic_time = true;
-	start_mach = mach_absolute_time();
+    has_monotonic_time = true;
+    start_mach = mach_absolute_time();
   } else
 #endif
-	gettimeofday(&start_tv, NULL);
+    gettimeofday(&start_tv, NULL);
 }
 
 long ticks() {
   if (!ticks_started)
-	init_ticks();
+    init_ticks();
   
   int ret = 0;
   if (has_monotonic_time) {
 #if HAVE_CLOCK_GETTIME
-	struct timespec now;
-	clock_gettime(SDL_MONOTONIC_CLOCK, &now);
-	ret = (int)((now.tv_sec - start_ts.tv_sec) * 1000 + (now.tv_nsec - start_ts.tv_nsec) / 1000000);
+    struct timespec now;
+    clock_gettime(SDL_MONOTONIC_CLOCK, &now);
+    ret = (int)((now.tv_sec - start_ts.tv_sec) * 1000 + (now.tv_nsec - start_ts.tv_nsec) / 1000000);
 #elif defined(HAL_OSX)
-	uint64_t now = mach_absolute_time();
-	ret = (int)((((now - start_mach) * mach_base_info.numer) / mach_base_info.denom) / 1000000);
+    uint64_t now = mach_absolute_time();
+    ret = (int)((((now - start_mach) * mach_base_info.numer) / mach_base_info.denom) / 1000000);
 #else
-	SDL_assert(SDL_FALSE);
-	ret = 0;
+    SDL_assert(SDL_FALSE);
+    ret = 0;
 #endif
   } else {
-	struct timeval now;
-	
-	gettimeofday(&now, NULL);
-	ret = (int)((now.tv_sec - start_tv.tv_sec) * 1000 + (now.tv_usec - start_tv.tv_usec) / 1000);
+    struct timeval now;
+    
+    gettimeofday(&now, NULL);
+    ret = (int)((now.tv_sec - start_tv.tv_sec) * 1000 + (now.tv_usec - start_tv.tv_usec) / 1000);
   }
   return ret;
 }
@@ -155,25 +155,25 @@ void delay(long ms) {
   then = ticks();
 #endif
   do {
-	errno = 0;
-	
+    errno = 0;
+    
 #if defined(HAL_TIME_NANO)
-	tv.tv_sec = elapsed.tv_sec;
-	tv.tv_nsec = elapsed.tv_nsec;
-	was_error = nanosleep(&tv, &elapsed);
+    tv.tv_sec = elapsed.tv_sec;
+    tv.tv_nsec = elapsed.tv_nsec;
+    was_error = nanosleep(&tv, &elapsed);
 #else
-	/* Calculate the time interval left (in case of interrupt) */
-	now = ticks();
-	elapsed = (now - then);
-	then = now;
-	if (elapsed >= ms) {
-	  break;
-	}
-	ms -= elapsed;
-	tv.tv_sec = ms / 1000;
-	tv.tv_usec = (ms % 1000) * 1000;
-	
-	was_error = select(0, NULL, NULL, NULL, &tv);
+    /* Calculate the time interval left (in case of interrupt) */
+    now = ticks();
+    elapsed = (now - then);
+    then = now;
+    if (elapsed >= ms) {
+      break;
+    }
+    ms -= elapsed;
+    tv.tv_sec = ms / 1000;
+    tv.tv_usec = (ms % 1000) * 1000;
+    
+    was_error = select(0, NULL, NULL, NULL, &tv);
 #endif /* HAVE_NANOSLEEP */
   } while (was_error && (errno == EINTR));
 }
@@ -181,45 +181,45 @@ void delay(long ms) {
 long pref_counter() {
   long ret;
   if (!ticks_started)
-	init_ticks();
+    init_ticks();
   
   if (has_monotonic_time) {
 #if HAVE_CLOCK_GETTIME
-	struct timespec now;
-	
-	clock_gettime(SDL_MONOTONIC_CLOCK, &now);
-	ticks = now.tv_sec;
-	ticks *= 1000000000;
-	ticks += now.tv_nsec;
+    struct timespec now;
+    
+    clock_gettime(SDL_MONOTONIC_CLOCK, &now);
+    ticks = now.tv_sec;
+    ticks *= 1000000000;
+    ticks += now.tv_nsec;
 #elif defined(__APPLE__)
-	ret = mach_absolute_time();
+    ret = mach_absolute_time();
 #else
-	SDL_assert(SDL_FALSE);
-	ticks = 0;
+    SDL_assert(SDL_FALSE);
+    ticks = 0;
 #endif
   } else {
-	struct timeval now;
-	
-	gettimeofday(&now, NULL);
-	ret = now.tv_sec;
-	ret *= 1000000;
-	ret += now.tv_usec;
+    struct timeval now;
+    
+    gettimeofday(&now, NULL);
+    ret = now.tv_sec;
+    ret *= 1000000;
+    ret += now.tv_usec;
   }
   return ret;
 }
 
 long pref_freq() {
   if (!ticks_started)
-	init_ticks();
+    init_ticks();
   
   if (has_monotonic_time) {
 #if HAVE_CLOCK_GETTIME
-	return 1000000000;
+    return 1000000000;
 #elif defined(HAL_OSX)
-	long freq = mach_base_info.denom;
-	freq *= 1000000000;
-	freq /= mach_base_info.numer;
-	return freq;
+    long freq = mach_base_info.denom;
+    freq *= 1000000000;
+    freq /= mach_base_info.numer;
+    return freq;
 #endif
   }
   

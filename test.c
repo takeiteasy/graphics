@@ -8,7 +8,7 @@ static bool running = true;
 #define SW 575
 #define SH 500
 
-void on_error(HAL_ERROR type, const char* msg, const char* file, const char* func, int line) {
+void on_error(HAL_ERROR_TYPE type, const char* msg, const char* file, const char* func, int line) {
   fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
 #if defined(HAL_DIALOGS)
   alert(ALERT_ERROR, ALERT_OK, "ERROR! See logs for info");
@@ -55,7 +55,7 @@ void on_closed(void* _) {
 }
 
 void loop() {
-  poll_events();
+  events();
   flush(&win, &buf);
 }
 
@@ -96,9 +96,9 @@ int main(int argc, const char* argv[]) {
     loop();
 #endif
 
-  destroy(&img);
+  surface_destroy(&img);
   bdf_destroy(&font);
-  destroy(&buf);
+  surface_destroy(&buf);
   window_destroy(&win);
   return 0;
 }

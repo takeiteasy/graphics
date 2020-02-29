@@ -57,7 +57,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "threads.h"
+#define HAL_ONLY_THREADS
+#include "hal.h"
 #include <limits.h>
 
 #if defined(HAL_USE_PTHREADS)
@@ -125,7 +126,7 @@ int cnd_timedwait(cnd_t* cond, mtx_t *mtx, const xtime *xt) {
   if (!cond || !mtx || !xt) return THRD_ERROR;
   rt = pthread_cond_timedwait(cond, mtx, &abs_time);
   if (rt == ETIMEDOUT)
-	return THRD_BUSY;
+    return THRD_BUSY;
   return (rt == 0) ? THRD_SUCCESS : THRD_ERROR;
 }
 
@@ -144,18 +145,18 @@ int mtx_init(mtx_t* mtx, int type) {
   pthread_mutexattr_t attr;
   if (!mtx) return THRD_ERROR;
   if (type != MTX_PLAIN
-	  && type != MTX_TIMED
-	  && type != MTX_TRY
-	  && type != (MTX_PLAIN|MTX_RECURSIVE)
-	  && type != (MTX_TIMED|MTX_RECURSIVE)
-	  && type != (MTX_TRY  |MTX_RECURSIVE))
-	return THRD_ERROR;
+      && type != MTX_TIMED
+      && type != MTX_TRY
+      && type != (MTX_PLAIN|MTX_RECURSIVE)
+      && type != (MTX_TIMED|MTX_RECURSIVE)
+      && type != (MTX_TRY  |MTX_RECURSIVE))
+    return THRD_ERROR;
   pthread_mutexattr_init(&attr);
   if ((type & MTX_RECURSIVE) != 0) {
 #if defined(HAL_LINUX)
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);
 #else
-	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
 #endif
   }
   pthread_mutex_init(mtx, &attr);
@@ -171,7 +172,7 @@ int mtx_lock(mtx_t* mtx) {
 
 int mtx_timedlock(mtx_t* mtx, const xtime *xt) {
   if (!mtx || !xt)
-	return THRD_ERROR;
+    return THRD_ERROR;
 #ifdef EMULATED_THREADS_USE_NATIVE_TIMEDLOCK
   struct timespec ts;
   int rt;
@@ -179,17 +180,17 @@ int mtx_timedlock(mtx_t* mtx, const xtime *xt) {
   ts.tv_nsec = xt->nsec;
   rt = pthread_mutex_timedlock(mtx, &ts);
   if (rt == 0)
-	return THRD_SUCCESS;
+    return THRD_SUCCESS;
   return (rt == ETIMEDOUT) ? THRD_BUSY : THRD_ERROR;
 #else
   time_t expire = time(NULL);
   expire += xt->sec;
   while (mtx_trylock(mtx) != THRD_SUCCESS) {
-	time_t now = time(NULL);
-	if (expire < now)
-	  return THRD_BUSY;
-	  // busy loop!
-	thrd_yield();
+    time_t now = time(NULL);
+    if (expire < now)
+      return THRD_BUSY;
+    // busy loop!
+    thrd_yield();
   }
   return THRD_SUCCESS;
 #endif
@@ -197,13 +198,13 @@ int mtx_timedlock(mtx_t* mtx, const xtime *xt) {
 
 int mtx_trylock(mtx_t* mtx) {
   if (!mtx)
-	return THRD_ERROR;
+    return THRD_ERROR;
   return (pthread_mutex_trylock(mtx) == 0) ? THRD_SUCCESS : THRD_BUSY;
 }
 
 int mtx_unlock(mtx_t* mtx) {
   if (!mtx)
-	return THRD_ERROR;
+    return THRD_ERROR;
   pthread_mutex_unlock(mtx);
   return THRD_SUCCESS;
 }
@@ -211,14 +212,14 @@ int mtx_unlock(mtx_t* mtx) {
 int thrd_create(thrd_t* thr, thrd_start_t func, void *arg) {
   struct impl_thrd_param *pack;
   if (!thr)
-	return THRD_ERROR;
+    return THRD_ERROR;
   pack = malloc(sizeof(struct impl_thrd_param));
   if (!pack) return THRD_NOMEM;
   pack->func = func;
   pack->arg = arg;
   if (pthread_create(thr, NULL, impl_thrd_routine, pack) != 0) {
-	free(pack);
-	return THRD_ERROR;
+    free(pack);
+    return THRD_ERROR;
   }
   return THRD_SUCCESS;
 }
@@ -242,9 +243,9 @@ void thrd_exit(int res) {
 int thrd_join(thrd_t thr, int *res) {
   void *code;
   if (pthread_join(thr, &code) != 0)
-	return THRD_ERROR;
+    return THRD_ERROR;
   if (res)
-	*res = (int)code;
+    *res = (int)code;
   return THRD_SUCCESS;
 }
 
@@ -295,7 +296,7 @@ int tss_set(tss_t key, void *val) {
  *		Max registerable TSS dtor number.
  */
 #if _WIN32_WINNT >= 0x0600
-  // Prefer native WindowsAPI on newer environment.
+// Prefer native WindowsAPI on newer environment.
 #define EMULATED_THREADS_USE_NATIVE_CALL_ONCE
 #define EMULATED_THREADS_USE_NATIVE_CV
 #endif
@@ -350,36 +351,36 @@ static void impl_cond_do_signal(cnd_t* cond, int broadcast) {
   
   EnterCriticalSection(&cond->monitor);
   if (cond->to_unblock != 0) {
-	if (cond->blocked == 0) {
-	  LeaveCriticalSection(&cond->monitor);
-	  return;
-	}
-	if (broadcast) {
-	  cond->to_unblock += nsignal = cond->blocked;
-	  cond->blocked = 0;
-	} else {
-	  nsignal = 1;
-	  cond->to_unblock++;
-	  cond->blocked--;
-	}
+    if (cond->blocked == 0) {
+      LeaveCriticalSection(&cond->monitor);
+      return;
+    }
+    if (broadcast) {
+      cond->to_unblock += nsignal = cond->blocked;
+      cond->blocked = 0;
+    } else {
+      nsignal = 1;
+      cond->to_unblock++;
+      cond->blocked--;
+    }
   } else if (cond->blocked > cond->gone) {
-	WaitForSingleObject(cond->sem_gate, INFINITE);
-	if (cond->gone != 0) {
-	  cond->blocked -= cond->gone;
-	  cond->gone = 0;
-	}
-	if (broadcast) {
-	  nsignal = cond->to_unblock = cond->blocked;
-	  cond->blocked = 0;
-	} else {
-	  nsignal = cond->to_unblock = 1;
-	  cond->blocked--;
-	}
+    WaitForSingleObject(cond->sem_gate, INFINITE);
+    if (cond->gone != 0) {
+      cond->blocked -= cond->gone;
+      cond->gone = 0;
+    }
+    if (broadcast) {
+      nsignal = cond->to_unblock = cond->blocked;
+      cond->blocked = 0;
+    } else {
+      nsignal = cond->to_unblock = 1;
+      cond->blocked--;
+    }
   }
   LeaveCriticalSection(&cond->monitor);
   
   if (0 < nsignal)
-	ReleaseSemaphore(cond->sem_queue, nsignal, NULL);
+    ReleaseSemaphore(cond->sem_queue, nsignal, NULL);
 }
 
 static int impl_cond_do_wait(cnd_t* cond, mtx_t *mtx, const xtime *xt) {
@@ -399,34 +400,34 @@ static int impl_cond_do_wait(cnd_t* cond, mtx_t *mtx, const xtime *xt) {
   
   EnterCriticalSection(&cond->monitor);
   if ((nleft = cond->to_unblock) != 0) {
-	if (timeout) {
-	  if (cond->blocked != 0) {
-		cond->blocked--;
-	  } else {
-		cond->gone++;
-	  }
-	}
-	if (--cond->to_unblock == 0) {
-	  if (cond->blocked != 0) {
-		ReleaseSemaphore(cond->sem_gate, 1, NULL);
-		nleft = 0;
-	  }
-	  else if ((ngone = cond->gone) != 0) {
-		cond->gone = 0;
-	  }
-	}
+    if (timeout) {
+      if (cond->blocked != 0) {
+        cond->blocked--;
+      } else {
+        cond->gone++;
+      }
+    }
+    if (--cond->to_unblock == 0) {
+      if (cond->blocked != 0) {
+        ReleaseSemaphore(cond->sem_gate, 1, NULL);
+        nleft = 0;
+      }
+      else if ((ngone = cond->gone) != 0) {
+        cond->gone = 0;
+      }
+    }
   } else if (++cond->gone == INT_MAX/2) {
-	WaitForSingleObject(cond->sem_gate, INFINITE);
-	cond->blocked -= cond->gone;
-	ReleaseSemaphore(cond->sem_gate, 1, NULL);
-	cond->gone = 0;
+    WaitForSingleObject(cond->sem_gate, INFINITE);
+    cond->blocked -= cond->gone;
+    ReleaseSemaphore(cond->sem_gate, 1, NULL);
+    cond->gone = 0;
   }
   LeaveCriticalSection(&cond->monitor);
   
   if (nleft == 1) {
-	while (ngone--)
-	  WaitForSingleObject(cond->sem_queue, INFINITE);
-	ReleaseSemaphore(cond->sem_gate, 1, NULL);
+    while (ngone--)
+      WaitForSingleObject(cond->sem_queue, INFINITE);
+    ReleaseSemaphore(cond->sem_gate, 1, NULL);
   }
   
   mtx_lock(mtx);
@@ -442,11 +443,11 @@ static struct impl_tss_dtor_entry {
 static int impl_tss_dtor_register(tss_t key, tss_dtor_t dtor) {
   int i;
   for (i = 0; i < EMULATED_THREADS_TSS_DTOR_SLOTNUM; i++) {
-	if (!impl_tss_dtor_tbl[i].dtor)
-	  break;
+    if (!impl_tss_dtor_tbl[i].dtor)
+      break;
   }
   if (i == EMULATED_THREADS_TSS_DTOR_SLOTNUM)
-	return 1;
+    return 1;
   impl_tss_dtor_tbl[i].key = key;
   impl_tss_dtor_tbl[i].dtor = dtor;
   return 0;
@@ -455,11 +456,11 @@ static int impl_tss_dtor_register(tss_t key, tss_dtor_t dtor) {
 static void impl_tss_dtor_invoke() {
   int i;
   for (i = 0; i < EMULATED_THREADS_TSS_DTOR_SLOTNUM; i++) {
-	if (impl_tss_dtor_tbl[i].dtor) {
-	  void* val = tss_get(impl_tss_dtor_tbl[i].key);
-	  if (val)
-		(impl_tss_dtor_tbl[i].dtor)(val);
-	}
+    if (impl_tss_dtor_tbl[i].dtor) {
+      void* val = tss_get(impl_tss_dtor_tbl[i].key);
+      if (val)
+        (impl_tss_dtor_tbl[i].dtor)(val);
+    }
   }
 }
 
@@ -471,13 +472,13 @@ void call_once(once_flag* flag, void (*func)(void)) {
   InitOnceExecuteOnce(flag, impl_call_once_callback, (PVOID)&param, NULL);
 #else
   if (InterlockedCompareExchange(&flag->status, 1, 0) == 0) {
-	(func)();
-	InterlockedExchange(&flag->status, 2);
+    (func)();
+    InterlockedExchange(&flag->status, 2);
   } else {
-	while (flag->status == 1) {
-		// busy loop!
-	  thrd_yield();
-	}
+    while (flag->status == 1) {
+      // busy loop!
+      thrd_yield();
+    }
   }
 #endif
 }
@@ -495,7 +496,7 @@ int cnd_broadcast(cnd_t* cond) {
 void cnd_destroy(cnd_t* cond) {
   assert(cond);
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
-	// do nothing
+  // do nothing
 #else
   CloseHandle(cond->sem_queue);
   CloseHandle(cond->sem_gate);
@@ -532,7 +533,7 @@ int cnd_timedwait(cnd_t* cond, mtx_t *mtx, const xtime *xt) {
   if (!cond || !mtx || !xt) return thrd_error;
 #ifdef EMULATED_THREADS_USE_NATIVE_CV
   if (SleepConditionVariableCS(&cond->condvar, &mtx->cs, impl_xtime2msec(xt)))
-	return thrd_success;
+    return thrd_success;
   return (GetLastError() == ERROR_TIMEOUT) ? thrd_busy : thrd_error;
 #else
   return impl_cond_do_wait(cond, mtx, xt);
@@ -557,10 +558,10 @@ void mtx_destroy(mtx_t* mtx) {
 int mtx_init(mtx_t* mtx, int type) {
   if (!mtx) return thrd_error;
   if (type != mtx_plain && type != mtx_timed && type != mtx_try
-	  && type != (mtx_plain|mtx_recursive)
-	  && type != (mtx_timed|mtx_recursive)
-	  && type != (mtx_try|mtx_recursive))
-	return thrd_error;
+      && type != (mtx_plain|mtx_recursive)
+      && type != (mtx_timed|mtx_recursive)
+      && type != (mtx_try|mtx_recursive))
+    return thrd_error;
   InitializeCriticalSection(&mtx->cs);
   return thrd_success;
 }
@@ -577,11 +578,11 @@ int mtx_timedlock(mtx_t* mtx, const xtime *xt) {
   expire = time(NULL);
   expire += xt->sec;
   while (mtx_trylock(mtx) != thrd_success) {
-	now = time(NULL);
-	if (expire < now)
-	  return thrd_busy;
-	  // busy loop!
-	thrd_yield();
+    now = time(NULL);
+    if (expire < now)
+      return thrd_busy;
+    // busy loop!
+    thrd_yield();
   }
   return thrd_success;
 }
@@ -607,9 +608,9 @@ int thrd_create(thrd_t* thr, thrd_start_t func, void *arg) {
   pack->arg = arg;
   handle = _beginthreadex(NULL, 0, impl_thrd_routine, pack, 0, NULL);
   if (handle == 0) {
-	if (errno == EAGAIN || errno == EACCES)
-	  return thrd_nomem;
-	return thrd_error;
+    if (errno == EAGAIN || errno == EACCES)
+      return thrd_nomem;
+    return thrd_error;
   }
   *thr = (thrd_t)handle;
   return thrd_success;
@@ -637,13 +638,13 @@ int thrd_join(thrd_t thr, int *res) {
   DWORD w, code;
   w = WaitForSingleObject(thr, INFINITE);
   if (w != WAIT_OBJECT_0)
-	return thrd_error;
+    return thrd_error;
   if (res) {
-	if (!GetExitCodeThread(thr, &code)) {
-	  CloseHandle(thr);
-	  return thrd_error;
-	}
-	*res = (int)code;
+    if (!GetExitCodeThread(thr, &code)) {
+      CloseHandle(thr);
+      return thrd_error;
+    }
+    *res = (int)code;
   }
   CloseHandle(thr);
   return thrd_success;
@@ -662,10 +663,10 @@ int tss_create(tss_t* key, tss_dtor_t dtor) {
   if (!key) return thrd_error;
   *key = TlsAlloc();
   if (dtor) {
-	if (impl_tss_dtor_register(*key, dtor)) {
-	  TlsFree(*key);
-	  return thrd_error;
-	}
+    if (impl_tss_dtor_register(*key, dtor)) {
+      TlsFree(*key);
+      return thrd_error;
+    }
   }
   return (*key != 0xFFFFFFFF) ? thrd_success : thrd_error;
 }
@@ -688,9 +689,9 @@ int tss_set(tss_t key, void *val) {
 int xtime_get(xtime* xt, int base) {
   if (!xt) return 0;
   if (base == TIME_UTC) {
-	xt->sec = time(NULL);
-	xt->nsec = 0;
-	return base;
+    xt->sec = time(NULL);
+    xt->nsec = 0;
+    return base;
   }
   return 0;
 }

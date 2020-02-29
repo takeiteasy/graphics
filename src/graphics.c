@@ -48,7 +48,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "graphics.h"
+#define HAL_ONLY_GRAPHICS
+#include "hal.h"
 
 #if defined(_MSC_VER)
 #define _CRT_SECURE_NO_WARNINGS
@@ -211,7 +212,7 @@ static inline void blend(struct surface_t* s, int x, int y, int c) {
 #endif
 
 int pget(struct surface_t* s, int x, int y) {
-    return (!s || !s->buf || x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
+  return (!s || !s->buf || x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : XYGET(s, x, y));
 }
 
 bool paste(struct surface_t* dst, struct surface_t* src, int x, int y) {
@@ -1700,7 +1701,7 @@ void writeln(struct surface_t* s, int x, int y, int fg, int bg, const char* str)
 }
 
 void writelnf(struct surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...) {
-    char* buffer = NULL;
+  char* buffer = NULL;
   int buffer_size = 0;
 
   va_list argptr;
@@ -1941,7 +1942,7 @@ int bdf_character(struct surface_t* s, struct bdf_t* f, const char* ch, int x, i
       cc = (yy < yoffset || yy > yoffset + f->chars[n].bb_h ? 0 : f->chars[n].bitmap[(yy - yoffset) * ((f->fbb_w + 7) / 8) + xx / 8]);
 
       for (i = 128, j = 0; i; i /= 2, ++j)
-		pset(s, x + j, y + yy, (cc & i ? fg : bg));
+        pset(s, x + j, y + yy, (cc & i ? fg : bg));
     }
   }
 
@@ -2362,7 +2363,7 @@ static inline bool init_gl(int w, int h, GLuint* _vao, GLuint* _shader, GLuint* 
     GL_LIST
 #undef GLE
 #elif defined(HAL_LINUX)
-      void* libGL = dlopen("libGL.so", RTLD_LAZY);
+    void* libGL = dlopen("libGL.so", RTLD_LAZY);
     if (!libGL) {
       release();
       HAL_ERROR(GL_LOAD_DL_FAILED, "dlopen() failed: libGL.so couldn't be loaded");
@@ -2943,7 +2944,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 #else
   CGContextRef ctx = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
   CGColorSpaceRef s = CGColorSpaceCreateDeviceRGB();
-  CGDataProviderRef p = CGDataProviderCreateWithData(NULL, _buffer->buf, _buffer->w * _buffer->h * 3, NULL);
+  CGDataProviderRef p = CGDataProviderCreateWithData(NULL, _buffer->buf, _buffer->w * _buffer->h * 4, NULL);
   CGImageRef img = CGImageCreate(_buffer->w, _buffer->h, 8, 32, _buffer->w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, 0, kCGRenderingIntentDefault);
   CGContextDrawImage(ctx, CGRectMake(0, 0, [self frame].size.width, [self frame].size.height), img);
   CGColorSpaceRelease(s);
@@ -2987,7 +2988,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 @synthesize parent = _parent;
 @synthesize closed = _closed;
 
--(id)initWithSize:(NSSize)windowSize styleMask:(short)flags title:(const char*)windowTitle {
+- (id)initWithSize:(NSSize)windowSize styleMask:(short)flags title:(const char*)windowTitle {
   NSWindowStyleMask styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
   flags |= (flags & FULLSCREEN ? (BORDERLESS | RESIZABLE | FULLSCREEN_DESKTOP) : 0);
   styleMask |= (flags & RESIZABLE ? NSWindowStyleMaskResizable : 0);
@@ -3420,6 +3421,7 @@ void release() {
   [pool drain];
 }
 #elif defined(HAL_WINDOWS) && !defined(HAL_EXTERNAL_WINDOW)
+#pragma message WARN("TODO: Windows implementation is a WIP")
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -3782,9 +3784,92 @@ void release() {
   return;
 }
 #elif defined(HAL_LINUX) && !defined(HAL_EXTERNAL_WINDOW)
-#error TODO: HAL_LINUX reimplement
-#elif defined(HAL_EMCC)
+#pragma message WARN("TODO: Linux X11/Wayland support not yet implemented")
+#define X(a, b) void(*a##_cb)b,
+void window_callbacks(XMAP_SCREEN_CB struct window_t* a) {
+#undef X
+  return;
+}
 
+#define X(a, b) \
+void ##a##_callback(struct window_t* window, void(*a##_cb)b) { \
+  return; \
+}
+XMAP_SCREEN_CB
+#undef X
+
+int window_id(struct window_t* a) {
+  return 0;
+}
+
+void window_size(struct window_t* a, int* b, int* c) {
+  return;
+}
+
+bool window(struct window_t* a, const char* b, int c, int d, short e) {
+  return true;
+}
+
+void window_icon(struct window_t* a, struct surface_t* b) {
+  return;
+}
+
+void window_title(struct window_t* a, const char* b) {
+  return;
+}
+
+void window_position(struct window_t* a, int* b, int*  c) {
+  return;
+}
+
+void screen_size(struct window_t* a, int* b, int* c) {
+  return;
+}
+
+void window_destroy(struct window_t* a) {
+  return;
+}
+
+bool closed(struct window_t* a) {
+  return false;
+}
+
+void cursor_lock(bool a) {
+  return;
+}
+
+void cursor_visible(bool a) {
+  return;
+}
+
+void cursor_icon(struct window_t* a, CURSOR_TYPE b) {
+  return;
+}
+
+void cursor_custom_icon(struct window_t* a, struct surface_t* b) {
+  return;
+}
+
+void cursor_pos(int* a, int* b) {
+  return;
+}
+
+void cursor_set_pos(int a, int b) {
+  return;
+}
+
+void poll_events() {
+  return;
+}
+
+void flush(struct window_t* a, struct surface_t* b) {
+  return;
+}
+
+void release() {
+  return;
+}
+#elif defined(HAL_EMCC)
 #if !defined(HAL_CANVAS_NAME)
 #if defined(HAL_CANVAS_ID)
 #error HAL_CANVAS_ID cannot be pre-defined unless HAL_CANVAS_NAME is also pre-defined
@@ -4083,7 +4168,7 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   EM_ASM(Module['noExitRuntime'] = true);
   
 #if defined(HAL_OPENGL)
-  
+#pragma message WARN("TODO: Emscripten OpenGL not yet implemented")
 #endif
   
   if (t)
@@ -4312,6 +4397,7 @@ void release(void) {
   return;
 }
 #elif defined(HAL_SIXEL)
+#pragma message WARN("TODO: SIXEL not yet implemented")
 #define X(a, b) void(*a##_cb)b,
 void window_callbacks(XMAP_SCREEN_CB struct window_t* a) {
 #undef X
