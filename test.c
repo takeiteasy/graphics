@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "hal.h"
+#include "graphics/graphics.h"
 
 static struct window_t win;
 static struct surface_t buf;
@@ -8,9 +8,9 @@ static bool running = true;
 #define SW 575
 #define SH 500
 
-void on_error(HAL_ERROR_TYPE type, const char* msg, const char* file, const char* func, int line) {
+void on_error(GRAPHICS_ERROR_TYPE type, const char* msg, const char* file, const char* func, int line) {
   fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
-#if defined(HAL_DIALOGS)
+#if defined(GRAPHICS_DIALOGS)
   alert(ALERT_ERROR, ALERT_OK, "ERROR! See logs for info");
   abort();
 #endif
@@ -25,7 +25,7 @@ void on_mouse_btn(void* _, MOUSE_BTN btn, KEY_MOD mod, bool down) {
 }
 
 void on_mouse_move(void* _, int x, int y, int dx, int dy) {
-#if defined(HAL_EMCC)
+#if defined(GRAPHICS_EMCC)
   static int wx, wy;
   window_position(win, &wx, &wy);
   printf("mouse move: %d,%d - %d,%d\n", x - wx, y - wy, dx, dy);
@@ -47,7 +47,7 @@ void on_resize(void* _, int w, int h) {
 }
 
 void on_closed(void* _) {
-#if defined(HAL_EMCC)
+#if defined(GRAPHICS_EMCC)
   emscripten_cancel_main_loop();
 #else
   running = false;
@@ -60,7 +60,7 @@ void loop() {
 }
 
 int main(int argc, const char* argv[]) {
-  hal_error_callback(on_error);
+  graphics_error_callback(on_error);
 
   window(&win, "test",  SW, SH, DEFAULT);
   window_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, on_closed, &win);
@@ -70,26 +70,26 @@ int main(int argc, const char* argv[]) {
   fill(&buf, RED);
 
   struct surface_t img;
-#if defined(HAL_EMCC)
+#if defined(GRAPHICS_EMCC)
   bmp(&img, "old/test/resources/Uncompressed-24.bmp");
-#elif defined(HAL_OSX)
+#elif defined(GRAPHICS_OSX)
   bmp(&img, "/Users/roryb/git/hal/old/test/resources/Uncompressed-24.bmp");
-#elif defined(HAL_WINDOWS)
+#elif defined(GRAPHICS_WINDOWS)
   bmp(&img, "Z:\\hal\\old\\test\\resources\\Uncompressed-24.bmp");
 #endif
   paste(&buf, &img, 10, 10);
   
   struct bdf_t font;
-#if defined(HAL_EMCC)
+#if defined(GRAPHICS_EMCC)
   bdf(&font, "old/test/resources/tewi.bdf");
-#elif defined(HAL_OSX)
+#elif defined(GRAPHICS_OSX)
   bdf(&font, "/Users/roryb/git/hal/old/test/resources/tewi.bdf");
-#elif defined(HAL_WINDOWS)
+#elif defined(GRAPHICS_WINDOWS)
   bdf(&font, "Z:\\hal\\old\\test\\resources\\tewi.bdf");
 #endif
   bdf_writelnf(&buf, &font, 10, 10, WHITE, BLACK, "This is a test! %d", 42);
 
-#if defined(HAL_EMCC)
+#if defined(GRAPHICS_EMCC)
   emscripten_set_main_loop(loop, 0, 1);
 #else
   while (!closed(&win) && running)

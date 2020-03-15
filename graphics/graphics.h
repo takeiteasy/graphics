@@ -1,27 +1,4 @@
-/* hal.h
- *
- *           _____                     _____                     _____
- *          /\    \                   /\    \                   /\    \
- *         /::\____\                 /::\    \                 /::\____\
- *        /:::/    /                /::::\    \               /:::/    /
- *       /:::/    /                /::::::\    \             /:::/    /
- *      /:::/    /                /:::/\:::\    \           /:::/    /
- *     /:::/____/                /:::/__\:::\    \         /:::/    /
- *    /::::\    \               /::::\   \:::\    \       /:::/    /
- *   /::::::\    \   _____     /::::::\   \:::\    \     /:::/    /
- *  /:::/\:::\    \ /\    \   /:::/\:::\   \:::\    \   /:::/    /
- * /:::/  \:::\    /::\____\ /:::/  \:::\   \:::\____\ /:::/____/
- * \::/    \:::\  /:::/    / \::/    \:::\  /:::/    / \:::\    \
- *  \/____/ \:::\/:::/    /   \/____/ \:::\/:::/    /   \:::\    \
- *           \::::::/    /             \::::::/    /     \:::\    \
- *            \::::/    /               \::::/    /       \:::\    \
- *            /:::/    /                /:::/    /         \:::\    \
- *           /:::/    /                /:::/    /           \:::\    \
- *          /:::/    /                /:::/    /             \:::\    \
- *         /:::/    /                /:::/    /               \:::\____\
- *         \::/    /                 \::/    /                 \::/    /
- *          \/____/                   \/____/                   \/____/
- *
+/* graphics.h
  *
  * Created by Rory B. Bellows on 26/11/2017.
  * Copyright © 2017-2019 George Watson. All rights reserved.
@@ -48,44 +25,44 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef hal_h
-#define hal_h
+#ifndef graphics_h
+#define graphics_h
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
 #if defined(__EMSCRIPTEN__) || defined(EMSCRIPTEN)
-#define HAL_EMCC
+#define GRAPHICS_EMCC
 #include <emscripten/emscripten.h>
-#define HAL_EXTERNAL_WINDOW
+#define GRAPHICS_EXTERNAL_WINDOW
 #endif
   
 #if defined(__gnu_linux__) || defined(__linux__) || defined(__unix__)
-#define HAL_LINUX
+#define GRAPHICS_LINUX
 #elif defined(macintosh) || defined(Macintosh) || (defined(__APPLE__) && defined(__MACH__))
-#define HAL_OSX
+#define GRAPHICS_OSX
 #elif defined(_WIN32) || defined(_WIN64) || defined(__WIN32__) || defined(__WINDOWS__)
-#define HAL_WINDOWS
+#define GRAPHICS_WINDOWS
 #else
-#define HAL_NO_WINDOW
+#define GRAPHICS_NO_WINDOW
 #endif
 
-#if defined(HAL_MALLOC) && defined(HAL_FREE) && (defined(HAL_REALLOC) || defined(HAL_REALLOC_SIZED))
-#elif !defined(HAL_MALLOC) && !defined(HAL_FREE) && !defined(HAL_REALLOC) && !defined(HAL_REALLOC_SIZED)
+#if defined(GRAPHICS_MALLOC) && defined(GRAPHICS_FREE) && (defined(GRAPHICS_REALLOC) || defined(GRAPHICS_REALLOC_SIZED))
+#elif !defined(GRAPHICS_MALLOC) && !defined(GRAPHICS_FREE) && !defined(GRAPHICS_REALLOC) && !defined(GRAPHICS_REALLOC_SIZED)
 #else
-#error "Must define all or none of HAL_MALLOC, HAL_FREE, and HAL_REALLOC (or HAL_REALLOC_SIZED)."
+#error "Must define all or none of GRAPHICS_MALLOC, GRAPHICS_FREE, and GRAPHICS_REALLOC (or GRAPHICS_REALLOC_SIZED)."
 #endif
   
-#if defined(DEBUG) && !defined(HAL_DEBUG)
-#define HAL_DEBUG
+#if defined(DEBUG) && !defined(GRAPHICS_DEBUG)
+#define GRAPHICS_DEBUG
 #endif
 
-#if !defined(HAL_MALLOC)
-#define HAL_MALLOC(sz)       malloc(sz)
-#define HAL_REALLOC(p,newsz) realloc(p,newsz)
-#define HAL_FREE(p)          free(p)
+#if !defined(GRAPHICS_MALLOC)
+#define GRAPHICS_MALLOC(sz)       malloc(sz)
+#define GRAPHICS_REALLOC(p,newsz) realloc(p,newsz)
+#define GRAPHICS_FREE(p)          free(p)
 #endif
-#define HAL_SAFE_FREE(x) \
+#define GRAPHICS_SAFE_FREE(x) \
 if ((x)) { \
   free((void*)(x)); \
   (x) = NULL; \
@@ -101,7 +78,7 @@ if ((x)) { \
 #include <stdarg.h>
   
 #if !defined(HALDEF)
-#if defined(HAL_STATIC)
+#if defined(GRAPHICS_STATIC)
 #define HALDEF static
 #else
 #define HALDEF extern
@@ -109,35 +86,35 @@ if ((x)) { \
 #endif
 
 #if defined(__cplusplus)
-#define HAL_EXTERN extern "C"
+#define GRAPHICS_EXTERN extern "C"
 #else
-#define HAL_EXTERN extern
+#define GRAPHICS_EXTERN extern
 #endif
 
 #if !defined(_MSC_VER)
 #if defined(__cplusplus)
-#define hal_inline inline
+#define graphics_inline inline
 #else
-#define hal_inline
+#define graphics_inline
 #endif
 #else
-#define hal_inline __forceinline
+#define graphics_inline __forceinline
 #endif
 
-#if !defined(HAL_VERSION_MAJOR)
-#define HAL_VERSION_MAJOR 0
+#if !defined(GRAPHICS_VERSION_MAJOR)
+#define GRAPHICS_VERSION_MAJOR 0
 #endif
-#if !defined(HAL_VERSION_MINOR)
-#define HAL_VERSION_MINOR 0
+#if !defined(GRAPHICS_VERSION_MINOR)
+#define GRAPHICS_VERSION_MINOR 0
 #endif
-#if !defined(HAL_VERSION_REV)
-#define HAL_VERSION_REV 0
+#if !defined(GRAPHICS_VERSION_REV)
+#define GRAPHICS_VERSION_REV 0
 #endif
-#define HAL_VERSION_INT (HAL_VERSION_MAJOR << 16 | HAL_VERSION_MINOR << 8 | HAL_VERSION_REV)
-#define HAL_VERSION_DOT_STR(a, b, c) a ##.## b ##.## c
-#define HAL_VERSION_STR HAL_VERSION_DOT_STR(a, b, c)
-#if !defined(HAL_VERSION_GIT)
-#define HAL_VERSION_GIT "unknown"
+#define GRAPHICS_VERSION_INT (GRAPHICS_VERSION_MAJOR << 16 | GRAPHICS_VERSION_MINOR << 8 | GRAPHICS_VERSION_REV)
+#define GRAPHICS_VERSION_DOT_STR(a, b, c) a ##.## b ##.## c
+#define GRAPHICS_VERSION_STR GRAPHICS_VERSION_DOT_STR(a, b, c)
+#if !defined(GRAPHICS_VERSION_GIT)
+#define GRAPHICS_VERSION_GIT "unknown"
 #endif
 
 // Taken from: https://stackoverflow.com/a/1911632
@@ -150,191 +127,168 @@ if ((x)) { \
 #define WARN(exp) ("WARNING: " exp)
 #endif
 
-#if defined(HAL_ONLY_GRAPHICS)  || \
-    defined(HAL_ONLY_AUDIO)     || \
-    defined(HAL_ONLY_THREADS)   || \
-    defined(HAL_ONLY_SOCKETS)   || \
-    defined(HAL_ONLY_FILESYSTEM)
-#if !defined(HAL_ONLY_GRAPHICS)
-#define HAL_NO_GRAPHICS
-#endif
-#if !defined(HAL_ONLY_AUDIO)
-#define HAL_NO_AUDIO
-#endif
-#if !defined(HAL_ONLY_THREADS)
-#define HAL_NO_THREADS
-#endif
-#if !defined(HAL_ONLY_SOCKETS)
-#define HAL_NO_SOCKETS
-#endif
-#if !defined(HAL_ONLY_FILESYSTEM)
-#define HAL_NO_FILESYSTEM
-#endif
-#endif
+#define COL_RGBA(r, g, b, a) ((((unsigned int)(a)) << 24) | (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b))
+#define COL_RGB(r, g, b) (COL_RGBA((r), (g), (b), 255))
+#define COL_R(v) (((v) >> 16) & 0xFF)
+#define COL_G(v) (((v) >>  8) & 0xFF)
+#define COL_B(v) ( (v)        & 0xFF)
+#define COL_A(v) (((v) >> 24) & 0xFF)
+#define COL_RCHAN(a, b) (((a) & ~0x00FF0000) | ((b) << 16))
+#define COL_GCHAN(a, b) (((a) & ~0x0000FF00) | ((b) << 8))
+#define COL_BCHAN(a, b) (((a) & ~0x000000FF) |  (b))
+#define COL_ACHAN(a, b) (((a) & ~0xFF000000) | ((b) << 24))
+#define COL_RGB1(c) (COL_RGB((c), (c), (c)))
+#define COL_RGBA1(c, a) (COL_RGBA((c), (c), (c), (a)))
 
-#if !defined(HAL_NO_GRAPHICS)
-#define HAL_RGBA(r, g, b, a) ((((unsigned int)(a)) << 24) | (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b))
-#define HAL_RGB(r, g, b) (HAL_RGBA((r), (g), (b), 255))
-#define HAL_R(v) (((v) >> 16) & 0xFF)
-#define HAL_G(v) (((v) >>  8) & 0xFF)
-#define HAL_B(v) ( (v)        & 0xFF)
-#define HAL_A(v) (((v) >> 24) & 0xFF)
-#define HAL_RCHAN(a, b) (((a) & ~0x00FF0000) | ((b) << 16))
-#define HAL_GCHAN(a, b) (((a) & ~0x0000FF00) | ((b) << 8))
-#define HAL_BCHAN(a, b) (((a) & ~0x000000FF) |  (b))
-#define HAL_ACHAN(a, b) (((a) & ~0xFF000000) | ((b) << 24))
-#define HAL_RGB1(c) (HAL_RGB((c), (c), (c)))
-#define HAL_RGBA1(c, a) (HAL_RGBA((c), (c), (c), (a)))
-
-#if !defined(HAL_NO_COLORS)
+#if !defined(GRAPHICS_NO_COLORS)
   /*!
    * @typedef COLOURS
    * @brief A list of colours with names
    */
   typedef enum {
-    BLACK = HAL_RGB(0, 0, 0),
-    BLUE = HAL_RGB(0, 0, 255),
-    CYAN = HAL_RGB(0, 255, 255),
-    GRAY = HAL_RGB(128, 128, 128),
-    GREEN = HAL_RGB(0, 128, 0),
-    LIME = HAL_RGB(0, 255, 0),
-    MAGENTA = HAL_RGB(255, 0, 255),
-    MAROON = HAL_RGB(128, 0, 0),
-    NAVY = HAL_RGB(0, 0, 128),
-    PURPLE = HAL_RGB(128, 0, 128),
-    RED = HAL_RGB(255, 0, 0),
-    TEAL = HAL_RGB(0, 128, 128),
-    WHITE = HAL_RGB(255, 255, 255),
-    YELLOW = HAL_RGB(255, 255, 0),
+    BLACK = COL_RGB(0, 0, 0),
+    BLUE = COL_RGB(0, 0, 255),
+    CYAN = COL_RGB(0, 255, 255),
+    GRAY = COL_RGB(128, 128, 128),
+    GREEN = COL_RGB(0, 128, 0),
+    LIME = COL_RGB(0, 255, 0),
+    MAGENTA = COL_RGB(255, 0, 255),
+    MAROON = COL_RGB(128, 0, 0),
+    NAVY = COL_RGB(0, 0, 128),
+    PURPLE = COL_RGB(128, 0, 128),
+    RED = COL_RGB(255, 0, 0),
+    TEAL = COL_RGB(0, 128, 128),
+    WHITE = COL_RGB(255, 255, 255),
+    YELLOW = COL_RGB(255, 255, 0),
 
-    ALICE_BLUE = HAL_RGB(240, 248, 255),
-    ANTIQUE_WHITE = HAL_RGB(250, 235, 215),
-    AQUA = HAL_RGB(0, 255, 255),
-    AQUA_MARINE = HAL_RGB(127, 255, 212),
-    AZURE = HAL_RGB(240, 255, 255),
-    BEIGE = HAL_RGB(245, 245, 220),
-    BISQUE = HAL_RGB(255, 228, 196),
-    BLANCHED_ALMOND = HAL_RGB(255, 235, 205),
-    BLUE_VIOLET = HAL_RGB(138, 43, 226),
-    BROWN = HAL_RGB(165, 42, 42),
-    BURLY_WOOD = HAL_RGB(222, 184, 135),
-    CADET_BLUE = HAL_RGB(95, 158, 160),
-    CHART_REUSE = HAL_RGB(127, 255, 0),
-    CHOCOLATE = HAL_RGB(210, 105, 30),
-    CORAL = HAL_RGB(255, 127, 80),
-    CORN_FLOWER_BLUE = HAL_RGB(100, 149, 237),
-    CORN_SILK = HAL_RGB(255, 248, 220),
-    CRIMSON = HAL_RGB(220, 20, 60),
-    DARK_BLUE = HAL_RGB(0, 0, 139),
-    DARK_CYAN = HAL_RGB(0, 139, 139),
-    DARK_GOLDEN_ROD = HAL_RGB(184, 134, 11),
-    DARK_GRAY = HAL_RGB(169, 169, 169),
-    DARK_GREEN = HAL_RGB(0, 100, 0),
-    DARK_KHAKI = HAL_RGB(189, 183, 107),
-    DARK_MAGENTA = HAL_RGB(139, 0, 139),
-    DARK_OLIVE_GREEN = HAL_RGB(85, 107, 47),
-    DARK_ORANGE = HAL_RGB(255, 140, 0),
-    DARK_ORCHID = HAL_RGB(153, 50, 204),
-    DARK_RED = HAL_RGB(139, 0, 0),
-    DARK_SALMON = HAL_RGB(233, 150, 122),
-    DARK_SEA_GREEN = HAL_RGB(143, 188, 143),
-    DARK_SLATE_BLUE = HAL_RGB(72, 61, 139),
-    DARK_SLATE_GRAY = HAL_RGB(47, 79, 79),
-    DARK_TURQUOISE = HAL_RGB(0, 206, 209),
-    DARK_VIOLET = HAL_RGB(148, 0, 211),
-    DEEP_PINK = HAL_RGB(255, 20, 147),
-    DEEP_SKY_BLUE = HAL_RGB(0, 191, 255),
-    DIM_GRAY = HAL_RGB(105, 105, 105),
-    DODGER_BLUE = HAL_RGB(30, 144, 255),
-    FIREBRICK = HAL_RGB(178, 34, 34),
-    FLORAL_WHITE = HAL_RGB(255, 250, 240),
-    FOREST_GREEN = HAL_RGB(34, 139, 34),
-    GAINSBORO = HAL_RGB(220, 220, 220),
-    GHOST_WHITE = HAL_RGB(248, 248, 255),
-    GOLD = HAL_RGB(255, 215, 0),
-    GOLDEN_ROD = HAL_RGB(218, 165, 32),
-    GREEN_YELLOW = HAL_RGB(173, 255, 47),
-    HONEYDEW = HAL_RGB(240, 255, 240),
-    HOT_PINK = HAL_RGB(255, 105, 180),
-    INDIAN_RED = HAL_RGB(205, 92, 92),
-    INDIGO = HAL_RGB(75, 0, 130),
-    IVORY = HAL_RGB(255, 255, 240),
-    KHAKI = HAL_RGB(240, 230, 140),
-    LAVENDER = HAL_RGB(230, 230, 250),
-    LAVENDER_BLUSH = HAL_RGB(255, 240, 245),
-    LAWN_GREEN = HAL_RGB(124, 252, 0),
-    LEMON_CHIFFON = HAL_RGB(255, 250, 205),
-    LIGHT_BLUE = HAL_RGB(173, 216, 230),
-    LIGHT_CORAL = HAL_RGB(240, 128, 128),
-    LIGHT_CYAN = HAL_RGB(224, 255, 255),
-    LIGHT_GOLDEN_ROD = HAL_RGB(250, 250, 210),
-    LIGHT_GRAY = HAL_RGB(211, 211, 211),
-    LIGHT_GREEN = HAL_RGB(144, 238, 144),
-    LIGHT_PINK = HAL_RGB(255, 182, 193),
-    LIGHT_SALMON = HAL_RGB(255, 160, 122),
-    LIGHT_SEA_GREEN = HAL_RGB(32, 178, 170),
-    LIGHT_SKY_BLUE = HAL_RGB(135, 206, 250),
-    LIGHT_SLATE_GRAY = HAL_RGB(119, 136, 153),
-    LIGHT_STEEL_BLUE = HAL_RGB(176, 196, 222),
-    LIGHT_YELLOW = HAL_RGB(255, 255, 224),
-    LIME_GREEN = HAL_RGB(50, 205, 50),
-    LINEN = HAL_RGB(250, 240, 230),
-    MEDIUM_AQUA_MARINE = HAL_RGB(102, 205, 170),
-    MEDIUM_BLUE = HAL_RGB(0, 0, 205),
-    MEDIUM_ORCHID = HAL_RGB(186, 85, 211),
-    MEDIUM_PURPLE = HAL_RGB(147, 112, 219),
-    MEDIUM_SEA_GREEN = HAL_RGB(60, 179, 113),
-    MEDIUM_SLATE_BLUE = HAL_RGB(123, 104, 238),
-    MEDIUM_SPRING_GREEN = HAL_RGB(0, 250, 154),
-    MEDIUM_TURQUOISE = HAL_RGB(72, 209, 204),
-    MEDIUM_VIOLET_RED = HAL_RGB(199, 21, 133),
-    MIDNIGHT_BLUE = HAL_RGB(25, 25, 112),
-    MINT_CREAM = HAL_RGB(245, 255, 250),
-    MISTY_ROSE = HAL_RGB(255, 228, 225),
-    MOCCASIN = HAL_RGB(255, 228, 181),
-    NAVAJO_WHITE = HAL_RGB(255, 222, 173),
-    OLD_LACE = HAL_RGB(253, 245, 230),
-    OLIVE_DRAB = HAL_RGB(107, 142, 35),
-    ORANGE = HAL_RGB(255, 165, 0),
-    ORANGE_RED = HAL_RGB(255, 69, 0),
-    ORCHID = HAL_RGB(218, 112, 214),
-    PALE_GOLDEN_ROD = HAL_RGB(238, 232, 170),
-    PALE_GREEN = HAL_RGB(152, 251, 152),
-    PALE_TURQUOISE = HAL_RGB(175, 238, 238),
-    PALE_VIOLET_RED = HAL_RGB(219, 112, 147),
-    PAPAYA_WHIP = HAL_RGB(255, 239, 213),
-    PEACH_PUFF = HAL_RGB(255, 218, 185),
-    PERU = HAL_RGB(205, 133, 63),
-    PINK = HAL_RGB(255, 192, 203),
-    PLUM = HAL_RGB(221, 160, 221),
-    POWDER_BLUE = HAL_RGB(176, 224, 230),
-    ROSY_BROWN = HAL_RGB(188, 143, 143),
-    ROYAL_BLUE = HAL_RGB(65, 105, 225),
-    SADDLE_BROWN = HAL_RGB(139, 69, 19),
-    SALMON = HAL_RGB(250, 128, 114),
-    SANDY_BROWN = HAL_RGB(244, 164, 96),
-    SEA_GREEN = HAL_RGB(46, 139, 87),
-    SEA_SHELL = HAL_RGB(255, 245, 238),
-    SIENNA = HAL_RGB(160, 82, 45),
-    SKY_BLUE = HAL_RGB(135, 206, 235),
-    SLATE_BLUE = HAL_RGB(106, 90, 205),
-    SLATE_GRAY = HAL_RGB(112, 128, 144),
-    SNOW = HAL_RGB(255, 250, 250),
-    SPRING_GREEN = HAL_RGB(0, 255, 127),
-    STEEL_BLUE = HAL_RGB(70, 130, 180),
-    TAN = HAL_RGB(210, 180, 140),
-    THISTLE = HAL_RGB(216, 191, 216),
-    TOMATO = HAL_RGB(255, 99, 71),
-    TURQUOISE = HAL_RGB(64, 224, 208),
-    VIOLET = HAL_RGB(238, 130, 238),
-    WHEAT = HAL_RGB(245, 222, 179),
-    WHITE_SMOKE = HAL_RGB(245, 245, 245),
-    YELLOW_GREEN = HAL_RGB(154, 205, 50)
+    ALICE_BLUE = COL_RGB(240, 248, 255),
+    ANTIQUE_WHITE = COL_RGB(250, 235, 215),
+    AQUA = COL_RGB(0, 255, 255),
+    AQUA_MARINE = COL_RGB(127, 255, 212),
+    AZURE = COL_RGB(240, 255, 255),
+    BEIGE = COL_RGB(245, 245, 220),
+    BISQUE = COL_RGB(255, 228, 196),
+    BLANCHED_ALMOND = COL_RGB(255, 235, 205),
+    BLUE_VIOLET = COL_RGB(138, 43, 226),
+    BROWN = COL_RGB(165, 42, 42),
+    BURLY_WOOD = COL_RGB(222, 184, 135),
+    CADET_BLUE = COL_RGB(95, 158, 160),
+    CHART_REUSE = COL_RGB(127, 255, 0),
+    CHOCOLATE = COL_RGB(210, 105, 30),
+    CORAL = COL_RGB(255, 127, 80),
+    CORN_FLOWER_BLUE = COL_RGB(100, 149, 237),
+    CORN_SILK = COL_RGB(255, 248, 220),
+    CRIMSON = COL_RGB(220, 20, 60),
+    DARK_BLUE = COL_RGB(0, 0, 139),
+    DARK_CYAN = COL_RGB(0, 139, 139),
+    DARK_GOLDEN_ROD = COL_RGB(184, 134, 11),
+    DARK_GRAY = COL_RGB(169, 169, 169),
+    DARK_GREEN = COL_RGB(0, 100, 0),
+    DARK_KHAKI = COL_RGB(189, 183, 107),
+    DARK_MAGENTA = COL_RGB(139, 0, 139),
+    DARK_OLIVE_GREEN = COL_RGB(85, 107, 47),
+    DARK_ORANGE = COL_RGB(255, 140, 0),
+    DARK_ORCHID = COL_RGB(153, 50, 204),
+    DARK_RED = COL_RGB(139, 0, 0),
+    DARK_SALMON = COL_RGB(233, 150, 122),
+    DARK_SEA_GREEN = COL_RGB(143, 188, 143),
+    DARK_SLATE_BLUE = COL_RGB(72, 61, 139),
+    DARK_SLATE_GRAY = COL_RGB(47, 79, 79),
+    DARK_TURQUOISE = COL_RGB(0, 206, 209),
+    DARK_VIOLET = COL_RGB(148, 0, 211),
+    DEEP_PINK = COL_RGB(255, 20, 147),
+    DEEP_SKY_BLUE = COL_RGB(0, 191, 255),
+    DIM_GRAY = COL_RGB(105, 105, 105),
+    DODGER_BLUE = COL_RGB(30, 144, 255),
+    FIREBRICK = COL_RGB(178, 34, 34),
+    FLORAL_WHITE = COL_RGB(255, 250, 240),
+    FOREST_GREEN = COL_RGB(34, 139, 34),
+    GAINSBORO = COL_RGB(220, 220, 220),
+    GHOST_WHITE = COL_RGB(248, 248, 255),
+    GOLD = COL_RGB(255, 215, 0),
+    GOLDEN_ROD = COL_RGB(218, 165, 32),
+    GREEN_YELLOW = COL_RGB(173, 255, 47),
+    HONEYDEW = COL_RGB(240, 255, 240),
+    HOT_PINK = COL_RGB(255, 105, 180),
+    INDIAN_RED = COL_RGB(205, 92, 92),
+    INDIGO = COL_RGB(75, 0, 130),
+    IVORY = COL_RGB(255, 255, 240),
+    KHAKI = COL_RGB(240, 230, 140),
+    LAVENDER = COL_RGB(230, 230, 250),
+    LAVENDER_BLUSH = COL_RGB(255, 240, 245),
+    LAWN_GREEN = COL_RGB(124, 252, 0),
+    LEMON_CHIFFON = COL_RGB(255, 250, 205),
+    LIGHT_BLUE = COL_RGB(173, 216, 230),
+    LIGHT_CORAL = COL_RGB(240, 128, 128),
+    LIGHT_CYAN = COL_RGB(224, 255, 255),
+    LIGHT_GOLDEN_ROD = COL_RGB(250, 250, 210),
+    LIGHT_GRAY = COL_RGB(211, 211, 211),
+    LIGHT_GREEN = COL_RGB(144, 238, 144),
+    LIGHT_PINK = COL_RGB(255, 182, 193),
+    LIGHT_SALMON = COL_RGB(255, 160, 122),
+    LIGHT_SEA_GREEN = COL_RGB(32, 178, 170),
+    LIGHT_SKY_BLUE = COL_RGB(135, 206, 250),
+    LIGHT_SLATE_GRAY = COL_RGB(119, 136, 153),
+    LIGHT_STEEL_BLUE = COL_RGB(176, 196, 222),
+    LIGHT_YELLOW = COL_RGB(255, 255, 224),
+    LIME_GREEN = COL_RGB(50, 205, 50),
+    LINEN = COL_RGB(250, 240, 230),
+    MEDIUM_AQUA_MARINE = COL_RGB(102, 205, 170),
+    MEDIUM_BLUE = COL_RGB(0, 0, 205),
+    MEDIUM_ORCHID = COL_RGB(186, 85, 211),
+    MEDIUM_PURPLE = COL_RGB(147, 112, 219),
+    MEDIUM_SEA_GREEN = COL_RGB(60, 179, 113),
+    MEDIUM_SLATE_BLUE = COL_RGB(123, 104, 238),
+    MEDIUM_SPRING_GREEN = COL_RGB(0, 250, 154),
+    MEDIUM_TURQUOISE = COL_RGB(72, 209, 204),
+    MEDIUM_VIOLET_RED = COL_RGB(199, 21, 133),
+    MIDNIGHT_BLUE = COL_RGB(25, 25, 112),
+    MINT_CREAM = COL_RGB(245, 255, 250),
+    MISTY_ROSE = COL_RGB(255, 228, 225),
+    MOCCASIN = COL_RGB(255, 228, 181),
+    NAVAJO_WHITE = COL_RGB(255, 222, 173),
+    OLD_LACE = COL_RGB(253, 245, 230),
+    OLIVE_DRAB = COL_RGB(107, 142, 35),
+    ORANGE = COL_RGB(255, 165, 0),
+    ORANGE_RED = COL_RGB(255, 69, 0),
+    ORCHID = COL_RGB(218, 112, 214),
+    PALE_GOLDEN_ROD = COL_RGB(238, 232, 170),
+    PALE_GREEN = COL_RGB(152, 251, 152),
+    PALE_TURQUOISE = COL_RGB(175, 238, 238),
+    PALE_VIOLET_RED = COL_RGB(219, 112, 147),
+    PAPAYA_WHIP = COL_RGB(255, 239, 213),
+    PEACH_PUFF = COL_RGB(255, 218, 185),
+    PERU = COL_RGB(205, 133, 63),
+    PINK = COL_RGB(255, 192, 203),
+    PLUM = COL_RGB(221, 160, 221),
+    POWDER_BLUE = COL_RGB(176, 224, 230),
+    ROSY_BROWN = COL_RGB(188, 143, 143),
+    ROYAL_BLUE = COL_RGB(65, 105, 225),
+    SADDLE_BROWN = COL_RGB(139, 69, 19),
+    SALMON = COL_RGB(250, 128, 114),
+    SANDY_BROWN = COL_RGB(244, 164, 96),
+    SEA_GREEN = COL_RGB(46, 139, 87),
+    SEA_SHELL = COL_RGB(255, 245, 238),
+    SIENNA = COL_RGB(160, 82, 45),
+    SKY_BLUE = COL_RGB(135, 206, 235),
+    SLATE_BLUE = COL_RGB(106, 90, 205),
+    SLATE_GRAY = COL_RGB(112, 128, 144),
+    SNOW = COL_RGB(255, 250, 250),
+    SPRING_GREEN = COL_RGB(0, 255, 127),
+    STEEL_BLUE = COL_RGB(70, 130, 180),
+    TAN = COL_RGB(210, 180, 140),
+    THISTLE = COL_RGB(216, 191, 216),
+    TOMATO = COL_RGB(255, 99, 71),
+    TURQUOISE = COL_RGB(64, 224, 208),
+    VIOLET = COL_RGB(238, 130, 238),
+    WHEAT = COL_RGB(245, 222, 179),
+    WHITE_SMOKE = COL_RGB(245, 245, 245),
+    YELLOW_GREEN = COL_RGB(154, 205, 50)
   } COLOURS;
 #endif
 
-#if defined(HAL_CHROMA_KEY) && !defined(BLIT_CHROMA_KEY)
-#if !defined(HAL_NO_DEFAULT_COLORS)
+#if defined(GRAPHICS_CHROMA_KEY) && !defined(BLIT_CHROMA_KEY)
+#if !defined(GRAPHICS_NO_DEFAULT_COLORS)
 #define BLIT_CHROMA_KEY LIME
 #else
 #define BLIT_CHROMA_KEY -16711936
@@ -533,7 +487,7 @@ if ((x)) { \
    */
   HALDEF bool bmp(struct surface_t* s, const char* path);
 
-#if !defined(HAL_NO_TEXT)
+#if !defined(GRAPHICS_NO_TEXT)
   /*!
    * @discussion Draw a character from ASCII value using default in-built font
    * @param s Surface object
@@ -593,7 +547,7 @@ if ((x)) { \
   HALDEF void stringf(struct surface_t* s, int fg, int bg, const char* fmt, ...);
 #endif
 
-#if !defined(HAL_BDF)
+#if !defined(GRAPHICS_BDF)
   /*!
    * @typedef bdf_t
    * @brief BDF font object
@@ -677,7 +631,7 @@ if ((x)) { \
   HALDEF void bdf_stringf(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* fmt, ...);
 #endif
 
-#if !defined(HAL_NO_ALERTS)
+#if !defined(GRAPHICS_NO_ALERTS)
   /*!
    * @typedef ALERT_LVL
    * @brief A list of alert levels for dialog boxes
@@ -1086,158 +1040,8 @@ if ((x)) { \
    * @discussion Release anything allocated by this library
    */
   HALDEF void release(void);
-#endif
 
-// #if !defined(HAL_NO_AUDIO)
-// #include "audio.h"
-// #endif
-
-#if !defined(HAL_NO_THREADS)
-#include <time.h>
-
-#if defined(HAL_OSX) || defined(HAL_LINUX)
-#define HAL_USE_PTHREADS
-#endif
-  
-#if defined(HAL_WINDOWS) && !defined(HAL_USE_PTHREADS)
-#include <windows.h>
-  
-#if defined(EMULATED_THREADS_USE_NATIVE_CALL_ONCE) && (_WIN32_WINNT < 0x0600)
-#error EMULATED_THREADS_USE_NATIVE_CALL_ONCE requires _WIN32_WINNT>=0x0600
-#endif
-  
-#if defined(EMULATED_THREADS_USE_NATIVE_CV) && (_WIN32_WINNT < 0x0600)
-#error EMULATED_THREADS_USE_NATIVE_CV requires _WIN32_WINNT>=0x0600
-#endif
-  
-#ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
-#define ONCE_FLAG_INIT INIT_ONCE_STATIC_INIT
-#else
-#define ONCE_FLAG_INIT {0}
-#endif
-#define TSS_DTOR_ITERATIONS 1
-    typedef struct cnd_t {
-#ifdef EMULATED_THREADS_USE_NATIVE_CV
-    CONDITION_VARIABLE condvar;
-#else
-    int blocked;
-    int gone;
-    int to_unblock;
-    HANDLE sem_queue;
-    HANDLE sem_gate;
-    CRITICAL_SECTION monitor;
-#endif
-  } cnd_t;
-  
-  typedef HANDLE thrd_t;
-  
-  typedef DWORD tss_t;
-  
-  typedef struct mtx_t {
-    CRITICAL_SECTION cs;
-  } mtx_t;
-  
-#ifdef EMULATED_THREADS_USE_NATIVE_CALL_ONCE
-  typedef INIT_ONCE once_flag;
-#else
-  typedef struct once_flag {
-    volatile LONG status;
-  } once_flag;
-#endif
-  
-#elif defined(HAL_USE_PTHREADS)
-#include <pthread.h>
-
-/* OSX doesn't support timed mutex locking */
-#if defined(HAL_OSX) && defined(EMULATED_THREADS_USE_NATIVE_TIMEDLOCK)
-#undef EMULATED_THREADS_USE_NATIVE_TIMEDLOCK
-#endif
-  
-#define ONCE_FLAG_INIT PTHREAD_ONCE_INIT
-#ifdef INIT_ONCE_STATIC_INIT
-#define TSS_DTOR_ITERATIONS PTHREAD_DESTRUCTOR_ITERATIONS
-#else
-#define TSS_DTOR_ITERATIONS 1  // assume TSS dtor MAY be called at least once.
-#endif
-  
-  typedef pthread_cond_t  cnd_t;
-  typedef pthread_t       thrd_t;
-  typedef pthread_key_t   tss_t;
-  typedef pthread_mutex_t mtx_t;
-  typedef pthread_once_t  once_flag;
-  
-#else
-#error Unsupported operating system, sorry
-#endif
-  
-  typedef void (*tss_dtor_t)(void*);
-  typedef int (*thrd_start_t)(void*);
-  
-  typedef struct xtime {
-    time_t sec;
-    long nsec;
-  } xtime;
-  
-  enum {
-    MTX_PLAIN     = 0,
-    MTX_TRY       = 1,
-    MTX_TIMED     = 2,
-    MTX_RECURSIVE = 4
-  };
-  
-  enum {
-    THRD_SUCCESS = 0, // succeeded
-    THRD_TIMEOUT,     // timeout
-    THRD_ERROR,       // failed
-    THRD_BUSY,        // resource busy
-    THRD_NOMEM        // out of memory
-  };
-  
-  void call_once(once_flag* flag, void (*func)(void));
-  
-  int cnd_broadcast(cnd_t* cond);
-  void cnd_destroy(cnd_t* cond);
-  int cnd_init(cnd_t* cond);
-  int cnd_signal(cnd_t* cond);
-  int cnd_timedwait(cnd_t* cond, mtx_t *mtx, const xtime *xt);
-  int cnd_wait(cnd_t* cond, mtx_t *mtx);
-  
-  void mtx_destroy(mtx_t* mtx);
-  int mtx_init(mtx_t* mtx, int type);
-  int mtx_lock(mtx_t* mtx);
-  int mtx_timedlock(mtx_t* mtx, const xtime *xt);
-  int mtx_trylock(mtx_t* mtx);
-  int mtx_unlock(mtx_t* mtx);
-  
-  int thrd_create(thrd_t* thr, thrd_start_t func, void *arg);
-  thrd_t thrd_current(void);
-  int thrd_detach(thrd_t thr);
-  int thrd_equal(thrd_t thr0, thrd_t thr1);
-  void thrd_exit(int res);
-  int thrd_join(thrd_t thr, int *res);
-  void thrd_sleep(const xtime *xt);
-  void thrd_yield(void);
-  
-  int tss_create(tss_t* key, tss_dtor_t dtor);
-  void tss_delete(tss_t key);
-  void* tss_get(tss_t key);
-  int tss_set(tss_t key, void *val);
-  
-  int xtime_get(xtime* xt, int base);
-#if !defined(TIME_UTC)
-  enum { TIME_UTC = 1 };
-#endif
-#endif
-
-// #if !defined(HAL_NO_SOCKETS)
-// #include "sockets.h"
-// #endif
-
-// #if !defined(HAL_NO_FILESYSTEM)
-// #include "filesystem.h"
-// #endif
-  
-#define HAL_ERROR(A, ...) hal_error((A), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define GRAPHICS_ERROR(A, ...) graphics_error((A), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
   
   /*!
    * @typedef ERROR_TYPE
@@ -1273,37 +1077,24 @@ if ((x)) { \
     NIX_WINDOW_CREATION_FAILED,
     WINDOW_ICON_FAILED,
     CUSTOM_CURSOR_NOT_CREATED
-  } HAL_ERROR_TYPE;
+  } GRAPHICS_ERROR_TYPE;
   
   /*!
    * @discussion Callback for errors inside library
    * @param cb Function pointer to callback
    */
-  HALDEF void hal_error_callback(void(*cb)(HAL_ERROR_TYPE, const char*, const char*, const char*, int));
+  HALDEF void graphics_error_callback(void(*cb)(GRAPHICS_ERROR_TYPE, const char*, const char*, const char*, int));
   /*!
    * @discussion Internal function to send an error to the error callback
-   * @param type The HAL_ERROR produced
+   * @param type The GRAPHICS_ERROR produced
    * @param file The file the error occured in
    * @param func The Function error occured in
    * @param line The line number the error occured on
    * @param msg Formatted error description
    */
-  void hal_error(HAL_ERROR_TYPE type, const char* file, const char* func, int line, const char* msg, ...);
-  /*!
-   * @discussion Get current CPU time
-   * @return CPU time
-   */
-  HALDEF long ticks(void);
-  /*!
-   * @discussion Sleep in milliseconds
-   * @param ms Durection in milliseconds
-   */
-  HALDEF void delay(long ms);
-  HALDEF long pref_counter(void);
-  HALDEF long pref_freq(void);
-  
+  void graphics_error(GRAPHICS_ERROR_TYPE type, const char* file, const char* func, int line, const char* msg, ...);
 #if defined(__cplusplus)
 }
 #endif
-#endif // hal_h
+#endif // graphics_h
 

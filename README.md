@@ -1,6 +1,6 @@
-# hal
+# graphics.h
 
-Cross platform hardware abstraction layer, inspired by [SDL 1.2](https://www.libsdl.org/), [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb) and [QuickCG](http://lodev.org/cgtutor/). It was initially forked from [minifb](https://github.com/emoon/minifb), but has evolved beyond it and shares almost no code with it anymore, if any.
+Cross platform software rendering library, inspired by [SDL 1.2](https://www.libsdl.org/), [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb) and [QuickCG](http://lodev.org/cgtutor/). It was initially forked from [minifb](https://github.com/emoon/minifb), but has evolved beyond it and shares almost no code with it anymore, if any.
 
 Designed to be a drop-in and use with little hassle sort of deal. I don't know if anyone will really find a use for this besides me. But it's very fun to work on. It's not explicitly a game development library, but that'll be the most likely one. It's most likely less efficient, slower, more buggy and has less features, support, compatibility and portability than SDL - Just so you know, if you didn't already guess.
 
