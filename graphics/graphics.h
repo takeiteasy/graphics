@@ -547,7 +547,7 @@ if ((x)) { \
   HALDEF void stringf(struct surface_t* s, int fg, int bg, const char* fmt, ...);
 #endif
 
-#if !defined(GRAPHICS_BDF)
+#if defined(GRAPHICS_BDF)
   /*!
    * @typedef bdf_t
    * @brief BDF font object

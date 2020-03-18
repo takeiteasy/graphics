@@ -27,10 +27,6 @@
 
 #include "graphics.h"
 
-#if defined(_MSC_VER)
-#define _CRT_SECURE_NO_WARNINGS
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -66,6 +62,37 @@
 #define SANITY_CHECK(x)
 #endif
 #define STSC(x) ((x) && ((x)->buf))
+
+#define LINKEDLIST(NAME, TYPE) \
+struct NAME##_node_t { \
+  TYPE *data; \
+  struct NAME##_node_t *next; \
+}; \
+struct NAME##_node_t* NAME##_push(struct NAME##_node_t *head, TYPE *data) { \
+  struct NAME##_node_t *ret = malloc(sizeof(struct NAME##_node_t)); \
+  if (!ret) \
+    return NULL; \
+  ret->data = data; \
+  ret->next = head; \
+  return ret; \
+} \
+struct NAME##_node_t* NAME##_pop(struct NAME##_node_t *head, TYPE *data) { \
+  struct NAME##_node_t *cursor = head, *prev = NULL; \
+  while (cursor) { \
+    if (cursor->data == data) { \
+      if (prev) \
+        prev->next = cursor->next; \
+      else \
+        head = head->next; \
+      break; \
+    } \
+    prev = cursor; \
+    cursor = cursor->next; \
+  } \
+  if (cursor) \
+    free(cursor); \
+  return NULL; \
+}
 
 void surface_size(struct surface_t* s, unsigned int* w, unsigned int* h) {
   if (w)
@@ -707,20 +734,12 @@ void tri(struct surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, in
   }
 }
 
-#if defined(_MSC_VER)
-#define ALIGN_STRUCT(x) __declspec(align(x))
-#else
-#define ALIGN_STRUCT(x) __attribute__((aligned(x)))
-#endif
-
-#pragma pack(1)
 typedef struct {
-  unsigned short type; /* Magic identifier */
+//unsigned short type; /* Magic identifier */
   unsigned int size; /* File size in bytes */
   unsigned int reserved;
   unsigned int offset; /* Offset to image data, bytes */
-} ALIGN_STRUCT(2) BMPHEADER;
-#pragma pack()
+} BMPHEADER;
 
 typedef struct {
   unsigned int size; /* Header size in bytes */
@@ -765,18 +784,18 @@ bool bmp(struct surface_t* s, const char* path) {
   fread(data, 1, length, fp);
   fclose(fp);
 
-  int off = 0;
+  if (data[0] != 0x42 || data[1] != 0x4D) {
+    GRAPHICS_ERROR(INVALID_BMP, "bmp() failed: invalid BMP signiture '0x%x%x'", data[1], data[0]);
+    return false;
+  }
+
+  int off = sizeof(unsigned short);
   BMPHEADER header;
   BMPINFOHEADER info;
   //BMPCOREHEADER core;
   BMP_GET(&header, data, sizeof(BMPHEADER));
   //int info_pos = off;
   BMP_GET(&info, data, sizeof(BMPINFOHEADER));
-
-  if (header.type != 0x4D42) {
-    GRAPHICS_ERROR(INVALID_BMP, "bmp() failed: invalid BMP signiture '%d'", header.type);
-    return false;
-  }
 
 #pragma message WARN("TODO: bmp() add support for OS/2 bitmaps")
 
@@ -811,16 +830,18 @@ bool bmp(struct surface_t* s, const char* path) {
           GRAPHICS_ERROR(UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
           surface_destroy(s);
           break;
-        case 24:
-        case 32:
-          p = (info.bits == 32 ? 4 : 3);
-          for (y = 0; y < info.height; ++y) {
-            for (x = 0; x < info.width; ++x) {
-              i = (x + y * info.width) * p;
-              s->buf[(info.height - y) * info.width + x] = COL_RGBA(data[off + i + 2], data[off + i + 1], data[off + i], (p == 3 ? 255 : data[off + i + 3]));
+        case 24: {
+          int pad = (info.width * 3) % 4 ? (info.width * 3) % 4 : 0;
+          for (int j = info.height; j; --j) {
+            for (int i = 0; i < info.width; ++i) {
+              pset(s, i, j, RGB(data[off + 2], data[off + 1], data[off]));
+              off += 3;
             }
-            off += ((4 - (info.width * p) % 4) % 4);
+            off += pad;
           }
+          break;
+        }
+        case 32:
           break;
         default:
           GRAPHICS_ERROR(UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
@@ -1727,7 +1748,6 @@ void stringf(struct surface_t* s, int fg, int bg, const char* fmt, ...) {
 }
 #endif // !defined(GRAPHICS_NO_TEXT)
 
-#define GRAPHICS_BDF
 #if defined(GRAPHICS_BDF) && !defined(GRAPHICS_NO_TEXT)
 #if defined(GRAPHICS_WINDOWS)
 #define snprintf _snprintf
@@ -1762,7 +1782,7 @@ static inline int htoi(const char* p) {
 }
 
 bool bdf(struct bdf_t* out, const char* path) {
-    FILE* fp = fopen(path, "r");
+  FILE* fp = fopen(path, "r");
   if (!fp) {
     GRAPHICS_ERROR(FILE_OPEN_FAILED, "fopen() failed: %s", path);
     return false;
@@ -3272,10 +3292,9 @@ void screen_size(struct window_t* s, int* w, int* h) {
 void window_destroy(struct window_t* s) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   AppDelegate* app = (AppDelegate*)s->window;
-  if (app) {
-    [[app view] dealloc];
+  if (!closed(s))
     [[app window] close];
-  }
+  [[app view]dealloc];
   GRAPHICS_SAFE_FREE(app);
   memset(s, 0, sizeof(struct window_t));
   [pool drain];
@@ -3285,11 +3304,8 @@ bool closed(struct window_t* s) {
   return (bool)[(AppDelegate*)s->window closed];
 }
 
-static bool cursor_locked = false;
-
 void cursor_lock(bool locked) {
-  cursor_locked = locked;
-  CGAssociateMouseAndMouseCursorPosition(!locked);
+  return;
 }
 
 void cursor_visible(bool shown) {
@@ -3390,11 +3406,12 @@ void events() {
 }
 
 void flush(struct window_t* s, struct surface_t* b) {
+  if (!s)
+    return;
   AppDelegate* tmp = (AppDelegate*)s->window;
   if (!tmp)
     return;
-  if (b)
-    [tmp view].buffer = b;
+  [tmp view].buffer = b;
   [[tmp view] setNeedsDisplay:YES];
 }
 
@@ -3409,90 +3426,123 @@ void release() {
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-typedef struct {
+struct win32_window_t {
   WNDCLASS wnd;
   HWND hwnd;
   HDC hdc;
   BITMAPINFO* bmpinfo;
-  bool mouse_inside;
-} win32_window_t;
+  TRACKMOUSEEVENT tme;
+  HICON icon;
+  HCURSOR cursor;
+  bool mouse_inside, closed, refresh_tme, custom_icon, custom_cursor;
+  struct surface_t* buffer;
+};
 
-typedef struct win32_node {
-  struct window_t* win;
-  struct win32_node* next;
-} win32_node_t;
-static win32_node_t* win32_head = NULL;
-
-void add_win_node(struct window_t* win) {
-  win32_node_t *cur = win32_head, *tmp = NULL;
-  if (!win32_head) {
-    win32_head = GRAPHICS_MALLOC(sizeof(win32_node_t));
-    if (!win32_head) {
-      GRAPHICS_ERROR(OUT_OF_MEMEORY, "malloc() failed");
-      return;
-    }
-    win32_head->win = win;
-    win32_head->next = NULL;
-  } else {
-    do {
-      tmp = cur;
-      cur = cur->next;
-    } while (cur);
-    
-    win32_node_t* new = GRAPHICS_MALLOC(sizeof(win32_node_t));
-    if (!new) {
-      GRAPHICS_ERROR(OUT_OF_MEMEORY, "malloc() failed");
-      return;
-    }
-    new->next = NULL;
-    new->win = win;
-    tmp->next = new;
+static void close_win32_window(struct win32_window_t* window, bool force) {
+  if (!window->closed || force) {
+    GRAPHICS_FREE(window->bmpinfo);
+    if (window->custom_icon && window->icon)
+      DeleteObject(window->icon);
+    if (window->custom_cursor && window->cursor)
+      DeleteObject(window->cursor);
+    ReleaseDC(window->hwnd, window->hdc);
+    DestroyWindow(window->hwnd);
   }
 }
 
-void free_win_node(win32_node_t** node) {
-  win32_node_t* n = *node;
-  if (n->win)
-    window_destroy(&n->win);
-  GRAPHICS_SAFE_FREE(n);
+LINKEDLIST(window, struct win32_window_t);
+static struct window_node_t* windows = NULL;
+
+static int translate_mod() {
+  int mods = 0;
+
+  if (GetKeyState(VK_SHIFT) & 0x8000)
+    mods |= KB_MOD_SHIFT;
+  if (GetKeyState(VK_CONTROL) & 0x8000)
+    mods |= KB_MOD_CONTROL;
+  if (GetKeyState(VK_MENU) & 0x8000)
+    mods |= KB_MOD_ALT;
+  if ((GetKeyState(VK_LWIN) | GetKeyState(VK_RWIN)) & 0x8000)
+    mods |= KB_MOD_SUPER;
+  if (GetKeyState(VK_CAPITAL) & 1)
+    mods |= KB_MOD_CAPS_LOCK;
+  if (GetKeyState(VK_NUMLOCK) & 1)
+    mods |= KB_MOD_NUM_LOCK;
+
+  return mods;
 }
 
-void del_win_node(struct window_t* win) {
-  win32_node_t *cur = win32_head, *prev = NULL;
-  do {
-    if (cur->win == win)
-      break;
-    prev = cur;
-    cur = cur->next;
-  } while (cur);
-  
-  if (cur == win32_head) {
-    prev = win32_head;
-    win32_head = cur->next;
-    free_win_node(&prev);
-    return;
+static int translate_key(WPARAM wParam, LPARAM lParam) {
+  if (wParam == VK_CONTROL) {
+    MSG next;
+    DWORD time;
+
+    if (lParam & 0x01000000)
+      return KB_KEY_RIGHT_CONTROL;
+
+    time = GetMessageTime();
+    if (PeekMessageW(&next, NULL, 0, 0, PM_NOREMOVE))
+      if (next.message == WM_KEYDOWN || next.message == WM_SYSKEYDOWN || next.message == WM_KEYUP || next.message == WM_SYSKEYUP)
+        if (next.wParam == VK_MENU && (next.lParam & 0x01000000) && next.time == time)
+          return KB_KEY_UNKNOWN;
+
+    return KB_KEY_LEFT_CONTROL;
   }
-  if (!cur->next) {
-    prev->next = NULL;
-    free_win_node(&cur);
-    return;
-  }
-  prev->next = cur->next;
-  free_win_node(&cur);
+
+  if (wParam == VK_PROCESSKEY)
+    return KB_KEY_UNKNOWN;
+
+  return keycodes[HIWORD(lParam) & 0x1FF];
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-  static LRESULT res = 0;
+  static struct win32_window_t* data = NULL;
+  static struct window_t* window = NULL;
+  window = (struct window_t*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+  if (!window || !window->window)
+    goto DEFAULT_PROC;
+  data = (struct win32_window_t*)window->window;
+  
   switch (message) {
     case WM_PAINT:
+      if (!data->buffer)
+        break;
+      data->bmpinfo->bmiHeader.biWidth = data->buffer->w;
+      data->bmpinfo->bmiHeader.biHeight = -data->buffer->h;
+      StretchDIBits(data->hdc, 0, 0, window->w, window->h, 0, 0, data->buffer->w, data->buffer->h, data->buffer->buf, data->bmpinfo, DIB_RGB_COLORS, SRCCOPY);
+      ValidateRect(hWnd, NULL);
       break;
     case WM_DESTROY:
     case WM_CLOSE:
+      if (active_window && active_window->closed_callback)
+        active_window->closed_callback(active_window->parent);
+      data->closed = true;
       break;
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
     case WM_KEYUP:
-    case WM_SYSKEYUP:
+    case WM_SYSKEYUP: {
+      static int kb_key = 0;
+      static bool kb_action = false;
+      kb_key = translate_key(wParam, lParam);
+      kb_action = !((lParam >> 31) & 1);
+
+      if (kb_key == KB_KEY_UNKNOWN)
+        goto DEFAULT_PROC;
+      if (!kb_action && wParam == VK_SHIFT) {
+        CBCALL(keyboard_callback, KB_KEY_LEFT_SHIFT, translate_mod(), kb_action);
+      } else if (wParam == VK_SNAPSHOT) {
+        CBCALL(keyboard_callback, kb_key, translate_mod(), false);
+      } else {
+        CBCALL(keyboard_callback, kb_key, translate_mod(), kb_action);
+      }
+      break;
+    }
+    case WM_SETCURSOR:
+      if (LOWORD(lParam) == HTCLIENT) {
+        SetCursor(data->cursor);
+        return TRUE;
+      }
       break;
     case WM_CHAR:
     case WM_SYSCHAR:
@@ -3509,32 +3559,86 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     case WM_MBUTTONDOWN:
     case WM_MBUTTONDBLCLK:
     case WM_XBUTTONDOWN:
-    case WM_XBUTTONDBLCLK:
+    case WM_XBUTTONDBLCLK: {
+      static int m_button, m_action = 0;
+      switch (message) {
+      case WM_LBUTTONDOWN:
+        m_action = 1;
+      case WM_LBUTTONUP:
+        m_button = MOUSE_BTN_1;
+        break;
+      case WM_RBUTTONDOWN:
+        m_action = 1;
+      case WM_RBUTTONUP:
+        m_button = MOUSE_BTN_2;
+        break;
+      case WM_MBUTTONDOWN:
+        m_action = 1;
+      case WM_MBUTTONUP:
+        m_button = MOUSE_BTN_3;
+        break;
+      default:
+        m_button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? MOUSE_BTN_5 : MOUSE_BTN_6);
+        if (message == WM_XBUTTONDOWN)
+          m_action = 1;
+      }
+      CBCALL(mouse_button_callback, (MOUSE_BTN)m_button, translate_mod(), m_action);
       break;
+    }
     case WM_MOUSEWHEEL:
-      break;
     case WM_MOUSEHWHEEL:
+      CBCALL(scroll_callback, translate_mod(), -((SHORT)HIWORD(wParam) / (float)WHEEL_DELTA), (SHORT)HIWORD(wParam) / (float)WHEEL_DELTA);
       break;
     case WM_MOUSEMOVE:
+      if (data->refresh_tme) {
+        data->tme.cbSize = sizeof(data->tme);
+        data->tme.hwndTrack = data->hwnd;
+        data->tme.dwFlags = TME_HOVER | TME_LEAVE;
+        data->tme.dwHoverTime = 1;
+        TrackMouseEvent(&data->tme);
+      }
+      // TODO: Add mouse position delta
+      CBCALL(mouse_move_callback, ((int)(short)LOWORD(lParam)), ((int)(short)HIWORD(lParam)), 0, 0);
+      break;
+    case WM_MOUSEHOVER:
+      if (!data->mouse_inside) {
+        data->refresh_tme = true;
+        data->mouse_inside = true;
+      }
       break;
     case WM_MOUSELEAVE:
+      if (data->mouse_inside) {
+        data->refresh_tme = true;
+        data->mouse_inside = false;
+      }
       break;
     case WM_SIZE:
+      window->w = LOWORD(lParam);
+      window->h = HIWORD(lParam);
+      CBCALL(resize_callback, window->w, window->h);
       break;
     case WM_SETFOCUS:
+      active_window = window;
+      CBCALL(focus_callback, true);
       break;
     case WM_KILLFOCUS:
+      CBCALL(focus_callback, false);
+      active_window = NULL;
       break;
     default:
-      res = DefWindowProc(hWnd, message, wParam, lParam);
+      goto DEFAULT_PROC;
   }
-  return res;
+  return FALSE;
+DEFAULT_PROC:
+  return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-HWND        hwnd;
-WNDCLASS    wc;
-HDC         hdc;
-BITMAPINFO  *bitmapInfo;
+static void windows_error(GRAPHICS_ERROR_TYPE err, const char* msg) {
+  DWORD id = GetLastError();
+  LPSTR buf = NULL;
+  FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&buf, 0, NULL);
+  GRAPHICS_ERROR(err, "%s (%d): %s", msg, id, buf);
+}
 
 bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   if (!keycodes_init) {
@@ -3664,67 +3768,200 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
     
     keycodes_init = true;
   }
-  
-  RECT rect = { 0 };
-  int  x, y;
-  
-  long s_window_style = WS_POPUP | WS_SYSMENU | WS_CAPTION;
-  wc.style         = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
-  wc.lpfnWndProc   = WndProc;
-  wc.hCursor       = LoadCursor(0, IDC_ARROW);
-  wc.lpszClassName = t;
-  RegisterClass(&wc);
-  
-  hwnd = CreateWindowEx(0,
-                          t, t,
-                          s_window_style,
-                          x, y,
-                          w, h,
-                          0, 0, 0, 0);
-  
-  if (!hwnd)
+
+  struct win32_window_t* win_data = GRAPHICS_MALLOC(sizeof(struct win32_window_t));
+  if (!win_data) {
+    GRAPHICS_ERROR(OUT_OF_MEMEORY, "malloc() failed");
     return false;
-  
-  ShowWindow(hwnd, SW_NORMAL);
-  
-  bitmapInfo = (BITMAPINFO *) calloc(1, sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3);
-  bitmapInfo->bmiHeader.biSize        = sizeof(BITMAPINFOHEADER);
-  bitmapInfo->bmiHeader.biPlanes      = 1;
-  bitmapInfo->bmiHeader.biBitCount    = 32;
-  bitmapInfo->bmiHeader.biCompression = BI_BITFIELDS;
-  bitmapInfo->bmiHeader.biWidth       = w;
-  bitmapInfo->bmiHeader.biHeight      = -(LONG)h;
-  bitmapInfo->bmiColors[0].rgbRed     = 0xff;
-  bitmapInfo->bmiColors[1].rgbGreen   = 0xff;
-  bitmapInfo->bmiColors[2].rgbBlue    = 0xff;
-  
-  hdc = GetDC(hwnd);
-  
+  }
+
+  RECT rect = {0};
+  long window_flags = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
+  if (flags & FULLSCREEN) {
+    flags = FULLSCREEN;
+    rect.right = GetSystemMetrics(SM_CXSCREEN);
+    rect.bottom = GetSystemMetrics(SM_CYSCREEN);
+    window_flags = WS_POPUP & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZE | WS_MAXIMIZE | WS_SYSMENU);
+
+    DEVMODE settings = { 0 };
+    EnumDisplaySettings(0, 0, &settings);
+    settings.dmPelsWidth = GetSystemMetrics(SM_CXSCREEN);
+    settings.dmPelsHeight = GetSystemMetrics(SM_CYSCREEN);
+    settings.dmBitsPerPel = 32;
+    settings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+
+    if (ChangeDisplaySettings(&settings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
+      flags = FULLSCREEN_DESKTOP;
+  }
+
+  if (flags & BORDERLESS)
+    window_flags = WS_POPUP;
+  if (flags & RESIZABLE)
+    window_flags |= WS_MAXIMIZEBOX | WS_SIZEBOX;
+  if (flags & FULLSCREEN_DESKTOP) {
+    window_flags = WS_OVERLAPPEDWINDOW;
+
+    int width = GetSystemMetrics(SM_CXFULLSCREEN);
+    int height = GetSystemMetrics(SM_CYFULLSCREEN);
+
+    rect.right = width;
+    rect.bottom = height;
+    AdjustWindowRect(&rect, window_flags, 0);
+    if (rect.left < 0) {
+      width += rect.left * 2;
+      rect.right += rect.left;
+      rect.left = 0;
+    }
+    if (rect.bottom > (LONG)height) {
+      height -= (rect.bottom - height);
+      rect.bottom += (rect.bottom - height);
+      rect.top = 0;
+    }
+  } else if (!(flags & FULLSCREEN)) {
+    rect.right = w;
+    rect.bottom = h;
+
+    AdjustWindowRect(&rect, window_flags, 0);
+
+    rect.right -= rect.left;
+    rect.bottom -= rect.top;
+
+    rect.left = (GetSystemMetrics(SM_CXSCREEN) - rect.right) / 2;
+    rect.top = (GetSystemMetrics(SM_CYSCREEN) - rect.bottom + rect.top) / 2;
+  }
+
+  memset(&win_data->wnd, 0, sizeof(win_data->wnd));
+  win_data->wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
+  win_data->wnd.lpfnWndProc = WndProc;
+  win_data->wnd.hCursor = LoadCursor(0, IDC_ARROW);
+  win_data->wnd.lpszClassName = t;
+  RegisterClass(&win_data->wnd);
+
+  if (!(win_data->hwnd = CreateWindowEx(0, t, t, window_flags, rect.left, rect.top, rect.right, rect.bottom, 0, 0, 0, 0))) {
+    windows_error(WIN_WINDOW_CREATION_FAILED, "CreateWindowEx() failed");
+    return false;
+  }
+  SetWindowLongPtr(win_data->hwnd, GWLP_USERDATA, (LONG_PTR)s);
+
+  if (flags & ALWAYS_ON_TOP)
+    SetWindowPos(win_data->hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
+  ShowWindow(win_data->hwnd, SW_NORMAL);
+  SetFocus(win_data->hwnd);
+  active_window = s;
+
+  size_t bmpinfo_sz = sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3;
+  if (!(win_data->bmpinfo = GRAPHICS_MALLOC(bmpinfo_sz))) {
+    GRAPHICS_ERROR(OUT_OF_MEMEORY, "malloc() failed");
+    return false;
+  }
+  memset(win_data->bmpinfo, 0, bmpinfo_sz);
+  win_data->bmpinfo->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  win_data->bmpinfo->bmiHeader.biPlanes = 1;
+  win_data->bmpinfo->bmiHeader.biBitCount = 32;
+  win_data->bmpinfo->bmiHeader.biCompression = BI_BITFIELDS;
+  win_data->bmpinfo->bmiHeader.biWidth = w;
+  win_data->bmpinfo->bmiHeader.biHeight = -(LONG)h;
+  win_data->bmpinfo->bmiColors[0].rgbRed = 0xFF;
+  win_data->bmpinfo->bmiColors[1].rgbGreen = 0xFF;
+  win_data->bmpinfo->bmiColors[2].rgbBlue = 0xff;
+
+  win_data->tme.cbSize = sizeof(win_data->tme);
+  win_data->tme.hwndTrack = win_data->hwnd;
+  win_data->tme.dwFlags = TME_HOVER | TME_LEAVE;
+  win_data->tme.dwHoverTime = HOVER_DEFAULT;
+  TrackMouseEvent(&win_data->tme);
+
+  win_data->hdc = GetDC(win_data->hwnd);
+  win_data->buffer = NULL;
+  win_data->mouse_inside = false;
+  win_data->closed = false;
+  win_data->refresh_tme = true;
+
+  win_data->icon = NULL;
+  win_data->cursor = NULL;
+  win_data->custom_icon = false;
+  win_data->custom_cursor = false;
+
+  windows = window_push(windows, win_data);
+  static int window_id = 0;
+  s->w = rect.right;
+  s->h = rect.bottom;
+  s->id = window_id++;
+  s->window = win_data;
+
   return true;
 }
 
+HCURSOR create_windows_cursor(struct surface_t* s) {
+  HCURSOR hCursor = NULL;
+  return hCursor;
+}
+
 void window_icon(struct window_t* s, struct surface_t* b) {
-  return;
+  struct win32_window_t* win = (struct win32_window_t*)s->window;
+
+  HBITMAP hbmp = CreateBitmap(b->w, b->h, 1, 32, b->buf);
+  if (!hbmp)
+    goto FAILED;
+  HBITMAP bmp_mask = CreateCompatibleBitmap(GetDC(NULL), b->w / 2, b->h / 2);
+  if (!bmp_mask)
+    goto FAILED;
+  ICONINFO ii = { 0 };
+  ii.fIcon = TRUE;
+  ii.hbmColor = hbmp;
+  ii.hbmMask = bmp_mask;
+  win->icon = CreateIconIndirect(&ii);
+
+FAILED:
+  if (bmp_mask)
+    DeleteObject(bmp_mask);
+  if (hbmp)
+    DeleteObject(hbmp);
+
+  if (!win->icon) {
+    GRAPHICS_ERROR(WINDOW_ICON_FAILED, "create_windows_icon() failed");
+    win->icon = LoadIcon(NULL, IDI_APPLICATION);
+    win->custom_icon = false;
+  } else
+    win->custom_icon = true;
+
+  SetClassLong(win->hwnd, GCLP_HICON, win->icon);
+  SendMessage(win->hwnd, WM_SETICON, ICON_SMALL, win->icon);
+  SendMessage(win->hwnd, WM_SETICON, ICON_BIG, win->icon);
+  SendMessage(GetWindow(win->hwnd, GW_OWNER), WM_SETICON, ICON_SMALL, win->icon);
+  SendMessage(GetWindow(win->hwnd, GW_OWNER), WM_SETICON, ICON_BIG, win->icon);
 }
 
 void window_title(struct window_t* s, const char* t) {
-  return;
+  SetWindowTextA(((struct win32_window_t*)s->window)->hwnd, t);
 }
 
 void window_position(struct window_t* s, int* x, int*  y) {
-  return;
+  static RECT rect = { 0 };
+  GetWindowRect(((struct win32_window_t*)s->window)->hwnd, &rect);
+  if (x)
+    *x = rect.left;
+  if (y)
+    *y = rect.top;
 }
 
 void screen_size(struct window_t* s, int* w, int* h) {
-  return;
+  if (w)
+    *w = GetSystemMetrics(SM_CXFULLSCREEN);
+  if (h)
+    *h = GetSystemMetrics(SM_CYFULLSCREEN);
 }
 
 void window_destroy(struct window_t* s) {
-  return;
+  struct win32_window_t* win = (struct win32_window_t*)s->window;
+  close_win32_window(win, false);
+  GRAPHICS_SAFE_FREE(win);
+  s->window = NULL;
 }
 
 bool closed(struct window_t* s) {
-  return false;
+  return ((struct win32_window_t*)s->window)->closed;
 }
 
 void cursor_lock(bool locked) {
@@ -3732,11 +3969,56 @@ void cursor_lock(bool locked) {
 }
 
 void cursor_visible(bool shown) {
-  return;
+  ShowCursor(shown);
 }
 
 void cursor_icon(struct window_t* s, CURSOR_TYPE t) {
-  return;
+  HCURSOR tmp = NULL;
+  switch (t) {
+  default:
+  case CURSOR_ARROW:
+    tmp = LoadCursor(NULL, IDC_ARROW);
+    break;
+  case CURSOR_WAIT:
+    tmp = LoadCursor(NULL, IDC_WAIT);
+    break;
+  case CURSOR_WAITARROW:
+    tmp = LoadCursor(NULL, IDC_APPSTARTING);
+    break;
+  case CURSOR_IBEAM:
+    tmp = LoadCursor(NULL, IDC_IBEAM);
+    break;
+  case CURSOR_CROSSHAIR:
+    tmp = LoadCursor(NULL, IDC_CROSS);
+    break;
+  case CURSOR_SIZENWSE:
+    tmp = LoadCursor(NULL, IDC_SIZENWSE);
+    break;
+  case CURSOR_SIZENESW:
+    tmp = LoadCursor(NULL, IDC_SIZENESW);
+    break;
+  case CURSOR_SIZEWE:
+    tmp = LoadCursor(NULL, IDC_SIZENWSE);
+    break;
+  case CURSOR_SIZENS:
+    tmp = LoadCursor(NULL, IDC_SIZENS);
+    break;
+  case CURSOR_SIZEALL:
+    tmp = LoadCursor(NULL, IDC_SIZEALL);
+    break;
+  case CURSOR_NO:
+    tmp = LoadCursor(NULL, IDC_NO);
+    break;
+  case CURSOR_HAND:
+    tmp = LoadCursor(NULL, IDC_HAND);
+    break;
+  }
+  struct win32_window_t* win = (struct win32_window_t*)s->window;
+  if (win->cursor && win->custom_cursor)
+    DeleteObject(win->cursor);
+  win->custom_cursor = false;
+  win->cursor = tmp;
+  SetCursor(win->cursor);
 }
 
 void cursor_icon_custom(struct window_t* s, struct surface_t* b) {
@@ -3744,31 +4026,61 @@ void cursor_icon_custom(struct window_t* s, struct surface_t* b) {
 }
 
 void cursor_pos(int* x, int* y) {
-  return;
+  static POINT p;
+  GetCursorPos(&p);
+  if (x)
+    *x = p.x;
+  if (y)
+    *y = p.y;
 }
 
 void cursor_set_pos(int x, int y) {
-  return;
+  SetCursorPos(x, y);
 }
 
-void poll_events() {
-  MSG msg;
-  if (PeekMessage(&msg, hwnd, 0, 0, PM_REMOVE)) {
-    TranslateMessage(&msg);
-    DispatchMessage(&msg);
+void events() {
+  static MSG msg;
+  static struct window_node_t* window = NULL;
+  window = windows;
+  while (window) {
+    if (PeekMessage(&msg, window->data->hwnd, 0, 0, PM_REMOVE)) {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
+    if (window->data->closed) {
+      close_win32_window(window->data, true);
+      struct window_node_t* next = window->next;
+      windows = window_pop(windows, window->data);
+      window = next;
+    } else
+      window = window->next;
   }
 }
 
 void flush(struct window_t* s, struct surface_t* b) {
-  return;
+  if (!s)
+    return;
+  struct win32_window_t* tmp = (struct win32_window_t*)s->window;
+  if (!tmp)
+    return;
+  tmp->buffer = b;
+  InvalidateRect(tmp->hwnd, NULL, TRUE);
+  SendMessage(tmp->hwnd, WM_PAINT, 0, 0);
 }
 
 void release() {
-  return;
+  struct window_node_t *tmp = NULL, *cursor = windows;
+  while (cursor) {
+    tmp = cursor->next;
+    close_win32_window(tmp->data, false);
+    GRAPHICS_SAFE_FREE(cursor->data);
+    GRAPHICS_SAFE_FREE(cursor);
+    cursor = tmp;
+  }
 }
 #elif defined(GRAPHICS_LINUX) && !defined(GRAPHICS_EXTERNAL_WINDOW)
 #pragma message WARN("TODO: Linux X11/Wayland support not yet implemented")
-#define X(a, b) void(*a##_cb)b,
+#define X(a, b) void(*a##_cb)b,S
 void window_callbacks(XMAP_SCREEN_CB struct window_t* a) {
 #undef X
   return;
@@ -3841,7 +4153,7 @@ void cursor_set_pos(int a, int b) {
   return;
 }
 
-void poll_events() {
+void events() {
   return;
 }
 
@@ -4338,7 +4650,7 @@ void cursor_set_pos(int _, int __) {
 #pragma message WARN("cursor_set_pos() unsupported on emscripten")
 }
 
-void poll_events(void) {
+void events(void) {
 #if defined(GRAPHICS_DEBUG) && defined(GRAPHICS_EMCC_HTML)
   EM_ASM({
     stats.begin();
@@ -4459,7 +4771,7 @@ void cursor_set_pos(int a, int b) {
   return;
 }
 
-void poll_events() {
+void events() {
   return;
 }
 
@@ -4547,7 +4859,7 @@ void cursor_set_pos(int a, int b) {
   return;
 }
 
-void poll_events() {
+void events() {
   return;
 }
 

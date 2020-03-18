@@ -9,11 +9,12 @@ static bool running = true;
 #define SH 500
 
 void on_error(GRAPHICS_ERROR_TYPE type, const char* msg, const char* file, const char* func, int line) {
-  fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
 #if defined(GRAPHICS_DIALOGS)
   alert(ALERT_ERROR, ALERT_OK, "ERROR! See logs for info");
-  abort();
+#else
+  fprintf(stderr, "ERROR ENCOUNTERED: %s\nFrom %s, in %s() at %d\n", msg, file, func, line);
 #endif
+  abort();
 }
 
 void on_keyboard(void* _, KEY_SYM sym, KEY_MOD mod, bool down) {
@@ -62,9 +63,20 @@ void loop() {
 int main(int argc, const char* argv[]) {
   graphics_error_callback(on_error);
 
-  window(&win, "test",  SW, SH, DEFAULT);
+  window(&win, "test",  SW, SH, RESIZABLE);
   window_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, on_closed, &win);
   cursor_icon(&win, CURSOR_HAND);
+
+  struct surface_t test_icon;
+#define TEST_SIZE 32
+  surface(&test_icon, TEST_SIZE, TEST_SIZE);
+  rect(&test_icon, 0, 0, TEST_SIZE / 4, TEST_SIZE / 4, RED, true);
+  rect(&test_icon, TEST_SIZE / 4, TEST_SIZE / 4, TEST_SIZE / 4, TEST_SIZE / 4, BLUE, true);
+  rect(&test_icon, 0, TEST_SIZE / 4, TEST_SIZE / 4, TEST_SIZE / 4, YELLOW, true);
+  rect(&test_icon, TEST_SIZE / 4, 0, TEST_SIZE / 4, TEST_SIZE / 4, LIME, true);
+  window_icon(&win, &test_icon);
+
+  cursor_icon(&win, CURSOR_SIZEALL);
 
   surface(&buf, SW, SH);
   fill(&buf, RED);
@@ -75,19 +87,22 @@ int main(int argc, const char* argv[]) {
 #elif defined(GRAPHICS_OSX)
   bmp(&img, "/Users/roryb/git/hal/old/test/resources/Uncompressed-24.bmp");
 #elif defined(GRAPHICS_WINDOWS)
-  bmp(&img, "Z:\\hal\\old\\test\\resources\\Uncompressed-24.bmp");
+  bmp(&img, "C:\\Users\\Rory B. Bellows\\git\\graphics\\tests\\Uncompressed-24.bmp");
 #endif
   paste(&buf, &img, 10, 10);
   
+#if defined(GRAPHICS_BDF)
   struct bdf_t font;
 #if defined(GRAPHICS_EMCC)
   bdf(&font, "old/test/resources/tewi.bdf");
 #elif defined(GRAPHICS_OSX)
   bdf(&font, "/Users/roryb/git/hal/old/test/resources/tewi.bdf");
 #elif defined(GRAPHICS_WINDOWS)
-  bdf(&font, "Z:\\hal\\old\\test\\resources\\tewi.bdf");
+  bdf(&font, "C:\\Users\\Rory B. Bellows\\git\\graphics\\tests\\tewi.bdf");
 #endif
   bdf_writelnf(&buf, &font, 10, 10, WHITE, BLACK, "This is a test! %d", 42);
+#endif
+
 
 #if defined(GRAPHICS_EMCC)
   emscripten_set_main_loop(loop, 0, 1);
@@ -97,7 +112,9 @@ int main(int argc, const char* argv[]) {
 #endif
 
   surface_destroy(&img);
+#if defined(GRAPHICS_BDF)
   bdf_destroy(&font);
+#endif
   surface_destroy(&buf);
   window_destroy(&win);
   return 0;

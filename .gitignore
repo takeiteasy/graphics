@@ -12,3 +12,6 @@ hal.xcodeproj/*
 tmp/
 *.obj
 .vscode/
+Debug/
+x64/
+.vs/
