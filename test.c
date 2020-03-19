@@ -67,20 +67,16 @@ int main(int argc, const char* argv[]) {
 
   window(&win, "test",  SW, SH, RESIZABLE);
   window_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, on_closed, &win);
-  //cursor_icon(&win, CURSOR_HAND);
 
-  struct surface_t test_icon;
-#define TEST_SIZE 32
-  surface(&test_icon, TEST_SIZE, TEST_SIZE);
-  rect(&test_icon, 0, 0, TEST_SIZE / 4, TEST_SIZE / 4, RED, true);
-  rect(&test_icon, TEST_SIZE / 4, TEST_SIZE / 4, TEST_SIZE / 4, TEST_SIZE / 4, BLUE, true);
-  rect(&test_icon, 0, TEST_SIZE / 4, TEST_SIZE / 4, TEST_SIZE / 4, YELLOW, true);
-  rect(&test_icon, TEST_SIZE / 4, 0, TEST_SIZE / 4, TEST_SIZE / 4, LIME, true);
-  window_icon(&win, &test_icon);
-  cursor_icon_custom(&win, &test_icon);
-
-  //cursor_visible(&win, false);
-  //cursor_lock(&win, true);
+  //struct surface_t test_icon;
+  //#define TEST_SIZE 32
+  //surface(&test_icon, TEST_SIZE, TEST_SIZE);
+  //rect(&test_icon, 0, 0, TEST_SIZE / 4, TEST_SIZE / 4, RED, true);
+  //rect(&test_icon, TEST_SIZE / 4, TEST_SIZE / 4, TEST_SIZE / 4, TEST_SIZE / 4, BLUE, true);
+  //rect(&test_icon, 0, TEST_SIZE / 4, TEST_SIZE / 4, TEST_SIZE / 4, YELLOW, true);
+  //rect(&test_icon, TEST_SIZE / 4, 0, TEST_SIZE / 4, TEST_SIZE / 4, LIME, true);
+  //window_icon(&win, &test_icon);
+  //cursor_icon_custom(&win, &test_icon);
 
   surface(&buf, SW, SH);
   fill(&buf, RED);
@@ -95,7 +91,7 @@ int main(int argc, const char* argv[]) {
 #endif
   paste(&buf, &img, 10, 10);
   
-#if defined(GRAPHICS_BDF)
+#if !defined(GRAPHICS_NO_BDF)
   struct bdf_t font;
 #if defined(GRAPHICS_EMCC)
   bdf(&font, "old/test/resources/tewi.bdf");
@@ -116,7 +112,7 @@ int main(int argc, const char* argv[]) {
 #endif
 
   surface_destroy(&img);
-#if defined(GRAPHICS_BDF)
+#if !defined(GRAPHICS_NO_BDF)
   bdf_destroy(&font);
 #endif
   surface_destroy(&buf);

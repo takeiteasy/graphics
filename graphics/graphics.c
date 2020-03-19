@@ -1748,7 +1748,7 @@ void stringf(struct surface_t* s, int fg, int bg, const char* fmt, ...) {
 }
 #endif // !defined(GRAPHICS_NO_TEXT)
 
-#if defined(GRAPHICS_BDF) && !defined(GRAPHICS_NO_TEXT)
+#if !defined(GRAPHICS_NO_BDF) && !defined(GRAPHICS_NO_TEXT)
 #if defined(GRAPHICS_WINDOWS)
 #define snprintf _snprintf
 #define vsnprintf _vsnprintf
@@ -2180,11 +2180,11 @@ static bool keycodes_init = false;
 static struct window_t* active_window = NULL;
 
 void window_set_parent(struct window_t* s, void* p) {
-    s->parent = p;
+  s->parent = p;
 }
 
 void* window_parent(struct window_t* s) {
-    return s->parent;
+  return s->parent;
 }
 
 #define X(a, b) void(*a##_cb)b,
@@ -2335,10 +2335,14 @@ static inline GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
   return sp;
 }
 
+struct gl_obj_t {
+  GLuint vao, shader, texture;
+};
+
 static int gl3_available = 1;
 static bool dll_loaded = false;
 
-static inline bool init_gl(int w, int h, GLuint* _vao, GLuint* _shader, GLuint* _texture) {
+static inline bool init_gl(int w, int h, struct gl_obj_t* gl) {
   if (!dll_loaded) {
 #if defined(GRAPHICS_WINDOWS)
     HINSTANCE dll = LoadLibraryA("opengl32.dll");
@@ -2379,6 +2383,8 @@ static inline bool init_gl(int w, int h, GLuint* _vao, GLuint* _shader, GLuint* 
   }
 
   glClearColor(0.f, 0.f, 0.f, 1.f);
+
+  static GLuint texture;
 
 #if !defined(GRAPHICS_OSX)
   if (gl3_available < 0) {
@@ -2434,7 +2440,7 @@ static inline bool init_gl(int w, int h, GLuint* _vao, GLuint* _shader, GLuint* 
       "  out_color = texture(texture_sampler, texture_coord_from_vshader);"
       "}";
 
-    static GLuint vao, shader, texture;
+    static GLuint vao, shader;
 
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
@@ -2462,20 +2468,20 @@ static inline bool init_gl(int w, int h, GLuint* _vao, GLuint* _shader, GLuint* 
     glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
     glEnableVertexAttribArray(texture_coord_attribute);
 
-    *_vao = vao;
-    *_shader = shader;
+    gl->vao = vao;
+    gl->shader = shader;
 #if !defined(GRAPHICS_OSX)
   }
 #endif
 
   glGenTextures(1, &texture);
-  *_texture = texture;
+  gl->texture = texture;
 
   return true;
 }
 
-static inline void draw_gl(GLuint vao, GLuint texture, struct surface_t* buffer) {
-  glBindTexture(GL_TEXTURE_2D, texture);
+static inline void draw_gl(struct gl_obj_t* gl, struct surface_t* buffer) {
+  glBindTexture(GL_TEXTURE_2D, gl->texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, (GLvoid*)buffer->buf);
@@ -2492,7 +2498,8 @@ static inline void draw_gl(GLuint vao, GLuint texture, struct surface_t* buffer)
     glEnd();
   } else {
 #endif
-    glBindVertexArray(vao);
+    glUseProgram(gl->shader);
+    glBindVertexArray(gl->vao);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 #if !defined(GRAPHICS_OSX)
   }
@@ -2501,14 +2508,14 @@ static inline void draw_gl(GLuint vao, GLuint texture, struct surface_t* buffer)
 #endif
 }
 
-static inline void free_gl(GLuint vao, GLuint shader, GLuint texture) {
-  if (texture)
-    glDeleteTextures(1, &texture);
+static void free_gl(struct gl_obj_t* gl_obj) {
+  if (gl_obj->texture)
+    glDeleteTextures(1, &gl_obj->texture);
   if (!gl3_available) {
-    if (shader)
-      glDeleteProgram(shader);
-    if (vao)
-      glDeleteVertexArrays(1, &vao);
+    if (gl_obj->shader)
+      glDeleteProgram(gl_obj->shader);
+    if (gl_obj->vao)
+      glDeleteVertexArrays(1, &gl_obj->vao);
   }
 }
 #endif
@@ -3430,7 +3437,14 @@ struct win32_window_t {
   WNDCLASS wnd;
   HWND hwnd;
   HDC hdc;
+#if defined(GRAPHICS_OPENGL)
+  PIXELFORMATDESCRIPTOR pfd;
+  HGLRC hrc;
+  PAINTSTRUCT ps;
+  struct gl_obj_t gl_obj;
+#else
   BITMAPINFO* bmpinfo;
+#endif
   TRACKMOUSEEVENT tme;
   HICON icon;
   HCURSOR cursor;
@@ -3446,7 +3460,11 @@ static void close_win32_window(struct win32_window_t* window, bool force) {
     ClipCursor(NULL);
   if (!window->cursor_vis)
     ShowCursor(TRUE);
+#if defined(GRAPHICS_OPENGL)
+  free_gl(&window->gl_obj);
+#else
   GRAPHICS_FREE(window->bmpinfo);
+#endif
   if (window->custom_icon && window->icon)
     DeleteObject(window->icon);
   if (window->custom_cursor && window->cursor)
@@ -3520,10 +3538,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     case WM_PAINT:
       if (!data->buffer)
         break;
+#if defined(GRAPHICS_OPENGL)
+      draw_gl(&data->gl_obj, data->buffer);
+      BeginPaint(data->hwnd, &data->ps);
+      EndPaint(data->hwnd, &data->ps);
+#else
       data->bmpinfo->bmiHeader.biWidth = data->buffer->w;
       data->bmpinfo->bmiHeader.biHeight = -data->buffer->h;
       StretchDIBits(data->hdc, 0, 0, window->w, window->h, 0, 0, data->buffer->w, data->buffer->h, data->buffer->buf, data->bmpinfo, DIB_RGB_COLORS, SRCCOPY);
       ValidateRect(hWnd, NULL);
+#endif
       break;
     case WM_DESTROY:
     case WM_CLOSE:
@@ -3560,6 +3584,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     case WM_CHAR:
     case WM_SYSCHAR:
     case WM_UNICHAR:
+      // I don't know if this is important or not
       break;
     case WM_LBUTTONUP:
     case WM_RBUTTONUP:
@@ -3637,6 +3662,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       window->w = LOWORD(lParam);
       window->h = HIWORD(lParam);
       CBCALL(resize_callback, window->w, window->h);
+#if defined(GRAPHICS_OPENGL)
+      glViewport(0, 0, window->w, window->h);
+      PostMessage(hWnd, WM_PAINT, 0, 0);
+#endif
       break;
     case WM_SETFOCUS:
       if (data->cursor_locked)
@@ -3856,14 +3885,25 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   }
 
   memset(&win_data->wnd, 0, sizeof(win_data->wnd));
+#if defined(GRAPHICS_OPENGL)
+  win_data->wnd.style = CS_OWNDC;
+#else
   win_data->wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
+#endif
   win_data->wnd.lpfnWndProc = WndProc;
   win_data->wnd.hCursor = LoadCursor(0, IDC_ARROW);
   win_data->wnd.lpszClassName = t;
-  RegisterClass(&win_data->wnd);
+  if (!RegisterClass(&win_data->wnd)) {
+    windows_error(WIN_WINDOW_CREATION_FAILED, "RegisterClass() failed");
+    return false;
+  }
 
   if (!(win_data->hwnd = CreateWindowEx(0, t, t, window_flags, rect.left, rect.top, rect.right, rect.bottom, 0, 0, 0, 0))) {
     windows_error(WIN_WINDOW_CREATION_FAILED, "CreateWindowEx() failed");
+    return false;
+  }
+  if (!(win_data->hdc = GetDC(win_data->hwnd))) {
+    windows_error(WIN_WINDOW_CREATION_FAILED, "GetDC() failed");
     return false;
   }
   SetWindowLongPtr(win_data->hwnd, GWLP_USERDATA, (LONG_PTR)s);
@@ -3875,6 +3915,36 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   SetFocus(win_data->hwnd);
   active_window = s;
 
+#if defined(GRAPHICS_OPENGL)
+  memset(&win_data->pfd, 0, sizeof(win_data->pfd));
+  win_data->pfd.nSize = sizeof(win_data->pfd);
+  win_data->pfd.nVersion = 1;
+  win_data->pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
+  win_data->pfd.iPixelType = PFD_TYPE_RGBA;
+  win_data->pfd.cColorBits = 32;
+
+  int pf = ChoosePixelFormat(win_data->hdc, &win_data->pfd);
+  if (pf == 0) {
+    windows_error(WIN_GL_PF_ERROR, "ChoosePixelFormat() failed");
+    return false;
+  }
+
+  if (SetPixelFormat(win_data->hdc, pf, &win_data->pfd) == FALSE) {
+    windows_error(WIN_GL_PF_ERROR, "SetPixelFormat() failed");
+    return false;
+  }
+
+  DescribePixelFormat(win_data->hdc, pf, sizeof(PIXELFORMATDESCRIPTOR), &win_data->pfd);
+
+  win_data->hrc = wglCreateContext(win_data->hdc);
+  wglMakeCurrent(win_data->hdc, win_data->hrc);
+
+  memset(&win_data->gl_obj, 0, sizeof(struct gl_obj_t));
+  RECT r = rect;
+  GetClientRect(win_data->hwnd, &r);
+  if (!init_gl(r.right, r.bottom, &win_data->gl_obj))
+    return false;
+#else
   size_t bmpinfo_sz = sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3;
   if (!(win_data->bmpinfo = GRAPHICS_MALLOC(bmpinfo_sz))) {
     GRAPHICS_ERROR(OUT_OF_MEMEORY, "malloc() failed");
@@ -3890,6 +3960,7 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   win_data->bmpinfo->bmiColors[0].rgbRed = 0xFF;
   win_data->bmpinfo->bmiColors[1].rgbGreen = 0xFF;
   win_data->bmpinfo->bmiColors[2].rgbBlue = 0xff;
+#endif
 
   win_data->tme.cbSize = sizeof(win_data->tme);
   win_data->tme.hwndTrack = win_data->hwnd;
@@ -3897,14 +3968,13 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   win_data->tme.dwHoverTime = HOVER_DEFAULT;
   TrackMouseEvent(&win_data->tme);
 
-  win_data->hdc = GetDC(win_data->hwnd);
   win_data->buffer = NULL;
   win_data->mouse_inside = false;
   win_data->closed = false;
   win_data->refresh_tme = true;
 
   win_data->icon = NULL;
-  win_data->cursor = NULL;
+  win_data->cursor = win_data->wnd.hCursor;
   win_data->custom_icon = false;
   win_data->custom_cursor = false;
   win_data->cursor_vis = true;
