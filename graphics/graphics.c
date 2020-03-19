@@ -3428,10 +3428,15 @@ void release() {
   [pool drain];
 }
 #elif defined(GRAPHICS_WINDOWS) && !defined(GRAPHICS_EXTERNAL_WINDOW)
-#pragma message WARN("TODO: Windows implementation is a WIP")
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#if defined(GRAPHICS_DX9)
+#pragma message WARN("TODO: DX9 implementation is a WIP")
+#define COBJMACROS 1
+#include <d3d9.h>
+#pragma comment (lib, "d3d9.lib")
+#endif
 
 struct win32_window_t {
   WNDCLASS wnd;
@@ -3442,6 +3447,9 @@ struct win32_window_t {
   HGLRC hrc;
   PAINTSTRUCT ps;
   struct gl_obj_t gl_obj;
+#elif defined(GRAPHICS_DX9)
+  LPDIRECT3D9 d3d;
+  LPDIRECT3DDEVICE9 d3ddev;
 #else
   BITMAPINFO* bmpinfo;
 #endif
@@ -3462,6 +3470,9 @@ static void close_win32_window(struct win32_window_t* window, bool force) {
     ShowCursor(TRUE);
 #if defined(GRAPHICS_OPENGL)
   free_gl(&window->gl_obj);
+#elif defined(GRAPHICS_DX9)
+  IDirect3DDevice9_Release(window->d3ddev);
+  IDirect3D9_Release(window->d3d);
 #else
   GRAPHICS_FREE(window->bmpinfo);
 #endif
@@ -3542,6 +3553,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       draw_gl(&data->gl_obj, data->buffer);
       BeginPaint(data->hwnd, &data->ps);
       EndPaint(data->hwnd, &data->ps);
+#elif defined(GRAPHICS_DX9)
+      static LPDIRECT3DTEXTURE9 texture = NULL;
+      IDirect3DDevice9_CreateTexture(data->d3ddev, data->buffer->w, data->buffer->h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &texture, NULL);
+      if (texture)
+        break;
+      IDirect3DDevice9_Clear(data->d3ddev, 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(255, 0, 0), 1.0f, 0);
+      IDirect3DDevice9_BeginScene(data->d3ddev);
+      IDirect3DDevice9_EndScene(data->d3ddev);
+      IDirect3DDevice9_Present(data->d3ddev, NULL, NULL, NULL, NULL);
 #else
       data->bmpinfo->bmiHeader.biWidth = data->buffer->w;
       data->bmpinfo->bmiHeader.biHeight = -data->buffer->h;
@@ -3944,6 +3964,16 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   GetClientRect(win_data->hwnd, &r);
   if (!init_gl(r.right, r.bottom, &win_data->gl_obj))
     return false;
+#elif defined(GRAPHICS_DX9)
+  win_data->d3d = Direct3DCreate9(D3D_SDK_VERSION);
+
+  D3DPRESENT_PARAMETERS d3dpp;
+  ZeroMemory(&d3dpp, sizeof(d3dpp));
+  d3dpp.Windowed = TRUE;
+  d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
+  d3dpp.hDeviceWindow = win_data->hwnd;
+
+  IDirect3D9_CreateDevice(win_data->d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, win_data->hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &win_data->d3ddev);
 #else
   size_t bmpinfo_sz = sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3;
   if (!(win_data->bmpinfo = GRAPHICS_MALLOC(bmpinfo_sz))) {
