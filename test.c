@@ -18,6 +18,8 @@ void on_error(GRAPHICS_ERROR_TYPE type, const char* msg, const char* file, const
 }
 
 void on_keyboard(void* _, KEY_SYM sym, KEY_MOD mod, bool down) {
+  if (sym == KB_KEY_ESCAPE)
+    running = false;
   printf("keyboard: %d is %s\n", sym, (down ? "down" : "up"));
 }
 
@@ -65,7 +67,7 @@ int main(int argc, const char* argv[]) {
 
   window(&win, "test",  SW, SH, RESIZABLE);
   window_callbacks(on_keyboard, on_mouse_btn, on_mouse_move, on_scroll, on_focus, on_resize, on_closed, &win);
-  cursor_icon(&win, CURSOR_HAND);
+  //cursor_icon(&win, CURSOR_HAND);
 
   struct surface_t test_icon;
 #define TEST_SIZE 32
@@ -75,8 +77,10 @@ int main(int argc, const char* argv[]) {
   rect(&test_icon, 0, TEST_SIZE / 4, TEST_SIZE / 4, TEST_SIZE / 4, YELLOW, true);
   rect(&test_icon, TEST_SIZE / 4, 0, TEST_SIZE / 4, TEST_SIZE / 4, LIME, true);
   window_icon(&win, &test_icon);
+  cursor_icon_custom(&win, &test_icon);
 
-  cursor_icon(&win, CURSOR_SIZEALL);
+  //cursor_visible(&win, false);
+  //cursor_lock(&win, true);
 
   surface(&buf, SW, SH);
   fill(&buf, RED);

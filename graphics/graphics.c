@@ -3304,11 +3304,11 @@ bool closed(struct window_t* s) {
   return (bool)[(AppDelegate*)s->window closed];
 }
 
-void cursor_lock(bool locked) {
+void cursor_lock(struct window_t* s, bool locked) {
   return;
 }
 
-void cursor_visible(bool shown) {
+void cursor_visible(struct window_t* s, bool shown) {
   if (shown)
     [NSCursor unhide];
   else
@@ -3434,20 +3434,33 @@ struct win32_window_t {
   TRACKMOUSEEVENT tme;
   HICON icon;
   HCURSOR cursor;
-  bool mouse_inside, closed, refresh_tme, custom_icon, custom_cursor;
+  int cursor_lx, cursor_ly;
+  bool mouse_inside, cursor_vis, cursor_locked, closed, refresh_tme, custom_icon, custom_cursor;
   struct surface_t* buffer;
 };
 
 static void close_win32_window(struct win32_window_t* window, bool force) {
-  if (!window->closed || force) {
-    GRAPHICS_FREE(window->bmpinfo);
-    if (window->custom_icon && window->icon)
-      DeleteObject(window->icon);
-    if (window->custom_cursor && window->cursor)
-      DeleteObject(window->cursor);
-    ReleaseDC(window->hwnd, window->hdc);
-    DestroyWindow(window->hwnd);
-  }
+  if (window->closed || !force)
+    return;
+  if (window->cursor_locked)
+    ClipCursor(NULL);
+  if (!window->cursor_vis)
+    ShowCursor(TRUE);
+  GRAPHICS_FREE(window->bmpinfo);
+  if (window->custom_icon && window->icon)
+    DeleteObject(window->icon);
+  if (window->custom_cursor && window->cursor)
+    DeleteObject(window->cursor);
+  ReleaseDC(window->hwnd, window->hdc);
+  DestroyWindow(window->hwnd);
+}
+
+static void clip_win32_cursor(HWND hwnd) {
+  static RECT r = { 0 };
+  GetClientRect(hwnd, &r);
+  ClientToScreen(hwnd, (LPPOINT)&r);
+  ClientToScreen(hwnd, (LPPOINT)&r + 1);
+  ClipCursor(&r);
 }
 
 LINKEDLIST(window, struct win32_window_t);
@@ -3589,7 +3602,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     case WM_MOUSEHWHEEL:
       CBCALL(scroll_callback, translate_mod(), -((SHORT)HIWORD(wParam) / (float)WHEEL_DELTA), (SHORT)HIWORD(wParam) / (float)WHEEL_DELTA);
       break;
-    case WM_MOUSEMOVE:
+    case WM_MOUSEMOVE: {
       if (data->refresh_tme) {
         data->tme.cbSize = sizeof(data->tme);
         data->tme.hwndTrack = data->hwnd;
@@ -3597,19 +3610,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
         data->tme.dwHoverTime = 1;
         TrackMouseEvent(&data->tme);
       }
-      // TODO: Add mouse position delta
-      CBCALL(mouse_move_callback, ((int)(short)LOWORD(lParam)), ((int)(short)HIWORD(lParam)), 0, 0);
+      static int cx, cy;
+      cx = ((int)(short)LOWORD(lParam));
+      cy = ((int)(short)HIWORD(lParam));
+      CBCALL(mouse_move_callback, cx, cy, cx - data->cursor_lx, cy - data->cursor_ly);
+      data->cursor_lx = cx;
+      data->cursor_ly = cy;
       break;
+    }
     case WM_MOUSEHOVER:
       if (!data->mouse_inside) {
         data->refresh_tme = true;
         data->mouse_inside = true;
+        if (!data->cursor_vis)
+          ShowCursor(FALSE);
       }
       break;
     case WM_MOUSELEAVE:
       if (data->mouse_inside) {
         data->refresh_tme = true;
         data->mouse_inside = false;
+        ShowCursor(TRUE);
       }
       break;
     case WM_SIZE:
@@ -3618,10 +3639,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       CBCALL(resize_callback, window->w, window->h);
       break;
     case WM_SETFOCUS:
+      if (data->cursor_locked)
+        clip_win32_cursor(data->hwnd);
       active_window = window;
       CBCALL(focus_callback, true);
       break;
     case WM_KILLFOCUS:
+      if (data->cursor_locked)
+        ClipCursor(NULL);
       CBCALL(focus_callback, false);
       active_window = NULL;
       break;
@@ -3882,6 +3907,12 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   win_data->cursor = NULL;
   win_data->custom_icon = false;
   win_data->custom_cursor = false;
+  win_data->cursor_vis = true;
+  win_data->cursor_locked = false;
+  POINT p;
+  GetCursorPos(&p);
+  win_data->cursor_lx = p.x;
+  win_data->cursor_ly = p.y;
 
   windows = window_push(windows, win_data);
   static int window_id = 0;
@@ -3893,19 +3924,13 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   return true;
 }
 
-HCURSOR create_windows_cursor(struct surface_t* s) {
-  HCURSOR hCursor = NULL;
-  return hCursor;
-}
-
 void window_icon(struct window_t* s, struct surface_t* b) {
   struct win32_window_t* win = (struct win32_window_t*)s->window;
+  HBITMAP hbmp = NULL, bmp_mask = NULL;
 
-  HBITMAP hbmp = CreateBitmap(b->w, b->h, 1, 32, b->buf);
-  if (!hbmp)
+  if (!(hbmp = CreateBitmap(b->w, b->h, 1, 32, b->buf)))
     goto FAILED;
-  HBITMAP bmp_mask = CreateCompatibleBitmap(GetDC(NULL), b->w / 2, b->h / 2);
-  if (!bmp_mask)
+  if (!(bmp_mask = CreateCompatibleBitmap(GetDC(NULL), b->w / 2, b->h / 2)))
     goto FAILED;
   ICONINFO ii = { 0 };
   ii.fIcon = TRUE;
@@ -3920,7 +3945,7 @@ FAILED:
     DeleteObject(hbmp);
 
   if (!win->icon) {
-    GRAPHICS_ERROR(WINDOW_ICON_FAILED, "create_windows_icon() failed");
+    windows_error(WINDOW_ICON_FAILED, "create_windows_icon() failed");
     win->icon = LoadIcon(NULL, IDI_APPLICATION);
     win->custom_icon = false;
   } else
@@ -3964,12 +3989,19 @@ bool closed(struct window_t* s) {
   return ((struct win32_window_t*)s->window)->closed;
 }
 
-void cursor_lock(bool locked) {
-  return;
+void cursor_lock(struct window_t* s, bool locked) {
+  struct win32_window_t* win = (struct win32_window_t*)s->window;
+  if (!s || !locked) {
+    ClipCursor(NULL);
+    win->cursor_locked = false;
+  } else {
+    clip_win32_cursor(win->hwnd);
+    win->cursor_locked = true;
+  }
 }
 
-void cursor_visible(bool shown) {
-  ShowCursor(shown);
+void cursor_visible(struct window_t* s, bool shown) {
+  ((struct win32_window_t*)s->window)->cursor_vis = shown;
 }
 
 void cursor_icon(struct window_t* s, CURSOR_TYPE t) {
@@ -4022,7 +4054,36 @@ void cursor_icon(struct window_t* s, CURSOR_TYPE t) {
 }
 
 void cursor_icon_custom(struct window_t* s, struct surface_t* b) {
-  return;
+  struct win32_window_t* win = (struct win32_window_t*)s->window;
+  HBITMAP hbmp = NULL, bmp_mask = NULL;
+
+  if (!(hbmp = CreateBitmap(b->w, b->h, 1, 32, b->buf)))
+    goto FAILED;
+  if (!(bmp_mask = CreateCompatibleBitmap(GetDC(NULL), b->w, b->h)))
+    goto FAILED;
+
+  ICONINFO ii;
+  ii.fIcon = TRUE;
+  ii.xHotspot = 0;
+  ii.yHotspot = -b->h;
+  ii.hbmMask = bmp_mask;
+  ii.hbmColor = hbmp;
+  win->cursor = (HCURSOR)CreateIconIndirect(&ii);
+
+FAILED:
+  if (bmp_mask)
+    DeleteObject(bmp_mask);
+  if (hbmp)
+    DeleteObject(hbmp);
+
+  if (!win->cursor) {
+    windows_error(WINDOW_ICON_FAILED, "cursor_icon_custom() failed");
+    win->icon = LoadCursor(NULL, IDC_ARROW);
+    win->custom_cursor = false;
+  } else
+    win->custom_icon = true;
+  
+  SetCursor(win->cursor);
 }
 
 void cursor_pos(int* x, int* y) {
@@ -4141,7 +4202,7 @@ void cursor_icon(struct window_t* a, CURSOR_TYPE b) {
   return;
 }
 
-void cursor_custom_icon(struct window_t* a, struct surface_t* b) {
+void cursor_icon_custom(struct window_t* a, struct surface_t* b) {
   return;
 }
 
@@ -4530,7 +4591,7 @@ bool closed(struct window_t* _) {
   return false;
 }
 
-void cursor_lock(bool locked) {
+void cursor_lock(struct window_t* s, bool locked) {
 #pragma message WARN("cursor_lock() unsupported on emscripten")
   if (locked)
     emscripten_request_pointerlock(NULL, 1);
@@ -4541,7 +4602,7 @@ void cursor_lock(bool locked) {
 static const char* cursor = "default";
 static bool cursor_custom = false;
 
-void cursor_visible(bool show) {
+void cursor_visible(struct window_t* s, bool show) {
   EM_ASM({
     if (Module['canvas']) {
       Module['canvas'].style['cursor'] = ($1 ? UTF8ToString($0) : 'none');
@@ -4595,7 +4656,7 @@ void cursor_icon(struct window_t* _, CURSOR_TYPE t) {
   cursor_visible(true);
 }
 
-void cursor_custom_icon(struct window_t* _, struct surface_t* b) {
+void cursor_icon_custom(struct window_t* _, struct surface_t* b) {
   if (cursor_custom && cursor)
     GRAPHICS_SAFE_FREE(cursor);
   
@@ -4747,11 +4808,11 @@ bool closed(struct window_t* a) {
   return false;
 }
 
-void cursor_lock(bool a) {
+void cursor_lock(struct window_t* s, bool a) {
   return;
 }
 
-void cursor_visible(bool a) {
+void cursor_visible(struct window_t* s, bool a) {
   return;
 }
 
@@ -4835,11 +4896,11 @@ bool closed(struct window_t* a) {
   return false;
 }
 
-void cursor_lock(bool a) {
+void cursor_lock(struct window_t* s, bool a) {
   return;
 }
 
-void cursor_visible(bool a) {
+void cursor_visible(struct window_t* s, bool a) {
   return;
 }
 

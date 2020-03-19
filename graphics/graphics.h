@@ -995,12 +995,12 @@ if ((x)) { \
    * @discussion Lock or unlock cursor movement to active window
    * @param locked Turn on or off
    */
-  HALDEF void cursor_lock(bool locked);
+  HALDEF void cursor_lock(struct window_t* s, bool locked);
   /*!
    * @discussion Hide or show system cursor
    * @param show Hide or show
    */
-  HALDEF void cursor_visible(bool show);
+  HALDEF void cursor_visible(struct window_t* s, bool show);
   /*!
    * @discussion Change cursor icon to system icon
    * @param s Window object
@@ -1012,7 +1012,7 @@ if ((x)) { \
    * @param s Window object
    * @param b Surface object
    */
-  HALDEF void cursor_custom_icon(struct window_t* s, struct surface_t* b);
+  HALDEF void cursor_icon_custom(struct window_t* s, struct surface_t* b);
   /*!
    * @discussion Get cursor position
    * @param x Integer to set
