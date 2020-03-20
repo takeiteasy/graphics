@@ -8,6 +8,10 @@ static bool running = true;
 #define SW 575
 #define SH 500
 
+#if 1
+#define printf
+#endif
+
 void on_error(GRAPHICS_ERROR_TYPE type, const char* msg, const char* file, const char* func, int line) {
 #if defined(GRAPHICS_DIALOGS)
   alert(ALERT_ERROR, ALERT_OK, "ERROR! See logs for info");

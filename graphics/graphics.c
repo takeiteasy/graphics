@@ -3432,7 +3432,6 @@ void release() {
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #if defined(GRAPHICS_DX9)
-#pragma message WARN("TODO: DX9 implementation is a WIP")
 #define COBJMACROS 1
 #include <d3d9.h>
 #pragma comment (lib, "d3d9.lib")
@@ -3450,6 +3449,8 @@ struct win32_window_t {
 #elif defined(GRAPHICS_DX9)
   LPDIRECT3D9 d3d;
   LPDIRECT3DDEVICE9 d3ddev;
+  LPDIRECT3DSURFACE9 d3dsurface;
+  int buffer_lw, buffer_lh;
 #else
   BITMAPINFO* bmpinfo;
 #endif
@@ -3554,14 +3555,32 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       BeginPaint(data->hwnd, &data->ps);
       EndPaint(data->hwnd, &data->ps);
 #elif defined(GRAPHICS_DX9)
-      static LPDIRECT3DTEXTURE9 texture = NULL;
-      IDirect3DDevice9_CreateTexture(data->d3ddev, data->buffer->w, data->buffer->h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &texture, NULL);
-      if (texture)
-        break;
-      IDirect3DDevice9_Clear(data->d3ddev, 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(255, 0, 0), 1.0f, 0);
+      if (data->buffer_lw != data->buffer->w || data->buffer_lh != data->buffer->h) {
+        if (data->d3dsurface)
+          IDirect3DSurface9_Release(data->d3dsurface);
+        IDirect3DDevice9_CreateOffscreenPlainSurface(data->d3ddev, data->buffer->w, data->buffer->h, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &data->d3dsurface, NULL);
+        data->buffer_lw = data->buffer->w;
+        data->buffer_lh = data->buffer->h;
+      }
+      static D3DLOCKED_RECT rect;
+      IDirect3DSurface9_LockRect(data->d3dsurface, &rect, NULL, D3DLOCK_DONOTWAIT);
+      BYTE* dst = (BYTE*)rect.pBits;
+      int* src = data->buffer->buf;
+      for (int i = 0; i < data->buffer->h; ++i) {
+        memcpy(dst, src, data->buffer->w * 4);
+        src += data->buffer->w;
+        dst += rect.Pitch;
+      }
+      IDirect3DSurface9_UnlockRect(data->d3dsurface);
+
+      IDirect3DDevice9_Clear(data->d3ddev, 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
       IDirect3DDevice9_BeginScene(data->d3ddev);
+      static LPDIRECT3DSURFACE9 back_buffer = NULL;
+      IDirect3DDevice9_GetBackBuffer(data->d3ddev, 0, 0, D3DBACKBUFFER_TYPE_MONO, &back_buffer);
+      IDirect3DDevice9_StretchRect(data->d3ddev, data->d3dsurface, NULL, back_buffer, NULL, D3DTEXF_POINT);
       IDirect3DDevice9_EndScene(data->d3ddev);
       IDirect3DDevice9_Present(data->d3ddev, NULL, NULL, NULL, NULL);
+      IDirect3DSurface9_Release(back_buffer);
 #else
       data->bmpinfo->bmiHeader.biWidth = data->buffer->w;
       data->bmpinfo->bmiHeader.biHeight = -data->buffer->h;
@@ -3685,6 +3704,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 #if defined(GRAPHICS_OPENGL)
       glViewport(0, 0, window->w, window->h);
       PostMessage(hWnd, WM_PAINT, 0, 0);
+#elif defined(GRAPHICS_DX9)
 #endif
       break;
     case WM_SETFOCUS:
@@ -3969,11 +3989,13 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
 
   D3DPRESENT_PARAMETERS d3dpp;
   ZeroMemory(&d3dpp, sizeof(d3dpp));
-  d3dpp.Windowed = TRUE;
+  d3dpp.Windowed = flags & FULLSCREEN;
   d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
   d3dpp.hDeviceWindow = win_data->hwnd;
-
   IDirect3D9_CreateDevice(win_data->d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, win_data->hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &win_data->d3ddev);
+
+  win_data->buffer_lh = win_data->buffer_lw = 0;
+  win_data->d3dsurface = NULL;
 #else
   size_t bmpinfo_sz = sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3;
   if (!(win_data->bmpinfo = GRAPHICS_MALLOC(bmpinfo_sz))) {
