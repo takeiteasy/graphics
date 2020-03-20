@@ -3435,6 +3435,18 @@ void release() {
 #define COBJMACROS 1
 #include <d3d9.h>
 #pragma comment (lib, "d3d9.lib")
+#elif defined(GRAPHICS_DX11)
+#pragma message WARN("TODO: DX11 support not yet implemented")
+#define COBJMACROS 1
+#include <d3d11.h>
+#include <d3dx11.h>
+#include <d3dx10.h>
+#include <dxgi.h>
+#pragma comment (lib, "d3d11.lib")
+#pragma comment (lib, "d3dx11.lib")
+#pragma comment (lib, "d3dx10.lib")
+#pragma comment (lib, "dxguid.lib")
+#pragma comment (lib, "dxgi.lib")
 #endif
 
 struct win32_window_t {
@@ -3451,6 +3463,12 @@ struct win32_window_t {
   LPDIRECT3DDEVICE9 d3ddev;
   LPDIRECT3DSURFACE9 d3dsurface;
   int buffer_lw, buffer_lh;
+#elif defined(GRAPHICS_DX11)
+  IDXGISwapChain* dx_swapchain;
+  ID3D11Device* dx_dev;
+  ID3D11DeviceContext* dx_ctx;
+  ID3D11RenderTargetView* dx_backbuffer;
+  D3D11_VIEWPORT dx_viewport;
 #else
   BITMAPINFO* bmpinfo;
 #endif
@@ -3474,6 +3492,12 @@ static void close_win32_window(struct win32_window_t* window, bool force) {
 #elif defined(GRAPHICS_DX9)
   IDirect3DDevice9_Release(window->d3ddev);
   IDirect3D9_Release(window->d3d);
+  IDirect3DSurface9_Release(window->d3dsurface);
+#elif defined(GRAPHICS_DX11)
+  IDXGISwapChain_Release(window->dx_swapchain);
+  IDXGIDevice_Release(window->dx_dev);
+  ID3D11DeviceContext_Release(window->dx_ctx);
+  ID3D10RenderTargetView_Release(window->dx_backbuffer);
 #else
   GRAPHICS_FREE(window->bmpinfo);
 #endif
@@ -3581,6 +3605,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       IDirect3DDevice9_EndScene(data->d3ddev);
       IDirect3DDevice9_Present(data->d3ddev, NULL, NULL, NULL, NULL);
       IDirect3DSurface9_Release(back_buffer);
+#elif defined(GRAPHICS_DX11)
+      static const float clear[] = { 0.f, 0.f, 0.f, 1.f };
+      ID3D11DeviceContext_ClearRenderTargetView(data->dx_ctx, data->dx_backbuffer, clear);
+      IDXGISwapChain_Present(data->dx_swapchain, 0, 0);
 #else
       data->bmpinfo->bmiHeader.biWidth = data->buffer->w;
       data->bmpinfo->bmiHeader.biHeight = -data->buffer->h;
@@ -3911,7 +3939,8 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
       rect.bottom += (rect.bottom - height);
       rect.top = 0;
     }
-  } else if (!(flags & FULLSCREEN)) {
+  }
+  else if (!(flags & FULLSCREEN)) {
     rect.right = w;
     rect.bottom = h;
 
@@ -3989,13 +4018,44 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
 
   D3DPRESENT_PARAMETERS d3dpp;
   ZeroMemory(&d3dpp, sizeof(d3dpp));
-  d3dpp.Windowed = flags & FULLSCREEN;
+  d3dpp.Windowed = flags & ~FULLSCREEN;
   d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
   d3dpp.hDeviceWindow = win_data->hwnd;
-  IDirect3D9_CreateDevice(win_data->d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, win_data->hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &win_data->d3ddev);
+  if (FAILED(IDirect3D9_CreateDevice(win_data->d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, win_data->hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &win_data->d3ddev))) {
+    return false;
+  }
 
   win_data->buffer_lh = win_data->buffer_lw = 0;
   win_data->d3dsurface = NULL;
+#elif defined(GRAPHICS_DX11)
+  DXGI_SWAP_CHAIN_DESC scd;
+  ZeroMemory(&scd, sizeof(DXGI_SWAP_CHAIN_DESC));
+  scd.BufferCount = 1;
+  scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+  scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+  scd.OutputWindow = win_data->hwnd;
+  scd.SampleDesc.Count = 4;
+  scd.Windowed = flags & ~FULLSCREEN;
+
+  if (FAILED(D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, NULL, NULL, NULL, D3D11_SDK_VERSION, &scd, &win_data->dx_swapchain, &win_data->dx_dev, NULL, &win_data->dx_ctx))) {
+    return false;
+  }
+
+  ID3D11Texture2D* tmp_backbuffer = NULL;
+  IDXGISwapChain_GetBuffer(win_data->dx_swapchain, 0, &IID_ID3D11Texture2D, (LPVOID*)&tmp_backbuffer);
+  ID3D11Device_CreateRenderTargetView(win_data->dx_dev, tmp_backbuffer, NULL, &win_data->dx_backbuffer);
+  ID3D11Texture2D_Release(tmp_backbuffer);
+
+  ID3D11DeviceContext_OMSetRenderTargets(win_data->dx_ctx, 1, win_data->dx_backbuffer, NULL);
+
+  RECT r = rect;
+  GetClientRect(win_data->hwnd, &r);
+  ZeroMemory(&win_data->dx_viewport, sizeof(D3D11_VIEWPORT));
+  win_data->dx_viewport.TopLeftX = 0;
+  win_data->dx_viewport.TopLeftY = 0;
+  win_data->dx_viewport.Width = r.right;
+  win_data->dx_viewport.Height = r.bottom;
+  ID3D11DeviceContext_RSSetViewports(win_data->dx_ctx, 1, &win_data->dx_viewport);
 #else
   size_t bmpinfo_sz = sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3;
   if (!(win_data->bmpinfo = GRAPHICS_MALLOC(bmpinfo_sz))) {
@@ -4223,6 +4283,7 @@ void cursor_set_pos(int x, int y) {
 
 void events() {
   static MSG msg;
+  ZeroMemory(&msg, sizeof(MSG));
   static struct window_node_t* window = NULL;
   window = windows;
   while (window) {
