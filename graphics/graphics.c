@@ -798,6 +798,9 @@ bool bmp(struct surface_t* s, const char* path) {
   BMP_GET(&info, data, sizeof(BMPINFOHEADER));
 
 #pragma message WARN("TODO: bmp() add support for OS/2 bitmaps")
+#pragma message WARN("TODO: bmp() add RLE support")
+#pragma message WARN("TODO: bmp() add BITFIELDS support")
+#pragma message WARN("TODO: bmp() add 1, 4 & 8 bpp support")
 
   unsigned char* color_map = NULL;
   int color_map_size = 0;
@@ -826,23 +829,31 @@ bool bmp(struct surface_t* s, const char* path) {
         case 1:
         case 4:
         case 8:
-#pragma message WARN("TODO: bmp() add 1, 4 & 8 bpp support")
           GRAPHICS_ERROR(UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
           surface_destroy(s);
           break;
         case 24: {
-          int pad = (info.width * 3) % 4 ? (info.width * 3) % 4 : 0;
+          int pad = (4 - (info.width * 3) % 4) % 4;
           for (int j = info.height; j; --j) {
             for (int i = 0; i < info.width; ++i) {
-              pset(s, i, j, RGB(data[off + 2], data[off + 1], data[off]));
+              pset(s, i, j, COL_RGB(data[off + 2], data[off + 1], data[off]));
               off += 3;
             }
             off += pad;
           }
           break;
         }
-        case 32:
+        case 32: {
+          int pad = (4 - (info.width * 3) % 4) % 4;
+          for (int j = info.height; j; --j) {
+            for (int i = 0; i < info.width; ++i) {
+              pset(s, i, j, COL_RGBA(data[off + 2], data[off + 1], data[off], 255 - data[off + 3]));
+              off += 4;
+            }
+            off += pad;
+          }
           break;
+        }
         default:
           GRAPHICS_ERROR(UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
           GRAPHICS_SAFE_FREE(color_map);
@@ -852,8 +863,8 @@ bool bmp(struct surface_t* s, const char* path) {
       break;
     case 1: // RLE8
     case 2: // RLE4
+    case 3: // BITFIELDS
     default:
-#pragma message WARN("TODO: bmp() add RLE support")
       GRAPHICS_ERROR(UNSUPPORTED_BMP, "bmp() failed. Unsupported compression: %d", info.compression);
       GRAPHICS_SAFE_FREE(color_map);
       surface_destroy(s);
@@ -2037,6 +2048,7 @@ void bdf_stringf(struct surface_t* s, struct bdf_t* f, int fg, int bg, const cha
 #endif // GRAPHICS_BDF
 
 #if !defined(GRAPHICS_NO_ALERTS)
+#pragma message WARN("TODO: Alerts/Dialogs need finishing");
 #if defined(GRAPHICS_OSX) && !defined(GRAPHICS_EXTERNAL_WINDOW)
 #include <AppKit/AppKit.h>
 
@@ -2148,6 +2160,22 @@ SKIP_FILTERS:
     [file_types release];
   return result;
 }
+#elif defined(GRAPHICS_WINDOWS) && !defined(GRAPHICS_EXTERNAL_WINDOW)
+bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
+  return false;
+}
+
+char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
+  return NULL;
+}
+#elif defined(GRAPHICS_LINUX) && !defined(GRAPHICS_EXTERNAL_WINDOW)
+bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
+  return false;
+}
+
+char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
+  return NULL;
+}
 #elif defined(GRAPHICS_EMCC)
 bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   unsigned char buffer[BUFSIZ];
@@ -2161,7 +2189,8 @@ bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
 char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
   return NULL;
 }
-#elif defined(GRAPHICS_WINDOWS)
+#else
+#pragma message WARN("Dialogs are unsupported on this platform");
 bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return false;
 }
@@ -2169,8 +2198,6 @@ bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
 char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
   return NULL;
 }
-#else
-#error Dialogs are unsupported on this platform
 #endif
 #endif // GRAPHICS_NO_ALERTS
 
@@ -3732,7 +3759,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 #if defined(GRAPHICS_OPENGL)
       glViewport(0, 0, window->w, window->h);
       PostMessage(hWnd, WM_PAINT, 0, 0);
-#elif defined(GRAPHICS_DX9)
 #endif
       break;
     case WM_SETFOCUS:

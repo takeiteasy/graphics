@@ -91,9 +91,9 @@ int main(int argc, const char* argv[]) {
 #elif defined(GRAPHICS_OSX)
   bmp(&img, "/Users/roryb/git/hal/old/test/resources/Uncompressed-24.bmp");
 #elif defined(GRAPHICS_WINDOWS)
-  bmp(&img, "C:\\Users\\Rory B. Bellows\\git\\graphics\\tests\\Uncompressed-24.bmp");
+  bmp(&img, "C:\\Users\\Rory B. Bellows\\git\\graphics\\tests\\bmp\\g\\rgb32.bmp");
 #endif
-  paste(&buf, &img, 10, 10);
+  paste(&buf, &img, 10, 30);
   
 #if !defined(GRAPHICS_NO_BDF)
   struct bdf_t font;
