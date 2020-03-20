@@ -4018,10 +4018,11 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
 
   D3DPRESENT_PARAMETERS d3dpp;
   ZeroMemory(&d3dpp, sizeof(d3dpp));
-  d3dpp.Windowed = flags & ~FULLSCREEN;
+  d3dpp.Windowed = TRUE;
   d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
   d3dpp.hDeviceWindow = win_data->hwnd;
   if (FAILED(IDirect3D9_CreateDevice(win_data->d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, win_data->hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &win_data->d3ddev))) {
+    windows_error(WIN_DX9_CREATION_FAILED, "IDirect3D9_CreateDevice() failed");
     return false;
   }
 
@@ -4038,6 +4039,7 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   scd.Windowed = flags & ~FULLSCREEN;
 
   if (FAILED(D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, NULL, NULL, NULL, D3D11_SDK_VERSION, &scd, &win_data->dx_swapchain, &win_data->dx_dev, NULL, &win_data->dx_ctx))) {
+    windows_error(WIN_DX9_CREATION_FAILED, "D3D11CreateDeviceAndSwapChain() failed");
     return false;
   }
 
