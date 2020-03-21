@@ -683,7 +683,7 @@ if ((x)) { \
    * @param ... Extension filters
    * @return Selected paths in dialog or NULL is cancelled
    */
-  HALDEF char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...);
+  HALDEF int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...);
 #endif
 
   /*!

@@ -8,7 +8,7 @@ static bool running = true;
 #define SW 575
 #define SH 500
 
-#if 1
+#if 0
 #define printf
 #endif
 
@@ -24,6 +24,16 @@ void on_error(GRAPHICS_ERROR_TYPE type, const char* msg, const char* file, const
 void on_keyboard(void* _, KEY_SYM sym, KEY_MOD mod, bool down) {
   if (sym == KB_KEY_ESCAPE)
     running = false;
+  if (sym == KB_KEY_SPACE) {
+    char** paths = NULL;
+    int n_paths = dialog(DIALOG_OPEN, &paths, "C:\\", NULL, false, 1, "bmp");
+    for (int i = 0; i < n_paths; ++i) {
+      printf("%s\n", paths[i]);
+      free(paths[i]);
+    }
+    if (paths)
+      free(paths);
+  }
   printf("keyboard: %d is %s\n", sym, (down ? "down" : "up"));
 }
 

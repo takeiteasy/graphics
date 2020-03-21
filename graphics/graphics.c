@@ -535,7 +535,7 @@ static inline oct_node_t* node_fold(oct_node_t* p) {
   return q;
 }
 
-void color_replace(oct_node_t* root, int* buf) {
+static void color_replace(oct_node_t* root, int* buf) {
   unsigned char i, bit;
   int c = *buf;
   int r = COL_R(c), g = COL_G(c), b = COL_B(c);
@@ -834,26 +834,16 @@ bool bmp(struct surface_t* s, const char* path) {
           break;
         case 24: {
           int pad = (4 - (info.width * 3) % 4) % 4;
-          for (int j = info.height; j; --j) {
-            for (int i = 0; i < info.width; ++i) {
+          for (int j = info.height; j; --j, off += pad)
+            for (int i = 0; i < info.width; ++i, off += 3)
               pset(s, i, j, COL_RGB(data[off + 2], data[off + 1], data[off]));
-              off += 3;
-            }
-            off += pad;
-          }
           break;
         }
-        case 32: {
-          int pad = (4 - (info.width * 3) % 4) % 4;
-          for (int j = info.height; j; --j) {
-            for (int i = 0; i < info.width; ++i) {
+        case 32:
+          for (int j = info.height; j; --j)
+            for (int i = 0; i < info.width; ++i, off += 4)
               pset(s, i, j, COL_RGBA(data[off + 2], data[off + 1], data[off], 255 - data[off + 3]));
-              off += 4;
-            }
-            off += pad;
-          }
           break;
-        }
         default:
           GRAPHICS_ERROR(UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
           GRAPHICS_SAFE_FREE(color_map);
@@ -864,6 +854,7 @@ bool bmp(struct surface_t* s, const char* path) {
     case 1: // RLE8
     case 2: // RLE4
     case 3: // BITFIELDS
+    case 6: // BI_ALHPABITFIELDS
     default:
       GRAPHICS_ERROR(UNSUPPORTED_BMP, "bmp() failed. Unsupported compression: %d", info.compression);
       GRAPHICS_SAFE_FREE(color_map);
@@ -2161,12 +2152,189 @@ SKIP_FILTERS:
   return result;
 }
 #elif defined(GRAPHICS_WINDOWS) && !defined(GRAPHICS_EXTERNAL_WINDOW)
-bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
-  return false;
+#include <commdlg.h>
+#include <shlobj.h>
+#define snwprintf _snwprintf
+
+static char* wchar_to_utf8(const wchar_t* s) {
+  if (!s)
+    return NULL;
+  int len = WideCharToMultiByte(CP_UTF8, 0, s, -1, NULL, 0, NULL, NULL);
+  if (!len)
+    return NULL;
+  char* r = GRAPHICS_MALLOC(len);
+  WideCharToMultiByte(CP_UTF8, 0, s, -1, r, len, NULL, NULL);
+  return r;
 }
 
-char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
-  return NULL;
+static wchar_t* utf8_to_wchar(const char* s) {
+  if (!s)
+    return NULL;
+  int len = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
+  if (!len)
+    return NULL;
+  wchar_t* r = GRAPHICS_MALLOC(len * sizeof(wchar_t));
+  MultiByteToWideChar(CP_UTF8, 0, s, -1, r, len);
+  return r;
+}
+
+bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
+  unsigned int type = MB_APPLMODAL;
+  switch (lvl) {
+    default:
+    case ALERT_INFO:
+      type |= MB_ICONINFORMATION;
+      break;
+    case ALERT_WARNING:
+      type |= MB_ICONWARNING;
+      break;
+    case ALERT_ERROR:
+      type |= MB_ICONERROR;
+      break;
+  }
+
+  switch (btns) {
+    default:
+    case ALERT_OK:
+      type |= MB_OK;
+      break;
+    case ALERT_OK_CANCEL:
+      type |= MB_OKCANCEL;
+      break;
+    case ALERT_YES_NO:
+      type |= MB_YESNO;
+      break;
+  }
+
+  char buffer[BUFSIZ];
+  va_list args;
+  va_start(args, fmt);
+  vsprintf(buffer, fmt, args);
+  va_end(args);
+  wchar_t* buffer_w = utf8_to_wchar(buffer);
+  int result = MessageBoxW(GetActiveWindow(), buffer_w, L"", type);
+  GRAPHICS_FREE(buffer_w);
+
+  return (result == IDOK || result == IDYES);
+}
+
+static INT CALLBACK browseCallbackProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
+  if (Msg == BFFM_INITIALIZED)
+    SendMessageW(hWnd, BFFM_SETSELECTION, 1, lParam);
+  return 0;
+}
+
+int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
+  int res = 0;
+  if (action == DIALOG_OPEN_DIR) {
+    wchar_t szDir[MAX_PATH] = L"";
+
+    BROWSEINFOW bInfo;
+    ZeroMemory(&bInfo, sizeof(bInfo));
+    bInfo.hwndOwner = GetActiveWindow();
+    // bInfo.pszDisplayName = szDir;
+    bInfo.ulFlags = BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
+    bInfo.iImage = -1;
+
+    wchar_t* pathW = NULL;
+    if (path) {
+      pathW = utf8_to_wchar(path);
+      bInfo.lpfn = browseCallbackProc;
+      bInfo.lParam = (LPARAM)pathW;
+    }
+
+    PIDLIST_ABSOLUTE lpItem = SHBrowseForFolderW(&bInfo);
+    if (lpItem) {
+      SHGetPathFromIDListW(lpItem, szDir);
+      *result = GRAPHICS_MALLOC(sizeof(char*));
+      *result[0] = wchar_to_utf8(szDir);
+      res = 1;
+    } else
+      result = NULL;
+    GRAPHICS_SAFE_FREE(pathW);
+  } else {
+    OPENFILENAMEW ofn;
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.hwndOwner = GetActiveWindow();
+    ofn.lStructSize = sizeof(ofn);
+    ofn.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+    if (allow_multiple)
+      ofn.Flags |= OFN_ALLOWMULTISELECT;
+
+    wchar_t strFile[MAX_PATH] = L"";
+    if (fname) {
+      wchar_t* filenameW = utf8_to_wchar(fname);
+      snwprintf(strFile, MAX_PATH, L"%s", filenameW);
+      GRAPHICS_FREE(filenameW);
+    }
+    ofn.lpstrFile = strFile;
+    ofn.nMaxFile = MAX_PATH;
+
+    wchar_t *strInitialDir = NULL, *strFilter = NULL;
+    if (path)
+      strInitialDir = utf8_to_wchar(path);
+    ofn.lpstrInitialDir = strInitialDir;
+
+    if (nfilters && action == DIALOG_OPEN) {
+      char fbuf[4096];
+      int fbuf_len = 0;
+      fbuf_len += snprintf(fbuf, sizeof(fbuf), "Allowed Files");
+      fbuf[fbuf_len++] = '\0';
+      va_list args;
+      va_start(args, nfilters);
+      for (int i = 0; i < nfilters; ++i) {
+        fbuf_len += snprintf(fbuf + fbuf_len, sizeof(fbuf) - fbuf_len, "*.%s", va_arg(args, const char*));
+        if (i != nfilters - 1)
+          fbuf[fbuf_len++] = ';';
+        fbuf[fbuf_len++] = '\0';
+      }
+      va_end(args);
+      fbuf[fbuf_len++] = '\0';
+
+      strFilter = GRAPHICS_MALLOC(fbuf_len * sizeof(wchar_t));
+      MultiByteToWideChar(CP_UTF8, 0, fbuf, fbuf_len, strFilter, fbuf_len);
+      ofn.lpstrFilter = strFilter;
+      ofn.nFilterIndex = 1;
+    }
+
+    if (action == DIALOG_OPEN ? GetOpenFileNameW(&ofn) : GetSaveFileNameW(&ofn)) {
+      if (allow_multiple) {
+        wchar_t* str = ofn.lpstrFile;
+        strInitialDir = utf8_to_wchar(path);
+        char* dir = wchar_to_utf8(str);
+        size_t dir_ln = strlen(dir) + 1;
+        str += dir_ln;
+        while (*str) {
+          res++;
+          str += wcslen(str) + 1;
+        }
+        if (res) {
+          char** ret = GRAPHICS_MALLOC(sizeof(char*) * res);
+          str = ofn.lpstrFile + dir_ln;
+          int n = 0;
+          while (*str) {
+            wchar_t* fname = str;
+            size_t fname_ln = wcslen(fname) + 1;
+            char* fname_out = GRAPHICS_MALLOC(sizeof(char) * fname_ln + dir_ln + 1);
+            sprintf(fname_out, "%s\\%s", dir, wchar_to_utf8(fname));
+            ret[n++] = fname_out;
+            str += fname_ln;
+          }
+          *result = ret;
+        }
+        else
+          result = NULL;
+      } else {
+        *result = GRAPHICS_MALLOC(sizeof(char*));
+        *result[0] = wchar_to_utf8(ofn.lpstrFile);
+        res = 1;
+      }
+    } else
+      result = NULL;
+    GRAPHICS_SAFE_FREE(strInitialDir);
+    GRAPHICS_SAFE_FREE(strFilter);
+  }
+  return res;
 }
 #elif defined(GRAPHICS_LINUX) && !defined(GRAPHICS_EXTERNAL_WINDOW)
 bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
@@ -2187,6 +2355,7 @@ bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
 }
 
 char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
+#pragma message WARN("File Dialogs are unsupported on emscripten");
   return NULL;
 }
 #else
