@@ -2107,23 +2107,20 @@ char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool all
       panel = [NSSavePanel savePanel];
       break;
     default:
-      // Error message here
       return NULL;
   }
   [panel setLevel:CGShieldingWindowLevel()];
 
-  if (!nfilters || action == DIALOG_SAVE)
-    goto SKIP_FILTERS;
+  if (nfilters && action != DIALOG_SAVE) {
+    file_types = [[NSMutableArray alloc] init];
+    va_list args;
+    va_start(args, nfilters);
+    for (int i = 0; i < nfilters; ++i)
+      [file_types addObject : @(va_arg(args, const char*))];
+    va_end(args);
+    [panel setAllowedFileTypes:file_types];
+  }
 
-  file_types = [[NSMutableArray alloc] init];
-  va_list args;
-  va_start(args, nfilters);
-  for (int i = 0; i < nfilters; ++i)
-    [file_types addObject:@(va_arg(args, const char*))];
-  va_end(args);
-  [panel setAllowedFileTypes:file_types];
-
-SKIP_FILTERS:
   if (path)
     panel.directoryURL = [NSURL fileURLWithPath:@(path)];
 
@@ -2249,8 +2246,7 @@ int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* f
       *result = GRAPHICS_MALLOC(sizeof(char*));
       *result[0] = wchar_to_utf8(szDir);
       res = 1;
-    } else
-      result = NULL;
+    }
     GRAPHICS_SAFE_FREE(pathW);
   } else {
     OPENFILENAMEW ofn;
@@ -2297,46 +2293,48 @@ int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* f
       ofn.nFilterIndex = 1;
     }
 
-    if (action == DIALOG_OPEN ? GetOpenFileNameW(&ofn) : GetSaveFileNameW(&ofn)) {
-      if (allow_multiple) {
-        wchar_t* str = ofn.lpstrFile;
-        strInitialDir = utf8_to_wchar(path);
-        char* dir = wchar_to_utf8(str);
-        size_t dir_ln = strlen(dir) + 1;
-        str += dir_ln;
-        while (*str) {
-          res++;
-          str += wcslen(str) + 1;
-        }
-        if (res) {
-          char** ret = GRAPHICS_MALLOC(sizeof(char*) * res);
-          str = ofn.lpstrFile + dir_ln;
-          int n = 0;
-          while (*str) {
-            wchar_t* fname = str;
-            size_t fname_ln = wcslen(fname) + 1;
-            char* fname_out = GRAPHICS_MALLOC(sizeof(char) * fname_ln + dir_ln + 1);
-            sprintf(fname_out, "%s\\%s", dir, wchar_to_utf8(fname));
-            ret[n++] = fname_out;
-            str += fname_ln;
-          }
-          *result = ret;
-        }
-        else
-          result = NULL;
-      } else {
-        *result = GRAPHICS_MALLOC(sizeof(char*));
-        *result[0] = wchar_to_utf8(ofn.lpstrFile);
-        res = 1;
+    if (!(action == DIALOG_OPEN ? GetOpenFileNameW(&ofn) : GetSaveFileNameW(&ofn)))
+      goto EARLY_EXIT;
+
+    if (allow_multiple) {
+      wchar_t* str = ofn.lpstrFile;
+      strInitialDir = utf8_to_wchar(path);
+      char* dir = wchar_to_utf8(str);
+      size_t dir_ln = strlen(dir) + 1;
+      str += dir_ln;
+      while (*str) {
+        res++;
+        str += wcslen(str) + 1;
       }
-    } else
-      result = NULL;
+      if (!res)
+        goto EARLY_EXIT;
+
+      char** ret = GRAPHICS_MALLOC(sizeof(char*) * res);
+      str = ofn.lpstrFile + dir_ln;
+      int n = 0;
+      while (*str) {
+        wchar_t* fname = str;
+        size_t fname_ln = wcslen(fname) + 1;
+        char* fname_out = GRAPHICS_MALLOC(sizeof(char) * fname_ln + dir_ln + 1);
+        sprintf(fname_out, "%s\\%s", dir, wchar_to_utf8(fname));
+        ret[n++] = fname_out;
+        str += fname_ln;
+      }
+      *result = ret;
+    } else {
+      *result = GRAPHICS_MALLOC(sizeof(char*));
+      *result[0] = wchar_to_utf8(ofn.lpstrFile);
+      res = 1;
+    }
+
+EARLY_EXIT:
     GRAPHICS_SAFE_FREE(strInitialDir);
     GRAPHICS_SAFE_FREE(strFilter);
   }
   return res;
 }
 #elif defined(GRAPHICS_LINUX) && !defined(GRAPHICS_EXTERNAL_WINDOW)
+#if defined(GRAPHICS_HAS_GTK)
 bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return false;
 }
@@ -2344,6 +2342,16 @@ bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
 char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
   return NULL;
 }
+#else
+#pragma message WARN("Dialogs are only supported for GTK on Linux");
+bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
+  return false;
+}
+
+char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
+  return NULL;
+}
+#endif
 #elif defined(GRAPHICS_EMCC)
 bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   unsigned char buffer[BUFSIZ];
