@@ -2042,10 +2042,14 @@ void bdf_stringf(struct surface_t* s, struct bdf_t* f, int fg, int bg, const cha
 #if defined(GRAPHICS_OSX) && !defined(GRAPHICS_EXTERNAL_WINDOW)
 #include <AppKit/AppKit.h>
 
-#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_12
+#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_13
 #define NSAlertStyleInformational NSInformationalAlertStyle
 #define NSAlertStyleWarning NSWarningAlertStyle
 #define NSAlertStyleCritical NSCriticalAlertStyle
+#endif
+
+#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_10
+#define NSModalResponseOK NSOKButton
 #endif
 
 bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
@@ -3713,8 +3717,8 @@ struct win32_window_t {
   struct surface_t* buffer;
 };
 
-static void close_win32_window(struct win32_window_t* window, bool force) {
-  if (window->closed || !force)
+static void close_win32_window(struct win32_window_t* window) {
+  if (window->closed)
     return;
   if (window->cursor_locked)
     ClipCursor(NULL);
@@ -3774,12 +3778,13 @@ static int translate_mod() {
 
 static int translate_key(WPARAM wParam, LPARAM lParam) {
   if (wParam == VK_CONTROL) {
-    MSG next;
-    DWORD time;
+    static MSG next;
+    static DWORD time;
 
     if (lParam & 0x01000000)
       return KB_KEY_RIGHT_CONTROL;
 
+    ZeroMemory(&next, sizeof(MSG));
     time = GetMessageTime();
     if (PeekMessageW(&next, NULL, 0, 0, PM_NOREMOVE))
       if (next.message == WM_KEYDOWN || next.message == WM_SYSKEYDOWN || next.message == WM_KEYUP || next.message == WM_SYSKEYUP)
@@ -3800,7 +3805,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
   static struct window_t* window = NULL;
   window = (struct window_t*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
   if (!window || !window->window)
-    goto DEFAULT_PROC;
+    return DefWindowProc(hWnd, message, wParam, lParam);
   data = (struct win32_window_t*)window->window;
   
   switch (message) {
@@ -3854,6 +3859,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       if (active_window && active_window->closed_callback)
         active_window->closed_callback(active_window->parent);
       data->closed = true;
+      close_win32_window(data);
       break;
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
@@ -3865,7 +3871,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       kb_action = !((lParam >> 31) & 1);
 
       if (kb_key == KB_KEY_UNKNOWN)
-        goto DEFAULT_PROC;
+        break;
       if (!kb_action && wParam == VK_SHIFT) {
         CBCALL(keyboard_callback, KB_KEY_LEFT_SHIFT, translate_mod(), kb_action);
       } else if (wParam == VK_SNAPSHOT) {
@@ -3980,10 +3986,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       active_window = NULL;
       break;
     default:
-      goto DEFAULT_PROC;
+      break;
   }
-  return FALSE;
-DEFAULT_PROC:
   return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
@@ -4396,7 +4400,7 @@ void screen_size(struct window_t* s, int* w, int* h) {
 
 void window_destroy(struct window_t* s) {
   struct win32_window_t* win = (struct win32_window_t*)s->window;
-  close_win32_window(win, false);
+  close_win32_window(win);
   GRAPHICS_SAFE_FREE(win);
   s->window = NULL;
 }
@@ -4533,20 +4537,9 @@ void cursor_set_pos(int x, int y) {
 void events() {
   static MSG msg;
   ZeroMemory(&msg, sizeof(MSG));
-  static struct window_node_t* window = NULL;
-  window = windows;
-  while (window) {
-    if (PeekMessage(&msg, window->data->hwnd, 0, 0, PM_REMOVE)) {
-      TranslateMessage(&msg);
-      DispatchMessage(&msg);
-    }
-    if (window->data->closed) {
-      close_win32_window(window->data, true);
-      struct window_node_t* next = window->next;
-      windows = window_pop(windows, window->data);
-      window = next;
-    } else
-      window = window->next;
+  if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
   }
 }
 
@@ -4565,7 +4558,7 @@ void release() {
   struct window_node_t *tmp = NULL, *cursor = windows;
   while (cursor) {
     tmp = cursor->next;
-    close_win32_window(tmp->data, false);
+    close_win32_window(tmp->data);
     GRAPHICS_SAFE_FREE(cursor->data);
     GRAPHICS_SAFE_FREE(cursor);
     cursor = tmp;
