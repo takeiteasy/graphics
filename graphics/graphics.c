@@ -4405,6 +4405,21 @@ bool closed(struct window_t* s) {
   return ((struct win32_window_t*)s->window)->closed;
 }
 
+bool closed_va(int n, ...) {
+  va_list args;
+  va_start(args, n);
+  bool ret = true;
+  for (int i = 0; i < n; ++i) {
+    struct window_t* w = va_arg(args, struct window_t*);
+    if (!((struct win32_window_t*)w->window)->closed) {
+      ret = false;
+      break;
+    }
+  }
+  va_end(args);
+  return ret;
+}
+
 void cursor_lock(struct window_t* s, bool locked) {
   struct win32_window_t* win = (struct win32_window_t*)s->window;
   if (!s || !locked) {

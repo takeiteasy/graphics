@@ -108,6 +108,7 @@ int main(int argc, const char* argv[]) {
   fill(&buf2, BLUE);
 #endif
 
+#if 0
   struct surface_t test_icon;
   #define TEST_SIZE 32
   surface(&test_icon, TEST_SIZE, TEST_SIZE);
@@ -121,6 +122,7 @@ int main(int argc, const char* argv[]) {
   cursor_icon_custom(&win, &test_cursor);
   surface_destroy(&test_icon);
   surface_destroy(&test_cursor);
+#endif
 
   struct surface_t img;
 #if defined(GRAPHICS_EMCC)
