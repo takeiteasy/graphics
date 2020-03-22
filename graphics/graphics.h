@@ -487,6 +487,13 @@ if ((x)) { \
    */
   HALDEF bool bmp(struct surface_t* s, const char* path);
 
+  /*!
+   * @discussion Save surface to BMP file
+   * @params s Surface object to save
+   * @param path Path to save BMP file to
+   * @return Boolean of success
+   */
+  HALDEF bool save_bmp(struct surface_t* s, const char* path);
 #if !defined(GRAPHICS_NO_TEXT)
   /*!
    * @discussion Draw a character from ASCII value using default in-built font
@@ -859,6 +866,14 @@ if ((x)) { \
   X(resize, (void*, int, int)) \
   X(closed, (void*))
   
+  /*!
+   * @typedef window_t
+   * @brief An object to hold window data
+   * @constant w Width of window
+   * @constant h Height of window
+   * @constant window Pointer to internet platform specific window data
+   * @parent parent Pointer to userdata for callbacks
+   */
   struct window_t {
     int id, w, h;
 
@@ -892,8 +907,6 @@ if ((x)) { \
   XMAP_SCREEN_CB
 #undef X
 
-#define DEFAULT 0
-
     /*!
      * @typedef CURSOR_TYPE
      * @brief A list of default cursor icons
@@ -913,16 +926,12 @@ if ((x)) { \
       CURSOR_HAND       // Hand
     } CURSOR_TYPE;
 
-#define SHOWN true
-#define HIDDEN false
-#define LOCKED true
-#define UNLOCKED false
-
   /*!
    * @typedef WINDOW_FLAGS
    * @brief A list of window flag options
    */
   typedef enum {
+    NONE = 0,
     RESIZABLE = 0x01,
     FULLSCREEN = 0x02,
     FULLSCREEN_DESKTOP = 0x04,
@@ -990,6 +999,13 @@ if ((x)) { \
    * @return Boolean if window is open
    */
   HALDEF bool closed(struct window_t* s);
+  /*!
+   * @discussion Check if n windows are still open
+   * @param n Numbers of arguments
+   * @param ... Window objects
+   * @return Boolean if any window are still open
+   */
+  HALDEF bool closed_va(int n, ...);
 
   /*!
    * @discussion Lock or unlock cursor movement to active window

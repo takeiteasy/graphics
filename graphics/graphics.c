@@ -868,7 +868,7 @@ bool bmp(struct surface_t* s, const char* path) {
 
 bool save_bmp(struct surface_t* s, const char* path) {
   const int filesize = 54 + 3 * s->w * s->h;
-  unsigned char* img = GRAPHICS_MALLOC(3 * s->w * s->h);
+  unsigned char* img = GRAPHICS_MALLOC(sizeof(unsigned char) * 3 * s->w * s->h);
   if (!img) {
     GRAPHICS_ERROR(OUT_OF_MEMEORY, "malloc() failed");
     return false;
@@ -923,11 +923,12 @@ bool save_bmp(struct surface_t* s, const char* path) {
     return false;
   }
 
+  int padding = (4 - (s->w * 3) % 4) % 4;
   fwrite(header, 1, 14, fp);
   fwrite(info, 1, 40, fp);
   for(i = 0; i < s->h; ++i) {
     fwrite(img + (s->w * (s->h - i - 1) * 3), 3, s->w, fp);
-    fwrite(pad, 1, (4 - (s->w * 3) % 4) % 4,fp);
+    fwrite(pad, 1, padding, fp);
   }
 
   GRAPHICS_SAFE_FREE(img);
@@ -1637,7 +1638,7 @@ static inline int letter_index(int c) {
 
 void ascii(struct surface_t* s, unsigned char ch, int x, int y, int fg, int bg) {
   int c = letter_index((int)ch), i, j;
-  for (i = 0; i < 8; ++i) {
+  for (i = 0; i < 8; ++i)
     for (j = 0; j < 8; ++j) {
       if (font[c][i] & 1 << j) {
         blend(s, x + j, y + i, fg);
@@ -1647,7 +1648,6 @@ void ascii(struct surface_t* s, unsigned char ch, int x, int y, int fg, int bg) 
         blend(s, x + j, y + i, bg);
       }
     }
-  }
 }
 
 int character(struct surface_t* s, const char* ch, int x, int y, int fg, int bg) {
@@ -2039,7 +2039,6 @@ void bdf_stringf(struct surface_t* s, struct bdf_t* f, int fg, int bg, const cha
 #endif // GRAPHICS_BDF
 
 #if !defined(GRAPHICS_NO_ALERTS)
-#pragma message WARN("TODO: Alerts/Dialogs need finishing");
 #if defined(GRAPHICS_OSX) && !defined(GRAPHICS_EXTERNAL_WINDOW)
 #include <AppKit/AppKit.h>
 
@@ -2092,7 +2091,7 @@ bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return result;
 }
 
-char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
+int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
   NSSavePanel* panel = nil;
   NSOpenPanel* open_panel = nil;
   NSMutableArray* file_types = nil;
@@ -2107,7 +2106,7 @@ char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool all
       panel = [NSSavePanel savePanel];
       break;
     default:
-      return NULL;
+      return 0;
   }
   [panel setLevel:CGShieldingWindowLevel()];
 
@@ -2142,11 +2141,25 @@ char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool all
     case DIALOG_SAVE:
       break;
   }
-
-  char* result = ([panel runModal] == NSModalResponseOK ? strdup(action == DIALOG_SAVE || !allow_multiple ? [[[panel URL] path] UTF8String] : [[[open_panel URLs] componentsJoinedByString:@","] UTF8String]) : NULL);
+  
+  if ([panel runModal] != NSModalResponseOK)
+    return 0;
   if (file_types)
     [file_types release];
-  return result;
+  
+  if (action == DIALOG_SAVE || !allow_multiple) {
+    *result = GRAPHICS_MALLOC(sizeof(char*));
+    *result[0] = strdup([[[panel URL] path] UTF8String]);
+    return 1;
+  } else {
+    int n = (int)[[open_panel URLs] count];
+    char** tmp = GRAPHICS_MALLOC(sizeof(char*) * n);
+    [[open_panel URLs] enumerateObjectsUsingBlock:^(NSURL *url, NSUInteger idx, BOOL *stop) {
+      tmp[idx] = strdup([[url path] UTF8String]);
+    }];
+    *result = tmp;
+    return n;
+  }
 }
 #elif defined(GRAPHICS_WINDOWS) && !defined(GRAPHICS_EXTERNAL_WINDOW)
 #include <commdlg.h>
@@ -2858,6 +2871,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 @property BOOL mouse_in_window;
 @property (nonatomic, weak) NSCursor* cursor;
 @property BOOL custom_cursor;
+@property BOOL cursor_vis;
 @end
 
 @implementation AppView
@@ -2882,11 +2896,13 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 @synthesize mouse_in_window = _mouse_in_window;
 @synthesize cursor = _cursor;
 @synthesize custom_cursor = _custom_cursor;
+@synthesize cursor_vis = _cursor_vis;
 
 - (id)initWithFrame:(NSRect)frameRect {
   _mouse_in_window = NO;
   _cursor = [NSCursor arrowCursor];
   _custom_cursor = NO;
+  _cursor_vis = YES;
   
 #if defined(GRAPHICS_OPENGL)
   NSOpenGLPixelFormatAttribute pixelFormatAttributes[] = {
@@ -3078,12 +3094,20 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   [_cursor retain];
 }
 
+- (void)setCursorVisibility:(BOOL)visibility {
+  _cursor_vis = visibility;
+}
+
 - (void)mouseEntered:(NSEvent*)event {
   _mouse_in_window = YES;
+  if (!_cursor_vis)
+    [NSCursor hide];
 }
 
 - (void)mouseExited:(NSEvent*)event {
   _mouse_in_window = NO;
+  if (!_cursor_vis)
+    [NSCursor unhide];
 }
 
 - (void)mouseMoved:(NSEvent*)event {
@@ -3515,15 +3539,27 @@ bool closed(struct window_t* s) {
   return (bool)[(AppDelegate*)s->window closed];
 }
 
+bool closed_va(int n, ...) {
+  va_list args;
+  va_start(args, n);
+  bool ret = true;
+  for (int i = 0; i < n; ++i) {
+    struct window_t* w = va_arg(args, struct window_t*);
+    if (![(AppDelegate*)w->window closed]) {
+      ret = false;
+      break;
+    }
+  }
+  va_end(args);
+  return ret;
+}
+
 void cursor_lock(struct window_t* s, bool locked) {
   return;
 }
 
 void cursor_visible(struct window_t* s, bool shown) {
-  if (shown)
-    [NSCursor unhide];
-  else
-    [NSCursor hide];
+  [[(AppDelegate*)s->window view] setCursorVisibility:shown];
 }
 
 void cursor_icon(struct window_t* s, CURSOR_TYPE t) {
@@ -3599,12 +3635,7 @@ void events() {
         if (!active_window)
           break;
         app = (AppDelegate*)active_window->window;
-        if (cursor_locked) {
-          static NSScreen* s = nil;
-          s = [NSScreen mainScreen];
-          cursor_set_pos((int)[s frame].size.width / 2, (int)[s frame].size.height / 2);
-        }
-        if ([[app view] mouse_in_window] || cursor_locked)
+        if ([[app view] mouse_in_window])
           CBCALL(mouse_move_callback, [e locationInWindow].x, (int)([[app view] frame].size.height - roundf([e locationInWindow].y)), [e deltaX], [e deltaY]);
         break;
       }
@@ -3627,9 +3658,7 @@ void flush(struct window_t* s, struct surface_t* b) {
 }
 
 void release() {
-  NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-  // Felt cute might delete later
-  [pool drain];
+  [NSApp terminate:nil];
 }
 #elif defined(GRAPHICS_WINDOWS) && !defined(GRAPHICS_EXTERNAL_WINDOW)
 #define NOMINMAX

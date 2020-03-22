@@ -295,13 +295,15 @@ function disclosure_triangle(elt) {
 <dd></dd>
 <dt><tt><a href="index.html#//apple_ref/c/func/closed" target="_top">closed</a></tt></dt>
 <dd></dd>
+<dt><tt><a href="index.html#//apple_ref/c/func/closed_va" target="_top">closed_va</a></tt></dt>
+<dd></dd>
 <dt><tt><a href="index.html#//apple_ref/c/func/cls" target="_top">cls</a></tt></dt>
 <dd></dd>
 <dt><tt><a href="index.html#//apple_ref/c/func/copy" target="_top">copy</a></tt></dt>
 <dd></dd>
-<dt><tt><a href="index.html#//apple_ref/c/func/cursor_custom_icon" target="_top">cursor_custom_icon</a></tt></dt>
-<dd></dd>
 <dt><tt><a href="index.html#//apple_ref/c/func/cursor_icon" target="_top">cursor_icon</a></tt></dt>
+<dd></dd>
+<dt><tt><a href="index.html#//apple_ref/c/func/cursor_icon_custom" target="_top">cursor_icon_custom</a></tt></dt>
 <dd></dd>
 <dt><tt><a href="index.html#//apple_ref/c/func/cursor_lock" target="_top">cursor_lock</a></tt></dt>
 <dd></dd>
@@ -346,6 +348,8 @@ function disclosure_triangle(elt) {
 <dt><tt><a href="index.html#//apple_ref/c/func/resize" target="_top">resize</a></tt></dt>
 <dd></dd>
 <dt><tt><a href="index.html#//apple_ref/c/func/rotate" target="_top">rotate</a></tt></dt>
+<dd></dd>
+<dt><tt><a href="index.html#//apple_ref/c/func/save_bmp" target="_top">save_bmp</a></tt></dt>
 <dd></dd>
 <dt><tt><a href="index.html#//apple_ref/c/func/screen_size" target="_top">screen_size</a></tt></dt>
 <dd></dd>
@@ -863,6 +867,30 @@ function disclosure_triangle(elt) {
 <!-- end return value --></p><h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Discussion</font></h5>
 <!-- begin discussion --><!-- headerDoc=discussion;uid=//apple_ref/c/func/closed;name=start --><p>Check if a window is still open
 <!-- headerDoc=discussion;uid=//apple_ref/c/func/closed;name=end --><!-- end discussion -->
+<hr class="betweenAPIEntries"><!-- headerDoc=func;  uid=//apple_ref/c/func/closed_va;   name=closed_va -->
+<a name="//apple_ref/c/func/closed_va"></a>
+<h3><a name="closed_va">closed_va</a></h3>
+<hr class="afterName"><div class='declaration_indent'>
+<pre><!-- headerDoc=declaration;uid=//apple_ref/c/func/closed_va;name=start --><!-- a logicalPath="//apple_ref/c/cl/HALDEF //apple_ref/c/tdef/HALDEF //apple_ref/c/tag/HALDEF //apple_ref/c/struct/HALDEF //apple_ref/c/intf/HALDEF //apple_ref/doc/anysymbol/HALDEF" machineGenerated="true" --><span class="type">HALDEF</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/cl/bool //apple_ref/c/tdef/bool //apple_ref/c/tag/bool //apple_ref/c/struct/bool //apple_ref/c/intf/bool //apple_ref/doc/anysymbol/bool" machineGenerated="true" --><span class="type">bool</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/instm/closed_va //apple_ref/c/clm/closed_va //apple_ref/c/intfcm/closed_va //apple_ref/c/intfm/closed_va //apple_ref/c/func/closed_va //apple_ref/c/ftmplt/closed_va //apple_ref/c/defn/closed_va //apple_ref/c/macro/closed_va //apple_ref/doc/anysymbol/closed_va" machineGenerated="true" --><span class="function">closed_va</span><!-- /a -->(
+    <!-- a logicalPath="//apple_ref/c/cl/int //apple_ref/c/tdef/int //apple_ref/c/tag/int //apple_ref/c/struct/int //apple_ref/c/intf/int //apple_ref/doc/anysymbol/int" machineGenerated="true" --><span class="type">int</span><!-- /a --> <span class="param">n</span>,
+    ...);  <!-- headerDoc=declaration;uid=//apple_ref/c/func/closed_va;name=end --></pre>
+</div>
+<h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Parameters</font></h5>
+<div class='param_indent'>
+<dl>
+<dt><!-- headerDoc=functionparam;  uid=//apple_ref/doc/functionparam/closed_va/n;   name=n -->
+<a name="//apple_ref/doc/functionparam/closed_va/n"></a>
+<code>n</code></dt><dd><p>Numbers of arguments</dd>
+<dt><!-- headerDoc=functionparam;  uid=//apple_ref/doc/functionparam/closed_va/...;   name=... -->
+<a name="//apple_ref/doc/functionparam/closed_va/..."></a>
+<code>...</code></dt><dd><p>Window objects</dd>
+</dl>
+</div>
+<h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Return Value</font></h5><p><!-- begin return value --><p>Boolean if any window are still open
+
+<!-- end return value --></p><h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Discussion</font></h5>
+<!-- begin discussion --><!-- headerDoc=discussion;uid=//apple_ref/c/func/closed_va;name=start --><p>Check if n windows are still open
+<!-- headerDoc=discussion;uid=//apple_ref/c/func/closed_va;name=end --><!-- end discussion -->
 <hr class="betweenAPIEntries"><!-- headerDoc=func;  uid=//apple_ref/c/func/cls;   name=cls -->
 <a name="//apple_ref/c/func/cls"></a>
 <h3><a name="cls">cls</a></h3>
@@ -905,28 +933,6 @@ function disclosure_triangle(elt) {
 <!-- end return value --></p><h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Discussion</font></h5>
 <!-- begin discussion --><!-- headerDoc=discussion;uid=//apple_ref/c/func/copy;name=start --><p>Create a copy of a surface
 <!-- headerDoc=discussion;uid=//apple_ref/c/func/copy;name=end --><!-- end discussion -->
-<hr class="betweenAPIEntries"><!-- headerDoc=func;  uid=//apple_ref/c/func/cursor_custom_icon;   name=cursor_custom_icon -->
-<a name="//apple_ref/c/func/cursor_custom_icon"></a>
-<h3><a name="cursor_custom_icon">cursor_custom_icon</a></h3>
-<hr class="afterName"><div class='declaration_indent'>
-<pre><!-- headerDoc=declaration;uid=//apple_ref/c/func/cursor_custom_icon;name=start --><!-- a logicalPath="//apple_ref/c/cl/HALDEF //apple_ref/c/tdef/HALDEF //apple_ref/c/tag/HALDEF //apple_ref/c/struct/HALDEF //apple_ref/c/intf/HALDEF //apple_ref/doc/anysymbol/HALDEF" machineGenerated="true" --><span class="type">HALDEF</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/cl/void //apple_ref/c/tdef/void //apple_ref/c/tag/void //apple_ref/c/struct/void //apple_ref/c/intf/void //apple_ref/doc/anysymbol/void" machineGenerated="true" --><span class="type">void</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/instm/cursor_custom_icon //apple_ref/c/clm/cursor_custom_icon //apple_ref/c/intfcm/cursor_custom_icon //apple_ref/c/intfm/cursor_custom_icon //apple_ref/c/func/cursor_custom_icon //apple_ref/c/ftmplt/cursor_custom_icon //apple_ref/c/defn/cursor_custom_icon //apple_ref/c/macro/cursor_custom_icon //apple_ref/doc/anysymbol/cursor_custom_icon" machineGenerated="true" --><span class="function">cursor_custom_icon</span><!-- /a -->(
-    <span class="keyword">struct</span> <!-- a logicalPath="//apple_ref/c/cl/window_t //apple_ref/c/tdef/window_t //apple_ref/c/tag/window_t //apple_ref/c/struct/window_t //apple_ref/c/intf/window_t //apple_ref/doc/anysymbol/window_t" machineGenerated="true" --><span class="type">window_t</span><!-- /a --> <span class="type">*</span><span class="param">s</span>,
-    <span class="keyword">struct</span> <!-- a logicalPath="//apple_ref/c/cl/surface_t //apple_ref/c/tdef/surface_t //apple_ref/c/tag/surface_t //apple_ref/c/struct/surface_t //apple_ref/c/intf/surface_t //apple_ref/doc/anysymbol/surface_t" machineGenerated="true" --><span class="type">surface_t</span><!-- /a --> <span class="type">*</span><span class="param">b</span>);  <!-- headerDoc=declaration;uid=//apple_ref/c/func/cursor_custom_icon;name=end --></pre>
-</div>
-<h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Parameters</font></h5>
-<div class='param_indent'>
-<dl>
-<dt><!-- headerDoc=functionparam;  uid=//apple_ref/doc/functionparam/cursor_custom_icon/s;   name=s -->
-<a name="//apple_ref/doc/functionparam/cursor_custom_icon/s"></a>
-<code>s</code></dt><dd><p>Window object</dd>
-<dt><!-- headerDoc=functionparam;  uid=//apple_ref/doc/functionparam/cursor_custom_icon/b;   name=b -->
-<a name="//apple_ref/doc/functionparam/cursor_custom_icon/b"></a>
-<code>b</code></dt><dd><p>Surface object</dd>
-</dl>
-</div>
-<h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Discussion</font></h5>
-<!-- begin discussion --><!-- headerDoc=discussion;uid=//apple_ref/c/func/cursor_custom_icon;name=start --><p>Change cursor icon to icon from surface object
-<!-- headerDoc=discussion;uid=//apple_ref/c/func/cursor_custom_icon;name=end --><!-- end discussion -->
 <hr class="betweenAPIEntries"><!-- headerDoc=func;  uid=//apple_ref/c/func/cursor_icon;   name=cursor_icon -->
 <a name="//apple_ref/c/func/cursor_icon"></a>
 <h3><a name="cursor_icon">cursor_icon</a></h3>
@@ -949,11 +955,34 @@ function disclosure_triangle(elt) {
 <h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Discussion</font></h5>
 <!-- begin discussion --><!-- headerDoc=discussion;uid=//apple_ref/c/func/cursor_icon;name=start --><p>Change cursor icon to system icon
 <!-- headerDoc=discussion;uid=//apple_ref/c/func/cursor_icon;name=end --><!-- end discussion -->
+<hr class="betweenAPIEntries"><!-- headerDoc=func;  uid=//apple_ref/c/func/cursor_icon_custom;   name=cursor_icon_custom -->
+<a name="//apple_ref/c/func/cursor_icon_custom"></a>
+<h3><a name="cursor_icon_custom">cursor_icon_custom</a></h3>
+<hr class="afterName"><div class='declaration_indent'>
+<pre><!-- headerDoc=declaration;uid=//apple_ref/c/func/cursor_icon_custom;name=start --><!-- a logicalPath="//apple_ref/c/cl/HALDEF //apple_ref/c/tdef/HALDEF //apple_ref/c/tag/HALDEF //apple_ref/c/struct/HALDEF //apple_ref/c/intf/HALDEF //apple_ref/doc/anysymbol/HALDEF" machineGenerated="true" --><span class="type">HALDEF</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/cl/void //apple_ref/c/tdef/void //apple_ref/c/tag/void //apple_ref/c/struct/void //apple_ref/c/intf/void //apple_ref/doc/anysymbol/void" machineGenerated="true" --><span class="type">void</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/instm/cursor_icon_custom //apple_ref/c/clm/cursor_icon_custom //apple_ref/c/intfcm/cursor_icon_custom //apple_ref/c/intfm/cursor_icon_custom //apple_ref/c/func/cursor_icon_custom //apple_ref/c/ftmplt/cursor_icon_custom //apple_ref/c/defn/cursor_icon_custom //apple_ref/c/macro/cursor_icon_custom //apple_ref/doc/anysymbol/cursor_icon_custom" machineGenerated="true" --><span class="function">cursor_icon_custom</span><!-- /a -->(
+    <span class="keyword">struct</span> <!-- a logicalPath="//apple_ref/c/cl/window_t //apple_ref/c/tdef/window_t //apple_ref/c/tag/window_t //apple_ref/c/struct/window_t //apple_ref/c/intf/window_t //apple_ref/doc/anysymbol/window_t" machineGenerated="true" --><span class="type">window_t</span><!-- /a --> <span class="type">*</span><span class="param">s</span>,
+    <span class="keyword">struct</span> <!-- a logicalPath="//apple_ref/c/cl/surface_t //apple_ref/c/tdef/surface_t //apple_ref/c/tag/surface_t //apple_ref/c/struct/surface_t //apple_ref/c/intf/surface_t //apple_ref/doc/anysymbol/surface_t" machineGenerated="true" --><span class="type">surface_t</span><!-- /a --> <span class="type">*</span><span class="param">b</span>);  <!-- headerDoc=declaration;uid=//apple_ref/c/func/cursor_icon_custom;name=end --></pre>
+</div>
+<h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Parameters</font></h5>
+<div class='param_indent'>
+<dl>
+<dt><!-- headerDoc=functionparam;  uid=//apple_ref/doc/functionparam/cursor_icon_custom/s;   name=s -->
+<a name="//apple_ref/doc/functionparam/cursor_icon_custom/s"></a>
+<code>s</code></dt><dd><p>Window object</dd>
+<dt><!-- headerDoc=functionparam;  uid=//apple_ref/doc/functionparam/cursor_icon_custom/b;   name=b -->
+<a name="//apple_ref/doc/functionparam/cursor_icon_custom/b"></a>
+<code>b</code></dt><dd><p>Surface object</dd>
+</dl>
+</div>
+<h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Discussion</font></h5>
+<!-- begin discussion --><!-- headerDoc=discussion;uid=//apple_ref/c/func/cursor_icon_custom;name=start --><p>Change cursor icon to icon from surface object
+<!-- headerDoc=discussion;uid=//apple_ref/c/func/cursor_icon_custom;name=end --><!-- end discussion -->
 <hr class="betweenAPIEntries"><!-- headerDoc=func;  uid=//apple_ref/c/func/cursor_lock;   name=cursor_lock -->
 <a name="//apple_ref/c/func/cursor_lock"></a>
 <h3><a name="cursor_lock">cursor_lock</a></h3>
 <hr class="afterName"><div class='declaration_indent'>
 <pre><!-- headerDoc=declaration;uid=//apple_ref/c/func/cursor_lock;name=start --><!-- a logicalPath="//apple_ref/c/cl/HALDEF //apple_ref/c/tdef/HALDEF //apple_ref/c/tag/HALDEF //apple_ref/c/struct/HALDEF //apple_ref/c/intf/HALDEF //apple_ref/doc/anysymbol/HALDEF" machineGenerated="true" --><span class="type">HALDEF</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/cl/void //apple_ref/c/tdef/void //apple_ref/c/tag/void //apple_ref/c/struct/void //apple_ref/c/intf/void //apple_ref/doc/anysymbol/void" machineGenerated="true" --><span class="type">void</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/instm/cursor_lock //apple_ref/c/clm/cursor_lock //apple_ref/c/intfcm/cursor_lock //apple_ref/c/intfm/cursor_lock //apple_ref/c/func/cursor_lock //apple_ref/c/ftmplt/cursor_lock //apple_ref/c/defn/cursor_lock //apple_ref/c/macro/cursor_lock //apple_ref/doc/anysymbol/cursor_lock" machineGenerated="true" --><span class="function">cursor_lock</span><!-- /a -->(
+    <span class="keyword">struct</span> <!-- a logicalPath="//apple_ref/c/cl/window_t //apple_ref/c/tdef/window_t //apple_ref/c/tag/window_t //apple_ref/c/struct/window_t //apple_ref/c/intf/window_t //apple_ref/doc/anysymbol/window_t" machineGenerated="true" --><span class="type">window_t</span><!-- /a --> <span class="type">*</span><span class="param">s</span>,
     <!-- a logicalPath="//apple_ref/c/cl/bool //apple_ref/c/tdef/bool //apple_ref/c/tag/bool //apple_ref/c/struct/bool //apple_ref/c/intf/bool //apple_ref/doc/anysymbol/bool" machineGenerated="true" --><span class="type">bool</span><!-- /a --> <span class="param">locked</span>);  <!-- headerDoc=declaration;uid=//apple_ref/c/func/cursor_lock;name=end --></pre>
 </div>
 <h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Parameters</font></h5>
@@ -1016,6 +1045,7 @@ function disclosure_triangle(elt) {
 <h3><a name="cursor_visible">cursor_visible</a></h3>
 <hr class="afterName"><div class='declaration_indent'>
 <pre><!-- headerDoc=declaration;uid=//apple_ref/c/func/cursor_visible;name=start --><!-- a logicalPath="//apple_ref/c/cl/HALDEF //apple_ref/c/tdef/HALDEF //apple_ref/c/tag/HALDEF //apple_ref/c/struct/HALDEF //apple_ref/c/intf/HALDEF //apple_ref/doc/anysymbol/HALDEF" machineGenerated="true" --><span class="type">HALDEF</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/cl/void //apple_ref/c/tdef/void //apple_ref/c/tag/void //apple_ref/c/struct/void //apple_ref/c/intf/void //apple_ref/doc/anysymbol/void" machineGenerated="true" --><span class="type">void</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/instm/cursor_visible //apple_ref/c/clm/cursor_visible //apple_ref/c/intfcm/cursor_visible //apple_ref/c/intfm/cursor_visible //apple_ref/c/func/cursor_visible //apple_ref/c/ftmplt/cursor_visible //apple_ref/c/defn/cursor_visible //apple_ref/c/macro/cursor_visible //apple_ref/doc/anysymbol/cursor_visible" machineGenerated="true" --><span class="function">cursor_visible</span><!-- /a -->(
+    <span class="keyword">struct</span> <!-- a logicalPath="//apple_ref/c/cl/window_t //apple_ref/c/tdef/window_t //apple_ref/c/tag/window_t //apple_ref/c/struct/window_t //apple_ref/c/intf/window_t //apple_ref/doc/anysymbol/window_t" machineGenerated="true" --><span class="type">window_t</span><!-- /a --> <span class="type">*</span><span class="param">s</span>,
     <!-- a logicalPath="//apple_ref/c/cl/bool //apple_ref/c/tdef/bool //apple_ref/c/tag/bool //apple_ref/c/struct/bool //apple_ref/c/intf/bool //apple_ref/doc/anysymbol/bool" machineGenerated="true" --><span class="type">bool</span><!-- /a --> <span class="param">show</span>);  <!-- headerDoc=declaration;uid=//apple_ref/c/func/cursor_visible;name=end --></pre>
 </div>
 <h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Parameters</font></h5>
@@ -1033,8 +1063,9 @@ function disclosure_triangle(elt) {
 <a name="//apple_ref/c/func/dialog"></a>
 <h3><a name="dialog">dialog</a></h3>
 <hr class="afterName"><div class='declaration_indent'>
-<pre><!-- headerDoc=declaration;uid=//apple_ref/c/func/dialog;name=start --><!-- a logicalPath="//apple_ref/c/cl/HALDEF //apple_ref/c/tdef/HALDEF //apple_ref/c/tag/HALDEF //apple_ref/c/struct/HALDEF //apple_ref/c/intf/HALDEF //apple_ref/doc/anysymbol/HALDEF" machineGenerated="true" --><span class="type">HALDEF</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/cl/char //apple_ref/c/tdef/char //apple_ref/c/tag/char //apple_ref/c/struct/char //apple_ref/c/intf/char //apple_ref/doc/anysymbol/char" machineGenerated="true" --><span class="type">char</span><!-- /a --><span class="type">*</span> <!-- a logicalPath="//apple_ref/c/instm/dialog //apple_ref/c/clm/dialog //apple_ref/c/intfcm/dialog //apple_ref/c/intfm/dialog //apple_ref/c/func/dialog //apple_ref/c/ftmplt/dialog //apple_ref/c/defn/dialog //apple_ref/c/macro/dialog //apple_ref/doc/anysymbol/dialog" machineGenerated="true" --><span class="function">dialog</span><!-- /a -->(
+<pre><!-- headerDoc=declaration;uid=//apple_ref/c/func/dialog;name=start --><!-- a logicalPath="//apple_ref/c/cl/HALDEF //apple_ref/c/tdef/HALDEF //apple_ref/c/tag/HALDEF //apple_ref/c/struct/HALDEF //apple_ref/c/intf/HALDEF //apple_ref/doc/anysymbol/HALDEF" machineGenerated="true" --><span class="type">HALDEF</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/cl/int //apple_ref/c/tdef/int //apple_ref/c/tag/int //apple_ref/c/struct/int //apple_ref/c/intf/int //apple_ref/doc/anysymbol/int" machineGenerated="true" --><span class="type">int</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/instm/dialog //apple_ref/c/clm/dialog //apple_ref/c/intfcm/dialog //apple_ref/c/intfm/dialog //apple_ref/c/func/dialog //apple_ref/c/ftmplt/dialog //apple_ref/c/defn/dialog //apple_ref/c/macro/dialog //apple_ref/doc/anysymbol/dialog" machineGenerated="true" --><span class="function">dialog</span><!-- /a -->(
     <!-- a logicalPath="//apple_ref/c/cl/DIALOG_ACTION //apple_ref/c/tdef/DIALOG_ACTION //apple_ref/c/tag/DIALOG_ACTION //apple_ref/c/struct/DIALOG_ACTION //apple_ref/c/intf/DIALOG_ACTION //apple_ref/doc/anysymbol/DIALOG_ACTION" machineGenerated="true" --><span class="type">DIALOG_ACTION</span><!-- /a --> <span class="param">action</span>,
+    <!-- a logicalPath="//apple_ref/c/cl/char //apple_ref/c/tdef/char //apple_ref/c/tag/char //apple_ref/c/struct/char //apple_ref/c/intf/char //apple_ref/doc/anysymbol/char" machineGenerated="true" --><span class="type">char</span><!-- /a --> <span class="type">*</span><span class="type">*</span><span class="type">*</span><span class="param">result</span>,
     <span class="keyword">const</span> <!-- a logicalPath="//apple_ref/c/cl/char //apple_ref/c/tdef/char //apple_ref/c/tag/char //apple_ref/c/struct/char //apple_ref/c/intf/char //apple_ref/doc/anysymbol/char" machineGenerated="true" --><span class="type">char</span><!-- /a --> <span class="type">*</span><span class="param">path</span>,
     <span class="keyword">const</span> <!-- a logicalPath="//apple_ref/c/cl/char //apple_ref/c/tdef/char //apple_ref/c/tag/char //apple_ref/c/struct/char //apple_ref/c/intf/char //apple_ref/doc/anysymbol/char" machineGenerated="true" --><span class="type">char</span><!-- /a --> <span class="type">*</span><span class="param">fname</span>,
     <!-- a logicalPath="//apple_ref/c/cl/bool //apple_ref/c/tdef/bool //apple_ref/c/tag/bool //apple_ref/c/struct/bool //apple_ref/c/intf/bool //apple_ref/doc/anysymbol/bool" machineGenerated="true" --><span class="type">bool</span><!-- /a --> <span class="param">allow_multiple</span>,
@@ -1527,6 +1558,28 @@ function disclosure_triangle(elt) {
 <!-- end return value --></p><h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Discussion</font></h5>
 <!-- begin discussion --><!-- headerDoc=discussion;uid=//apple_ref/c/func/rotate;name=start --><p>Rotate a surface by a given degree
 <!-- headerDoc=discussion;uid=//apple_ref/c/func/rotate;name=end --><!-- end discussion -->
+<hr class="betweenAPIEntries"><!-- headerDoc=func;  uid=//apple_ref/c/func/save_bmp;   name=save_bmp -->
+<a name="//apple_ref/c/func/save_bmp"></a>
+<h3><a name="save_bmp">save_bmp</a></h3>
+<hr class="afterName"><div class='declaration_indent'>
+<pre><!-- headerDoc=declaration;uid=//apple_ref/c/func/save_bmp;name=start --><!-- a logicalPath="//apple_ref/c/cl/HALDEF //apple_ref/c/tdef/HALDEF //apple_ref/c/tag/HALDEF //apple_ref/c/struct/HALDEF //apple_ref/c/intf/HALDEF //apple_ref/doc/anysymbol/HALDEF" machineGenerated="true" --><span class="type">HALDEF</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/cl/bool //apple_ref/c/tdef/bool //apple_ref/c/tag/bool //apple_ref/c/struct/bool //apple_ref/c/intf/bool //apple_ref/doc/anysymbol/bool" machineGenerated="true" --><span class="type">bool</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/instm/save_bmp //apple_ref/c/clm/save_bmp //apple_ref/c/intfcm/save_bmp //apple_ref/c/intfm/save_bmp //apple_ref/c/func/save_bmp //apple_ref/c/ftmplt/save_bmp //apple_ref/c/defn/save_bmp //apple_ref/c/macro/save_bmp //apple_ref/doc/anysymbol/save_bmp" machineGenerated="true" --><span class="function">save_bmp</span><!-- /a -->(
+    <span class="keyword">struct</span> <!-- a logicalPath="//apple_ref/c/cl/surface_t //apple_ref/c/tdef/surface_t //apple_ref/c/tag/surface_t //apple_ref/c/struct/surface_t //apple_ref/c/intf/surface_t //apple_ref/doc/anysymbol/surface_t" machineGenerated="true" --><span class="type">surface_t</span><!-- /a --> <span class="type">*</span><span class="param">s</span>,
+    <span class="keyword">const</span> <!-- a logicalPath="//apple_ref/c/cl/char //apple_ref/c/tdef/char //apple_ref/c/tag/char //apple_ref/c/struct/char //apple_ref/c/intf/char //apple_ref/doc/anysymbol/char" machineGenerated="true" --><span class="type">char</span><!-- /a --> <span class="type">*</span><span class="param">path</span>);  <!-- headerDoc=declaration;uid=//apple_ref/c/func/save_bmp;name=end --></pre>
+</div>
+<h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Parameters</font></h5>
+<div class='param_indent'>
+<dl>
+<dt><!-- headerDoc=functionparam;  uid=//apple_ref/doc/functionparam/save_bmp/path;   name=path -->
+<a name="//apple_ref/doc/functionparam/save_bmp/path"></a>
+<code>path</code></dt><dd><p>Path to save BMP file to</dd>
+</dl>
+</div>
+<h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Return Value</font></h5><p><!-- begin return value --><p>Boolean of success
+
+<!-- end return value --></p><h5 class="tight"><font face="Lucida Grande,Helvetica,Arial">Discussion</font></h5>
+<!-- begin discussion --><!-- headerDoc=discussion;uid=//apple_ref/c/func/save_bmp;name=start --><p>Save surface to BMP file
+@params s Surface object to save
+<!-- headerDoc=discussion;uid=//apple_ref/c/func/save_bmp;name=end --><!-- end discussion -->
 <hr class="betweenAPIEntries"><!-- headerDoc=func;  uid=//apple_ref/c/func/screen_size;   name=screen_size -->
 <a name="//apple_ref/c/func/screen_size"></a>
 <h3><a name="screen_size">screen_size</a></h3>
@@ -2720,6 +2773,8 @@ function disclosure_triangle(elt) {
     <!-- a logicalPath="//apple_ref/c/econst/WIN_GL_PF_ERROR //apple_ref/c/data/WIN_GL_PF_ERROR //apple_ref/c/clconst/WIN_GL_PF_ERROR " machineGenerated="true" --><span class="var">WIN_GL_PF_ERROR</span><!-- /a -->, 
     <!-- a logicalPath="//apple_ref/c/econst/WIN_WINDOW_CREATION_FAILED //apple_ref/c/data/WIN_WINDOW_CREATION_FAILED //apple_ref/c/clconst/WIN_WINDOW_CREATION_FAILED " machineGenerated="true" --><span class="var">WIN_WINDOW_CREATION_FAILED</span><!-- /a -->, 
     <!-- a logicalPath="//apple_ref/c/econst/WIN_FULLSCREEN_FAILED //apple_ref/c/data/WIN_FULLSCREEN_FAILED //apple_ref/c/clconst/WIN_FULLSCREEN_FAILED " machineGenerated="true" --><span class="var">WIN_FULLSCREEN_FAILED</span><!-- /a -->, 
+    <!-- a logicalPath="//apple_ref/c/econst/WIN_DX9_CREATION_FAILED //apple_ref/c/data/WIN_DX9_CREATION_FAILED //apple_ref/c/clconst/WIN_DX9_CREATION_FAILED " machineGenerated="true" --><span class="var">WIN_DX9_CREATION_FAILED</span><!-- /a -->, 
+    <!-- a logicalPath="//apple_ref/c/econst/WIN_DX11_CREATION_FAILED //apple_ref/c/data/WIN_DX11_CREATION_FAILED //apple_ref/c/clconst/WIN_DX11_CREATION_FAILED " machineGenerated="true" --><span class="var">WIN_DX11_CREATION_FAILED</span><!-- /a -->, 
     <!-- a logicalPath="//apple_ref/c/econst/NIX_CURSOR_PIXMAP_ERROR //apple_ref/c/data/NIX_CURSOR_PIXMAP_ERROR //apple_ref/c/clconst/NIX_CURSOR_PIXMAP_ERROR " machineGenerated="true" --><span class="var">NIX_CURSOR_PIXMAP_ERROR</span><!-- /a -->, 
     <!-- a logicalPath="//apple_ref/c/econst/NIX_OPEN_DISPLAY_FAILED //apple_ref/c/data/NIX_OPEN_DISPLAY_FAILED //apple_ref/c/clconst/NIX_OPEN_DISPLAY_FAILED " machineGenerated="true" --><span class="var">NIX_OPEN_DISPLAY_FAILED</span><!-- /a -->, 
     <!-- a logicalPath="//apple_ref/c/econst/NIX_GL_FB_ERROR //apple_ref/c/data/NIX_GL_FB_ERROR //apple_ref/c/clconst/NIX_GL_FB_ERROR " machineGenerated="true" --><span class="var">NIX_GL_FB_ERROR</span><!-- /a -->, 
@@ -2760,6 +2815,8 @@ function disclosure_triangle(elt) {
     <!-- a logicalPath="//apple_ref/c/econst/WIN_GL_PF_ERROR //apple_ref/c/data/WIN_GL_PF_ERROR //apple_ref/c/clconst/WIN_GL_PF_ERROR " machineGenerated="true" --><span class="var">WIN_GL_PF_ERROR</span><!-- /a -->, 
     <!-- a logicalPath="//apple_ref/c/econst/WIN_WINDOW_CREATION_FAILED //apple_ref/c/data/WIN_WINDOW_CREATION_FAILED //apple_ref/c/clconst/WIN_WINDOW_CREATION_FAILED " machineGenerated="true" --><span class="var">WIN_WINDOW_CREATION_FAILED</span><!-- /a -->, 
     <!-- a logicalPath="//apple_ref/c/econst/WIN_FULLSCREEN_FAILED //apple_ref/c/data/WIN_FULLSCREEN_FAILED //apple_ref/c/clconst/WIN_FULLSCREEN_FAILED " machineGenerated="true" --><span class="var">WIN_FULLSCREEN_FAILED</span><!-- /a -->, 
+    <!-- a logicalPath="//apple_ref/c/econst/WIN_DX9_CREATION_FAILED //apple_ref/c/data/WIN_DX9_CREATION_FAILED //apple_ref/c/clconst/WIN_DX9_CREATION_FAILED " machineGenerated="true" --><span class="var">WIN_DX9_CREATION_FAILED</span><!-- /a -->, 
+    <!-- a logicalPath="//apple_ref/c/econst/WIN_DX11_CREATION_FAILED //apple_ref/c/data/WIN_DX11_CREATION_FAILED //apple_ref/c/clconst/WIN_DX11_CREATION_FAILED " machineGenerated="true" --><span class="var">WIN_DX11_CREATION_FAILED</span><!-- /a -->, 
     <!-- a logicalPath="//apple_ref/c/econst/NIX_CURSOR_PIXMAP_ERROR //apple_ref/c/data/NIX_CURSOR_PIXMAP_ERROR //apple_ref/c/clconst/NIX_CURSOR_PIXMAP_ERROR " machineGenerated="true" --><span class="var">NIX_CURSOR_PIXMAP_ERROR</span><!-- /a -->, 
     <!-- a logicalPath="//apple_ref/c/econst/NIX_OPEN_DISPLAY_FAILED //apple_ref/c/data/NIX_OPEN_DISPLAY_FAILED //apple_ref/c/clconst/NIX_OPEN_DISPLAY_FAILED " machineGenerated="true" --><span class="var">NIX_OPEN_DISPLAY_FAILED</span><!-- /a -->, 
     <!-- a logicalPath="//apple_ref/c/econst/NIX_GL_FB_ERROR //apple_ref/c/data/NIX_GL_FB_ERROR //apple_ref/c/clconst/NIX_GL_FB_ERROR " machineGenerated="true" --><span class="var">NIX_GL_FB_ERROR</span><!-- /a -->, 
@@ -2940,6 +2997,7 @@ function disclosure_triangle(elt) {
 <!-- end abstract --><!-- headerDoc=abstract;uid=//apple_ref/c/tdef/WINDOW_FLAGS;name=end --></p>
 <div class='declaration_indent'>
 <pre><!-- headerDoc=declaration;uid=//apple_ref/c/tdef/WINDOW_FLAGS;name=start --><span class="keyword">typedef</span> <span class="keyword">enum</span> { 
+    <!-- a logicalPath="//apple_ref/c/econst/NONE //apple_ref/c/data/NONE //apple_ref/c/clconst/NONE " machineGenerated="true" --><span class="var">NONE</span><!-- /a --> = <span class="number">0</span>, 
     <!-- a logicalPath="//apple_ref/c/econst/RESIZABLE //apple_ref/c/data/RESIZABLE //apple_ref/c/clconst/RESIZABLE " machineGenerated="true" --><span class="var">RESIZABLE</span><!-- /a --> = <span class="number">0x01</span>, 
     <!-- a logicalPath="//apple_ref/c/econst/FULLSCREEN //apple_ref/c/data/FULLSCREEN //apple_ref/c/clconst/FULLSCREEN " machineGenerated="true" --><span class="var">FULLSCREEN</span><!-- /a --> = <span class="number">0x02</span>, 
     <!-- a logicalPath="//apple_ref/c/econst/FULLSCREEN_DESKTOP //apple_ref/c/data/FULLSCREEN_DESKTOP //apple_ref/c/clconst/FULLSCREEN_DESKTOP " machineGenerated="true" --><span class="var">FULLSCREEN_DESKTOP</span><!-- /a --> = <span class="number">0x04</span>, 
@@ -2959,6 +3017,9 @@ function disclosure_triangle(elt) {
 </dd>
 <dt><tt><a href="index.html#//apple_ref/c/tag/surface_t" target="_top">surface_t</a></tt></dt>
 <dd><p>An object to hold image data
+</dd>
+<dt><tt><a href="index.html#//apple_ref/c/tag/window_t" target="_top">window_t</a></tt></dt>
+<dd><p>An object to hold window data
 </dd>
 </dl>
 <hr class="betweenAPIEntries"><!-- headerDoc=tag;  uid=//apple_ref/c/tag/bdf_char_t;   name=bdf_char_t -->
@@ -3000,8 +3061,21 @@ function disclosure_triangle(elt) {
     <!-- a logicalPath="//apple_ref/c/cl/int //apple_ref/c/tdef/int //apple_ref/c/tag/int //apple_ref/c/struct/int //apple_ref/c/intf/int //apple_ref/doc/anysymbol/int" machineGenerated="true" --><span class="type">int</span><!-- /a --> <span class="type">*</span><!-- a logicalPath="//apple_ref/c/econst/buf //apple_ref/c/data/buf //apple_ref/c/clconst/buf " machineGenerated="true" --><span class="var">buf</span><!-- /a -->, <!-- a logicalPath="//apple_ref/c/econst/w //apple_ref/c/data/w //apple_ref/c/clconst/w " machineGenerated="true" --><span class="var">w</span><!-- /a -->, <!-- a logicalPath="//apple_ref/c/econst/h //apple_ref/c/data/h //apple_ref/c/clconst/h " machineGenerated="true" --><span class="var">h</span><!-- /a -->; 
 };  <!-- headerDoc=declaration;uid=//apple_ref/c/tag/surface_t;name=end --></pre>
 </div>
+<hr class="betweenAPIEntries"><!-- headerDoc=tag;  uid=//apple_ref/c/tag/window_t;   name=window_t -->
+<a name="//apple_ref/c/tag/window_t"></a>
+<h3><a name="window_t">window_t</a></h3>
+<hr class="afterName"><p><!-- headerDoc=abstract;uid=//apple_ref/c/tag/window_t;name=start --><!-- begin abstract --><p>An object to hold window data
+<!-- end abstract --><!-- headerDoc=abstract;uid=//apple_ref/c/tag/window_t;name=end --></p>
+<div class='declaration_indent'>
+<pre><!-- headerDoc=declaration;uid=//apple_ref/c/tag/window_t;name=start --><span class="keyword">struct</span> <!-- a logicalPath="//apple_ref/c/cl/window_t //apple_ref/c/tdef/window_t //apple_ref/c/tag/window_t //apple_ref/c/struct/window_t //apple_ref/c/intf/window_t //apple_ref/doc/anysymbol/window_t" machineGenerated="true" --><span class="type">window_t</span><!-- /a --> { 
+    <!-- a logicalPath="//apple_ref/c/cl/int //apple_ref/c/tdef/int //apple_ref/c/tag/int //apple_ref/c/struct/int //apple_ref/c/intf/int //apple_ref/doc/anysymbol/int" machineGenerated="true" --><span class="type">int</span><!-- /a --> <!-- a logicalPath="//apple_ref/c/econst/id //apple_ref/c/data/id //apple_ref/c/clconst/id " machineGenerated="true" --><span class="var">id</span><!-- /a -->, <!-- a logicalPath="//apple_ref/c/econst/w //apple_ref/c/data/w //apple_ref/c/clconst/w " machineGenerated="true" --><span class="var">w</span><!-- /a -->, <!-- a logicalPath="//apple_ref/c/econst/h //apple_ref/c/data/h //apple_ref/c/clconst/h " machineGenerated="true" --><span class="var">h</span><!-- /a -->;  
+    <span class="preprocessor">#define</span> <!-- a logicalPath="//apple_ref/c/cl/X //apple_ref/c/tdef/X //apple_ref/c/tag/X //apple_ref/c/struct/X //apple_ref/c/intf/X //apple_ref/c/econst/X //apple_ref/c/data/X //apple_ref/c/clconst/X //apple_ref/c/instm/X //apple_ref/c/clm/X //apple_ref/c/intfcm/X //apple_ref/c/intfm/X //apple_ref/c/func/X //apple_ref/c/ftmplt/X //apple_ref/c/defn/X //apple_ref/c/macro/X //apple_ref/doc/com/intfm/X //apple_ref/doc/anysymbol/X" machineGenerated="true" --><span class="preprocessor">X</span><!-- /a --><span class="preprocessor">(</span><!-- a logicalPath="//apple_ref/c/cl/a //apple_ref/c/tdef/a //apple_ref/c/tag/a //apple_ref/c/struct/a //apple_ref/c/intf/a //apple_ref/c/econst/a //apple_ref/c/data/a //apple_ref/c/clconst/a //apple_ref/c/instm/a //apple_ref/c/clm/a //apple_ref/c/intfcm/a //apple_ref/c/intfm/a //apple_ref/c/func/a //apple_ref/c/ftmplt/a //apple_ref/c/defn/a //apple_ref/c/macro/a //apple_ref/doc/com/intfm/a //apple_ref/doc/anysymbol/a" machineGenerated="true" --><span class="preprocessor">a</span><!-- /a --><span class="preprocessor">,</span> <!-- a logicalPath="//apple_ref/c/cl/b //apple_ref/c/tdef/b //apple_ref/c/tag/b //apple_ref/c/struct/b //apple_ref/c/intf/b //apple_ref/c/econst/b //apple_ref/c/data/b //apple_ref/c/clconst/b //apple_ref/c/instm/b //apple_ref/c/clm/b //apple_ref/c/intfcm/b //apple_ref/c/intfm/b //apple_ref/c/func/b //apple_ref/c/ftmplt/b //apple_ref/c/defn/b //apple_ref/c/macro/b //apple_ref/doc/com/intfm/b //apple_ref/doc/anysymbol/b" machineGenerated="true" --><span class="preprocessor">b</span><!-- /a --><span class="preprocessor">)</span> <!-- a logicalPath="//apple_ref/c/cl/void //apple_ref/c/tdef/void //apple_ref/c/tag/void //apple_ref/c/struct/void //apple_ref/c/intf/void //apple_ref/c/econst/void //apple_ref/c/data/void //apple_ref/c/clconst/void //apple_ref/c/instm/void //apple_ref/c/clm/void //apple_ref/c/intfcm/void //apple_ref/c/intfm/void //apple_ref/c/func/void //apple_ref/c/ftmplt/void //apple_ref/c/defn/void //apple_ref/c/macro/void //apple_ref/doc/com/intfm/void //apple_ref/doc/anysymbol/void" machineGenerated="true" --><span class="preprocessor">void</span><!-- /a --><span class="preprocessor">(</span><span class="preprocessor">*</span><!-- a logicalPath="//apple_ref/c/cl/a //apple_ref/c/tdef/a //apple_ref/c/tag/a //apple_ref/c/struct/a //apple_ref/c/intf/a //apple_ref/c/econst/a //apple_ref/c/data/a //apple_ref/c/clconst/a //apple_ref/c/instm/a //apple_ref/c/clm/a //apple_ref/c/intfcm/a //apple_ref/c/intfm/a //apple_ref/c/func/a //apple_ref/c/ftmplt/a //apple_ref/c/defn/a //apple_ref/c/macro/a //apple_ref/doc/com/intfm/a //apple_ref/doc/anysymbol/a" machineGenerated="true" --><span class="preprocessor">a</span><!-- /a --><span class="preprocessor">#</span><span class="preprocessor">#</span><!-- a logicalPath="//apple_ref/c/cl/_callback //apple_ref/c/tdef/_callback //apple_ref/c/tag/_callback //apple_ref/c/struct/_callback //apple_ref/c/intf/_callback //apple_ref/c/econst/_callback //apple_ref/c/data/_callback //apple_ref/c/clconst/_callback //apple_ref/c/instm/_callback //apple_ref/c/clm/_callback //apple_ref/c/intfcm/_callback //apple_ref/c/intfm/_callback //apple_ref/c/func/_callback //apple_ref/c/ftmplt/_callback //apple_ref/c/defn/_callback //apple_ref/c/macro/_callback //apple_ref/doc/com/intfm/_callback //apple_ref/doc/anysymbol/_callback" machineGenerated="true" --><span class="preprocessor">_callback</span><!-- /a --><span class="preprocessor">)</span><!-- a logicalPath="//apple_ref/c/cl/b //apple_ref/c/tdef/b //apple_ref/c/tag/b //apple_ref/c/struct/b //apple_ref/c/intf/b //apple_ref/c/econst/b //apple_ref/c/data/b //apple_ref/c/clconst/b //apple_ref/c/instm/b //apple_ref/c/clm/b //apple_ref/c/intfcm/b //apple_ref/c/intfm/b //apple_ref/c/func/b //apple_ref/c/ftmplt/b //apple_ref/c/defn/b //apple_ref/c/macro/b //apple_ref/doc/com/intfm/b //apple_ref/doc/anysymbol/b" machineGenerated="true" --><span class="preprocessor">b</span><!-- /a --><span class="preprocessor">;</span> 
+    <!-- a logicalPath="//apple_ref/c/cl/XMAP_SCREEN_CB //apple_ref/c/tdef/XMAP_SCREEN_CB //apple_ref/c/tag/XMAP_SCREEN_CB //apple_ref/c/struct/XMAP_SCREEN_CB //apple_ref/c/intf/XMAP_SCREEN_CB //apple_ref/doc/anysymbol/XMAP_SCREEN_CB" machineGenerated="true" --><span class="type">XMAP_SCREEN_CB</span><!-- /a -->  <span class="preprocessor">#undef</span> <!-- a logicalPath="//apple_ref/c/cl/X //apple_ref/c/tdef/X //apple_ref/c/tag/X //apple_ref/c/struct/X //apple_ref/c/intf/X //apple_ref/c/econst/X //apple_ref/c/data/X //apple_ref/c/clconst/X //apple_ref/c/instm/X //apple_ref/c/clm/X //apple_ref/c/intfcm/X //apple_ref/c/intfm/X //apple_ref/c/func/X //apple_ref/c/ftmplt/X //apple_ref/c/defn/X //apple_ref/c/macro/X //apple_ref/doc/com/intfm/X //apple_ref/doc/anysymbol/X" machineGenerated="true" --><span class="preprocessor">X</span><!-- /a -->  
+    <!-- a logicalPath="//apple_ref/c/cl/void //apple_ref/c/tdef/void //apple_ref/c/tag/void //apple_ref/c/struct/void //apple_ref/c/intf/void //apple_ref/doc/anysymbol/void" machineGenerated="true" --><span class="type">void</span><!-- /a --> <span class="type">*</span><!-- a logicalPath="//apple_ref/c/econst/window //apple_ref/c/data/window //apple_ref/c/clconst/window " machineGenerated="true" --><span class="var">window</span><!-- /a -->, <span class="type">*</span><!-- a logicalPath="//apple_ref/c/econst/parent //apple_ref/c/data/parent //apple_ref/c/clconst/parent " machineGenerated="true" --><span class="var">parent</span><!-- /a -->; 
+};  <!-- headerDoc=declaration;uid=//apple_ref/c/tag/window_t;name=end --></pre>
+</div>
 <p class="gapBeforeFooter">&nbsp;</p><hr class="afterFooter"><div class="hd_copyright_and_timestamp">
-<p class="hd_timestamp">Last Updated: Sunday, March 15, 2020
+<p class="hd_timestamp">Last Updated: Sunday, March 22, 2020
 </p></div>
 </td></tr></table>
 </body></html>
