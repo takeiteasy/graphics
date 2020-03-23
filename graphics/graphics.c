@@ -2356,8 +2356,8 @@ bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return false;
 }
 
-char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
-  return NULL;
+int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
+  return 0;
 }
 #else
 #pragma message WARN("Dialogs are only supported for GTK on Linux");
@@ -2365,8 +2365,8 @@ bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return false;
 }
 
-char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
-  return NULL;
+int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
+  return 0;
 }
 #endif
 #elif defined(GRAPHICS_EMCC)
@@ -2379,9 +2379,9 @@ bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return EM_ASM_INT({ confirm(UTF8ToString($0)); }, buffer);
 }
 
-char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
-#pragma message WARN("File Dialogs are unsupported on emscripten");
-  return NULL;
+int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
+#pragma message WARN("File Dialogs are unsupported on emscripten")
+  return 0;
 }
 #else
 #pragma message WARN("Dialogs are unsupported on this platform");
@@ -2389,8 +2389,8 @@ bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return false;
 }
 
-char* dialog(DIALOG_ACTION action, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
-  return NULL;
+int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
+  return 0;
 }
 #endif
 #endif // GRAPHICS_NO_ALERTS
@@ -4566,26 +4566,6 @@ void release() {
 }
 #elif defined(GRAPHICS_LINUX) && !defined(GRAPHICS_EXTERNAL_WINDOW)
 #pragma message WARN("TODO: Linux X11/Wayland support not yet implemented")
-#define X(a, b) void(*a##_cb)b,S
-void window_callbacks(XMAP_SCREEN_CB struct window_t* a) {
-#undef X
-  return;
-}
-
-#define X(a, b) \
-void ##a##_callback(struct window_t* window, void(*a##_cb)b) { \
-  return; \
-}
-XMAP_SCREEN_CB
-#undef X
-
-int window_id(struct window_t* a) {
-  return 0;
-}
-
-void window_size(struct window_t* a, int* b, int* c) {
-  return;
-}
 
 bool window(struct window_t* a, const char* b, int c, int d, short e) {
   return true;
@@ -4615,11 +4595,15 @@ bool closed(struct window_t* a) {
   return false;
 }
 
-void cursor_lock(bool a) {
+bool closed_va(int n, ...) {
+  return false;
+}
+
+void cursor_lock(struct window_t* w, bool a) {
   return;
 }
 
-void cursor_visible(bool a) {
+void cursor_visible(struct window_t* w, bool a) {
   return;
 }
 
@@ -5016,6 +5000,10 @@ bool closed(struct window_t* _) {
   return false;
 }
 
+bool closed_va(int n, ...) {
+  return false;
+}
+
 void cursor_lock(struct window_t* s, bool locked) {
 #pragma message WARN("cursor_lock() unsupported on emscripten")
   if (locked)
@@ -5178,28 +5166,6 @@ void release(void) {
   return;
 }
 #elif defined(GRAPHICS_SIXEL)
-#pragma message WARN("TODO: SIXEL not yet implemented")
-#define X(a, b) void(*a##_cb)b,
-void window_callbacks(XMAP_SCREEN_CB struct window_t* a) {
-#undef X
-  return;
-}
-
-#define X(a, b) \
-void ##a##_callback(struct window_t* window, void(*a##_cb)b) { \
-return; \
-}
-XMAP_SCREEN_CB
-#undef X
-
-int window_id(struct window_t* a) {
-  return 0;
-}
-
-void window_size(struct window_t* a, int* b, int* c) {
-  return;
-}
-
 bool window(struct window_t* a, const char* b, int c, int d, short e) {
   static bool window_already_open = false;
   if (window_already_open || active_window) {
@@ -5230,6 +5196,10 @@ void window_destroy(struct window_t* a) {
 }
 
 bool closed(struct window_t* a) {
+  return false;
+}
+
+bool closed_va(int n, ...) {
   return false;
 }
 
@@ -5272,27 +5242,6 @@ void release() {
 #error Unsupported operating system, sorry
 #endif
 #else // This is just a dummy
-#define X(a, b) void(*a##_cb)b,
-void window_callbacks(XMAP_SCREEN_CB struct window_t* a) {
-#undef X
-  return;
-}
-
-#define X(a, b) \
-void ##a##_callback(struct window_t* window, void(*a##_cb)b) { \
-  return; \
-}
-XMAP_SCREEN_CB
-#undef X
-
-int window_id(struct window_t* a) {
-  return 0;
-}
-
-void window_size(struct window_t* a, int* b, int* c) {
-  return;
-}
-
 bool window(struct window_t* a, const char* b, int c, int d, short e) {
   return true;
 }
@@ -5318,6 +5267,10 @@ void window_destroy(struct window_t* a) {
 }
 
 bool closed(struct window_t* a) {
+  return false;
+}
+
+bool closed_va(int n, ...) {
   return false;
 }
 

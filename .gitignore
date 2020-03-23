@@ -3,6 +3,7 @@ CMakeCache.txt
 CMakeFiles/
 .DS_Store
 build/
+build/test
 old/
 hal_h.h
 VERSION
