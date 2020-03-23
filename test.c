@@ -9,10 +9,10 @@ static bool running = true;
 #define SW 575
 #define SH 500
 
-#if 0
+#if 1
 #define printf
 #endif
-#if 1
+#if 0
 #define MULTI_WINDOW_TEST
 #endif
 
@@ -124,6 +124,8 @@ int main(int argc, const char* argv[]) {
   surface_destroy(&test_cursor);
 #endif
 
+cursor_visible(&win, false);
+
   struct surface_t img;
 #if defined(GRAPHICS_EMCC)
   bmp(&img, "old/test/resources/Uncompressed-24.bmp");
@@ -131,6 +133,8 @@ int main(int argc, const char* argv[]) {
   bmp(&img, "/Users/roryb/git/hal/tests/bmp/g/rgb32.bmp");
 #elif defined(GRAPHICS_WINDOWS)
   bmp(&img, "C:\\Users\\Rory B. Bellows\\git\\graphics\\tests\\bmp\\g\\rgb32.bmp");
+#elif defined(GRAPHICS_LINUX)
+  bmp(&img, "tests/bmp/g/rgb32.bmp");
 #endif
   paste(&buf, &img, 10, 30);
   
@@ -142,6 +146,8 @@ int main(int argc, const char* argv[]) {
   bdf(&font, "/Users/roryb/git/hal/tests/tewi.bdf");
 #elif defined(GRAPHICS_WINDOWS)
   bdf(&font, "C:\\Users\\Rory B. Bellows\\git\\graphics\\tests\\tewi.bdf");
+#elif defined(GRAPHICS_LINUX)
+  bdf(&font, "tests/tewi.bdf");
 #endif
   bdf_writelnf(&buf, &font, 10, 10, WHITE, BLACK, "This is a test! %d", 42);
 #endif
