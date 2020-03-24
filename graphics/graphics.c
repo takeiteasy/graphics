@@ -4587,6 +4587,7 @@ struct nix_window_t {
   Cursor cursor;
   bool mouse_inside, cursor_locked, cursor_vis, closed;
   int depth, cursor_lx, cursor_ly, window_lw, window_lh;
+  struct surface_t scaler;
   struct window_t* parent;
 };
 
@@ -4983,6 +4984,7 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   get_cursor_pos(&win_data->cursor_lx, &win_data->cursor_ly);
   win_data->img = XCreateImage(display, CopyFromParent, depth, ZPixmap, 0, NULL, w, h, 32, w * 4);
   win_data->depth = depth;
+  memset(&win_data->scaler, 0, sizeof(struct surface_t));
 
   windows = window_push(windows, win_data);
   static int window_id = 0;
@@ -5131,6 +5133,14 @@ void events() {
             CBCALL(resize_callback, w->w, w->h);
             data->window_lw = w->w;
             data->window_lh = w->h;
+            if (data->img) {
+              data->img->data = NULL;
+              XDestroyImage(data->img);
+            }
+            if (data->scaler.buf)
+              surface_destroy(&data->scaler);
+            data->img = XCreateImage(data->display, CopyFromParent, data->depth, ZPixmap, 0, NULL, w->w, w->h, 32, w->w * 4);
+            surface(&data->scaler, w->w, w->h);
           }
           break;
         }
@@ -5165,14 +5175,35 @@ void events() {
   return;
 }
 
+static void resize_x11(struct surface_t* a, struct surface_t* b) {
+    int x_ratio = (int)((a->w << 16) / b->w) + 1;
+  int y_ratio = (int)((a->h << 16) / b->h) + 1;
+  int x2, y2, i, j;
+  for (i = 0; i < b->h; ++i) {
+    int* t = b->buf + i * b->w;
+    y2 = ((i * y_ratio) >> 16);
+    int* p = a->buf + y2 * a->w;
+    int rat = 0;
+    for (j = 0; j < b->w; ++j) {
+      x2 = (rat >> 16);
+      *t++ = p[x2];
+      rat += x_ratio;
+    }
+  }
+}
+
 void flush(struct window_t* w, struct surface_t* b) {
   if (!w)
     return;
   struct nix_window_t* tmp = (struct nix_window_t*)w->window;
   if (!tmp)
     return;
-  tmp->img->data = b->buf;
-  XPutImage(tmp->display, tmp->win, tmp->gc, tmp->img, 0, 0, 0, 0, b->w, b->h);
+  if (b->w != w->w || b->h != w->h) {
+    resize_x11(b, &tmp->scaler);
+    tmp->img->data = (char*)tmp->scaler.buf;
+  } else
+    tmp->img->data = (char*)b->buf;
+  XPutImage(tmp->display, tmp->win, tmp->gc, tmp->img, 0, 0, 0, 0, w->w, w->h);
   XFlush(tmp->display);
 }
 

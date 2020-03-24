@@ -1,13 +1,13 @@
 # graphics.h
 
-Cross platform software rendering library, inspired by [SDL 1.2](https://www.libsdl.org/), [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb) and [QuickCG](http://lodev.org/cgtutor/). It was initially forked from [minifb](https://github.com/emoon/minifb), but has evolved beyond it and shares almost no code with it anymore, if any.
+Cross platform software rendering library, inspired by [SDL 1.2](https://www.libsdl.org/), [graphics.h](https://web.stanford.edu/class/archive/cs/cs106b/cs106b.1126/materials/cppdoc/graphics.html), [minifb](https://github.com/emoon/minifb) and [QuickCG](http://lodev.org/cgtutor/). It was initially forked from [minifb](https://github.com/emoon/minifb), but has evolved beyond.
 
 Designed to be a drop-in and use with little hassle sort of deal. I don't know if anyone will really find a use for this besides me. But it's very fun to work on. It's not explicitly a game development library, but that'll be the most likely one. It's most likely less efficient, slower, more buggy and has less features, support, compatibility and portability than SDL - Just so you know, if you didn't already guess.
 
 
 ## Features
 
-- OSX (Carbon, GL, Metal), Windows (Win32, GL), Linux (X11, GL) (so far, see project page for planned stuff).
+- OSX (Carbon, OpenGL, Metal), Windows (GDI, OpenGL, DirectX 9), Linux (X11, OpenGL) (so far, see project page for planned stuff).
 - Multiple Windows
 - Keyboard, mouse and window events.
 - Text rendering via in-built font (adapted from [dhepper/font8x8](https://github.com/dhepper/font8x8)) or BDF files
