@@ -312,25 +312,28 @@ void passthru(struct surface_t* s, int (*fn)(int x, int y, int col)) {
       pset(s, x, y, fn(x, y, PGET(s, x, y)));
 }
 
-bool resize(struct surface_t* a, int nw, int nh, struct surface_t* b) {
-  SANITY_CHECK(STSC(a) && STSC(b));
-  if (!surface(b, nw, nh))
-    return false;
-  
-  int x_ratio = (int)((a->w << 16) / nw) + 1;
-  int y_ratio = (int)((a->h << 16) / nh) + 1;
+static void __resize(struct surface_t* a, struct surface_t* b) {
+  int x_ratio = (int)((a->w << 16) / b->w) + 1;
+  int y_ratio = (int)((a->h << 16) / b->h) + 1;
   int x2, y2, i, j;
-  for (i = 0; i < nh; ++i) {
-    int* t = b->buf + i * nw;
+  for (i = 0; i < b->h; ++i) {
+    int* t = b->buf + i * b->w;
     y2 = ((i * y_ratio) >> 16);
     int* p = a->buf + y2 * a->w;
     int rat = 0;
-    for (j = 0; j < nw; ++j) {
+    for (j = 0; j < b->w; ++j) {
       x2 = (rat >> 16);
       *t++ = p[x2];
       rat += x_ratio;
     }
   }
+}
+
+bool resize(struct surface_t* a, int nw, int nh, struct surface_t* b) {
+  SANITY_CHECK(STSC(a) && STSC(b));
+  if (!surface(b, nw, nh))
+    return false;
+  __resize(a, b);
   return true;
 }
 
@@ -3930,8 +3933,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       break;
     }
     case WM_MOUSEWHEEL:
+      CBCALL(scroll_callback, translate_mod(), 0.f, (SHORT)HIWORD(wParam) / (float)WHEEL_DELTA);
+      break;
     case WM_MOUSEHWHEEL:
-      CBCALL(scroll_callback, translate_mod(), -((SHORT)HIWORD(wParam) / (float)WHEEL_DELTA), (SHORT)HIWORD(wParam) / (float)WHEEL_DELTA);
+      CBCALL(scroll_callback, translate_mod(), -((SHORT)HIWORD(wParam) / (float)WHEEL_DELTA), 0.f);
       break;
     case WM_MOUSEMOVE: {
       if (data->refresh_tme) {
@@ -5175,23 +5180,6 @@ void events() {
   return;
 }
 
-static void resize_x11(struct surface_t* a, struct surface_t* b) {
-    int x_ratio = (int)((a->w << 16) / b->w) + 1;
-  int y_ratio = (int)((a->h << 16) / b->h) + 1;
-  int x2, y2, i, j;
-  for (i = 0; i < b->h; ++i) {
-    int* t = b->buf + i * b->w;
-    y2 = ((i * y_ratio) >> 16);
-    int* p = a->buf + y2 * a->w;
-    int rat = 0;
-    for (j = 0; j < b->w; ++j) {
-      x2 = (rat >> 16);
-      *t++ = p[x2];
-      rat += x_ratio;
-    }
-  }
-}
-
 void flush(struct window_t* w, struct surface_t* b) {
   if (!w)
     return;
@@ -5199,7 +5187,7 @@ void flush(struct window_t* w, struct surface_t* b) {
   if (!tmp)
     return;
   if (b->w != w->w || b->h != w->h) {
-    resize_x11(b, &tmp->scaler);
+    __resize(b, &tmp->scaler);
     tmp->img->data = (char*)tmp->scaler.buf;
   } else
     tmp->img->data = (char*)b->buf;
