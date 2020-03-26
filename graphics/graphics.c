@@ -3859,10 +3859,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       break;
     case WM_DESTROY:
     case WM_CLOSE:
+      close_win32_window(data);
+      data->closed = true;
       if (active_window && active_window->closed_callback)
         active_window->closed_callback(active_window->parent);
-      data->closed = true;
-      close_win32_window(data);
       break;
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
@@ -4552,7 +4552,7 @@ void flush(struct window_t* s, struct surface_t* b) {
   if (!s)
     return;
   struct win32_window_t* tmp = (struct win32_window_t*)s->window;
-  if (!tmp)
+  if (!tmp || tmp->closed)
     return;
   tmp->buffer = b;
   InvalidateRect(tmp->hwnd, NULL, TRUE);
@@ -4585,9 +4585,9 @@ void release() {
 struct nix_window_t {
   Display* display;
   Window win;
+  Atom wm_del;
   GC gc;
   XImage* img;
-  XEvent event;
   KeySym sym;
   Cursor cursor;
   bool mouse_inside, cursor_locked, cursor_vis, closed;
@@ -4595,6 +4595,17 @@ struct nix_window_t {
   struct surface_t scaler;
   struct window_t* parent;
 };
+
+static void close_nix_window(struct nix_window_t* window) {
+  if (window->closed)
+    return;
+  if (window->scaler.buf)
+    surface_destroy(&window->scaler);
+  window->img->data = NULL;
+  XDestroyImage(window->img);
+  XDestroyWindow(window->display, window->win);
+  XCloseDisplay(window->display);
+}
 
 LINKEDLIST(window, struct nix_window_t);
 static struct window_note_t* windows = NULL;
@@ -4927,8 +4938,11 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
     GRAPHICS_ERROR(NIX_WINDOW_CREATION_FAILED, "XCreateWindow() failed");
     return false;
   }
+
+  win_data->wm_del = XInternAtom(display, "WM_DELETE_WINDOW", False);
+  XSetWMProtocols(display, win_data->win, &win_data->wm_del, 1);
   
-  XSelectInput(display, win_data->win, StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask | StructureNotifyMask | ExposureMask | FocusChangeMask | EnterWindowMask | LeaveWindowMask);
+  XSelectInput(display, win_data->win, StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | EnterWindowMask | LeaveWindowMask);
   XStoreName(display, win_data->win, t);
 
   if (flags & FULLSCREEN) {
@@ -4990,6 +5004,7 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   win_data->img = XCreateImage(display, CopyFromParent, depth, ZPixmap, 0, NULL, w, h, 32, w * 4);
   win_data->depth = depth;
   memset(&win_data->scaler, 0, sizeof(struct surface_t));
+  win_data->closed = false;
 
   windows = window_push(windows, win_data);
   static int window_id = 0;
@@ -5036,7 +5051,7 @@ void screen_size(struct window_t* s, int* w, int* h) {
 
 void window_destroy(struct window_t* w) {
   struct nix_window_t* win = (struct nix_window*)w->window;
-  // close_nix_window(win);
+  close_nix_window(win);
   GRAPHICS_SAFE_FREE(win);
   w->window = NULL;
 }
@@ -5085,6 +5100,7 @@ void cursor_set_pos(int x, int y) {
 }
 
 void events() {
+  static XEvent event;
   struct window_node_t* cursor = windows;
   struct nix_window_t* data = NULL;
   while (cursor) {
@@ -5093,38 +5109,38 @@ void events() {
       continue;
     }
 
-    while (XPending(data->display)) {
-      XNextEvent(data->display, &data->event);
-      switch (data->event.type) {
+    do {
+      XNextEvent(data->display, &event);
+      switch (event.type) {
         case KeyPress:
         case KeyRelease: {
           static bool pressed = false;
-          pressed = data->event.type == KeyPress;
-          CBCALL(keyboard_callback, translate_key(data->event.xkey.keycode), translate_mod_ex(data->event.xkey.keycode, data->event.xkey.state, pressed), pressed);
+          pressed = event.type == KeyPress;
+          CBCALL(keyboard_callback, translate_key(event.xkey.keycode), translate_mod_ex(event.xkey.keycode, event.xkey.state, pressed), pressed);
           break;
         }
         case ButtonPress:
         case ButtonRelease:
-          switch (data->event.xbutton.button) {
+          switch (event.xbutton.button) {
             case Button1:
             case Button2:
             case Button3:
-              CBCALL(mouse_button_callback, (MOUSE_BTN)data->event.xbutton.button, translate_mod(data->event.xkey.state), data->event.type == ButtonPress);
+              CBCALL(mouse_button_callback, (MOUSE_BTN)event.xbutton.button, translate_mod(event.xkey.state), event.type == ButtonPress);
               break;
             case Button4:
-              CBCALL(scroll_callback, translate_mod(data->event.xkey.state), 0.f, 1.f);
+              CBCALL(scroll_callback, translate_mod(event.xkey.state), 0.f, 1.f);
               break;
             case Button5:
-              CBCALL(scroll_callback, translate_mod(data->event.xkey.state), 0.f, -1.f);
+              CBCALL(scroll_callback, translate_mod(event.xkey.state), 0.f, -1.f);
               break;
             case Button6:
-              CBCALL(scroll_callback, translate_mod(data->event.xkey.state), 1.f, 0.f);
+              CBCALL(scroll_callback, translate_mod(event.xkey.state), 1.f, 0.f);
               break;
             case Button7:
-              CBCALL(scroll_callback, translate_mod(data->event.xkey.state), -1.f, 0.f);
+              CBCALL(scroll_callback, translate_mod(event.xkey.state), -1.f, 0.f);
               break;
             default:
-              CBCALL(mouse_button_callback, (MOUSE_BTN)(data->event.xbutton.button - 4), translate_mod(data->event.xkey.state), data->event.type == ButtonPress);
+              CBCALL(mouse_button_callback, (MOUSE_BTN)(event.xbutton.button - 4), translate_mod(event.xkey.state), event.type == ButtonPress);
               break;
           }
           break;
@@ -5132,9 +5148,9 @@ void events() {
           static struct window_t* w = NULL;
           if (!(w = data->parent))
             break;
-          if (data->window_lw != data->event.xconfigure.width || data->window_lh != data->event.xconfigure.height) {
-            w->w = data->event.xconfigure.width;
-            w->h = data->event.xconfigure.height;
+          if (data->window_lw != event.xconfigure.width || data->window_lh != event.xconfigure.height) {
+            w->w = event.xconfigure.width;
+            w->h = event.xconfigure.height;
             CBCALL(resize_callback, w->w, w->h);
             data->window_lw = w->w;
             data->window_lh = w->h;
@@ -5151,7 +5167,7 @@ void events() {
         }
         case EnterNotify:
         case LeaveNotify:
-          data->mouse_inside = data->event.type == EnterNotify;
+          data->mouse_inside = event.type == EnterNotify;
           break;
         case FocusIn:
           active_window = data->parent;
@@ -5163,18 +5179,22 @@ void events() {
           break;
         case MotionNotify: {
           static int cx, cy;
-          cx = data->event.xmotion.x;
-          cy = data->event.xmotion.y;
+          cx = event.xmotion.x;
+          cy = event.xmotion.y;
           CBCALL(mouse_move_callback, cx, cy, cx - data->cursor_lx, cy - data->cursor_ly);
           data->cursor_lx = cx;
           data->cursor_ly = cy;
           break;
         }
-        case DestroyNotify:
-          data->closed = true;
+        case ClientMessage:
+          if (event.xclient.data.l[0] == data->wm_del) {
+            //close_nix_window(data);
+            data->closed = true;
+            data->parent->closed_callback(data->parent->parent);
+          }
           break;
       }
-    }
+    } while (!data->closed && XPending(data->display));
     cursor = cursor->next;
   }
   return;
@@ -5184,7 +5204,7 @@ void flush(struct window_t* w, struct surface_t* b) {
   if (!w)
     return;
   struct nix_window_t* tmp = (struct nix_window_t*)w->window;
-  if (!tmp)
+  if (!tmp || tmp->closed)
     return;
   if (b->w != w->w || b->h != w->h) {
     __resize(b, &tmp->scaler);
@@ -5196,7 +5216,14 @@ void flush(struct window_t* w, struct surface_t* b) {
 }
 
 void release() {
-  return;
+  struct window_node_t *tmp = NULL, *cursor = windows;
+  while (cursor) {
+    tmp = cursor->next;
+    close_nix_window(tmp->data);
+    GRAPHICS_SAFE_FREE(cursor->data);
+    GRAPHICS_SAFE_FREE(cursor);
+    cursor = tmp;
+  }
 }
 #elif defined(GRAPHICS_EMCC)
 #if !defined(GRAPHICS_CANVAS_NAME)
