@@ -12,7 +12,7 @@ static bool running = true;
 #if 0
 #define printf
 #endif
-#if 0
+#if 1
 #define MULTI_WINDOW_TEST
 #endif
 

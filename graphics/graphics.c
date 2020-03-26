@@ -3860,6 +3860,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     case WM_DESTROY:
     case WM_CLOSE:
       close_win32_window(data);
+      windows = window_pop(windows, data);
       data->closed = true;
       if (active_window && active_window->closed_callback)
         active_window->closed_callback(active_window->parent);
@@ -4604,7 +4605,7 @@ static void close_nix_window(struct nix_window_t* window) {
   window->img->data = NULL;
   XDestroyImage(window->img);
   XDestroyWindow(window->display, window->win);
-  XCloseDisplay(window->display);
+  XFlush(window->display);
 }
 
 LINKEDLIST(window, struct nix_window_t);
@@ -5187,11 +5188,13 @@ void events() {
           break;
         }
         case ClientMessage:
-          if (event.xclient.data.l[0] == data->wm_del) {
-            //close_nix_window(data);
-            data->closed = true;
-            data->parent->closed_callback(data->parent->parent);
-          }
+          if (event.xclient.data.l[0] != data->wm_del)
+            break;
+          close_nix_window(data);
+          windows = window_pop(windows, data);
+        case DestroyNotify:
+          data->closed = true;
+          data->parent->closed_callback(data->parent->parent);
           break;
       }
     } while (!data->closed && XPending(data->display));
