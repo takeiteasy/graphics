@@ -3726,6 +3726,7 @@ struct win32_window_t {
 static void close_win32_window(struct win32_window_t* window) {
   if (window->closed)
     return;
+  window->closed = true;
   if (window->cursor_locked)
     ClipCursor(NULL);
   if (!window->cursor_vis)
@@ -3806,67 +3807,71 @@ static int translate_key(WPARAM wParam, LPARAM lParam) {
   return keycodes[HIWORD(lParam) & 0x1FF];
 }
 
+#define CBCALL(x, ...) \
+  if (e_window && e_window->x) \
+    e_window->x(e_window->parent, __VA_ARGS__);
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-  static struct win32_window_t* data = NULL;
-  static struct window_t* window = NULL;
-  window = (struct window_t*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
-  if (!window || !window->window)
+  static struct win32_window_t* e_data = NULL;
+  static struct window_t* e_window = NULL;
+  e_window = (struct window_t*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+  if (!e_window || !e_window->window)
     return DefWindowProc(hWnd, message, wParam, lParam);
-  data = (struct win32_window_t*)window->window;
+  e_data = (struct win32_window_t*)e_window->window;
   
   switch (message) {
     case WM_PAINT:
-      if (!data->buffer)
+      if (!e_data->buffer)
         break;
 #if defined(GRAPHICS_OPENGL)
-      draw_gl(&data->gl_obj, data->buffer);
-      BeginPaint(data->hwnd, &data->ps);
-      EndPaint(data->hwnd, &data->ps);
+      draw_gl(&e_data->gl_obj, e_data->buffer);
+      BeginPaint(e_data->hwnd, &e_data->ps);
+      EndPaint(e_data->hwnd, &e_data->ps);
 #elif defined(GRAPHICS_DX9)
-      if (data->buffer_lw != data->buffer->w || data->buffer_lh != data->buffer->h) {
-        if (data->d3dsurface)
-          IDirect3DSurface9_Release(data->d3dsurface);
-        IDirect3DDevice9_CreateOffscreenPlainSurface(data->d3ddev, data->buffer->w, data->buffer->h, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &data->d3dsurface, NULL);
-        data->buffer_lw = data->buffer->w;
-        data->buffer_lh = data->buffer->h;
+      if (e_data->buffer_lw != e_data->buffer->w || e_data->buffer_lh != e_data->buffer->h) {
+        if (e_data->d3dsurface)
+          IDirect3DSurface9_Release(e_data->d3dsurface);
+        IDirect3DDevice9_CreateOffscreenPlainSurface(e_data->d3ddev, e_data->buffer->w, e_data->buffer->h, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &e_data->d3dsurface, NULL);
+        e_data->buffer_lw = e_data->buffer->w;
+        e_data->buffer_lh = e_data->buffer->h;
       }
       static D3DLOCKED_RECT rect;
-      IDirect3DSurface9_LockRect(data->d3dsurface, &rect, NULL, D3DLOCK_DONOTWAIT);
+      IDirect3DSurface9_LockRect(e_data->d3dsurface, &rect, NULL, D3DLOCK_DONOTWAIT);
       BYTE* dst = (BYTE*)rect.pBits;
-      int* src = data->buffer->buf;
-      for (int i = 0; i < data->buffer->h; ++i) {
-        memcpy(dst, src, data->buffer->w * 4);
-        src += data->buffer->w;
+      int* src = e_data->buffer->buf;
+      for (int i = 0; i < e_data->buffer->h; ++i) {
+        memcpy(dst, src, e_data->buffer->w * 4);
+        src += e_data->buffer->w;
         dst += rect.Pitch;
       }
-      IDirect3DSurface9_UnlockRect(data->d3dsurface);
+      IDirect3DSurface9_UnlockRect(e_data->d3dsurface);
 
-      IDirect3DDevice9_Clear(data->d3ddev, 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
-      IDirect3DDevice9_BeginScene(data->d3ddev);
+      IDirect3DDevice9_Clear(e_data->d3ddev, 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
+      IDirect3DDevice9_BeginScene(e_data->d3ddev);
       static LPDIRECT3DSURFACE9 back_buffer = NULL;
-      IDirect3DDevice9_GetBackBuffer(data->d3ddev, 0, 0, D3DBACKBUFFER_TYPE_MONO, &back_buffer);
-      IDirect3DDevice9_StretchRect(data->d3ddev, data->d3dsurface, NULL, back_buffer, NULL, D3DTEXF_POINT);
-      IDirect3DDevice9_EndScene(data->d3ddev);
-      IDirect3DDevice9_Present(data->d3ddev, NULL, NULL, NULL, NULL);
+      IDirect3DDevice9_GetBackBuffer(e_data->d3ddev, 0, 0, D3DBACKBUFFER_TYPE_MONO, &back_buffer);
+      IDirect3DDevice9_StretchRect(e_data->d3ddev, e_data->d3dsurface, NULL, back_buffer, NULL, D3DTEXF_POINT);
+      IDirect3DDevice9_EndScene(e_data->d3ddev);
+      IDirect3DDevice9_Present(e_data->d3ddev, NULL, NULL, NULL, NULL);
       IDirect3DSurface9_Release(back_buffer);
 #elif defined(GRAPHICS_DX11)
       static const float clear[] = { 0.f, 0.f, 0.f, 1.f };
-      ID3D11DeviceContext_ClearRenderTargetView(data->dx_ctx, data->dx_backbuffer, clear);
-      IDXGISwapChain_Present(data->dx_swapchain, 0, 0);
+      ID3D11DeviceContext_ClearRenderTargetView(e_data->dx_ctx, e_data->dx_backbuffer, clear);
+      IDXGISwapChain_Present(e_data->dx_swapchain, 0, 0);
 #else
-      data->bmpinfo->bmiHeader.biWidth = data->buffer->w;
-      data->bmpinfo->bmiHeader.biHeight = -data->buffer->h;
-      StretchDIBits(data->hdc, 0, 0, window->w, window->h, 0, 0, data->buffer->w, data->buffer->h, data->buffer->buf, data->bmpinfo, DIB_RGB_COLORS, SRCCOPY);
+      e_data->bmpinfo->bmiHeader.biWidth = e_data->buffer->w;
+      e_data->bmpinfo->bmiHeader.biHeight = -e_data->buffer->h;
+      StretchDIBits(e_data->hdc, 0, 0, e_window->w, e_window->h, 0, 0, e_data->buffer->w, e_data->buffer->h, e_data->buffer->buf, e_data->bmpinfo, DIB_RGB_COLORS, SRCCOPY);
       ValidateRect(hWnd, NULL);
 #endif
       break;
     case WM_DESTROY:
     case WM_CLOSE:
-      close_win32_window(data);
-      windows = window_pop(windows, data);
-      data->closed = true;
-      if (active_window && active_window->closed_callback)
-        active_window->closed_callback(active_window->parent);
+      close_win32_window(e_data);
+      windows = window_pop(windows, e_data);
+      e_data->closed = true;
+      if (e_window && e_window->closed_callback)
+        e_window->closed_callback(e_window->parent);
       break;
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN:
@@ -3890,7 +3895,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     }
     case WM_SETCURSOR:
       if (LOWORD(lParam) == HTCLIENT) {
-        SetCursor(data->cursor);
+        SetCursor(e_data->cursor);
         return TRUE;
       }
       break;
@@ -3943,56 +3948,54 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       CBCALL(scroll_callback, translate_mod(), -((SHORT)HIWORD(wParam) / (float)WHEEL_DELTA), 0.f);
       break;
     case WM_MOUSEMOVE: {
-      if (data->refresh_tme) {
-        data->tme.cbSize = sizeof(data->tme);
-        data->tme.hwndTrack = data->hwnd;
-        data->tme.dwFlags = TME_HOVER | TME_LEAVE;
-        data->tme.dwHoverTime = 1;
-        TrackMouseEvent(&data->tme);
+      if (e_data->refresh_tme) {
+        e_data->tme.cbSize = sizeof(e_data->tme);
+        e_data->tme.hwndTrack = e_data->hwnd;
+        e_data->tme.dwFlags = TME_HOVER | TME_LEAVE;
+        e_data->tme.dwHoverTime = 1;
+        TrackMouseEvent(&e_data->tme);
       }
       static int cx, cy;
       cx = ((int)(short)LOWORD(lParam));
       cy = ((int)(short)HIWORD(lParam));
-      CBCALL(mouse_move_callback, cx, cy, cx - data->cursor_lx, cy - data->cursor_ly);
-      data->cursor_lx = cx;
-      data->cursor_ly = cy;
+      CBCALL(mouse_move_callback, cx, cy, cx - e_data->cursor_lx, cy - e_data->cursor_ly);
+      e_data->cursor_lx = cx;
+      e_data->cursor_ly = cy;
       break;
     }
     case WM_MOUSEHOVER:
-      if (!data->mouse_inside) {
-        data->refresh_tme = true;
-        data->mouse_inside = true;
-        if (!data->cursor_vis)
+      if (!e_data->mouse_inside) {
+        e_data->refresh_tme = true;
+        e_data->mouse_inside = true;
+        if (!e_data->cursor_vis)
           ShowCursor(FALSE);
       }
       break;
     case WM_MOUSELEAVE:
-      if (data->mouse_inside) {
-        data->refresh_tme = true;
-        data->mouse_inside = false;
+      if (e_data->mouse_inside) {
+        e_data->refresh_tme = true;
+        e_data->mouse_inside = false;
         ShowCursor(TRUE);
       }
       break;
     case WM_SIZE:
-      window->w = LOWORD(lParam);
-      window->h = HIWORD(lParam);
-      CBCALL(resize_callback, window->w, window->h);
+      e_window->w = LOWORD(lParam);
+      e_window->h = HIWORD(lParam);
+      CBCALL(resize_callback, e_window->w, e_window->h);
 #if defined(GRAPHICS_OPENGL)
-      glViewport(0, 0, window->w, window->h);
+      glViewport(0, 0, e_window->w, e_window->h);
       PostMessage(hWnd, WM_PAINT, 0, 0);
 #endif
       break;
     case WM_SETFOCUS:
-      if (data->cursor_locked)
-        clip_win32_cursor(data->hwnd);
-      active_window = window;
+      if (e_data->cursor_locked)
+        clip_win32_cursor(e_data->hwnd);
       CBCALL(focus_callback, true);
       break;
     case WM_KILLFOCUS:
-      if (data->cursor_locked)
+      if (e_data->cursor_locked)
         ClipCursor(NULL);
       CBCALL(focus_callback, false);
-      active_window = NULL;
       break;
     default:
       break;
@@ -4431,6 +4434,10 @@ bool closed_va(int n, ...) {
   }
   va_end(args);
   return ret;
+}
+
+bool closed_all() {
+  return windows == NULL;
 }
 
 void cursor_lock(struct window_t* s, bool locked) {
