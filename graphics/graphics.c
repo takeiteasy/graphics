@@ -79,19 +79,22 @@ struct NAME##_node_t* NAME##_push(struct NAME##_node_t *head, TYPE *data) { \
 struct NAME##_node_t* NAME##_pop(struct NAME##_node_t *head, TYPE *data) { \
   struct NAME##_node_t *cursor = head, *prev = NULL; \
   while (cursor) { \
-    if (cursor->data == data) { \
-      if (prev) \
-        prev->next = cursor->next; \
-      else \
-        head = head->next; \
-      break; \
+    if (cursor->data != data) { \
+      prev = cursor; \
+      cursor = cursor->next; \
+      continue; \
     } \
-    prev = cursor; \
-    cursor = cursor->next; \
+    if (!prev) \
+      head = cursor->next; \
+    else \
+      prev->next = cursor->next; \
+    break; \
   } \
-  if (cursor) \
-    free(cursor); \
-  return NULL; \
+  if (cursor) { \
+    cursor->next = NULL; \
+    GRAPHICS_FREE(cursor); \
+  } \
+  return head; \
 }
 
 void surface_size(struct surface_t* s, unsigned int* w, unsigned int* h) {
@@ -5111,28 +5114,6 @@ struct window_t* event_window(Window w) {
   if (e_window && e_window->x) \
     e_window->x(e_window->parent, __VA_ARGS__);
 
-struct window_node_t* window_pop_test(struct window_node_t *head, struct nix_window_t *data) {
-  struct window_node_t *cursor = head, *prev = NULL;
-  while (cursor) {
-    if (cursor->data != data) {
-      prev = cursor;
-      cursor = cursor->next;
-      continue;
-    }
-
-    if (!prev)
-      head = cursor->next;
-    else
-      prev->next = cursor->next;
-    break;
-  }
-  if (cursor) {
-    cursor->next = NULL;
-    GRAPHICS_FREE(cursor);
-  }
-  return head;
-}
-
 void events() {
   static XEvent e;
   static struct window_t* e_window = NULL;
@@ -5218,7 +5199,7 @@ void events() {
         if (e.xclient.data.l[0] != e_data->wm_del)
           break;
         close_nix_window(e_data);
-        windows = window_pop_test(windows, e_data);
+        windows = window_pop(windows, e_data);
         break;
     }
   }
