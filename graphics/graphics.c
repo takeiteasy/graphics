@@ -2363,7 +2363,7 @@ int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* f
   return 0;
 }
 #else
-#pragma message WARN("Dialogs are only supported for GTK on Linux");
+#pragma message WARN("Dialogs are only supported for GTK on Linux")
 bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
   return false;
 }
@@ -4583,33 +4583,37 @@ void release() {
 #include <X11/extensions/xf86vmode.h>
 #endif
 
+static Display* display = None;
+static int screen = None;
+static Window root_window = None;
+static Cursor empty_cursor = None;
+
 struct nix_window_t {
-  Display* display;
-  Window win;
+  Window window;
   Atom wm_del;
   GC gc;
   XImage* img;
-  KeySym sym;
   Cursor cursor;
   bool mouse_inside, cursor_locked, cursor_vis, closed;
-  int depth, cursor_lx, cursor_ly, window_lw, window_lh;
+  int depth, cursor_lx, cursor_ly;
   struct surface_t scaler;
   struct window_t* parent;
 };
 
-static void close_nix_window(struct nix_window_t* window) {
-  if (window->closed)
+static void close_nix_window(struct nix_window_t* w) {
+  if (w->closed)
     return;
-  if (window->scaler.buf)
-    surface_destroy(&window->scaler);
-  window->img->data = NULL;
-  XDestroyImage(window->img);
-  XDestroyWindow(window->display, window->win);
-  XFlush(window->display);
+  w->closed = true;
+  if (w->scaler.buf)
+    surface_destroy(&w->scaler);
+  w->img->data = NULL;
+  XDestroyImage(w->img);
+  XDestroyWindow(display, w->window);
+  XFlush(display);
 }
 
 LINKEDLIST(window, struct nix_window_t);
-static struct window_note_t* windows = NULL;
+static struct window_node_t* windows = NULL;
 
 #define Button6 6
 #define Button7 7
@@ -4831,17 +4835,15 @@ static int translate_mod_ex(int key, int state, int is_pressed) {
 }
 
 static void get_cursor_pos(int* x, int* y) {
-  Display* display = XOpenDisplay(NULL);
   Window in_win, in_child_win;
   Atom type_prop;
   int root_x, root_y, child_x, child_y;
   unsigned int mask, format;
   unsigned long n, sz;
   Window* props;
-  XGetWindowProperty(display, DefaultRootWindow(display), XInternAtom(display, "_NET_ACTIVE_WINDOW", True), 0, 1, False, AnyPropertyType, &type_prop, &format, &n, &sz, (unsigned char**)&props);
+  XGetWindowProperty(display, root_window, XInternAtom(display, "_NET_ACTIVE_WINDOW", True), 0, 1, False, AnyPropertyType, &type_prop, &format, &n, &sz, (unsigned char**)&props);
   XQueryPointer(display, props[0], &in_win, &in_child_win, &root_x, &root_y, &child_x, &child_y, &mask);
   XFree(props);
-  XCloseDisplay(display);
   if (x)
     *x = root_x;
   if (y)
@@ -4856,17 +4858,15 @@ struct Hints {
   unsigned long status;
 };
 
-static Cursor empty_cursor = None;
-
 bool window(struct window_t* s, const char* t, int w, int h, short flags) {
-  Display* display = XOpenDisplay(NULL);
-  if (!display) {
-    GRAPHICS_ERROR(NIX_WINDOW_CREATION_FAILED, "XOpenDisplay() failed");
-    return false;
-  }
-  Window root_win = DefaultRootWindow(display);
-
   if (!keycodes_init) {
+    if (!(display = XOpenDisplay(NULL))) {
+      GRAPHICS_ERROR(NIX_WINDOW_CREATION_FAILED, "XOpenDisplay() failed");
+      return false;
+    }
+    root_window = DefaultRootWindow(display);
+    screen = DefaultScreen(display);
+
     memset(keycodes, -1, sizeof(keycodes));
     for (int i = 0; i < 512; ++i)
       keycodes[i] = KB_KEY_UNKNOWN;
@@ -4877,7 +4877,7 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
     char data[1] = { 0 };
     XColor color;
     color.red = color.green = color.blue = 0;
-    Pixmap pixmap = XCreateBitmapFromData(display, root_win, data, 1, 1);
+    Pixmap pixmap = XCreateBitmapFromData(display, root_window, data, 1, 1);
     if (!pixmap) {
       GRAPHICS_ERROR(NIX_CURSOR_PIXMAP_ERROR, "XCreateBitmapFromData() failed");
       return false;
@@ -4893,9 +4893,7 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
     GRAPHICS_ERROR(OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
-  win_data->display = display;
 
-  int screen = DefaultScreen(display);
   int screen_w = DisplayWidth(display, screen);
   int screen_h = DisplayHeight(display, screen);
 
@@ -4933,18 +4931,16 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   swa.border_pixel = BlackPixel(display, screen);
   swa.background_pixel = BlackPixel(display, screen);
   swa.backing_store = NotUseful;
-
-  win_data->win = XCreateWindow(display, root_win, x, y, w, h, 0, depth, InputOutput, visual, CWBackPixel | CWBorderPixel | CWBackingStore, &swa);
-  if (!win_data->win) {
+  if (!(win_data->window = XCreateWindow(display, root_window, x, y, w, h, 0, depth, InputOutput, visual, CWBackPixel | CWBorderPixel | CWBackingStore, &swa))) {
     GRAPHICS_ERROR(NIX_WINDOW_CREATION_FAILED, "XCreateWindow() failed");
     return false;
   }
 
   win_data->wm_del = XInternAtom(display, "WM_DELETE_WINDOW", False);
-  XSetWMProtocols(display, win_data->win, &win_data->wm_del, 1);
+  XSetWMProtocols(display, win_data->window, &win_data->wm_del, 1);
   
-  XSelectInput(display, win_data->win, StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | EnterWindowMask | LeaveWindowMask);
-  XStoreName(display, win_data->win, t);
+  XSelectInput(display, win_data->window, StructureNotifyMask | KeyPressMask | KeyReleaseMask | PointerMotionMask | ButtonPressMask | ButtonReleaseMask | ExposureMask | FocusChangeMask | EnterWindowMask | LeaveWindowMask);
+  XStoreName(display, win_data->window, t);
 
   if (flags & FULLSCREEN) {
 #if defined(GRAPHICS_HAS_X11VMEXT)
@@ -4963,7 +4959,7 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
     XGrabKeyboard(display, win_data->win, False, GrabModeAsync, GrabModeAsync, CurrentTime);
 #else
     Atom p = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", True);
-    XChangeProperty(display, win_data->win, XInternAtom(display, "_NET_WM_STATE", True), XA_ATOM, 32, PropModeReplace, (unsigned char*)&p, 1);
+    XChangeProperty(display, win_data->window, XInternAtom(display, "_NET_WM_STATE", True), XA_ATOM, 32, PropModeReplace, (unsigned char*)&p, 1);
 #endif
   }
 
@@ -4972,12 +4968,12 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
     hints.flags = 2;
     hints.decorations = 0;
     Atom p = XInternAtom(display, "_MOTIF_WM_HINTS", True);
-    XChangeProperty(display, win_data->win, p, p, 32, PropModeReplace, (unsigned char*)&hints, 5);
+    XChangeProperty(display, win_data->window, p, p, 32, PropModeReplace, (unsigned char*)&hints, 5);
   }
 
   if (flags & ALWAYS_ON_TOP) {
     Atom p = XInternAtom(display, "_NET_WM_STATE_ABOVE", False);
-    XChangeProperty(display, win_data->win, XInternAtom(display, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *)&p, 1);
+    XChangeProperty(display, win_data->window, XInternAtom(display, "_NET_WM_STATE", False), XA_ATOM, 32, PropModeReplace, (unsigned char *)&p, 1);
   }
 
   XSizeHints hints;
@@ -4995,9 +4991,9 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
     hints.max_width = w;
     hints.max_height = h;
   }
-  XSetWMNormalHints(display, win_data->win, &hints);
-  XClearWindow(display, win_data->win);
-  XMapRaised(display, win_data->win);
+  XSetWMNormalHints(display, win_data->window, &hints);
+  XClearWindow(display, win_data->window);
+  XMapRaised(display, win_data->window);
   XFlush(display);
   win_data->gc = DefaultGC(display, screen);
   win_data->cursor = XCreateFontCursor(display, XC_left_ptr);
@@ -5008,10 +5004,9 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   win_data->closed = false;
 
   windows = window_push(windows, win_data);
-  static int window_id = 0;
-  s->w = win_data->window_lw = w;
-  s->h = win_data->window_lh = h;
-  s->id = window_id++;
+  s->w = w;
+  s->h = h;
+  s->id = (int)win_data->window;
   s->window = win_data;
   active_window = s;
   win_data->parent = s;
@@ -5025,7 +5020,7 @@ void window_icon(struct window_t* w, struct surface_t* b) {
 
 void window_title(struct window_t* w, const char* t) {
   struct nix_window_t* win = (struct nix_window_t*)w->window;
-  XStoreName(win->display, win->win, t);
+  XStoreName(display, win->window, t);
 }
 
 void window_position(struct window_t* w, int* x, int* y) {
@@ -5033,8 +5028,8 @@ void window_position(struct window_t* w, int* x, int* y) {
   static int wx, wy;
   static XWindowAttributes xwa;
   static Window child;
-  XTranslateCoordinates(win->display, win->win, DefaultRootWindow(win->display), 0, 0, &wx, &wy, &child);
-  XGetWindowAttributes(win->display, win->win, &xwa);
+  XTranslateCoordinates(display, win->window, root_window, 0, 0, &wx, &wy, &child);
+  XGetWindowAttributes(display, win->window, &xwa);
   if (x)
     *x = wx - xwa.x;
   if (y)
@@ -5042,8 +5037,6 @@ void window_position(struct window_t* w, int* x, int* y) {
 }
 
 void screen_size(struct window_t* s, int* w, int* h) {
-  Display* display = ((struct nix_window_t*)s->window)->display;
-  int screen = DefaultScreen(display);
   if (w)
     *w = DisplayWidth(display, screen);
   if (h)
@@ -5051,7 +5044,7 @@ void screen_size(struct window_t* s, int* w, int* h) {
 }
 
 void window_destroy(struct window_t* w) {
-  struct nix_window_t* win = (struct nix_window*)w->window;
+  struct nix_window_t* win = (struct nix_window_t*)w->window;
   close_nix_window(win);
   GRAPHICS_SAFE_FREE(win);
   w->window = NULL;
@@ -5074,6 +5067,10 @@ bool closed_va(int n, ...) {
   }
   va_end(args);
   return ret;
+}
+
+bool closed_all() {
+  return windows == NULL;
 }
 
 void cursor_lock(struct window_t* w, bool lock) {
@@ -5100,107 +5097,131 @@ void cursor_set_pos(int x, int y) {
   return;
 }
 
-void events() {
-  static XEvent event;
+struct window_t* event_window(Window w) {
   struct window_node_t* cursor = windows;
-  struct nix_window_t* data = NULL;
   while (cursor) {
-    if (!(data = cursor->data)) {
+    if (cursor->data->window == w)
+      return cursor->data->parent;
+    cursor = cursor->next;
+  }
+  return NULL;
+}
+
+#define CBCALL(x, ...) \
+  if (e_window && e_window->x) \
+    e_window->x(e_window->parent, __VA_ARGS__);
+
+struct window_node_t* window_pop_test(struct window_node_t *head, struct nix_window_t *data) {
+  struct window_node_t *cursor = head, *prev = NULL;
+  while (cursor) {
+    if (cursor->data != data) {
+      prev = cursor;
       cursor = cursor->next;
       continue;
     }
 
-    do {
-      XNextEvent(data->display, &event);
-      switch (event.type) {
-        case KeyPress:
-        case KeyRelease: {
-          static bool pressed = false;
-          pressed = event.type == KeyPress;
-          CBCALL(keyboard_callback, translate_key(event.xkey.keycode), translate_mod_ex(event.xkey.keycode, event.xkey.state, pressed), pressed);
-          break;
-        }
-        case ButtonPress:
-        case ButtonRelease:
-          switch (event.xbutton.button) {
-            case Button1:
-            case Button2:
-            case Button3:
-              CBCALL(mouse_button_callback, (MOUSE_BTN)event.xbutton.button, translate_mod(event.xkey.state), event.type == ButtonPress);
-              break;
-            case Button4:
-              CBCALL(scroll_callback, translate_mod(event.xkey.state), 0.f, 1.f);
-              break;
-            case Button5:
-              CBCALL(scroll_callback, translate_mod(event.xkey.state), 0.f, -1.f);
-              break;
-            case Button6:
-              CBCALL(scroll_callback, translate_mod(event.xkey.state), 1.f, 0.f);
-              break;
-            case Button7:
-              CBCALL(scroll_callback, translate_mod(event.xkey.state), -1.f, 0.f);
-              break;
-            default:
-              CBCALL(mouse_button_callback, (MOUSE_BTN)(event.xbutton.button - 4), translate_mod(event.xkey.state), event.type == ButtonPress);
-              break;
-          }
-          break;
-        case ConfigureNotify: {
-          static struct window_t* w = NULL;
-          if (!(w = data->parent))
-            break;
-          if (data->window_lw != event.xconfigure.width || data->window_lh != event.xconfigure.height) {
-            w->w = event.xconfigure.width;
-            w->h = event.xconfigure.height;
-            CBCALL(resize_callback, w->w, w->h);
-            data->window_lw = w->w;
-            data->window_lh = w->h;
-            if (data->img) {
-              data->img->data = NULL;
-              XDestroyImage(data->img);
-            }
-            if (data->scaler.buf)
-              surface_destroy(&data->scaler);
-            data->img = XCreateImage(data->display, CopyFromParent, data->depth, ZPixmap, 0, NULL, w->w, w->h, 32, w->w * 4);
-            surface(&data->scaler, w->w, w->h);
-          }
-          break;
-        }
-        case EnterNotify:
-        case LeaveNotify:
-          data->mouse_inside = event.type == EnterNotify;
-          break;
-        case FocusIn:
-          active_window = data->parent;
-          CBCALL(focus_callback, true);
-          break;
-        case FocusOut:
-          CBCALL(focus_callback, false);
-          active_window = NULL;
-          break;
-        case MotionNotify: {
-          static int cx, cy;
-          cx = event.xmotion.x;
-          cy = event.xmotion.y;
-          CBCALL(mouse_move_callback, cx, cy, cx - data->cursor_lx, cy - data->cursor_ly);
-          data->cursor_lx = cx;
-          data->cursor_ly = cy;
-          break;
-        }
-        case ClientMessage:
-          if (event.xclient.data.l[0] != data->wm_del)
-            break;
-          close_nix_window(data);
-          windows = window_pop(windows, data);
-        case DestroyNotify:
-          data->closed = true;
-          data->parent->closed_callback(data->parent->parent);
-          break;
-      }
-    } while (!data->closed && XPending(data->display));
-    cursor = cursor->next;
+    if (!prev)
+      head = cursor->next;
+    else
+      prev->next = cursor->next;
+    break;
   }
-  return;
+  if (cursor) {
+    cursor->next = NULL;
+    GRAPHICS_FREE(cursor);
+  }
+  return head;
+}
+
+void events() {
+  static XEvent e;
+  static struct window_t* e_window = NULL;
+  static struct nix_window_t* e_data = NULL;
+  while (XPending(display)) {
+    XNextEvent(display, &e);
+    if (!(e_window = event_window(e.xclient.window)))
+      continue;
+    if (!(e_data = (struct nix_window_t*)e_window->window))
+      continue;
+    if (e_data->closed)
+      continue;
+    switch (e.type) {
+      case KeyPress:
+      case KeyRelease: {
+        static bool pressed = false;
+        pressed = e.type == KeyPress;
+        CBCALL(keyboard_callback, translate_key(e.xkey.keycode), translate_mod_ex(e.xkey.keycode, e.xkey.state, pressed), pressed);
+        break;
+      }
+      case ButtonPress:
+      case ButtonRelease:
+        switch (e.xbutton.button) {
+          case Button1:
+          case Button2:
+          case Button3:
+            CBCALL(mouse_button_callback, (MOUSE_BTN)e.xbutton.button, translate_mod(e.xkey.state), e.type == ButtonPress);
+            break;
+          case Button4:
+            CBCALL(scroll_callback, translate_mod(e.xkey.state), 0.f, 1.f);
+            break;
+          case Button5:
+            CBCALL(scroll_callback, translate_mod(e.xkey.state), 0.f, -1.f);
+            break;
+          case Button6:
+            CBCALL(scroll_callback, translate_mod(e.xkey.state), 1.f, 0.f);
+            break;
+          case Button7:
+            CBCALL(scroll_callback, translate_mod(e.xkey.state), -1.f, 0.f);
+            break;
+          default:
+            CBCALL(mouse_button_callback, (MOUSE_BTN)(e.xbutton.button - 4), translate_mod(e.xkey.state), e.type == ButtonPress);
+            break;
+        }
+        break;
+      case ConfigureNotify: {
+        static int w = 0, h = 0;
+        w = e.xconfigure.width;
+        h = e.xconfigure.height;
+        if (e_window->w == w && e_window->h == h)
+          break;
+        CBCALL(resize_callback, w, h);
+        e_window->w = w;
+        e_window->h = h;
+        if (e_data->img) {
+          e_data->img->data = NULL;
+          XDestroyImage(e_data->img);
+        }
+        if (e_data->scaler.buf)
+          surface_destroy(&e_data->scaler);
+        e_data->img = XCreateImage(display, CopyFromParent, e_data->depth, ZPixmap, 0, NULL, w, h, 32, w * 4);
+        surface(&e_data->scaler, w, h);
+        break;
+      }
+      case EnterNotify:
+      case LeaveNotify:
+        e_data->mouse_inside = e.type == EnterNotify;
+        break;
+      case FocusIn:
+      case FocusOut:
+        CBCALL(focus_callback, e.type == FocusIn);
+        break;
+      case MotionNotify: {
+        static int cx = 0, cy = 0;
+        cx = e.xmotion.x;
+        cy = e.xmotion.y;
+        CBCALL(mouse_move_callback, cx, cy, cx - e_data->cursor_lx, cy - e_data->cursor_ly);
+        e_data->cursor_lx = cx;
+        e_data->cursor_ly = cy;
+        break;
+      }
+      case ClientMessage:
+        if (e.xclient.data.l[0] != e_data->wm_del)
+          break;
+        close_nix_window(e_data);
+        windows = window_pop_test(windows, e_data);
+        break;
+    }
+  }
 }
 
 void flush(struct window_t* w, struct surface_t* b) {
@@ -5214,8 +5235,8 @@ void flush(struct window_t* w, struct surface_t* b) {
     tmp->img->data = (char*)tmp->scaler.buf;
   } else
     tmp->img->data = (char*)b->buf;
-  XPutImage(tmp->display, tmp->win, tmp->gc, tmp->img, 0, 0, 0, 0, w->w, w->h);
-  XFlush(tmp->display);
+  XPutImage(display, tmp->window, tmp->gc, tmp->img, 0, 0, 0, 0, w->w, w->h);
+  XFlush(display);
 }
 
 void release() {
@@ -5227,6 +5248,8 @@ void release() {
     GRAPHICS_SAFE_FREE(cursor);
     cursor = tmp;
   }
+  if (display)
+    XCloseDisplay(display);
 }
 #elif defined(GRAPHICS_EMCC)
 #if !defined(GRAPHICS_CANVAS_NAME)

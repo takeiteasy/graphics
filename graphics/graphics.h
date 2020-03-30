@@ -1006,6 +1006,11 @@ if ((x)) { \
    * @return Boolean if any window are still open
    */
   HALDEF bool closed_va(int n, ...);
+  /*!
+   * @discussion Checks if any windows are still open
+   * @return Boolean if any windows are still open
+   */
+  HALDEF bool closed_all(void);
 
   /*!
    * @discussion Lock or unlock cursor movement to active window
