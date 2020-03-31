@@ -4285,7 +4285,6 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
 
   ShowWindow(win_data->hwnd, SW_NORMAL);
   SetFocus(win_data->hwnd);
-  active_window = s;
 
 #if defined(GRAPHICS_OPENGL)
   memset(&win_data->pfd, 0, sizeof(win_data->pfd));
@@ -5073,7 +5072,6 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   s->h = h;
   s->id = (int)win_data->window;
   s->window = win_data;
-  active_window = s;
   win_data->parent = s;
 
   return true;
@@ -5430,17 +5428,11 @@ static EM_BOOL webglcontext_callback(int type, const void* reserved, void* user_
   return 0;
 }
 
+static bool window_already_open = false;
+
 bool window(struct window_t* s, const char* t, int w, int h, short flags) {
-  static bool window_already_open = false;
-  if (window_already_open || active_window) {
+  if (window_already_open) {
 #pragma message WARN("TODO: window() handle error")
-    return false;
-  }
-  
-  struct window_t* window = *s = active_window = GRAPHICS_MALLOC(sizeof(struct window_t));
-  if (!window) {
-    release();
-    GRAPHICS_ERROR(OUT_OF_MEMEORY, "malloc() failed");
     return false;
   }
   
@@ -5666,6 +5658,10 @@ bool closed_va(int n, ...) {
   return false;
 }
 
+bool closed_all() {
+  return false;
+}
+
 void cursor_lock(struct window_t* s, bool locked) {
 #pragma message WARN("cursor_lock() unsupported on emscripten")
   if (locked)
@@ -5830,9 +5826,9 @@ void release(void) {
 #elif defined(GRAPHICS_SIXEL)
 bool window(struct window_t* a, const char* b, int c, int d, short e) {
   static bool window_already_open = false;
-  if (window_already_open || active_window) {
+  if (window_already_open) {
 #pragma message WARN("TODO: window() handle error")
-	return false;
+    return false;
   }
   return true;
 }
@@ -5862,6 +5858,10 @@ bool closed(struct window_t* a) {
 }
 
 bool closed_va(int n, ...) {
+  return false;
+}
+
+bool closed_all() {
   return false;
 }
 
@@ -5933,6 +5933,10 @@ bool closed(struct window_t* a) {
 }
 
 bool closed_va(int n, ...) {
+  return false;
+}
+
+bool closed_all() {
   return false;
 }
 

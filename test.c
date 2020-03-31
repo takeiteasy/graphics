@@ -128,7 +128,7 @@ cursor_visible(&win, false);
 
   struct surface_t img;
 #if defined(GRAPHICS_EMCC)
-  bmp(&img, "old/test/resources/Uncompressed-24.bmp");
+  bmp(&img, "tests/bmp/g/rgb32.bmp");
 #elif defined(GRAPHICS_OSX)
   bmp(&img, "/Users/roryb/git/hal/tests/bmp/g/rgb32.bmp");
 #elif defined(GRAPHICS_WINDOWS)
