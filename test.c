@@ -141,7 +141,7 @@ cursor_visible(&win, false);
 #if !defined(GRAPHICS_NO_BDF)
   struct bdf_t font;
 #if defined(GRAPHICS_EMCC)
-  bdf(&font, "old/test/resources/tewi.bdf");
+  bdf(&font, "tests/tewi.bdf");
 #elif defined(GRAPHICS_OSX)
   bdf(&font, "/Users/roryb/git/hal/tests/tewi.bdf");
 #elif defined(GRAPHICS_WINDOWS)
