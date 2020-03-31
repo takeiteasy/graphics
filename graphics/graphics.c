@@ -69,7 +69,7 @@ struct NAME##_node_t { \
   struct NAME##_node_t *next; \
 }; \
 struct NAME##_node_t* NAME##_push(struct NAME##_node_t *head, TYPE *data) { \
-  struct NAME##_node_t *ret = malloc(sizeof(struct NAME##_node_t)); \
+  struct NAME##_node_t *ret = GRAPHICS_MALLOC(sizeof(struct NAME##_node_t)); \
   if (!ret) \
     return NULL; \
   ret->data = data; \
@@ -2404,7 +2404,6 @@ int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* f
 #if !defined(GRAPHICS_NO_WINDOW)
 static short keycodes[512];
 static bool keycodes_init = false;
-static struct window_t* active_window = NULL;
 
 void window_set_parent(struct window_t* s, void* p) {
   s->parent = p;
@@ -2439,10 +2438,6 @@ void window_size(struct window_t* s, int* w, int* h) {
   if (h)
     *h = s->h;
 }
-
-#define CBCALL(x, ...) \
-  if (active_window && active_window->x) \
-    active_window->x(active_window->parent, __VA_ARGS__);
 
 #if defined(GRAPHICS_OPENGL)
 #if defined(GRAPHICS_OSX)
@@ -2797,7 +2792,7 @@ static const AAPLVertex quad_vertices[] = {
 
 static inline int translate_mod(NSUInteger flags) {
   int mods = 0;
-
+  
   if (flags & NSEventModifierFlagShift)
     mods |= KB_MOD_SHIFT;
   if (flags & NSEventModifierFlagControl)
@@ -2808,7 +2803,7 @@ static inline int translate_mod(NSUInteger flags) {
     mods |= KB_MOD_SUPER;
   if (flags & NSEventModifierFlagCapsLock)
     mods |= KB_MOD_CAPS_LOCK;
-
+  
   return mods;
 }
 
@@ -2820,7 +2815,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   NSImage* nsi = [[[NSImage alloc] initWithSize:NSMakeSize(s->w, s->h)] autorelease];
   if (!nsi)
     return nil;
-
+  
   NSBitmapImageRep* nsbir = [[[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
                                                                      pixelsWide:s->w
                                                                      pixelsHigh:s->h
@@ -2834,7 +2829,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
                                                                    bitsPerPixel:0] autorelease];
   if (!nsbir)
     return nil;
-
+  
   char* rgba = GRAPHICS_MALLOC(s->w * s->h * 4);
   int offset = 0, c;
   for(int i = 0; i < s->h; ++i) {
@@ -2849,7 +2844,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   }
   memcpy([nsbir bitmapData], rgba, s->w * s->h * sizeof(char) * 4);
   GRAPHICS_SAFE_FREE(rgba);
-
+  
   [nsi addRepresentation:nsbir];
   return nsi;
 }
@@ -2908,7 +2903,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 @synthesize custom_cursor = _custom_cursor;
 @synthesize cursor_vis = _cursor_vis;
 
-- (id)initWithFrame:(NSRect)frameRect {
+-(id)initWithFrame:(NSRect)frameRect {
   _mouse_in_window = NO;
   _cursor = [NSCursor arrowCursor];
   _custom_cursor = NO;
@@ -3014,7 +3009,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   return self;
 }
 
-- (void)updateTrackingAreas {
+-(void)updateTrackingAreas {
   if (_track) {
     [self removeTrackingArea:_track];
     [_track release];
@@ -3035,20 +3030,20 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   [super updateTrackingAreas];
 }
 
-- (BOOL)acceptsFirstResponder {
+-(BOOL)acceptsFirstResponder {
   return YES;
 }
 
-- (BOOL)performKeyEquivalent:(NSEvent*)event {
+-(BOOL)performKeyEquivalent:(NSEvent*)event {
   return YES;
 }
 
-- (void)resetCursorRects {
+-(void)resetCursorRects {
   [super resetCursorRects];
   [self addCursorRect:[self visibleRect] cursor:(_cursor ? _cursor : [NSCursor arrowCursor])];
 }
 
-- (void)setCustomCursor:(NSImage*)img {
+-(void)setCustomCursor:(NSImage*)img {
   if (!img) {
     if (_custom_cursor && _cursor)
       [_cursor release];
@@ -3062,7 +3057,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   [_cursor retain];
 }
 
-- (void)setRegularCursor:(CURSOR_TYPE)type {
+-(void)setRegularCursor:(CURSOR_TYPE)type {
   NSCursor* tmp = nil;
   switch (type) {
     default:
@@ -3104,39 +3099,39 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   [_cursor retain];
 }
 
-- (void)setCursorVisibility:(BOOL)visibility {
+-(void)setCursorVisibility:(BOOL)visibility {
   _cursor_vis = visibility;
 }
 
-- (void)mouseEntered:(NSEvent*)event {
+-(void)mouseEntered:(NSEvent*)event {
   _mouse_in_window = YES;
   if (!_cursor_vis)
     [NSCursor hide];
 }
 
-- (void)mouseExited:(NSEvent*)event {
+-(void)mouseExited:(NSEvent*)event {
   _mouse_in_window = NO;
   if (!_cursor_vis)
     [NSCursor unhide];
 }
 
-- (void)mouseMoved:(NSEvent*)event {
+-(void)mouseMoved:(NSEvent*)event {
   if (_cursor && _mouse_in_window)
     [_cursor set];
 }
 
-- (BOOL)preservesContentDuringLiveResize {
+-(BOOL)preservesContentDuringLiveResize {
   return NO;
 }
 
 #if defined(GRAPHICS_METAL)
-- (void)updateMTKViewport:(CGSize)size {
+-(void)updateMTKViewport:(CGSize)size {
   _mtk_viewport.x = size.width * _scale_f;
   _mtk_viewport.y = (size.height * _scale_f) + (4 * _scale_f);
 }
 #endif
 
-- (void)drawRect:(NSRect)dirtyRect {
+-(void)drawRect:(NSRect)dirtyRect {
   if (!_buffer)
     return;
   
@@ -3189,8 +3184,8 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   CGDataProviderRef p = CGDataProviderCreateWithData(NULL, _buffer->buf, _buffer->w * _buffer->h * 4, NULL);
   CGImageRef img = CGImageCreate(_buffer->w, _buffer->h, 8, 32, _buffer->w * 4, s, kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little, p, NULL, 0, kCGRenderingIntentDefault);
   /* This line causes Visual Studio to crash if uncommented. I don't know why and I don't want to know.
-     Not the whole line though, just the `[self frame]` parts. This has caused me an issue for over a month.
-    `CGContextDrawImage(ctx, CGRectMake(0, 0, [self frame].size.width, [self frame].size.height), img);` */
+   Not the whole line though, just the `[self frame]` parts. This has caused me an issue for over a month.
+   `CGContextDrawImage(ctx, CGRectMake(0, 0, [self frame].size.width, [self frame].size.height), img);` */
   CGSize wh = [self frame].size;
   CGContextDrawImage(ctx, CGRectMake(0, 0, wh.width, wh.height), img);
   CGColorSpaceRelease(s);
@@ -3217,7 +3212,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 
 @protocol AppViewDelegate <NSObject>
 #if defined(GRAPHICS_METAL)
-- (void)mtkView:(MTKView*)view drawableSizeWillChange:(CGSize)size;
+-(void)mtkView:(MTKView*)view drawableSizeWillChange:(CGSize)size;
 #endif
 @end
 
@@ -3228,13 +3223,25 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 @property BOOL closed;
 @end
 
+struct osx_window_t {
+  AppDelegate* delegate;
+  NSInteger window_id;
+};
+
+LINKEDLIST(window, struct osx_window_t);
+static struct window_node_t* windows = NULL;
+
+struct window_node_t* window_pop2(struct window_node_t* head, NSInteger id) {
+  return head;
+}
+
 @implementation AppDelegate
 @synthesize window = _window;
 @synthesize view = _view;
 @synthesize parent = _parent;
 @synthesize closed = _closed;
 
-- (id)initWithSize:(NSSize)windowSize styleMask:(short)flags title:(const char*)windowTitle {
+-(id)initWithSize:(NSSize)windowSize styleMask:(short)flags title:(const char*)windowTitle {
   NSWindowStyleMask styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable;
   flags |= (flags & FULLSCREEN ? (BORDERLESS | RESIZABLE | FULLSCREEN_DESKTOP) : 0);
   styleMask |= (flags & RESIZABLE ? NSWindowStyleMaskResizable : 0);
@@ -3282,14 +3289,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
     [[_window standardWindowButton:NSWindowMiniaturizeButton] setHidden:YES];
   }
   
-  if (!active_window)
-    [_window center];
-  else {
-    AppDelegate* tmp = (AppDelegate*)active_window->window;
-    NSPoint tmp_p = [[tmp window] frame].origin;
-    [_window setFrameOrigin:NSMakePoint(tmp_p.x + 20, tmp_p.y - 20 - [tmp titlebarHeight])];
-  }
-  
+  [_window center];
   _view = [[AppView alloc] initWithFrame:frameRect];
   if (!_view) {
     release();
@@ -3309,31 +3309,52 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   return self;
 }
 
-- (void)setParent:(struct window_t*)screen {
+-(void)setParent:(struct window_t*)screen {
   _parent = screen;
 }
 
-- (CGFloat)titlebarHeight {
+-(CGFloat)titlebarHeight {
   return _window.frame.size.height - [_window contentRectForFrameRect: _window.frame].size.height;
 }
 
-- (void)windowWillClose:(NSNotification*)notification {
-  if (active_window && active_window->closed_callback)
-    active_window->closed_callback(active_window->parent);
+-(void)windowWillClose:(NSNotification*)notification {
   _closed = YES;
+  if (_parent->closed_callback)
+    _parent->closed_callback(_parent->parent);
+  [[self view] dealloc];
+  
+  struct window_node_t *head = windows, *cursor = windows, *prev = NULL;
+  while (cursor) {
+    if (cursor->data->delegate != self) {
+      prev = cursor;
+      cursor = cursor->next;
+      continue;
+    }
+    
+    if (!prev)
+      head = cursor->next;
+    else
+      prev->next = cursor->next;
+    break;
+  }
+  if (cursor) {
+    cursor->next = NULL;
+    GRAPHICS_FREE(cursor);
+  }
+  windows = head;
 }
 
-- (void)windowDidBecomeKey:(NSNotification*)notification {
-  active_window = _parent;
-  CBCALL(focus_callback, true);
+-(void)windowDidBecomeKey:(NSNotification*)notification {
+  if (_parent->focus_callback)
+    _parent->focus_callback(_parent->parent, true);
 }
 
-- (void)windowDidResignKey:(NSNotification*)notification {
-  CBCALL(focus_callback, false);
-  active_window = NULL;
+-(void)windowDidResignKey:(NSNotification*)notification {
+  if (_parent->focus_callback)
+    _parent->focus_callback(_parent->parent, false);
 }
 
-- (void)windowDidResize:(NSNotification*)notification {
+-(void)windowDidResize:(NSNotification*)notification {
   static CGSize size;
   size = [_view frame].size;
 #if defined(GRAPHICS_METAL)
@@ -3341,11 +3362,12 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 #endif
   _parent->w = (int)roundf(size.width);
   _parent->h = (int)roundf(size.height);
-  CBCALL(resize_callback, _parent->w, _parent->h);
+  if (_parent->resize_callback)
+  _parent->resize_callback(_parent->resize_callback, _parent->w, _parent->h);
 }
 
 #if defined(GRAPHICS_METAL)
-- (void)mtkView:(MTKView*)mtkView drawableSizeWillChange:(CGSize)size; {}
+-(void)mtkView:(MTKView*)mtkView drawableSizeWillChange:(CGSize)size; {}
 #endif
 @end
 
@@ -3481,12 +3503,16 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
     return false;
   }
   
+  struct osx_window_t* win_data = GRAPHICS_MALLOC(sizeof(struct osx_window_t));
+  win_data->delegate = app;
+  win_data->window_id = [[app window] windowNumber];
+  windows = window_push(windows, win_data);
+  
   memset(s, 0, sizeof(struct window_t));
   s->id = (int)[[app window] windowNumber];
   s->w  = w;
   s->h  = h;
   s->window = (void*)app;
-  active_window = s;
   [app setParent:s];
   
   [NSApp activateIgnoringOtherApps:YES];
@@ -3539,8 +3565,8 @@ void window_destroy(struct window_t* s) {
   AppDelegate* app = (AppDelegate*)s->window;
   if (!closed(s))
     [[app window] close];
-  [[app view]dealloc];
-  GRAPHICS_SAFE_FREE(app);
+  [[app view] dealloc];
+  [app dealloc];
   memset(s, 0, sizeof(struct window_t));
   [pool drain];
 }
@@ -3562,6 +3588,10 @@ bool closed_va(int n, ...) {
   }
   va_end(args);
   return ret;
+}
+
+bool closed_all() {
+  return windows == NULL;
 }
 
 void cursor_lock(struct window_t* s, bool locked) {
@@ -3604,12 +3634,26 @@ void cursor_pos(int* x, int* y) {
   if (x)
     *x = _p.x;
   if (y)
-    *y = [[(AppDelegate*)active_window->window window] screen].frame.size.height - _p.y;
+    *y = [NSScreen mainScreen].frame.size.height - _p.y;
 }
 
 void cursor_set_pos(int x, int y) {
   CGWarpMouseCursorPosition((CGPoint){ x, y });
 }
+
+struct window_t* event_delegate(NSInteger window_id) {
+  struct window_node_t* cursor = windows;
+  while (cursor) {
+    if (cursor->data->window_id == window_id)
+      return [cursor->data->delegate parent];
+    cursor = cursor->next;
+  }
+  return NULL;
+}
+
+#define CBCALL(x, ...) \
+  if (e_window && e_window->x) \
+    e_window->x(e_window->parent, __VA_ARGS__);
 
 void events() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
@@ -3618,6 +3662,11 @@ void events() {
                                  untilDate:[NSDate distantPast]
                                     inMode:NSDefaultRunLoopMode
                                    dequeue:YES])) {
+    struct window_t* e_window = event_delegate([e windowNumber]);
+    if (!e_window) {
+      [NSApp sendEvent:e];
+      continue;
+    }
     switch ([e type]) {
       case NSEventTypeKeyUp:
       case NSEventTypeKeyDown:
@@ -3641,16 +3690,14 @@ void events() {
       case NSEventTypeOtherMouseDragged:
         CBCALL(mouse_button_callback, (MOUSE_BTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
       case NSEventTypeMouseMoved: {
-        static AppDelegate* app = NULL;
-        if (!active_window)
-          break;
-        app = (AppDelegate*)active_window->window;
+        NSLog(@"MOVED IN %ld\n", [e windowNumber]);
+        AppDelegate* app = (AppDelegate*)e_window->window;
         if ([[app view] mouse_in_window])
           CBCALL(mouse_move_callback, [e locationInWindow].x, (int)([[app view] frame].size.height - roundf([e locationInWindow].y)), [e deltaX], [e deltaY]);
         break;
       }
-	  default:
-		break;
+      default:
+        break;
     }
     [NSApp sendEvent:e];
   }
@@ -3668,6 +3715,14 @@ void flush(struct window_t* s, struct surface_t* b) {
 }
 
 void release() {
+  struct window_node_t *cursor = windows, *tmp = NULL;
+  while (cursor) {
+    tmp = cursor->next;
+    [cursor->data->delegate dealloc];
+    GRAPHICS_SAFE_FREE(cursor->data);
+    GRAPHICS_SAFE_FREE(cursor);
+    cursor = tmp;
+  }
   [NSApp terminate:nil];
 }
 #elif defined(GRAPHICS_WINDOWS) && !defined(GRAPHICS_EXTERNAL_WINDOW)
@@ -5207,6 +5262,8 @@ void events() {
           break;
         close_nix_window(e_data);
         windows = window_pop(windows, e_data);
+        if (e_window && e_window->closed_callback)
+          e_window->closed_callback(e_window->parent);
         break;
     }
   }

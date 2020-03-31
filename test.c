@@ -9,7 +9,7 @@ static bool running = true;
 #define SW 575
 #define SH 500
 
-#if 0
+#if 1
 #define printf
 #endif
 #if 1
