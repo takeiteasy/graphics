@@ -51,7 +51,7 @@ void on_keyboard(void* _, KEY_SYM sym, KEY_MOD mod, bool down) {
 }
 
 void on_mouse_btn(void* _, MOUSE_BTN btn, KEY_MOD mod, bool down) {
-  printf("mouse btn: %d is %s\n", (int)btn, (down ? "down" : "up"));
+  printf("mouse btn: %d is %s\n", btn, (down ? "down" : "up"));
 }
 
 void on_mouse_move(void* _, int x, int y, int dx, int dy) {

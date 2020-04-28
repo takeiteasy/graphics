@@ -1116,6 +1116,7 @@ if ((x)) { \
    * @param msg Formatted error description
    */
   void graphics_error(GRAPHICS_ERROR_TYPE type, const char* file, const char* func, int line, const char* msg, ...);
+  
 #if defined(__cplusplus)
 }
 #endif

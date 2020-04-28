@@ -2870,11 +2870,11 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 #else
 @interface AppView : NSView
 #endif
-@property (nonatomic, weak) id<AppViewDelegate> delegate;
-@property (weak) NSTrackingArea* track;
+@property (nonatomic, strong) id<AppViewDelegate> delegate;
+@property (strong) NSTrackingArea* track;
 @property (atomic) struct surface_t* buffer;
 @property BOOL mouse_in_window;
-@property (nonatomic, weak) NSCursor* cursor;
+@property (nonatomic, strong) NSCursor* cursor;
 @property BOOL custom_cursor;
 @property BOOL cursor_vis;
 @end
@@ -3207,7 +3207,10 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   [_track release];
   if (_custom_cursor && _cursor)
     [_cursor release];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wobjc-missing-super-calls"
 }
+#pragma clang diagnostic pop
 @end
 
 @protocol AppViewDelegate <NSObject>
@@ -3230,10 +3233,6 @@ struct osx_window_t {
 
 LINKEDLIST(window, struct osx_window_t);
 static struct window_node_t* windows = NULL;
-
-struct window_node_t* window_pop2(struct window_node_t* head, NSInteger id) {
-  return head;
-}
 
 @implementation AppDelegate
 @synthesize window = _window;
@@ -3690,7 +3689,6 @@ void events() {
       case NSEventTypeOtherMouseDragged:
         CBCALL(mouse_button_callback, (MOUSE_BTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
       case NSEventTypeMouseMoved: {
-        NSLog(@"MOVED IN %ld\n", [e windowNumber]);
         AppDelegate* app = (AppDelegate*)e_window->window;
         if ([[app view] mouse_in_window])
           CBCALL(mouse_move_callback, [e locationInWindow].x, (int)([[app view] frame].size.height - roundf([e locationInWindow].y)), [e deltaX], [e deltaY]);
@@ -4841,9 +4839,7 @@ static int translate_key_a(int sym) {
 }
 
 static int translate_key(int scancode) {
-  if (scancode < 0 || scancode > 255)
-    return KB_KEY_UNKNOWN;
-  return keycodes[scancode];
+  return scancode < 0 || scancode > 255 ? KB_KEY_UNKNOWN : keycodes[scancode];
 }
 
 static int translate_mod(int state) {
