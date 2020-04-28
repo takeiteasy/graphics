@@ -7,7 +7,6 @@ build/test
 old/
 hal_h.h
 VERSION
-Makefile
 hal.xcodeproj/
 hal.xcodeproj/*
 tmp/
