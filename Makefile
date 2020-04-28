@@ -35,11 +35,12 @@ all: $(EXE) docs
 
 lib: $(LIB)
 
-docs: $(DOCDIR)/masterTOC.html
+docs: $(DOCDIR)/index.html
 
-$(DOCDIR)/masterTOC.html:
+$(DOCDIR)/index.html:
 	headerdoc2html -udpb $(LIBDIR)/graphics.h -o $(DOCDIR)
 	gatherheaderdoc $(DOCDIR)
+	mv $(DOCDIR)/masterTOC.html $(DOCDIR)/index.html
 
 $(EXE): $(EXEOBJ) $(LIB)
 	$(CC) $^ -o $@
