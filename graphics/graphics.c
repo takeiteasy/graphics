@@ -90,15 +90,52 @@ struct NAME##_node_t* NAME##_pop(struct NAME##_node_t *head, TYPE *data) { \
   return head; \
 }
 
-void surface_size(struct surface_t* s, unsigned int* w, unsigned int* h) {
-  if (w)
-    *w = s->w;
-  if (h)
-    *h = s->h;
+int rgba(unsigned char r, unsigned char g, unsigned char b, unsigned char a) {
+  return ((unsigned int)a << 24) | ((unsigned int)r << 16) | ((unsigned int)g << 8) | b;
 }
 
-int* surface_raw(struct surface_t* s) {
-  return s->buf;
+int rgb(unsigned char r, unsigned char g, unsigned char b) {
+  return rgba(r, g, b, 255);
+}
+
+int rgba1(unsigned char c) {
+  return rgba(c, c, c, c);
+}
+
+int rgb1(unsigned char c) {
+  return rgb(c, c, c);
+}
+
+unsigned char r_channel(int c) {
+  return (unsigned char)((c >> 16) & 0xFF);
+}
+
+unsigned char g_channel(int c) {
+  return (unsigned char)((c >>  8) & 0xFF);
+}
+
+unsigned char b_channel(int c) {
+  return (unsigned char)(c & 0xFF);
+}
+
+unsigned char a_channel(int c) {
+  return (unsigned char)((c >> 24) & 0xFF);
+}
+
+int rgba_r(int c, unsigned char r) {
+  return (c & ~0x00FF0000) | (r << 16);
+}
+
+int rgba_g(int c, unsigned char g) {
+  return (c & ~0x0000FF00) | (g << 8);
+}
+
+int rgba_b(int c, unsigned char b) {
+  return (c & ~0x000000FF) | b;
+}
+
+int rgba_a(int c, unsigned char a) {
+  return (c & ~0x00FF0000) | (a << 24);
 }
 
 bool surface(struct surface_t* s, unsigned int w, unsigned int h) {
@@ -120,53 +157,57 @@ void surface_destroy(struct surface_t* s) {
   memset(s, 0, sizeof(struct surface_t));
 }
 
+static enum draw_mode draw_mode = NORMAL;
+
+void graphics_draw_mode(enum draw_mode m) {
+  draw_mode = m;
+}
+
 void fill(struct surface_t* s, int col) {
   for (int i = 0; i < s->w * s->h; ++i)
     s->buf[i] = col;
 }
 
-#define PGET(s, x, y) ((s)->buf[(y) * (s)->w + (x)])
-
 static inline void flood_fn(struct surface_t* s, int x, int y, int new, int old) {
-  if (new == old || PGET(s, x, y) != old)
+  if (new == old || pget(s, x, y) != old)
     return;
-
+  
   int x1 = x;
-  while (x1 < s->w && PGET(s, x1, y) == old) {
-    PGET(s, x1, y) = new;
+  while (x1 < s->w && pget(s, x1, y) == old) {
+    pset(s, x1, y, new);
     x1++;
   }
-
+  
   x1 = x - 1;
-  while (x1 >= 0 && PGET(s, x1, y) == old) {
-    PGET(s, x1, y) = new;
+  while (x1 >= 0 && pget(s, x1, y) == old) {
+    pset(s, x1, y, new);
     x1--;
   }
-
+  
   x1 = x;
-  while (x1 < s->w && PGET(s, x1, y) == new) {
-    if(y > 0 && PGET(s, x1, y - 1) == old)
+  while (x1 < s->w && pget(s, x1, y) == new) {
+    if(y > 0 && pget(s, x1, y - 1) == old)
       flood_fn(s, x1, y - 1, new, old);
     x1++;
   }
-
+  
   x1 = x - 1;
-  while(x1 >= 0 && PGET(s, x1, y) == new) {
-    if(y > 0 && PGET(s, x1, y - 1) == old)
+  while(x1 >= 0 && pget(s, x1, y) == new) {
+    if(y > 0 && pget(s, x1, y - 1) == old)
       flood_fn(s, x1, y - 1, new, old);
     x1--;
   }
-
+  
   x1 = x;
-  while(x1 < s->w && PGET(s, x1, y) == new) {
-    if(y < s->h - 1 && PGET(s, x1, y + 1) == old)
+  while(x1 < s->w && pget(s, x1, y) == new) {
+    if(y < s->h - 1 && pget(s, x1, y + 1) == old)
       flood_fn(s, x1, y + 1, new, old);
     x1++;
   }
-
+  
   x1 = x - 1;
-  while(x1 >= 0 && PGET(s, x1, y) == new) {
-    if(y < s->h - 1 && PGET(s, x1, y + 1) == old)
+  while(x1 >= 0 && pget(s, x1, y) == new) {
+    if(y < s->h - 1 && pget(s, x1, y + 1) == old)
       flood_fn(s, x1, y + 1, new, old);
     x1--;
   }
@@ -175,43 +216,41 @@ static inline void flood_fn(struct surface_t* s, int x, int y, int new, int old)
 void flood(struct surface_t* s, int x, int y, int col) {
   if (x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
-  flood_fn(s, x, y, col, PGET(s, x, y));
+  flood_fn(s, x, y, col, pget(s, x, y));
 }
 
 void cls(struct surface_t* s) {
   memset(s->buf, 0, s->w * s->h * sizeof(int));
 }
 
-void pset(struct surface_t* s, int x, int y, int c) {
-  if (x >= 0 && y >= 0 && x < s->w && y < s->h)
-    s->buf[y * s->w + x] = c;
-}
-
-#if defined(GRAPHICS_NO_ALPHA)
-#define blend(s, x, y, c) pset((s), (x), (y), (c))
-#else
 #define BLEND(c0, c1, a0, a1) (c0 * a0 / 255) + (c1 * a1 * (255 - a0) / 65025)
 
-static inline void blend(struct surface_t* s, int x, int y, int c) {
-  if (!s)
-	return;
-  int a = COL_A(c);
-  if (!a || x < 0 || y < 0 || x >= s->w || y >= s->h)
+void pset(struct surface_t* s, int x, int y, int c) {
+  if (x < 0 || y < 0 || x >= s->w || y >= s->h)
     return;
-
-  int* p = &s->buf[y * s->w + x];
-  if (!p)
-	return;
-  int  b = COL_A(*p);
-  *p = (a == 255 || !b) ? c : COL_RGBA(BLEND(COL_R(c), COL_R(*p), a, b),
-                                       BLEND(COL_G(c), COL_G(*p), a, b),
-                                       BLEND(COL_B(c), COL_B(*p), a, b),
+  switch (draw_mode) {
+    case MASK:
+      if (a_channel(c) < 255)
+        return;
+    default:
+    case NORMAL:
+      s->buf[y * s->w + x] = c;
+      break;
+    case ALPHA: {
+      int  a = a_channel(c);
+      int* p = &s->buf[y * s->w + x];
+      int  b = a_channel(*p);
+      *p = (a == 255 || !b) ? c : rgba(BLEND(r_channel(c), r_channel(*p), a, b),
+                                       BLEND(g_channel(c), g_channel(*p), a, b),
+                                       BLEND(b_channel(c), b_channel(*p), a, b),
                                        a + (b * (255 - a) >> 8));
+      break;
+    }
+  }
 }
-#endif
 
 int pget(struct surface_t* s, int x, int y) {
-  return (!s || !s->buf || x < 0 || y < 0 || x >= s->w || y >= s->h ? 0 : PGET(s, x, y));
+  return (x >= 0 && y >= 0 && x < s->w && y < s->h) ? s->buf[y * s->w + x] : 0;
 }
 
 bool paste(struct surface_t* dst, struct surface_t* src, int x, int y) {
@@ -220,12 +259,8 @@ bool paste(struct surface_t* dst, struct surface_t* src, int x, int y) {
     for (oy = 0; oy < src->h; ++oy) {
       if (oy > dst->h)
         break;
-      c = PGET(src, ox, oy);
-#if defined(GRAPHICS_CHROMA_KEY) && defined(BLIT_CHROMA_KEY)
-      if (c == BLIT_CHROMA_KEY)
-        continue;
-#endif
-      blend(dst, x + ox, y + oy, c);
+      c = pget(src, ox, oy);
+      pset(dst, x + ox, y + oy, c);
     }
     if (ox > dst->w)
       break;
@@ -265,7 +300,7 @@ void passthru(struct surface_t* s, int (*fn)(int x, int y, int col)) {
   int x, y;
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
-      pset(s, x, y, fn(x, y, PGET(s, x, y)));
+      pset(s, x, y, fn(x, y, pget(s, x, y)));
 }
 
 static void __resize(struct surface_t* a, struct surface_t* b) {
@@ -321,217 +356,9 @@ bool rotate(struct surface_t* a, float angle, struct surface_t* b) {
       sy = ((y + mm[0][1]) * c - (x + mm[0][0]) * s);
       if (sx < 0 || sx >= a->w || sy < 0 || sy >= a->h)
         continue;
-      blend(b, x, y, PGET(a, sx, sy));
+      pset(b, x, y, pget(a, sx, sy));
     }
   return true;
-}
-
-typedef struct oct_node_t {
-  long long r, g, b; /* sum of all child node colors */
-  int count, heap_idx;
-  unsigned char n_kids, kid_idx, flags, depth;
-  struct oct_node_t *kids[8], *parent;
-} oct_node_t;
-
-typedef struct {
-  int alloc, n;
-  oct_node_t** buf;
-} node_heap;
-
-typedef struct {
-  oct_node_t* pool;
-  int len;
-} oct_node_pool_t;
-
-static inline int cmp_node(oct_node_t* a, oct_node_t* b) {
-  if (a->n_kids < b->n_kids)
-    return -1;
-  if (a->n_kids > b->n_kids)
-    return 1;
-
-  int ac = a->count >> a->depth;
-  int bc = b->count >> b->depth;
-  return ac < bc ? -1 : ac > bc;
-}
-
-static inline void down_heap(node_heap* h, oct_node_t* p) {
-  int n = p->heap_idx, m;
-
-  while (1) {
-    m = n * 2;
-    if (m >= h->n)
-      break;
-    if (m + 1 < h->n && cmp_node(h->buf[m], h->buf[m + 1]) > 0)
-      m++;
-
-    if (cmp_node(p, h->buf[m]) <= 0)
-      break;
-
-    h->buf[n] = h->buf[m];
-    h->buf[n]->heap_idx = n;
-    n = m;
-  }
-
-  h->buf[n] = p;
-  p->heap_idx = n;
-}
-
-static inline void up_heap(node_heap* h, oct_node_t* p) {
-  int n = p->heap_idx;
-  oct_node_t* prev;
-
-  while (n > 1) {
-    prev = h->buf[n / 2];
-    if (cmp_node(p, prev) >= 0)
-      break;
-
-    h->buf[n] = prev;
-    prev->heap_idx = n;
-    n /= 2;
-  }
-
-  h->buf[n] = p;
-  p->heap_idx = n;
-}
-
-static inline void heap_add(node_heap* h, oct_node_t* p) {
-  if ((p->flags & 1)) {
-    down_heap(h, p);
-    up_heap(h, p);
-    return;
-  }
-
-  p->flags |= 1;
-  if (!h->n) h->n = 1;
-  if (h->n >= h->alloc) {
-    while (h->n >= h->alloc)
-      h->alloc += 1024;
-    h->buf = GRAPHICS_REALLOC(h->buf, sizeof(oct_node_t*) * h->alloc);
-  }
-
-  p->heap_idx = h->n;
-  h->buf[h->n++] = p;
-  up_heap(h, p);
-}
-
-static inline oct_node_t* pop_heap(node_heap* h) {
-  if (h->n <= 1)
-    return 0;
-
-  oct_node_t* ret = h->buf[1];
-  h->buf[1] = h->buf[--h->n];
-
-  h->buf[h->n] = 0;
-
-  h->buf[1]->heap_idx = 1;
-  down_heap(h, h->buf[1]);
-
-  return ret;
-}
-
-static inline oct_node_t* node_new(oct_node_pool_t* pool, unsigned char idx, unsigned char depth, oct_node_t* p) {
-  if (pool->len <= 1) {
-    oct_node_t* p = GRAPHICS_MALLOC(2048 * sizeof(oct_node_t));
-    p->parent = pool->pool;
-    pool->pool = p;
-    pool->len  = 2047;
-  }
-
-  oct_node_t* x = pool->pool + pool->len--;
-  x->kid_idx = idx;
-  x->depth = depth;
-  x->parent = p;
-  if (p)
-    p->n_kids++;
-  return x;
-}
-
-static inline void free_node(oct_node_pool_t* pool) {
-  oct_node_t* p;
-  while (pool->pool) {
-    p = pool->pool->parent;
-    GRAPHICS_SAFE_FREE(pool->pool);
-    pool->pool = p;
-  }
-}
-
-static inline oct_node_t* node_insert(oct_node_pool_t* pool, oct_node_t* root, int* buf) {
-  unsigned char i, bit, depth = 0;
-  int c = *buf;
-  int r = COL_R(c), g = COL_G(c), b = COL_B(c);
-
-  for (bit = 1 << 7; ++depth < 8; bit >>= 1) {
-    i = !!(r & bit) * 4 + !!(g & bit) * 2 + !!(b & bit);
-    if (!root->kids[i])
-      root->kids[i] = node_new(pool, i, depth, root);
-    root = root->kids[i];
-  }
-
-  root->r += r;
-  root->g += g;
-  root->b += b;;
-  root->count++;
-  return root;
-}
-
-static inline oct_node_t* node_fold(oct_node_t* p) {
-  if (p->n_kids) {
-    GRAPHICS_ERROR(INVALID_PARAMETERS, "I don't know to be honest.");
-    return NULL;
-  }
-
-  oct_node_t* q = p->parent;
-  q->count += p->count;
-
-  q->r += p->r;
-  q->g += p->g;
-  q->b += p->b;
-  q->n_kids --;
-  q->kids[p->kid_idx] = 0;
-  return q;
-}
-
-static void color_replace(oct_node_t* root, int* buf) {
-  unsigned char i, bit;
-  int c = *buf;
-  int r = COL_R(c), g = COL_G(c), b = COL_B(c);
-
-  for (bit = 1 << 7; bit; bit >>= 1) {
-    i = !!(r & bit) * 4 + !!(g & bit) * 2 + !!(b & bit);
-    if (!root->kids[i])
-      break;
-    root = root->kids[i];
-  }
-
-  *buf = COL_RGB((int)root->r, (int)root->g, (int)root->b);
-}
-
-void quantize(struct surface_t* a, int n_colors, struct surface_t* b) {
-  int i, *buf = a->buf;
-  node_heap heap = { 0, 0, 0 };
-  oct_node_pool_t pool = { NULL, 0 };
-
-  oct_node_t *root = node_new(&pool, 0, 0, 0), *got;
-  for (i = 0, buf = b->buf; i < b->w * b->h; i++, buf++)
-    heap_add(&heap, node_insert(&pool, root, buf));
-
-  while (heap.n > n_colors + 1)
-    heap_add(&heap, node_fold(pop_heap(&heap)));
-
-  double c;
-  for (i = 1; i < heap.n; i++) {
-    got = heap.buf[i];
-    c = got->count;
-    got->r = got->r / c + .5;
-    got->g = got->g / c + .5;
-    got->b = got->b / c + .5;
-  }
-
-  for (i = 0, buf = b->buf; i < b->w * b->h; i++, buf++)
-    color_replace(root, buf);
-
-  free_node(&pool);
-  GRAPHICS_SAFE_FREE(heap.buf);
 }
 
 static inline void vline(struct surface_t* s, int x, int y0, int y1, int col) {
@@ -550,7 +377,7 @@ static inline void vline(struct surface_t* s, int x, int y0, int y1, int col) {
     y1 = s->h - 1;
 
   for(int y = y0; y <= y1; y++)
-    blend(s, x, y, col);
+    pset(s, x, y, col);
 }
 
 static inline void hline(struct surface_t* s, int y, int x0, int x1, int col) {
@@ -569,7 +396,7 @@ static inline void hline(struct surface_t* s, int y, int x0, int x1, int col) {
     x1 = s->w - 1;
 
   for(int x = x0; x <= x1; x++)
-    blend(s, x, y, col);
+    pset(s, x, y, col);
 }
 
 void line(struct surface_t* s, int x0, int y0, int x1, int y1, int col) {
@@ -581,7 +408,7 @@ void line(struct surface_t* s, int x0, int y0, int x1, int y1, int col) {
   int dy = abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
   int err = (dx > dy ? dx : -dy) / 2;
 
-  while (blend(s, x0, y0, col), x0 != x1 || y0 != y1) {
+  while (pset(s, x0, y0, col), x0 != x1 || y0 != y1) {
     int e2 = err;
     if (e2 > -dx) { err -= dy; x0 += sx; }
     if (e2 <  dy) { err += dx; y0 += sy; }
@@ -591,10 +418,10 @@ void line(struct surface_t* s, int x0, int y0, int x1, int y1, int col) {
 void circle(struct surface_t* s, int xc, int yc, int r, int col, bool fill) {
   int x = -r, y = 0, err = 2 - 2 * r; /* II. Quadrant */
   do {
-    blend(s, xc - x, yc + y, col);    /*   I. Quadrant */
-    blend(s, xc - y, yc - x, col);    /*  II. Quadrant */
-    blend(s, xc + x, yc - y, col);    /* III. Quadrant */
-    blend(s, xc + y, yc + x, col);    /*  IV. Quadrant */
+    pset(s, xc - x, yc + y, col);    /*   I. Quadrant */
+    pset(s, xc - y, yc - x, col);    /*  II. Quadrant */
+    pset(s, xc + x, yc - y, col);    /* III. Quadrant */
+    pset(s, xc + y, yc + x, col);    /*  IV. Quadrant */
 
     if (fill) {
       hline(s, yc - y, xc - x, xc + x, col);
@@ -679,7 +506,7 @@ void tri(struct surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, in
         GRAPHICS_SWAP(ay, by);
       }
       for (j = ax; j <= bx; ++j)
-        blend(s, j, y0 + i, col);
+        pset(s, j, y0 + i, col);
     }
   } else {
     line(s, x0, y0, x1, y1, col);
@@ -790,13 +617,13 @@ bool bmp(struct surface_t* s, const char* path) {
           int pad = (4 - (info.width * 3) % 4) % 4;
           for (int j = info.height; j; --j, off += pad)
             for (int i = 0; i < info.width; ++i, off += 3)
-              pset(s, i, j, COL_RGB(data[off + 2], data[off + 1], data[off]));
+              pset(s, i, j, rgb(data[off + 2], data[off + 1], data[off]));
           break;
         }
         case 32:
           for (int j = info.height; j; --j)
             for (int i = 0; i < info.width; ++i, off += 4)
-              pset(s, i, j, COL_RGBA(data[off + 2], data[off + 1], data[off], 255 - data[off + 3]));
+              pset(s, i, j, rgba(data[off + 2], data[off + 1], data[off], 255 - data[off + 3]));
           break;
         default:
           GRAPHICS_ERROR(UNSUPPORTED_BMP, "bmp() failed. Unsupported BPP: %d", info.bits);
@@ -833,10 +660,10 @@ bool save_bmp(struct surface_t* s, const char* path) {
   for (i = 0; i < s->w; ++i) {
     for (j = s->h; j > 0; --j) {
       y = (s->h - 1) - j;
-      c = PGET(s, i, y);
-      img[(i + y * s->w) * 3 + 2] = (unsigned char)COL_R(c);
-      img[(i + y * s->w) * 3 + 1] = (unsigned char)COL_G(c);
-      img[(i + y * s->w) * 3 + 0] = (unsigned char)COL_B(c);
+      c = pget(s, i, y);
+      img[(i + y * s->w) * 3 + 2] = (unsigned char)r_channel(c);
+      img[(i + y * s->w) * 3 + 1] = (unsigned char)g_channel(c);
+      img[(i + y * s->w) * 3 + 0] = (unsigned char)b_channel(c);
     }
   }
 
@@ -890,7 +717,6 @@ bool save_bmp(struct surface_t* s, const char* path) {
   return true;
 }
 
-#if !defined(GRAPHICS_NO_TEXT)
 static unsigned char font[540][8] = {
   // Latin 0 - 94
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },   // U+0020 (space)
@@ -1462,71 +1288,13 @@ static int extra_font_lookup[10] = {
   7923
 };
 
-#if !defined(GRAPHICS_NO_TEXT_COLOR_PARSING)
-static inline int read_color(const char* str, int* col, int* len) {
-#pragma message WARN("TODO: read_color() alpha value wrong?")
-  const char* c = str;
-  if (*c != '(')
-    return 0;
-  int _len = 0;
-  while (c) {
-    _len++;
-    if (*c == ')' || _len > 17)
-      break;
-    c++;
-  }
-  if (_len > 17)
-    return 0;
-  *len = _len + 1;
-  if (!col)
-    return 1; // Skip colour parsing
-
-  c = str + 1;
-  unsigned char rgba[4][4] = {
-    "0",
-    "0",
-    "0",
-    "255"
-  };
-  int n = 0;
-  for (int i = 0, j = 0, k = 0; i < (_len - 2); ++i) {
-    if (*c == ',') {
-      k++;
-      n++;
-      j = 0;
-    }
-    else if (isdigit(*c) != -1) {
-      rgba[k][j++] = *c;
-    }
-    else
-      return 0;
-    c++;
-  }
-
-  *col = COL_RGBA(atoi((const char*)rgba[0]),
-                  atoi((const char*)rgba[1]),
-                  atoi((const char*)rgba[2]),
-                  atoi((const char*)rgba[3]));
-  return 1;
-}
-#endif // !defined(GRAPHICS_NO_TEXT_COLOR_PARSING)
-
 static inline void str_size(const char* str, int* w, int* h) {
   const char* s = (const char*)str;
-  int n = 0, m = 0, l = 1, c, len;
+  int n = 0, m = 0, l = 1, c;
   while (s && *s != '\0') {
     c = *s;
     if (c >= 0 && c <= 127) {
       switch (c) {
-        case '\f':
-        case '\b':
-          if (read_color(s, NULL, &len)) {
-            s += len;
-            continue;
-          }
-          else
-            s++;
-          break;
         case '\n':
           if (n > m)
             m = n;
@@ -1595,11 +1363,11 @@ void ascii(struct surface_t* s, unsigned char ch, int x, int y, int fg, int bg) 
   for (i = 0; i < 8; ++i)
     for (j = 0; j < 8; ++j) {
       if (font[c][i] & 1 << j) {
-        blend(s, x + j, y + i, fg);
+        pset(s, x + j, y + i, fg);
       } else {
         if (bg == -1)
           continue;
-        blend(s, x + j, y + i, bg);
+        pset(s, x + j, y + i, bg);
       }
     }
 }
@@ -1611,9 +1379,9 @@ int character(struct surface_t* s, const char* ch, int x, int y, int fg, int bg)
   for (i = 0; i < 8; ++i)
     for (j = 0; j < 8; ++j) {
       if (font[uc][i] & 1 << j)
-        blend(s, x + j, y + i, fg);
+        pset(s, x + j, y + i, fg);
       else {
-        blend(s, x + j, y + i, bg);
+        pset(s, x + j, y + i, bg);
       }
     }
 
@@ -1622,7 +1390,7 @@ int character(struct surface_t* s, const char* ch, int x, int y, int fg, int bg)
 
 void writeln(struct surface_t* s, int x, int y, int fg, int bg, const char* str) {
     const char* c = str;
-  int u = x, v = y, col, len;
+  int u = x, v = y;
   while (c && *c != '\0')
     switch (*c) {
       case '\n':
@@ -1630,22 +1398,6 @@ void writeln(struct surface_t* s, int x, int y, int fg, int bg, const char* str)
         u  = x;
         c++;
         break;
-#if !defined(GRAPHICS_NO_TEXT_COLOR_PARSING)
-      case '\f':
-        if (read_color(c + 1, &col, &len)) {
-          fg = col;
-          c += len;
-        } else
-          c++;
-        break;
-      case '\b':
-        if (read_color(c + 1, &col, &len)) {
-          bg = col;
-          c += len;
-        } else
-          c++;
-        break;
-#endif
       default:
         c += character(s, c, u, v, fg, bg);
         u += 8;
@@ -1702,648 +1454,7 @@ void stringf(struct surface_t* s, int fg, int bg, const char* fmt, ...) {
   string(s, fg, bg, (char*)buffer);
   GRAPHICS_SAFE_FREE(buffer);
 }
-#endif // !defined(GRAPHICS_NO_TEXT)
 
-#if !defined(GRAPHICS_NO_BDF) && !defined(GRAPHICS_NO_TEXT)
-#if defined(GRAPHICS_WINDOWS)
-#define snprintf _snprintf
-#define vsnprintf _vsnprintf
-#define strcasecmp _stricmp
-#define strncasecmp _strnicmp
-#endif
-
-#define BDF_READ_INT(x) \
-  p = strtok(NULL, " \t\n\r"); \
-  (x) = atoi(p);
-
-void bdf_destroy(struct bdf_t* f) {
-    for (int i = 0; i < f->n_chars; ++i)
-    if (f->chars[i].bitmap) {
-      GRAPHICS_SAFE_FREE(f->chars[i].bitmap);
-      f->chars[i].bitmap = NULL;
-    }
-  if (f->chars) {
-    GRAPHICS_SAFE_FREE(f->chars);
-    f->chars = NULL;
-  }
-  if (f->encoding_table) {
-    GRAPHICS_SAFE_FREE(f->encoding_table);
-    f->encoding_table = NULL;
-  }
-  memset(f, 0, sizeof(sizeof(struct bdf_t)));
-}
-
-static inline int htoi(const char* p) {
-  return (*p <= '9' ? *p - '0' : (*p <= 'F' ? *p - 'A' + 10 : *p - 'a' + 10));
-}
-
-bool bdf(struct bdf_t* out, const char* path) {
-  FILE* fp = fopen(path, "r");
-  if (!fp) {
-    GRAPHICS_ERROR(FILE_OPEN_FAILED, "fopen() failed: %s", path);
-    return false;
-  }
-
-  char *s, *p, buf[BUFSIZ];
-  for (;;) {
-    if (!fgets(buf, sizeof(buf), fp))
-      break;
-    if (!(s = strtok(buf, " \t\n\r")))
-      break;
-
-    if (!strcasecmp((char*)s, "FONTBOUNDINGBOX")) {
-      BDF_READ_INT(out->fbb_w);
-      BDF_READ_INT(out->fbb_h);
-      BDF_READ_INT(out->fbb_x);
-      BDF_READ_INT(out->fbb_y);
-    } else if (!strcasecmp(s, "CHARS")) {
-      BDF_READ_INT(out->n_chars);
-      break;
-    }
-  }
-
-  if (out->fbb_w <= 0 || out->fbb_h <= 0) {
-    GRAPHICS_ERROR(BDF_NO_CHAR_SIZE, "bdf() failed: No character size given for %s", path);
-    return false;
-  }
-
-  if (out->n_chars <= 0) {
-    GRAPHICS_ERROR(BDF_NO_CHAR_LENGTH, "bdf() failed: Unknown number of characters for %s", path);
-    return false;
-  }
-
-  out->encoding_table = GRAPHICS_MALLOC(out->n_chars * sizeof(unsigned int));
-  if (!out->encoding_table) {
-    GRAPHICS_ERROR(OUT_OF_MEMEORY, "malloc() failed");
-    return false;
-  }
-  out->chars = GRAPHICS_MALLOC(out->n_chars * sizeof(struct bdf_char_t));
-  if (!out->chars) {
-    GRAPHICS_SAFE_FREE(out->encoding_table);
-    GRAPHICS_ERROR(OUT_OF_MEMEORY, "malloc() failed");
-    return false;
-  }
-
-  int encoding = 0, width = -1, scanline = -1, i, j, n = 0;
-  for (;;) {
-    if (!fgets(buf, sizeof(buf), fp))
-      break;
-    if (!(s = strtok(buf, " \t\n\r")))
-      break;
-
-    if (!strcasecmp(s, "ENCODING")) {
-      BDF_READ_INT(encoding);
-    } else if (!strcasecmp(s, "DWIDTH")) {
-      BDF_READ_INT(width);
-    } else if (!strcasecmp(s, "BBX")) {
-      BDF_READ_INT(out->chars[n].bb_w);
-      BDF_READ_INT(out->chars[n].bb_h);
-      BDF_READ_INT(out->chars[n].bb_x);
-      BDF_READ_INT(out->chars[n].bb_y);
-    } else if (!strcasecmp(s, "BITMAP")) {
-      if (n == out->n_chars) {
-        bdf_destroy(out);
-        GRAPHICS_ERROR(BDF_TOO_MANY_BITMAPS, "bdf() failed: More bitmaps than characters for %s", path);
-        return false;
-      }
-      if (width == -1) {
-        bdf_destroy(out);
-        GRAPHICS_ERROR(BDF_UNKNOWN_CHAR, "bdf() failed: Unknown character with for %s", path);
-        return false;
-      }
-
-      if (out->chars[n].bb_x < 0) {
-        width -= out->chars[n].bb_x;
-        out->chars[n].bb_x = 0;
-      }
-      if (out->chars[n].bb_x + out->chars[n].bb_w > width)
-        width = out->chars[n].bb_x + out->chars[n].bb_w;
-
-      out->chars[n].bitmap = GRAPHICS_MALLOC(((out->fbb_w + 7) / 8) * out->fbb_h * sizeof(unsigned char));
-      if (!out->chars[n].bitmap) {
-        bdf_destroy(out);
-        GRAPHICS_ERROR(OUT_OF_MEMEORY, "malloc() failed");
-        return false;
-      }
-      out->chars[n].width = width;
-      out->encoding_table[n] = encoding;
-
-      scanline = 0;
-      memset(out->chars[n].bitmap, 0, ((out->fbb_w + 7) / 8) * out->fbb_h);
-    } else if (!strcasecmp(s, "ENDCHAR")) {
-      if (out->chars[n].bb_x) {
-        if (out->chars[n].bb_x < 0 || out->chars[n].bb_x > 7)
-          continue;
-
-        int x, y, c, o;
-        for (y = 0; y < out->fbb_h; ++y) {
-          o = 0;
-          for (x = 0; x < out->fbb_w; x += 8) {
-            c = out->chars[n].bitmap[y * ((out->fbb_w + 7) / 8) + x / 8];
-            out->chars[n].bitmap[y * ((out->fbb_w + 7) / 8) + x / 8] = c >> out->chars[n].bb_x | o;
-            o = c << (8 - out->chars[n].bb_x);
-          }
-        }
-      }
-
-      scanline = -1;
-      width = -1;
-      ++n;
-    } else {
-      if (n >= out->n_chars || !out->chars[n].bitmap || scanline < 0)
-        continue;
-
-      p = s;
-      j = 0;
-      while (*p) {
-        i = htoi(p);
-        ++p;
-        if (*p)
-          i = htoi(p) | i * 16;
-        else {
-          out->chars[n].bitmap[j + scanline * ((out->fbb_w + 7) / 8)] = i;
-          break;
-        }
-
-        out->chars[n].bitmap[j + scanline * ((out->fbb_w + 7) / 8)] = i;
-        ++j;
-        ++p;
-      }
-      ++scanline;
-    }
-  }
-
-  fclose(fp);
-  return true;
-}
-
-int bdf_character(struct surface_t* s, struct bdf_t* f, const char* ch, int x, int y, int fg, int bg) {
-  int u = -1, i, j, n;
-  int l = ctoi(ch, &u);
-  for (i = 0; i < f->n_chars; ++i)
-    if (f->encoding_table[i] == u) {
-      n = i;
-      break;
-    }
-
-  int yoffset = f->fbb_h - f->chars[n].bb_h + (f->fbb_y - f->chars[n].bb_y), xx, yy, cc;
-  for (yy = 0; yy < f->fbb_h; ++yy) {
-    for (xx = 0; xx < f->fbb_w; xx += 8) {
-      cc = (yy < yoffset || yy > yoffset + f->chars[n].bb_h ? 0 : f->chars[n].bitmap[(yy - yoffset) * ((f->fbb_w + 7) / 8) + xx / 8]);
-
-      for (i = 128, j = 0; i; i /= 2, ++j)
-        pset(s, x + j, y + yy, (cc & i ? fg : bg));
-    }
-  }
-
-  return l;
-}
-
-void bdf_writeln(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* str) {
-  const char* c = (const char*)str;
-  int u = x, v = y, col, len;
-  while (c && *c != '\0') {
-    switch (*c) {
-      case '\n':
-        v += f->fbb_h + 2;
-        u = x;
-        c++;
-        break;
-#if !defined(GRAPHICS_NO_TEXT_COLOR_PARSING)
-      case '\f':
-        if (read_color(c + 1, &col, &len)) {
-          fg = col;
-          c += len;
-        }
-        else
-          c++;
-        break;
-      case '\b':
-        if (read_color(c + 1, &col, &len)) {
-          bg = col;
-          c += len;
-        }
-        else
-          c++;
-        break;
-#endif
-      default:
-        c += bdf_character(s, f, c, u, v, fg, bg);
-        u += 8;
-        break;
-    }
-  }
-}
-
-void bdf_writelnf(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...) {
-  char* buffer = NULL;
-  int buffer_size = 0;
-
-  va_list argptr;
-  va_start(argptr, fmt);
-  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
-  va_end(argptr);
-
-  if (length + 1 > buffer_size) {
-    buffer_size = length + 1;
-    buffer = GRAPHICS_REALLOC(buffer, buffer_size);
-    va_start(argptr, fmt);
-    vsnprintf(buffer, buffer_size, fmt, argptr);
-    va_end(argptr);
-  }
-
-  bdf_writeln(s, f, x, y, fg, bg, buffer);
-  GRAPHICS_SAFE_FREE(buffer);
-}
-
-void bdf_string(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* str) {
-  int w, h;
-  str_size(str, &w, &h);
-  surface(s, w * 8, h * LINE_HEIGHT);
-  fill(s, (bg == -1 ? 0 : bg));
-  bdf_writeln(s, f, 0, 0, fg, bg, str);
-}
-
-void bdf_stringf(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* fmt, ...) {
-  char* buffer = NULL;
-  int buffer_size = 0;
-
-  va_list argptr;
-  va_start(argptr, fmt);
-  int length = vsnprintf(buffer, buffer_size, fmt, argptr);
-  va_end(argptr);
-
-  if (length + 1 > buffer_size) {
-    buffer_size = length + 1;
-    buffer = GRAPHICS_REALLOC(buffer, buffer_size);
-    va_start(argptr, fmt);
-    vsnprintf(buffer, buffer_size, fmt, argptr);
-    va_end(argptr);
-  }
-
-  bdf_string(s, f, fg, bg, buffer);
-  GRAPHICS_SAFE_FREE(buffer);
-}
-#endif // GRAPHICS_BDF
-
-#if !defined(GRAPHICS_NO_ALERTS)
-#if defined(GRAPHICS_OSX) && !defined(GRAPHICS_EXTERNAL_WINDOW)
-#include <AppKit/AppKit.h>
-
-#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_13
-#define NSAlertStyleInformational NSInformationalAlertStyle
-#define NSAlertStyleWarning NSWarningAlertStyle
-#define NSAlertStyleCritical NSCriticalAlertStyle
-#endif
-
-#if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_10
-#define NSModalResponseOK NSOKButton
-#endif
-
-bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
-  NSAlert* alert = [[NSAlert alloc] init];
-
-  switch (lvl) {
-    default:
-    case ALERT_INFO:
-      [alert setAlertStyle:NSAlertStyleInformational];
-      break;
-    case ALERT_WARNING:
-      [alert setAlertStyle:NSAlertStyleWarning];
-      break;
-    case ALERT_ERROR:
-      [alert setAlertStyle:NSAlertStyleCritical];
-      break;
-  }
-
-  switch (btns) {
-    default:
-    case ALERT_OK:
-      [alert addButtonWithTitle:@"OK"];
-      break;
-    case ALERT_OK_CANCEL:
-      [alert addButtonWithTitle:@"OK"];
-      [alert addButtonWithTitle:@"Cancel"];
-      break;
-    case ALERT_YES_NO:
-      [alert addButtonWithTitle:@"Yes"];
-      [alert addButtonWithTitle:@"No"];
-      break;
-  }
-
-  char buffer[BUFSIZ];
-  va_list args;
-  va_start(args, fmt);
-  vsprintf(buffer, fmt, args);
-  va_end(args);
-  [alert setMessageText:[NSString stringWithUTF8String:buffer]];
-
-  bool result = ([alert runModal] == NSAlertFirstButtonReturn);
-  [alert release];
-  return result;
-}
-
-int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
-  NSSavePanel* panel = nil;
-  NSOpenPanel* open_panel = nil;
-  NSMutableArray* file_types = nil;
-
-  switch (action) {
-    case DIALOG_OPEN:
-    case DIALOG_OPEN_DIR:
-      open_panel = [NSOpenPanel openPanel];
-      panel = open_panel;
-      break;
-    case DIALOG_SAVE:
-      panel = [NSSavePanel savePanel];
-      break;
-    default:
-      return 0;
-  }
-  [panel setLevel:CGShieldingWindowLevel()];
-
-  if (nfilters && action != DIALOG_SAVE) {
-    file_types = [[NSMutableArray alloc] init];
-    va_list args;
-    va_start(args, nfilters);
-    for (int i = 0; i < nfilters; ++i)
-      [file_types addObject : @(va_arg(args, const char*))];
-    va_end(args);
-    [panel setAllowedFileTypes:file_types];
-  }
-
-  if (path)
-    panel.directoryURL = [NSURL fileURLWithPath:@(path)];
-
-  if (fname)
-    panel.nameFieldStringValue = @(fname);
-
-  switch (action) {
-    case DIALOG_OPEN:
-      open_panel.allowsMultipleSelection = allow_multiple;
-      open_panel.canChooseDirectories = NO;
-      open_panel.canChooseFiles = YES;
-      break;
-    case DIALOG_OPEN_DIR:
-      open_panel.allowsMultipleSelection = allow_multiple;
-      open_panel.canCreateDirectories = YES;
-      open_panel.canChooseDirectories = YES;
-      open_panel.canChooseFiles = NO;
-      break;
-    case DIALOG_SAVE:
-      break;
-  }
-  
-  if ([panel runModal] != NSModalResponseOK)
-    return 0;
-  if (file_types)
-    [file_types release];
-  
-  if (action == DIALOG_SAVE || !allow_multiple) {
-    *result = GRAPHICS_MALLOC(sizeof(char*));
-    *result[0] = strdup([[[panel URL] path] UTF8String]);
-    return 1;
-  } else {
-    int n = (int)[[open_panel URLs] count];
-    char** tmp = GRAPHICS_MALLOC(sizeof(char*) * n);
-    [[open_panel URLs] enumerateObjectsUsingBlock:^(NSURL *url, NSUInteger idx, BOOL *stop) {
-      tmp[idx] = strdup([[url path] UTF8String]);
-    }];
-    *result = tmp;
-    return n;
-  }
-}
-#elif defined(GRAPHICS_WINDOWS) && !defined(GRAPHICS_EXTERNAL_WINDOW)
-#include <commdlg.h>
-#include <shlobj.h>
-#define snwprintf _snwprintf
-
-static char* wchar_to_utf8(const wchar_t* s) {
-  if (!s)
-    return NULL;
-  int len = WideCharToMultiByte(CP_UTF8, 0, s, -1, NULL, 0, NULL, NULL);
-  if (!len)
-    return NULL;
-  char* r = GRAPHICS_MALLOC(len);
-  WideCharToMultiByte(CP_UTF8, 0, s, -1, r, len, NULL, NULL);
-  return r;
-}
-
-static wchar_t* utf8_to_wchar(const char* s) {
-  if (!s)
-    return NULL;
-  int len = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
-  if (!len)
-    return NULL;
-  wchar_t* r = GRAPHICS_MALLOC(len * sizeof(wchar_t));
-  MultiByteToWideChar(CP_UTF8, 0, s, -1, r, len);
-  return r;
-}
-
-bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
-  unsigned int type = MB_APPLMODAL;
-  switch (lvl) {
-    default:
-    case ALERT_INFO:
-      type |= MB_ICONINFORMATION;
-      break;
-    case ALERT_WARNING:
-      type |= MB_ICONWARNING;
-      break;
-    case ALERT_ERROR:
-      type |= MB_ICONERROR;
-      break;
-  }
-
-  switch (btns) {
-    default:
-    case ALERT_OK:
-      type |= MB_OK;
-      break;
-    case ALERT_OK_CANCEL:
-      type |= MB_OKCANCEL;
-      break;
-    case ALERT_YES_NO:
-      type |= MB_YESNO;
-      break;
-  }
-
-  char buffer[BUFSIZ];
-  va_list args;
-  va_start(args, fmt);
-  vsprintf(buffer, fmt, args);
-  va_end(args);
-  wchar_t* buffer_w = utf8_to_wchar(buffer);
-  int result = MessageBoxW(GetActiveWindow(), buffer_w, L"", type);
-  GRAPHICS_FREE(buffer_w);
-
-  return (result == IDOK || result == IDYES);
-}
-
-static INT CALLBACK browseCallbackProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam) {
-  if (Msg == BFFM_INITIALIZED)
-    SendMessageW(hWnd, BFFM_SETSELECTION, 1, lParam);
-  return 0;
-}
-
-int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
-  int res = 0;
-  if (action == DIALOG_OPEN_DIR) {
-    wchar_t szDir[MAX_PATH] = L"";
-
-    BROWSEINFOW bInfo;
-    ZeroMemory(&bInfo, sizeof(bInfo));
-    bInfo.hwndOwner = GetActiveWindow();
-    // bInfo.pszDisplayName = szDir;
-    bInfo.ulFlags = BIF_RETURNONLYFSDIRS | BIF_USENEWUI;
-    bInfo.iImage = -1;
-
-    wchar_t* pathW = NULL;
-    if (path) {
-      pathW = utf8_to_wchar(path);
-      bInfo.lpfn = browseCallbackProc;
-      bInfo.lParam = (LPARAM)pathW;
-    }
-
-    PIDLIST_ABSOLUTE lpItem = SHBrowseForFolderW(&bInfo);
-    if (lpItem) {
-      SHGetPathFromIDListW(lpItem, szDir);
-      *result = GRAPHICS_MALLOC(sizeof(char*));
-      *result[0] = wchar_to_utf8(szDir);
-      res = 1;
-    }
-    GRAPHICS_SAFE_FREE(pathW);
-  } else {
-    OPENFILENAMEW ofn;
-    ZeroMemory(&ofn, sizeof(ofn));
-    ofn.hwndOwner = GetActiveWindow();
-    ofn.lStructSize = sizeof(ofn);
-    ofn.Flags = OFN_EXPLORER | OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
-    if (allow_multiple)
-      ofn.Flags |= OFN_ALLOWMULTISELECT;
-
-    wchar_t strFile[MAX_PATH] = L"";
-    if (fname) {
-      wchar_t* filenameW = utf8_to_wchar(fname);
-      snwprintf(strFile, MAX_PATH, L"%s", filenameW);
-      GRAPHICS_FREE(filenameW);
-    }
-    ofn.lpstrFile = strFile;
-    ofn.nMaxFile = MAX_PATH;
-
-    wchar_t *strInitialDir = NULL, *strFilter = NULL;
-    if (path)
-      strInitialDir = utf8_to_wchar(path);
-    ofn.lpstrInitialDir = strInitialDir;
-
-    if (nfilters && action == DIALOG_OPEN) {
-      char fbuf[4096];
-      int fbuf_len = 0;
-      fbuf_len += snprintf(fbuf, sizeof(fbuf), "Allowed Files");
-      fbuf[fbuf_len++] = '\0';
-      va_list args;
-      va_start(args, nfilters);
-      for (int i = 0; i < nfilters; ++i) {
-        fbuf_len += snprintf(fbuf + fbuf_len, sizeof(fbuf) - fbuf_len, "*.%s", va_arg(args, const char*));
-        if (i != nfilters - 1)
-          fbuf[fbuf_len++] = ';';
-        fbuf[fbuf_len++] = '\0';
-      }
-      va_end(args);
-      fbuf[fbuf_len++] = '\0';
-
-      strFilter = GRAPHICS_MALLOC(fbuf_len * sizeof(wchar_t));
-      MultiByteToWideChar(CP_UTF8, 0, fbuf, fbuf_len, strFilter, fbuf_len);
-      ofn.lpstrFilter = strFilter;
-      ofn.nFilterIndex = 1;
-    }
-
-    if (!(action == DIALOG_OPEN ? GetOpenFileNameW(&ofn) : GetSaveFileNameW(&ofn)))
-      goto EARLY_EXIT;
-
-    if (allow_multiple) {
-      wchar_t* str = ofn.lpstrFile;
-      strInitialDir = utf8_to_wchar(path);
-      char* dir = wchar_to_utf8(str);
-      size_t dir_ln = strlen(dir) + 1;
-      str += dir_ln;
-      while (*str) {
-        res++;
-        str += wcslen(str) + 1;
-      }
-      if (!res)
-        goto EARLY_EXIT;
-
-      char** ret = GRAPHICS_MALLOC(sizeof(char*) * res);
-      str = ofn.lpstrFile + dir_ln;
-      int n = 0;
-      while (*str) {
-        wchar_t* fname = str;
-        size_t fname_ln = wcslen(fname) + 1;
-        char* fname_out = GRAPHICS_MALLOC(sizeof(char) * fname_ln + dir_ln + 1);
-        sprintf(fname_out, "%s\\%s", dir, wchar_to_utf8(fname));
-        ret[n++] = fname_out;
-        str += fname_ln;
-      }
-      *result = ret;
-    } else {
-      *result = GRAPHICS_MALLOC(sizeof(char*));
-      *result[0] = wchar_to_utf8(ofn.lpstrFile);
-      res = 1;
-    }
-
-EARLY_EXIT:
-    GRAPHICS_SAFE_FREE(strInitialDir);
-    GRAPHICS_SAFE_FREE(strFilter);
-  }
-  return res;
-}
-#elif defined(GRAPHICS_LINUX) && !defined(GRAPHICS_EXTERNAL_WINDOW)
-#if defined(GRAPHICS_HAS_GTK)
-bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
-  return false;
-}
-
-int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
-  return 0;
-}
-#else
-#pragma message WARN("Dialogs are only supported for GTK on Linux")
-bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
-  return false;
-}
-
-int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
-  return 0;
-}
-#endif
-#elif defined(GRAPHICS_EMCC)
-bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
-  unsigned char buffer[BUFSIZ];
-  va_list args;
-  va_start(args, fmt);
-  vsprintf(buffer, fmt, args);
-  va_end(args);
-  return EM_ASM_INT({ confirm(UTF8ToString($0)); }, buffer);
-}
-
-int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
-#pragma message WARN("File Dialogs are unsupported on emscripten")
-  return 0;
-}
-#else
-#pragma message WARN("Dialogs are unsupported on this platform");
-bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...) {
-  return false;
-}
-
-int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...) {
-  return 0;
-}
-#endif
-#endif // GRAPHICS_NO_ALERTS
-
-#if !defined(GRAPHICS_NO_TIME)
 #if defined(GRAPHICS_OSX)
 #include <mach/mach_time.h>
 #elif defined(GRAPHICS_WINDOWS)
@@ -2389,9 +1500,7 @@ unsigned long long ticks(void) {
   return 0; // TODO: Add timing for other platforms
 #endif
 }
-#endif
 
-#if !defined(GRAPHICS_NO_WINDOW)
 static short keycodes[512];
 static bool keycodes_init = false;
 
@@ -2429,338 +1538,12 @@ void window_size(struct window_t* s, int* w, int* h) {
     *h = s->h;
 }
 
-#if defined(GRAPHICS_OPENGL)
+#define CBCALL(x, ...) \
+  if (e_window && e_window->x) \
+    e_window->x(e_window->parent, __VA_ARGS__);
+
 #if defined(GRAPHICS_OSX)
-#include <OpenGL/gl3.h>
-#endif
-
-#if defined(GRAPHICS_LINUX)
-#define GLDECL // Empty define
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glx.h>
-#include <dlfcn.h>
-#endif
-
-#if defined(GRAPHICS_WINDOWS)
-#define GLDECL WINAPI
-
-#define GL_ARRAY_BUFFER                   0x8892
-#define GL_COMPILE_STATUS                 0x8B81
-#define GL_ELEMENT_ARRAY_BUFFER           0x8893
-#define GL_FRAGMENT_SHADER                0x8B30
-#define GL_MAJOR_VERSION                  0x821B
-#define GL_MINOR_VERSION                  0x821C
-#define GL_STATIC_DRAW                    0x88E4
-#define GL_TEXTURE0                       0x84C0
-#define GL_VERTEX_SHADER                  0x8B31
-#define GL_INFO_LOG_LENGTH                0x8B84
-#define GL_BGRA                           0x80E1
-#define GL_UNSIGNED_INT_8_8_8_8_REV       0x8367
-
-typedef char GLchar;
-typedef ptrdiff_t GLintptr;
-typedef ptrdiff_t GLsizeiptr;
-
-#include <gl/GL.h>
-#include <gl/GLU.h>
-
-#pragma comment(lib, "opengl32.lib")
-#endif
-
-#if defined(GRAPHICS_WINDOWS) || defined(GRAPHICS_LINUX)
-#define GL_LIST \
-    /* ret, name, params */ \
-  GLE(void,      AttachShader,            GLuint program, GLuint shader) \
-  GLE(void,      BindBuffer,              GLenum target, GLuint buffer) \
-  GLE(void,      BufferData,              GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage) \
-  GLE(void,      BufferSubData,           GLenum target, GLintptr offset, GLsizeiptr size, const GLvoid * data) \
-  GLE(void,      CompileShader,           GLuint shader) \
-  GLE(GLuint,    CreateProgram,           void) \
-  GLE(GLuint,    CreateShader,            GLenum type) \
-  GLE(void,      DeleteBuffers,           GLsizei n, const GLuint *buffers) \
-  GLE(void,      EnableVertexAttribArray, GLuint index) \
-  GLE(void,      FramebufferTexture2D,    GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level) \
-  GLE(void,      GenBuffers,              GLsizei n, GLuint *buffers) \
-  GLE(GLint,     GetAttribLocation,       GLuint program, const GLchar *name) \
-  GLE(void,      GetShaderInfoLog,        GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog) \
-  GLE(void,      GetShaderiv,             GLuint shader, GLenum pname, GLint *params) \
-  GLE(void,      LinkProgram,             GLuint program) \
-  GLE(void,      ShaderSource,            GLuint shader, GLsizei count, const GLchar* const *string, const GLint *length) \
-  GLE(void,      UseProgram,              GLuint program) \
-  GLE(void,      VertexAttribPointer,     GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer) \
-  GLE(GLboolean, IsShader,                GLuint shader) \
-  GLE(void,      DeleteProgram,           GLuint program) \
-  GLE(void,      DeleteShader,            GLuint shader) \
-  GLE(void,      BindVertexArray,         GLuint array) \
-  GLE(void,      GenVertexArrays,         GLsizei n, GLuint *arrays) \
-  GLE(void,      DeleteVertexArrays,      GLsizei n, const GLuint *arrays) \
-  /* end */
-
-#define GLE(ret, name, ...) typedef ret GLDECL name##proc(__VA_ARGS__); extern name##proc * gl##name;
-GL_LIST
-#undef GLE
-
-#define GLE(ret, name, ...) name##proc * gl##name;
-GL_LIST
-#undef GLE
-#endif
-
-static inline void print_shader_log(GLuint s) {
-  if (glIsShader(s)) {
-    int log_len = 0, max_len = 0;
-    glGetShaderiv(s, GL_INFO_LOG_LENGTH, &max_len);
-    char* log = GRAPHICS_MALLOC(sizeof(char) * max_len);
-
-    glGetShaderInfoLog(s, max_len, &log_len, log);
-    if (log_len > 0)
-      GRAPHICS_ERROR(GL_SHADER_ERROR, "load_shader() failed: %s", log);
-
-    GRAPHICS_SAFE_FREE(log);
-  }
-}
-
-static inline GLuint load_shader(const GLchar* src, GLenum type) {
-  GLuint s = glCreateShader(type);
-  glShaderSource(s, 1, &src, NULL);
-  glCompileShader(s);
-
-  GLint res = GL_FALSE;
-  glGetShaderiv(s, GL_COMPILE_STATUS, &res);
-  if (!res) {
-    print_shader_log(s);
-    return 0;
-  }
-
-  return s;
-}
-
-static inline GLuint create_shader(const GLchar* vs_src, const GLchar* fs_src) {
-  GLuint sp = glCreateProgram();
-  GLuint vs = load_shader(vs_src, GL_VERTEX_SHADER);
-  GLuint fs = load_shader(fs_src, GL_FRAGMENT_SHADER);
-  glAttachShader(sp, vs);
-  glAttachShader(sp, fs);
-  glLinkProgram(sp);
-  glDeleteShader(vs);
-  glDeleteShader(fs);
-  return sp;
-}
-
-struct gl_obj_t {
-  GLuint vao, shader, texture;
-};
-
-static int gl3_available = 1;
-static bool dll_loaded = false;
-
-static inline bool init_gl(int w, int h, struct gl_obj_t* gl) {
-  if (!dll_loaded) {
-#if defined(GRAPHICS_WINDOWS)
-    HINSTANCE dll = LoadLibraryA("opengl32.dll");
-    typedef PROC WINAPI wglGetProcAddressproc(LPCSTR lpszProc);
-    if (!dll) {
-      release();
-      GRAPHICS_ERROR(GL_LOAD_DL_FAILED, "LoadLibraryA() failed: opengl32.dll not found");
-      return false;
-    }
-    wglGetProcAddressproc* wglGetProcAddress = (wglGetProcAddressproc*)GetProcAddress(dll, "wglGetProcAddress");
-
-#define GLE(ret, name, ...) \
-    gl##name = (name##proc*)wglGetProcAddress("gl" #name); \
-    if (!gl##name) { \
-      GRAPHICS_ERROR(GL_GET_PROC_ADDR_FAILED, "wglGetProcAddress() failed: Function gl" #name " couldn't be loaded from opengl32.dll"); \
-      gl3_available -= 1; \
-    }
-    GL_LIST
-#undef GLE
-#elif defined(GRAPHICS_LINUX)
-    void* libGL = dlopen("libGL.so", RTLD_LAZY);
-    if (!libGL) {
-      release();
-      GRAPHICS_ERROR(GL_LOAD_DL_FAILED, "dlopen() failed: libGL.so couldn't be loaded");
-      return false;
-    }
-
-#define GLE(ret, name, ...) \
-    gl##name = (name##proc *) dlsym(libGL, "gl" #name); \
-    if (!gl##name) { \
-      GRAPHICS_ERROR(GL_GET_PROC_ADDR_FAILED, "dlsym() failed: Function gl" #name " couldn't be loaded from libGL.so"); \
-      gl3_available -= 1; \
-    }
-    GL_LIST
-#undef GLE
-#endif
-    dll_loaded = true;
-  }
-
-  glClearColor(0.f, 0.f, 0.f, 1.f);
-
-  static GLuint texture;
-
-#if !defined(GRAPHICS_OSX)
-  if (gl3_available < 0) {
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    glOrtho(0.f, w, 0.f, h, -1.f, 1.f);
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-
-    glLoadIdentity();
-    glDisable(GL_LIGHTING);
-    glEnable(GL_TEXTURE_2D);
-  } else {
-#endif
-    glViewport(0, 0, w, h);
-
-    static GLfloat vertices_position[8] = {
-      -1., -1.,
-       1., -1.,
-       1.,  1.,
-      -1.,  1.,
-    };
-
-    static GLfloat texture_coord[8] = {
-      .0,  .0,
-       1., .0,
-       1., 1.,
-      .0,  1.,
-    };
-
-    static GLuint indices[6] = {
-      0, 1, 2,
-      2, 3, 0
-    };
-
-    static const char* vs_src =
-      "#version 150\n"
-      "in vec4 position;"
-      "in vec2 texture_coord;"
-      "out vec2 texture_coord_from_vshader;"
-      "void main() {"
-      "  gl_Position = position;"
-      "  texture_coord_from_vshader = vec2(texture_coord.s, 1.f - texture_coord.t);"
-      "}";
-
-    static const char* fs_src =
-      "#version 150\n"
-      "in vec2 texture_coord_from_vshader;"
-      "out vec4 out_color;"
-      "uniform sampler2D texture_sampler;"
-      "void main() {"
-      "  out_color = texture(texture_sampler, texture_coord_from_vshader);"
-      "}";
-
-    static GLuint vao, shader;
-
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
-
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_position) + sizeof(texture_coord), NULL, GL_STATIC_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices_position), vertices_position);
-    glBufferSubData(GL_ARRAY_BUFFER, sizeof(vertices_position), sizeof(texture_coord), texture_coord);
-
-    GLuint ebo;
-    glGenBuffers(1, &ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    shader = create_shader(vs_src, fs_src);
-    glUseProgram(shader);
-
-    GLint position_attribute = glGetAttribLocation(shader, "position");
-    glVertexAttribPointer(position_attribute, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(position_attribute);
-
-    GLint texture_coord_attribute = glGetAttribLocation(shader, "texture_coord");
-    glVertexAttribPointer(texture_coord_attribute, 2, GL_FLOAT, GL_FALSE, 0, (GLvoid*)sizeof(vertices_position));
-    glEnableVertexAttribArray(texture_coord_attribute);
-
-    gl->vao = vao;
-    gl->shader = shader;
-#if !defined(GRAPHICS_OSX)
-  }
-#endif
-
-  glGenTextures(1, &texture);
-  gl->texture = texture;
-
-  return true;
-}
-
-static inline void draw_gl(struct gl_obj_t* gl, struct surface_t* buffer) {
-  glBindTexture(GL_TEXTURE_2D, gl->texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, buffer->w, buffer->h, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, (GLvoid*)buffer->buf);
-
-  glClear(GL_COLOR_BUFFER_BIT);
-
-#if !defined(GRAPHICS_OSX)
-  if (gl3_available < 0) {
-    glBegin(GL_QUADS);
-    glTexCoord2f(0, 1); glVertex3f(0, 0, 0);
-    glTexCoord2f(0, 0); glVertex3f(0, buffer->h, 0);
-    glTexCoord2f(1, 0); glVertex3f(buffer->w, buffer->h, 0);
-    glTexCoord2f(1, 1); glVertex3f(buffer->w, 0, 0);
-    glEnd();
-  } else {
-#endif
-    glUseProgram(gl->shader);
-    glBindVertexArray(gl->vao);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-#if !defined(GRAPHICS_OSX)
-  }
-
-  glFlush();
-#endif
-}
-
-static void free_gl(struct gl_obj_t* gl_obj) {
-  if (gl_obj->texture)
-    glDeleteTextures(1, &gl_obj->texture);
-  if (!gl3_available) {
-    if (gl_obj->shader)
-      glDeleteProgram(gl_obj->shader);
-    if (gl_obj->vao)
-      glDeleteVertexArrays(1, &gl_obj->vao);
-  }
-}
-#endif
-
-#if defined(GRAPHICS_OSX) && !defined(GRAPHICS_EXTERNAL_WINDOW)
 #include <Cocoa/Cocoa.h>
-#if defined(GRAPHICS_METAL)
-#include <MetalKit/MetalKit.h>
-#include <simd/simd.h>
-
-typedef enum AAPLVertexInputIndex {
-  AAPLVertexInputIndexVertices     = 0,
-  AAPLVertexInputIndexViewportSize = 1,
-} AAPLVertexInputIndex;
-
-typedef enum AAPLTextureIndex {
-  AAPLTextureIndexBaseColor = 0,
-} AAPLTextureIndex;
-
-typedef struct {
-  vector_float2 position;
-  vector_float2 textureCoordinate;
-} AAPLVertex;
-
-static const AAPLVertex quad_vertices[] = {
-  {{  1.f,  -1.f  }, { 1.f, 0.f }},
-  {{ -1.f,  -1.f  }, { 0.f, 0.f }},
-  {{ -1.f,   1.f  }, { 0.f, 1.f }},
-  {{  1.f,  -1.f  }, { 1.f, 0.f }},
-  {{ -1.f,   1.f  }, { 0.f, 1.f }},
-  {{  1.f,   1.f  }, { 1.f, 1.f }},
-};
-#endif
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_12
 #define NSWindowStyleMaskBorderless NSBorderlessWindowMask
@@ -2824,11 +1607,11 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   int offset = 0, c;
   for(int i = 0; i < s->h; ++i) {
     for (int j = 0; j < s->w; j++) {
-      c = PGET(s, j, i);
-      rgba[4 * offset]     = COL_R(c);
-      rgba[4 * offset + 1] = COL_G(c);
-      rgba[4 * offset + 2] = COL_B(c);
-      rgba[4 * offset + 3] = COL_A(c);
+      c = pget(s, j, i);
+      rgba[4 * offset]     = r_channel(c);
+      rgba[4 * offset + 1] = g_channel(c);
+      rgba[4 * offset + 2] = b_channel(c);
+      rgba[4 * offset + 3] = a_channel(c);
       offset++;
     }
   }
@@ -2841,23 +1624,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 
 @protocol AppViewDelegate;
 
-#if defined(GRAPHICS_OPENGL)
-@interface AppView : NSOpenGLView
-@property struct gl_obj_t gl;
-#elif defined(GRAPHICS_METAL)
-@interface AppView : MTKView
-@property (nonatomic, weak) id<MTLDevice> device;
-@property (nonatomic, weak) id<MTLRenderPipelineState> pipeline;
-@property (nonatomic, weak) id<MTLCommandQueue> cmd_queue;
-@property (nonatomic, weak) id<MTLLibrary> library;
-@property (nonatomic, weak) id<MTLTexture> texture;
-@property (nonatomic, weak) id<MTLBuffer> vertices;
-@property NSUInteger n_vertices;
-@property vector_uint2 mtk_viewport;
-@property CGFloat scale_f;
-#else
 @interface AppView : NSView
-#endif
 @property (nonatomic, strong) id<AppViewDelegate> delegate;
 @property (strong) NSTrackingArea* track;
 @property (atomic) struct surface_t* buffer;
@@ -2868,19 +1635,6 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 @end
 
 @implementation AppView
-#if defined(GRAPHICS_OPENGL)
-@synthesize gl = _gl;
-#elif defined(GRAPHICS_METAL)
-@synthesize device = _device;
-@synthesize pipeline = _pipeline;
-@synthesize cmd_queue = _cmd_queue;
-@synthesize library = _library;
-@synthesize texture = _texture;
-@synthesize vertices = _vertices;
-@synthesize n_vertices = _n_vertices;
-@synthesize mtk_viewport = _mtk_viewport;
-@synthesize scale_f = _scale_f;
-#endif
 @synthesize delegate = _delegate;
 @synthesize track = _track;
 @synthesize buffer = _buffer;
@@ -2895,103 +1649,8 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   _custom_cursor = NO;
   _cursor_vis = YES;
   
-#if defined(GRAPHICS_OPENGL)
-  NSOpenGLPixelFormatAttribute pixelFormatAttributes[] = {
-    NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
-    NSOpenGLPFAColorSize, 24,
-    NSOpenGLPFAAlphaSize, 8,
-    NSOpenGLPFADoubleBuffer,
-    NSOpenGLPFAAccelerated,
-    NSOpenGLPFANoRecovery,
-    0
-  };
-  NSOpenGLPixelFormat* pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:pixelFormatAttributes];
-  self = [super initWithFrame:frameRect
-                  pixelFormat:pixelFormat];
-  [[self openGLContext] makeCurrentContext];
-  init_gl(frameRect.size.width, frameRect.size.height, &_gl);
-  [pixelFormat release];
-#elif defined(GRAPHICS_METAL)
-  _device = MTLCreateSystemDefaultDevice();
-  self = [super initWithFrame:frameRect device:_device];
-  _track = nil;
-  
-  self.clearColor =  MTLClearColorMake(0., 0., 0., 0.);
-  NSScreen *screen = [NSScreen mainScreen];
-  _scale_f = [screen backingScaleFactor];
-  _mtk_viewport.x = frameRect.size.width * _scale_f;
-  _mtk_viewport.y = ((frameRect.size.height) * _scale_f) + (4 * _scale_f);
-  _cmd_queue = [_device newCommandQueue];
-  _vertices  = [_device newBufferWithBytes:quad_vertices
-                                    length:sizeof(quad_vertices)
-                                   options:MTLResourceStorageModeShared];
-  _n_vertices = sizeof(quad_vertices) / sizeof(AAPLVertex);
-  
-  static NSString *library = @""
-  "#include <metal_stdlib>\n"
-  "#include <simd/simd.h>\n"
-  "using namespace metal;"
-  "typedef struct {"
-  "  float4 clipSpacePosition [[position]];"
-  "  float2 textureCoordinate;"
-  "} RasterizerData;"
-  "typedef enum AAPLVertexInputIndex {"
-  "  AAPLVertexInputIndexVertices     = 0,"
-  "  AAPLVertexInputIndexViewportSize = 1,"
-  "} AAPLVertexInputIndex;"
-  "typedef enum AAPLTextureIndex {"
-  "  AAPLTextureIndexBaseColor = 0,"
-  "} AAPLTextureIndex;"
-  "typedef struct {"
-  "  vector_float2 position;"
-  "  vector_float2 textureCoordinate;"
-  "} AAPLVertex;"
-  "vertex RasterizerData vertexShader(uint vertexID [[ vertex_id ]], constant AAPLVertex *vertexArray [[ buffer(AAPLVertexInputIndexVertices) ]], constant vector_uint2 *viewportSizePointer  [[ buffer(AAPLVertexInputIndexViewportSize) ]]) {"
-  " RasterizerData out;"
-  "  float2 pixelSpacePosition = float2(vertexArray[vertexID].position.x, -vertexArray[vertexID].position.y);"
-  "  out.clipSpacePosition.xy = pixelSpacePosition;"
-  "  out.clipSpacePosition.z = .0;"
-  "  out.clipSpacePosition.w = 1.;"
-  "  out.textureCoordinate = vertexArray[vertexID].textureCoordinate;"
-  "  return out;"
-  "}"
-  "fragment float4 samplingShader(RasterizerData in [[stage_in]], texture2d<half> colorTexture [[ texture(AAPLTextureIndexBaseColor) ]]) {"
-  "  constexpr sampler textureSampler(mag_filter::nearest, min_filter::linear);"
-  "  const half4 colorSample = colorTexture.sample(textureSampler, in.textureCoordinate);"
-  "  return float4(colorSample);"
-  "}";
-  
-  NSError *err = nil;
-  _library = [_device newLibraryWithSource:library
-                                   options:nil
-                                     error:&err];
-  if (err || !_library) {
-    release();
-    GRAPHICS_ERROR(MTK_LIBRARY_ERROR, "[device newLibraryWithSource] failed: %s", [[err localizedDescription] UTF8String]);
-    return nil;
-  }
-  
-  id<MTLFunction> vs = [[_library newFunctionWithName:@"vertexShader"] autorelease];
-  id<MTLFunction> fs = [[_library newFunctionWithName:@"samplingShader"] autorelease];
-  
-  MTLRenderPipelineDescriptor *pipelineStateDescriptor = [[MTLRenderPipelineDescriptor alloc] init];
-  pipelineStateDescriptor.label = @"[Texturing Pipeline]";
-  pipelineStateDescriptor.vertexFunction = vs;
-  pipelineStateDescriptor.fragmentFunction = fs;
-  pipelineStateDescriptor.colorAttachments[0].pixelFormat = [self colorPixelFormat];
-  
-  _pipeline = [_device newRenderPipelineStateWithDescriptor:pipelineStateDescriptor
-                                                      error:&err];
-  if (err || !_pipeline) {
-    release();
-    GRAPHICS_ERROR(MTK_CREATE_PIPELINE_FAILED, "[device newRenderPipelineStateWithDescriptor] failed: %s", [[err localizedDescription] UTF8String]);
-    return nil;
-  }
-#else
   self = [super initWithFrame:frameRect];
-#endif
   [self updateTrackingAreas];
-  
   return self;
 }
 
@@ -3043,7 +1702,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   [_cursor retain];
 }
 
--(void)setRegularCursor:(CURSOR_TYPE)type {
+-(void)setRegularCursor:(enum cursor_type)type {
   NSCursor* tmp = nil;
   switch (type) {
     default:
@@ -3110,61 +1769,10 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   return NO;
 }
 
-#if defined(GRAPHICS_METAL)
--(void)updateMTKViewport:(CGSize)size {
-  _mtk_viewport.x = size.width * _scale_f;
-  _mtk_viewport.y = (size.height * _scale_f) + (4 * _scale_f);
-}
-#endif
-
 -(void)drawRect:(NSRect)dirtyRect {
   if (!_buffer)
     return;
   
-#if defined(GRAPHICS_OPENGL)
-  draw_gl(&_gl, _buffer);
-  [[self openGLContext] flushBuffer];
-#elif defined(GRAPHICS_METAL)
-  MTLTextureDescriptor* td = [[MTLTextureDescriptor alloc] init];
-  td.pixelFormat = MTLPixelFormatBGRA8Unorm;
-  td.width = _buffer->w;
-  td.height = _buffer->h;
-  
-  _texture = [_device newTextureWithDescriptor:td];
-  [_texture replaceRegion:(MTLRegion){{ 0, 0, 0 }, { _buffer->w, _buffer->h, 1 }}
-              mipmapLevel:0
-                withBytes:_buffer->buf
-              bytesPerRow:_buffer->w * 4];
-  
-  id <MTLCommandBuffer> cmd_buf = [_cmd_queue commandBuffer];
-  cmd_buf.label = @"[Command Buffer]";
-  MTLRenderPassDescriptor* rpd = [self currentRenderPassDescriptor];
-  if (rpd) {
-    id<MTLRenderCommandEncoder> re = [cmd_buf renderCommandEncoderWithDescriptor:rpd];
-    re.label = @"[Render Encoder]";
-    
-    [re setViewport:(MTLViewport){ .0, .0, _mtk_viewport.x, _mtk_viewport.y, -1., 1. }];
-    [re setRenderPipelineState:_pipeline];
-    [re setVertexBuffer:_vertices
-                 offset:0
-                atIndex:AAPLVertexInputIndexVertices];
-    [re setVertexBytes:&_mtk_viewport
-                length:sizeof(_mtk_viewport)
-               atIndex:AAPLVertexInputIndexViewportSize];
-    [re setFragmentTexture:_texture
-                   atIndex:AAPLTextureIndexBaseColor];
-    [re drawPrimitives:MTLPrimitiveTypeTriangle
-           vertexStart:0
-           vertexCount:_n_vertices];
-    [re endEncoding];
-    
-    [cmd_buf presentDrawable:[self currentDrawable]];
-  }
-  
-  [_texture release];
-  [td release];
-  [cmd_buf commit];
-#else
   CGContextRef ctx = (CGContextRef)[[NSGraphicsContext currentContext] CGContext];
   CGColorSpaceRef s = CGColorSpaceCreateDeviceRGB();
   CGDataProviderRef p = CGDataProviderCreateWithData(NULL, _buffer->buf, _buffer->w * _buffer->h * 4, NULL);
@@ -3177,19 +1785,9 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   CGColorSpaceRelease(s);
   CGDataProviderRelease(p);
   CGImageRelease(img);
-#endif
 }
 
 -(void)dealloc {
-#if defined(GRAPHICS_OPENGL)
-  free_gl(&_gl);
-#elif defined(GRAPHICS_METAL)
-  [_device release];
-  [_pipeline release];
-  [_cmd_queue release];
-  [_library release];
-  [_vertices release];
-#endif
   [_track release];
   if (_custom_cursor && _cursor)
     [_cursor release];
@@ -3200,9 +1798,6 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 @end
 
 @protocol AppViewDelegate <NSObject>
-#if defined(GRAPHICS_METAL)
--(void)mtkView:(MTKView*)view drawableSizeWillChange:(CGSize)size;
-#endif
 @end
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate, AppViewDelegate>
@@ -3338,18 +1933,11 @@ static struct window_node_t* windows = NULL;
 -(void)windowDidResize:(NSNotification*)notification {
   static CGSize size;
   size = [_view frame].size;
-#if defined(GRAPHICS_METAL)
-  [_view updateMTKViewport:size];
-#endif
   _parent->w = (int)roundf(size.width);
   _parent->h = (int)roundf(size.height);
   if (_parent->resize_callback)
   _parent->resize_callback(_parent->resize_callback, _parent->w, _parent->h);
 }
-
-#if defined(GRAPHICS_METAL)
--(void)mtkView:(MTKView*)mtkView drawableSizeWillChange:(CGSize)size; {}
-#endif
 @end
 
 bool window(struct window_t* s, const char* t, int w, int h, short flags) {
@@ -3581,7 +2169,7 @@ void cursor_visible(struct window_t* s, bool shown) {
   [[(AppDelegate*)s->window view] setCursorVisibility:shown];
 }
 
-void cursor_icon(struct window_t* s, CURSOR_TYPE t) {
+void cursor_icon(struct window_t* s, enum cursor_type t) {
   AppDelegate* app = (AppDelegate*)s->window;
   if (!app) {
     GRAPHICS_ERROR(CURSOR_MOD_FAILED, "cursor_icon() failed: Invalid window");
@@ -3630,10 +2218,6 @@ struct window_t* event_delegate(NSInteger window_id) {
   return NULL;
 }
 
-#define CBCALL(x, ...) \
-  if (e_window && e_window->x) \
-    e_window->x(e_window->parent, __VA_ARGS__);
-
 void events() {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   NSEvent* e = nil;
@@ -3654,12 +2238,12 @@ void events() {
       case NSEventTypeLeftMouseUp:
       case NSEventTypeRightMouseUp:
       case NSEventTypeOtherMouseUp:
-        CBCALL(mouse_button_callback, (MOUSE_BTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), false);
+        CBCALL(mouse_button_callback, (enum button)([e buttonNumber] + 1), translate_mod([e modifierFlags]), false);
         break;
       case NSEventTypeLeftMouseDown:
       case NSEventTypeRightMouseDown:
       case NSEventTypeOtherMouseDown:
-        CBCALL(mouse_button_callback, (MOUSE_BTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
+        CBCALL(mouse_button_callback, (enum button)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
         break;
       case NSEventTypeScrollWheel:
         CBCALL(scroll_callback, translate_mod([e modifierFlags]), [e deltaX], [e deltaY]);
@@ -3667,7 +2251,7 @@ void events() {
       case NSEventTypeLeftMouseDragged:
       case NSEventTypeRightMouseDragged:
       case NSEventTypeOtherMouseDragged:
-        CBCALL(mouse_button_callback, (MOUSE_BTN)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
+        CBCALL(mouse_button_callback, (enum button)([e buttonNumber] + 1), translate_mod([e modifierFlags]), true);
       case NSEventTypeMouseMoved: {
         AppDelegate* app = (AppDelegate*)e_window->window;
         if ([[app view] mouse_in_window])
@@ -3703,51 +2287,16 @@ void release() {
   }
   [NSApp terminate:nil];
 }
-#elif defined(GRAPHICS_WINDOWS) && !defined(GRAPHICS_EXTERNAL_WINDOW)
+#elif defined(GRAPHICS_WINDOWS)
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#if defined(GRAPHICS_DX9)
-#define COBJMACROS 1
-#include <d3d9.h>
-#pragma comment (lib, "d3d9.lib")
-#elif defined(GRAPHICS_DX11)
-#pragma message WARN("TODO: DX11 support not yet implemented")
-#define COBJMACROS 1
-#include <d3d11.h>
-#include <d3dx11.h>
-#include <d3dx10.h>
-#include <dxgi.h>
-#pragma comment (lib, "d3d11.lib")
-#pragma comment (lib, "d3dx11.lib")
-#pragma comment (lib, "d3dx10.lib")
-#pragma comment (lib, "dxguid.lib")
-#pragma comment (lib, "dxgi.lib")
-#endif
 
 struct win32_window_t {
   WNDCLASS wnd;
   HWND hwnd;
   HDC hdc;
-#if defined(GRAPHICS_OPENGL)
-  PIXELFORMATDESCRIPTOR pfd;
-  HGLRC hrc;
-  PAINTSTRUCT ps;
-  struct gl_obj_t gl_obj;
-#elif defined(GRAPHICS_DX9)
-  LPDIRECT3D9 d3d;
-  LPDIRECT3DDEVICE9 d3ddev;
-  LPDIRECT3DSURFACE9 d3dsurface;
-  int buffer_lw, buffer_lh;
-#elif defined(GRAPHICS_DX11)
-  IDXGISwapChain* dx_swapchain;
-  ID3D11Device* dx_dev;
-  ID3D11DeviceContext* dx_ctx;
-  ID3D11RenderTargetView* dx_backbuffer;
-  D3D11_VIEWPORT dx_viewport;
-#else
   BITMAPINFO* bmpinfo;
-#endif
   TRACKMOUSEEVENT tme;
   HICON icon;
   HCURSOR cursor;
@@ -3764,20 +2313,7 @@ static void close_win32_window(struct win32_window_t* window) {
     ClipCursor(NULL);
   if (!window->cursor_vis)
     ShowCursor(TRUE);
-#if defined(GRAPHICS_OPENGL)
-  free_gl(&window->gl_obj);
-#elif defined(GRAPHICS_DX9)
-  IDirect3DDevice9_Release(window->d3ddev);
-  IDirect3D9_Release(window->d3d);
-  IDirect3DSurface9_Release(window->d3dsurface);
-#elif defined(GRAPHICS_DX11)
-  IDXGISwapChain_Release(window->dx_swapchain);
-  IDXGIDevice_Release(window->dx_dev);
-  ID3D11DeviceContext_Release(window->dx_ctx);
-  ID3D10RenderTargetView_Release(window->dx_backbuffer);
-#else
   GRAPHICS_FREE(window->bmpinfo);
-#endif
   if (window->custom_icon && window->icon)
     DeleteObject(window->icon);
   if (window->custom_cursor && window->cursor)
@@ -3840,10 +2376,6 @@ static int translate_key(WPARAM wParam, LPARAM lParam) {
   return keycodes[HIWORD(lParam) & 0x1FF];
 }
 
-#define CBCALL(x, ...) \
-  if (e_window && e_window->x) \
-    e_window->x(e_window->parent, __VA_ARGS__);
-
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
   static struct win32_window_t* e_data = NULL;
   static struct window_t* e_window = NULL;
@@ -3856,47 +2388,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
     case WM_PAINT:
       if (!e_data->buffer)
         break;
-#if defined(GRAPHICS_OPENGL)
-      draw_gl(&e_data->gl_obj, e_data->buffer);
-      BeginPaint(e_data->hwnd, &e_data->ps);
-      EndPaint(e_data->hwnd, &e_data->ps);
-#elif defined(GRAPHICS_DX9)
-      if (e_data->buffer_lw != e_data->buffer->w || e_data->buffer_lh != e_data->buffer->h) {
-        if (e_data->d3dsurface)
-          IDirect3DSurface9_Release(e_data->d3dsurface);
-        IDirect3DDevice9_CreateOffscreenPlainSurface(e_data->d3ddev, e_data->buffer->w, e_data->buffer->h, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &e_data->d3dsurface, NULL);
-        e_data->buffer_lw = e_data->buffer->w;
-        e_data->buffer_lh = e_data->buffer->h;
-      }
-      static D3DLOCKED_RECT rect;
-      IDirect3DSurface9_LockRect(e_data->d3dsurface, &rect, NULL, D3DLOCK_DONOTWAIT);
-      BYTE* dst = (BYTE*)rect.pBits;
-      int* src = e_data->buffer->buf;
-      for (int i = 0; i < e_data->buffer->h; ++i) {
-        memcpy(dst, src, e_data->buffer->w * 4);
-        src += e_data->buffer->w;
-        dst += rect.Pitch;
-      }
-      IDirect3DSurface9_UnlockRect(e_data->d3dsurface);
-
-      IDirect3DDevice9_Clear(e_data->d3ddev, 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 1.0f, 0);
-      IDirect3DDevice9_BeginScene(e_data->d3ddev);
-      static LPDIRECT3DSURFACE9 back_buffer = NULL;
-      IDirect3DDevice9_GetBackBuffer(e_data->d3ddev, 0, 0, D3DBACKBUFFER_TYPE_MONO, &back_buffer);
-      IDirect3DDevice9_StretchRect(e_data->d3ddev, e_data->d3dsurface, NULL, back_buffer, NULL, D3DTEXF_POINT);
-      IDirect3DDevice9_EndScene(e_data->d3ddev);
-      IDirect3DDevice9_Present(e_data->d3ddev, NULL, NULL, NULL, NULL);
-      IDirect3DSurface9_Release(back_buffer);
-#elif defined(GRAPHICS_DX11)
-      static const float clear[] = { 0.f, 0.f, 0.f, 1.f };
-      ID3D11DeviceContext_ClearRenderTargetView(e_data->dx_ctx, e_data->dx_backbuffer, clear);
-      IDXGISwapChain_Present(e_data->dx_swapchain, 0, 0);
-#else
       e_data->bmpinfo->bmiHeader.biWidth = e_data->buffer->w;
       e_data->bmpinfo->bmiHeader.biHeight = -e_data->buffer->h;
       StretchDIBits(e_data->hdc, 0, 0, e_window->w, e_window->h, 0, 0, e_data->buffer->w, e_data->buffer->h, e_data->buffer->buf, e_data->bmpinfo, DIB_RGB_COLORS, SRCCOPY);
       ValidateRect(hWnd, NULL);
-#endif
       break;
     case WM_DESTROY:
     case WM_CLOSE:
@@ -3954,24 +2449,24 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       case WM_LBUTTONDOWN:
         m_action = 1;
       case WM_LBUTTONUP:
-        m_button = MOUSE_BTN_1;
+        m_button = enum button_1;
         break;
       case WM_RBUTTONDOWN:
         m_action = 1;
       case WM_RBUTTONUP:
-        m_button = MOUSE_BTN_2;
+        m_button = enum button_2;
         break;
       case WM_MBUTTONDOWN:
         m_action = 1;
       case WM_MBUTTONUP:
-        m_button = MOUSE_BTN_3;
+        m_button = enum button_3;
         break;
       default:
-        m_button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? MOUSE_BTN_5 : MOUSE_BTN_6);
+        m_button = (GET_XBUTTON_WPARAM(wParam) == XBUTTON1 ? enum button_5 : enum button_6);
         if (message == WM_XBUTTONDOWN)
           m_action = 1;
       }
-      CBCALL(mouse_button_callback, (MOUSE_BTN)m_button, translate_mod(), m_action);
+      CBCALL(mouse_button_callback, (enum button)m_button, translate_mod(), m_action);
       break;
     }
     case WM_MOUSEWHEEL:
@@ -4015,10 +2510,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
       e_window->w = LOWORD(lParam);
       e_window->h = HIWORD(lParam);
       CBCALL(resize_callback, e_window->w, e_window->h);
-#if defined(GRAPHICS_OPENGL)
-      glViewport(0, 0, e_window->w, e_window->h);
-      PostMessage(hWnd, WM_PAINT, 0, 0);
-#endif
       break;
     case WM_SETFOCUS:
       if (e_data->cursor_locked)
@@ -4036,7 +2527,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
   return DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-static void windows_error(GRAPHICS_ERROR_TYPE err, const char* msg) {
+static void windows_error(enum graphics_error err, const char* msg) {
   DWORD id = GetLastError();
   LPSTR buf = NULL;
   FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&buf, 0, NULL);
@@ -4235,11 +2726,7 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   }
 
   memset(&win_data->wnd, 0, sizeof(win_data->wnd));
-#if defined(GRAPHICS_OPENGL)
-  win_data->wnd.style = CS_OWNDC;
-#else
   win_data->wnd.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
-#endif
   win_data->wnd.lpfnWndProc = WndProc;
   win_data->wnd.hCursor = LoadCursor(0, IDC_ARROW);
   win_data->wnd.lpszClassName = t;
@@ -4264,81 +2751,6 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   ShowWindow(win_data->hwnd, SW_NORMAL);
   SetFocus(win_data->hwnd);
 
-#if defined(GRAPHICS_OPENGL)
-  memset(&win_data->pfd, 0, sizeof(win_data->pfd));
-  win_data->pfd.nSize = sizeof(win_data->pfd);
-  win_data->pfd.nVersion = 1;
-  win_data->pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
-  win_data->pfd.iPixelType = PFD_TYPE_RGBA;
-  win_data->pfd.cColorBits = 32;
-
-  int pf = ChoosePixelFormat(win_data->hdc, &win_data->pfd);
-  if (pf == 0) {
-    windows_error(WIN_GL_PF_ERROR, "ChoosePixelFormat() failed");
-    return false;
-  }
-
-  if (SetPixelFormat(win_data->hdc, pf, &win_data->pfd) == FALSE) {
-    windows_error(WIN_GL_PF_ERROR, "SetPixelFormat() failed");
-    return false;
-  }
-
-  DescribePixelFormat(win_data->hdc, pf, sizeof(PIXELFORMATDESCRIPTOR), &win_data->pfd);
-
-  win_data->hrc = wglCreateContext(win_data->hdc);
-  wglMakeCurrent(win_data->hdc, win_data->hrc);
-
-  memset(&win_data->gl_obj, 0, sizeof(struct gl_obj_t));
-  RECT r = rect;
-  GetClientRect(win_data->hwnd, &r);
-  if (!init_gl(r.right, r.bottom, &win_data->gl_obj))
-    return false;
-#elif defined(GRAPHICS_DX9)
-  win_data->d3d = Direct3DCreate9(D3D_SDK_VERSION);
-
-  D3DPRESENT_PARAMETERS d3dpp;
-  ZeroMemory(&d3dpp, sizeof(d3dpp));
-  d3dpp.Windowed = TRUE;
-  d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-  d3dpp.hDeviceWindow = win_data->hwnd;
-  if (FAILED(IDirect3D9_CreateDevice(win_data->d3d, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, win_data->hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &win_data->d3ddev))) {
-    windows_error(WIN_DX9_CREATION_FAILED, "IDirect3D9_CreateDevice() failed");
-    return false;
-  }
-
-  win_data->buffer_lh = win_data->buffer_lw = 0;
-  win_data->d3dsurface = NULL;
-#elif defined(GRAPHICS_DX11)
-  DXGI_SWAP_CHAIN_DESC scd;
-  ZeroMemory(&scd, sizeof(DXGI_SWAP_CHAIN_DESC));
-  scd.BufferCount = 1;
-  scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-  scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-  scd.OutputWindow = win_data->hwnd;
-  scd.SampleDesc.Count = 4;
-  scd.Windowed = flags & ~FULLSCREEN;
-
-  if (FAILED(D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, NULL, NULL, NULL, D3D11_SDK_VERSION, &scd, &win_data->dx_swapchain, &win_data->dx_dev, NULL, &win_data->dx_ctx))) {
-    windows_error(WIN_DX9_CREATION_FAILED, "D3D11CreateDeviceAndSwapChain() failed");
-    return false;
-  }
-
-  ID3D11Texture2D* tmp_backbuffer = NULL;
-  IDXGISwapChain_GetBuffer(win_data->dx_swapchain, 0, &IID_ID3D11Texture2D, (LPVOID*)&tmp_backbuffer);
-  ID3D11Device_CreateRenderTargetView(win_data->dx_dev, tmp_backbuffer, NULL, &win_data->dx_backbuffer);
-  ID3D11Texture2D_Release(tmp_backbuffer);
-
-  ID3D11DeviceContext_OMSetRenderTargets(win_data->dx_ctx, 1, win_data->dx_backbuffer, NULL);
-
-  RECT r = rect;
-  GetClientRect(win_data->hwnd, &r);
-  ZeroMemory(&win_data->dx_viewport, sizeof(D3D11_VIEWPORT));
-  win_data->dx_viewport.TopLeftX = 0;
-  win_data->dx_viewport.TopLeftY = 0;
-  win_data->dx_viewport.Width = r.right;
-  win_data->dx_viewport.Height = r.bottom;
-  ID3D11DeviceContext_RSSetViewports(win_data->dx_ctx, 1, &win_data->dx_viewport);
-#else
   size_t bmpinfo_sz = sizeof(BITMAPINFOHEADER) + sizeof(RGBQUAD) * 3;
   if (!(win_data->bmpinfo = GRAPHICS_MALLOC(bmpinfo_sz))) {
     GRAPHICS_ERROR(OUT_OF_MEMEORY, "malloc() failed");
@@ -4354,7 +2766,6 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   win_data->bmpinfo->bmiColors[0].rgbRed = 0xFF;
   win_data->bmpinfo->bmiColors[1].rgbGreen = 0xFF;
   win_data->bmpinfo->bmiColors[2].rgbBlue = 0xff;
-#endif
 
   win_data->tme.cbSize = sizeof(win_data->tme);
   win_data->tme.hwndTrack = win_data->hwnd;
@@ -4487,7 +2898,7 @@ void cursor_visible(struct window_t* s, bool shown) {
   ((struct win32_window_t*)s->window)->cursor_vis = shown;
 }
 
-void cursor_icon(struct window_t* s, CURSOR_TYPE t) {
+void cursor_icon(struct window_t* s, enum cursor_type t) {
   HCURSOR tmp = NULL;
   switch (t) {
   default:
@@ -4612,7 +3023,7 @@ void release() {
     cursor = tmp;
   }
 }
-#elif defined(GRAPHICS_LINUX) && !defined(GRAPHICS_EXTERNAL_WINDOW)
+#elif defined(GRAPHICS_LINUX) && !defined(GRAPHICS_EMCC)
 #pragma message WARN("TODO: Linux X11/Wayland support not yet implemented")
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -5120,7 +3531,7 @@ void cursor_visible(struct window_t* w, bool visible) {
   return;
 }
 
-void cursor_icon(struct window_t* w, CURSOR_TYPE type) {
+void cursor_icon(struct window_t* w, enum cursor_type type) {
   return;
 }
 
@@ -5145,10 +3556,6 @@ struct window_t* event_window(Window w) {
   }
   return NULL;
 }
-
-#define CBCALL(x, ...) \
-  if (e_window && e_window->x) \
-    e_window->x(e_window->parent, __VA_ARGS__);
 
 void events() {
   static XEvent e;
@@ -5176,7 +3583,7 @@ void events() {
           case Button1:
           case Button2:
           case Button3:
-            CBCALL(mouse_button_callback, (MOUSE_BTN)e.xbutton.button, translate_mod(e.xkey.state), e.type == ButtonPress);
+            CBCALL(mouse_button_callback, (enum button)e.xbutton.button, translate_mod(e.xkey.state), e.type == ButtonPress);
             break;
           case Button4:
             CBCALL(scroll_callback, translate_mod(e.xkey.state), 0.f, 1.f);
@@ -5191,7 +3598,7 @@ void events() {
             CBCALL(scroll_callback, translate_mod(e.xkey.state), -1.f, 0.f);
             break;
           default:
-            CBCALL(mouse_button_callback, (MOUSE_BTN)(e.xbutton.button - 4), translate_mod(e.xkey.state), e.type == ButtonPress);
+            CBCALL(mouse_button_callback, (enum button)(e.xbutton.button - 4), translate_mod(e.xkey.state), e.type == ButtonPress);
             break;
         }
         break;
@@ -5285,17 +3692,17 @@ void release() {
 static int window_w, window_h, canvas_w, canvas_h, canvas_x, canvas_y, cursor_x, cursor_y;
 static bool mouse_in_canvas = true, fullscreen = false;
 
-static KEY_MOD translate_mod(bool ctrl, bool shift, bool alt, bool meta) {
-  return (KEY_MOD)((ctrl ? KB_MOD_CONTROL : 0) | (shift ? KB_MOD_SHIFT : 0) | (alt ? KB_MOD_ALT : 0) | (meta ? KB_MOD_SUPER : 0));
+static enum key_mod translate_mod(bool ctrl, bool shift, bool alt, bool meta) {
+  return (enum key_mod)((ctrl ? KB_MOD_CONTROL : 0) | (shift ? KB_MOD_SHIFT : 0) | (alt ? KB_MOD_ALT : 0) | (meta ? KB_MOD_SUPER : 0));
 }
 
-static KEY_SYM translate_key(int key) {
+static enum key_sym translate_key(int key) {
   return (key > 222 || key < 8 ? KB_KEY_UNKNOWN : keycodes[key]);
 }
 
 static EM_BOOL key_callback(int type, const EmscriptenKeyboardEvent* e, void* user_data) {
-  static KEY_MOD mod;
-  static KEY_SYM sym;
+  static enum key_mod mod;
+  static enum key_sym sym;
   mod = translate_mod(e->ctrlKey, e->shiftKey, e->altKey, e->metaKey);
   sym = translate_key(e->keyCode);
   CBCALL(keyboard_callback, sym, mod, (type == EMSCRIPTEN_EVENT_KEYDOWN));
@@ -5331,11 +3738,11 @@ static EM_BOOL mouse_callback(int type, const EmscriptenMouseEvent* e, void* use
   switch (type) {
     case EMSCRIPTEN_EVENT_MOUSEDOWN:
       if (mouse_in_canvas && e->buttons != 0)
-        CBCALL(mouse_button_callback, (MOUSE_BTN)(e->button + 1), translate_mod(e->ctrlKey, e->shiftKey, e->altKey, e->metaKey), true);
+        CBCALL(mouse_button_callback, (enum button)(e->button + 1), translate_mod(e->ctrlKey, e->shiftKey, e->altKey, e->metaKey), true);
       break;
     case EMSCRIPTEN_EVENT_MOUSEUP:
       if (mouse_in_canvas)
-        CBCALL(mouse_button_callback, (MOUSE_BTN)(e->button + 1), translate_mod(e->ctrlKey, e->shiftKey, e->altKey, e->metaKey), false);
+        CBCALL(mouse_button_callback, (enum button)(e->button + 1), translate_mod(e->ctrlKey, e->shiftKey, e->altKey, e->metaKey), false);
       break;
     case EMSCRIPTEN_EVENT_MOUSEMOVE:
       cursor_x = e->clientX;
@@ -5657,7 +4064,7 @@ void cursor_visible(struct window_t* s, bool show) {
   }, cursor, show);
 }
 
-void cursor_icon(struct window_t* _, CURSOR_TYPE t) {
+void cursor_icon(struct window_t* w, enum cursor_type t) {
   if (cursor_custom && cursor)
     GRAPHICS_SAFE_FREE(cursor);
   cursor_custom = false;
@@ -5700,10 +4107,10 @@ void cursor_icon(struct window_t* _, CURSOR_TYPE t) {
       cursor = "pointer";
       break;
   }
-  cursor_visible(true);
+  cursor_visible(w, true);
 }
 
-void cursor_icon_custom(struct window_t* _, struct surface_t* b) {
+void cursor_icon_custom(struct window_t* w, struct surface_t* b) {
   if (cursor_custom && cursor)
     GRAPHICS_SAFE_FREE(cursor);
   
@@ -5744,7 +4151,7 @@ void cursor_icon_custom(struct window_t* _, struct surface_t* b) {
     return;
   }
   cursor_custom = true;
-  cursor_visible(true);
+  cursor_visible(w, true);
 }
 
 void cursor_pos(int* x, int* y) {
@@ -5849,7 +4256,7 @@ void cursor_visible(struct window_t* s, bool a) {
   return;
 }
 
-void cursor_icon(struct window_t* a, CURSOR_TYPE b) {
+void cursor_icon(struct window_t* a, enum cursor_type b) {
   return;
 }
 
@@ -5876,10 +4283,7 @@ void flush(struct window_t* a, struct surface_t* b) {
 void release() {
   return;
 }
-#else
-#error Unsupported operating system, sorry
-#endif
-#else // This is just a dummy
+#else // dummy
 bool window(struct window_t* a, const char* b, int c, int d, short e) {
   return true;
 }
@@ -5924,7 +4328,7 @@ void cursor_visible(struct window_t* s, bool a) {
   return;
 }
 
-void cursor_icon(struct window_t* a, CURSOR_TYPE b) {
+void cursor_icon(struct window_t* a, enum cursor_type b) {
   return;
 }
 
@@ -5953,13 +4357,13 @@ void release() {
 }
 #endif
 
-static void(*__error_callback)(GRAPHICS_ERROR_TYPE, const char*, const char*, const char*, int) = NULL;
+static void(*__error_callback)(enum graphics_error, const char*, const char*, const char*, int) = NULL;
 
-void graphics_error_callback(void(*cb)(GRAPHICS_ERROR_TYPE, const char*, const char*, const char*, int)) {
+void graphics_error_callback(void(*cb)(enum graphics_error, const char*, const char*, const char*, int)) {
   __error_callback = cb;
 }
 
-void graphics_error(GRAPHICS_ERROR_TYPE type, const char* file, const char* func, int line, const char* msg, ...) {
+void graphics_error(enum graphics_error type, const char* file, const char* func, int line, const char* msg, ...) {
   va_list args;
   va_start(args, msg);
   static char error[1024];

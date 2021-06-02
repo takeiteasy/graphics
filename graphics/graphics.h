@@ -34,7 +34,6 @@ extern "C" {
 #if defined(__EMSCRIPTEN__) || defined(EMSCRIPTEN)
 #define GRAPHICS_EMCC
 #include <emscripten/emscripten.h>
-#define GRAPHICS_EXTERNAL_WINDOW
 #endif
   
 #if defined(__gnu_linux__) || defined(__linux__) || defined(__unix__)
@@ -76,46 +75,6 @@ if ((x)) { \
 #include <stdbool.h>
 #endif
 #include <stdarg.h>
-  
-#if !defined(GDEF)
-#if defined(GRAPHICS_STATIC)
-#define GDEF static
-#else
-#define GDEF extern
-#endif
-#endif
-
-#if defined(__cplusplus)
-#define GRAPHICS_EXTERN extern "C"
-#else
-#define GRAPHICS_EXTERN extern
-#endif
-
-#if !defined(_MSC_VER)
-#if defined(__cplusplus)
-#define graphics_inline inline
-#else
-#define graphics_inline
-#endif
-#else
-#define graphics_inline __forceinline
-#endif
-
-#if !defined(GRAPHICS_VERSION_MAJOR)
-#define GRAPHICS_VERSION_MAJOR 0
-#endif
-#if !defined(GRAPHICS_VERSION_MINOR)
-#define GRAPHICS_VERSION_MINOR 0
-#endif
-#if !defined(GRAPHICS_VERSION_REV)
-#define GRAPHICS_VERSION_REV 0
-#endif
-#define GRAPHICS_VERSION_INT (GRAPHICS_VERSION_MAJOR << 16 | GRAPHICS_VERSION_MINOR << 8 | GRAPHICS_VERSION_REV)
-#define GRAPHICS_VERSION_DOT_STR(a, b, c) a ##.## b ##.## c
-#define GRAPHICS_VERSION_STR GRAPHICS_VERSION_DOT_STR(a, b, c)
-#if !defined(GRAPHICS_VERSION_GIT)
-#define GRAPHICS_VERSION_GIT "unknown"
-#endif
 
 // Taken from: https://stackoverflow.com/a/1911632
 #if _MSC_VER
@@ -126,174 +85,234 @@ if ((x)) { \
 #else
 #define WARN(exp) ("WARNING: " exp)
 #endif
-
-#define COL_RGBA(r, g, b, a) ((((unsigned int)(a)) << 24) | (((unsigned int)(r)) << 16) | (((unsigned int)(g)) << 8) | (b))
-#define COL_RGB(r, g, b) (COL_RGBA((r), (g), (b), 255))
-#define COL_R(v) (((v) >> 16) & 0xFF)
-#define COL_G(v) (((v) >>  8) & 0xFF)
-#define COL_B(v) ( (v)        & 0xFF)
-#define COL_A(v) (((v) >> 24) & 0xFF)
-#define COL_RCHAN(a, b) (((a) & ~0x00FF0000) | ((b) << 16))
-#define COL_GCHAN(a, b) (((a) & ~0x0000FF00) | ((b) << 8))
-#define COL_BCHAN(a, b) (((a) & ~0x000000FF) |  (b))
-#define COL_ACHAN(a, b) (((a) & ~0xFF000000) | ((b) << 24))
-#define COL_RGB1(c) (COL_RGB((c), (c), (c)))
-#define COL_RGBA1(c, a) (COL_RGBA((c), (c), (c), (a)))
-
-#if !defined(GRAPHICS_NO_COLORS)
+  
   /*!
-   * @typedef COLOURS
+   * @discussion Convert RGBA to packed integer
+   * @param r R channel
+   * @param g G channel
+   * @param b B channel
+   * @param a A channel
+   * @return Packed RGBA colour
+   */
+  int rgba(unsigned char r, unsigned char g, unsigned char b, unsigned char a);
+  /*!
+   * @discussion Convert RGB to packed integer
+   * @param r R channel
+   * @param g G channel
+   * @param b B channel
+   * @return Packed RGB colour
+   */
+  int rgb(unsigned char r, unsigned char g, unsigned char b);
+  /*!
+   * @discussion Convert channel to packed RGBA integer
+   * @param c R channel
+   * @return Packed RGBA colour
+   */
+  int rgba1(unsigned char c);
+  /*!
+   * @discussion Convert channel to packed RGB integer
+   * @param c R channel
+   * @return Packed RGBA colour
+   */
+  int rgb1(unsigned char c);
+  /*!
+   * @discussion Retrieve R channel from packed RGBA integer
+   * @param c Packed RGBA integer
+   * @return R channel value
+   */
+  unsigned char r_channel(int c);
+  /*!
+   * @discussion Retrieve G channel from packed RGBA integer
+   * @param c Packed RGBA integer
+   * @return G channel value
+   */
+  unsigned char g_channel(int c);
+  /*!
+   * @discussion Retrieve B channel from packed RGBA integer
+   * @param c Packed RGBA integer
+   * @return B channel value
+   */
+  unsigned char b_channel(int c);
+  /*!
+   * @discussion Retrieve A channel from packed RGBA integer
+   * @param c Packed RGBA integer
+   * @return A channel value
+   */
+  unsigned char a_channel(int c);
+  /*!
+   * @discussion Modify R channel of packed RGBA integer
+   * @param c Packed RGBA integer
+   * @param r New R channel
+   * @return Packed RGBA integer
+   */
+  int rgba_r(int c, unsigned char r);
+  /*!
+   * @discussion Modify G channel of packed RGBA integer
+   * @param c Packed RGBA integer
+   * @param g New G channel
+   * @return Packed RGBA integer
+   */
+  int rgba_g(int c, unsigned char g);
+  /*!
+   * @discussion Modify B channel of packed RGBA integer
+   * @param c Packed RGBA integer
+   * @param b New B channel
+   * @return Packed RGBA integer
+   */
+  int rgba_b(int c, unsigned char b);
+  /*!
+   * @discussion Modify A channel of packed RGBA integer
+   * @param c Packed RGBA integer
+   * @param a New A channel
+   * @return Packed RGBA integer
+   */
+  int rgba_a(int c, unsigned char a);
+
+  /*!
+   * @typedef colours
    * @brief A list of colours with names
    */
-  typedef enum {
-    BLACK = COL_RGB(0, 0, 0),
-    BLUE = COL_RGB(0, 0, 255),
-    CYAN = COL_RGB(0, 255, 255),
-    GRAY = COL_RGB(128, 128, 128),
-    GREEN = COL_RGB(0, 128, 0),
-    LIME = COL_RGB(0, 255, 0),
-    MAGENTA = COL_RGB(255, 0, 255),
-    MAROON = COL_RGB(128, 0, 0),
-    NAVY = COL_RGB(0, 0, 128),
-    PURPLE = COL_RGB(128, 0, 128),
-    RED = COL_RGB(255, 0, 0),
-    TEAL = COL_RGB(0, 128, 128),
-    WHITE = COL_RGB(255, 255, 255),
-    YELLOW = COL_RGB(255, 255, 0),
+  enum colour {
+    BLACK = -16777216,
+    BLUE = -16776961,
+    CYAN = -16711681,
+    GRAY = -8355712,
+    GREEN = -16744448,
+    LIME = -16711936,
+    MAGENTA = -65281,
+    MAROON = -8388608,
+    NAVY = -16777088,
+    PURPLE = -8388480,
+    RED = -65536,
+    TEAL = -16744320,
+    WHITE = -1,
+    YELLOW = -256,
+    
+    ALICE_BLUE = -984833,
+    ANTIQUE_WHITE = -332841,
+    AQUA = -16711681,
+    AQUA_MARINE = -8388652,
+    AZURE = -983041,
+    BEIGE = -657956,
+    BISQUE = -6972,
+    BLANCHED_ALMOND = -5171,
+    BLUE_VIOLET = -7722014,
+    BROWN = -5952982,
+    BURLY_WOOD = -2180985,
+    CADET_BLUE = -10510688,
+    CHART_REUSE = -8388864,
+    CHOCOLATE = -2987746,
+    CORAL = -32944,
+    CORN_FLOWER_BLUE = -10185235,
+    CORN_SILK = -1828,
+    CRIMSON = -2354116,
+    DARK_BLUE = -16777077,
+    DARK_CYAN = -16741493,
+    DARK_GOLDEN_ROD = -4684277,
+    DARK_GRAY = -5658199,
+    DARK_GREEN = -16751616,
+    DARK_KHAKI = -4343957,
+    DARK_MAGENTA = -7667573,
+    DARK_OLIVE_GREEN = -11179217,
+    DARK_ORANGE = -29696,
+    DARK_ORCHID = -6737204,
+    DARK_RED = -7667712,
+    DARK_SALMON = -1468806,
+    DARK_SEA_GREEN = -7357297,
+    DARK_SLATE_BLUE = -12042869,
+    DARK_SLATE_GRAY = -13676721,
+    DARK_TURQUOISE = -16724271,
+    DARK_VIOLET = -7077677,
+    DEEP_PINK = -60269,
+    DEEP_SKY_BLUE = -16728065,
+    DIM_GRAY = -9868951,
+    DODGER_BLUE = -14774017,
+    FIREBRICK = -5103070,
+    FLORAL_WHITE = -1296,
+    FOREST_GREEN = -14513374,
+    GAINSBORO = -2302756,
+    GHOST_WHITE = -460545,
+    GOLD = -10496,
+    GOLDEN_ROD = -2448096,
+    GREEN_YELLOW = -5374161,
+    HONEYDEW = -983056,
+    HOT_PINK = -38476,
+    INDIAN_RED = -3318692,
+    INDIGO = -11861886,
+    IVORY = -16,
+    KHAKI = -989556,
+    LAVENDER = -1644806,
+    LAVENDER_BLUSH = -3851,
+    LAWN_GREEN = -8586240,
+    LEMON_CHIFFON = -1331,
+    LIGHT_BLUE = -5383962,
+    LIGHT_CORAL = -1015680,
+    LIGHT_CYAN = -2031617,
+    LIGHT_GOLDEN_ROD = -329006,
+    LIGHT_GRAY = -2894893,
+    LIGHT_GREEN = -7278960,
+    LIGHT_PINK = -18751,
+    LIGHT_SALMON = -24454,
+    LIGHT_SEA_GREEN = -14634326,
+    LIGHT_SKY_BLUE = -7876870,
+    LIGHT_SLATE_GRAY = -8943463,
+    LIGHT_STEEL_BLUE = -5192482,
+    LIGHT_YELLOW = -32,
+    LIME_GREEN = -13447886,
+    LINEN = -331546,
+    MEDIUM_AQUA_MARINE = -10039894,
+    MEDIUM_BLUE = -16777011,
+    MEDIUM_ORCHID = -4565549,
+    MEDIUM_PURPLE = -7114533,
+    MEDIUM_SEA_GREEN = -12799119,
+    MEDIUM_SLATE_BLUE = -8689426,
+    MEDIUM_SPRING_GREEN = -16713062,
+    MEDIUM_TURQUOISE = -12004916,
+    MEDIUM_VIOLET_RED = -3730043,
+    MIDNIGHT_BLUE = -15132304,
+    MINT_CREAM = -655366,
+    MISTY_ROSE = -6943,
+    MOCCASIN = -6987,
+    NAVAJO_WHITE = -8531,
+    OLD_LACE = -133658,
+    OLIVE_DRAB = -9728477,
+    ORANGE = -23296,
+    ORANGE_RED = -47872,
+    ORCHID = -2461482,
+    PALE_GOLDEN_ROD = -1120086,
+    PALE_GREEN = -6751336,
+    PALE_TURQUOISE = -5247250,
+    PALE_VIOLET_RED = -2396013,
+    PAPAYA_WHIP = -4139,
+    PEACH_PUFF = -9543,
+    PERU = -3308225,
+    PINK = -16181,
+    PLUM = -2252579,
+    POWDER_BLUE = -5185306,
+    ROSY_BROWN = -4419697,
+    ROYAL_BLUE = -12490271,
+    SADDLE_BROWN = -7650029,
+    SALMON = -360334,
+    SANDY_BROWN = -744352,
+    SEA_GREEN = -13726889,
+    SEA_SHELL = -2578,
+    SIENNA = -6270419,
+    SKY_BLUE = -7876885,
+    SLATE_BLUE = -9807155,
+    SLATE_GRAY = -9404272,
+    SNOW = -1286,
+    SPRING_GREEN = -16711809,
+    STEEL_BLUE = -12156236,
+    TAN = -2968436,
+    THISTLE = -2572328,
+    TOMATO = -40121,
+    TURQUOISE = -12525360,
+    VIOLET = -1146130,
+    WHEAT = -663885,
+    WHITE_SMOKE = -657931,
+    YELLOW_GREEN = -6632142
+  };
 
-    ALICE_BLUE = COL_RGB(240, 248, 255),
-    ANTIQUE_WHITE = COL_RGB(250, 235, 215),
-    AQUA = COL_RGB(0, 255, 255),
-    AQUA_MARINE = COL_RGB(127, 255, 212),
-    AZURE = COL_RGB(240, 255, 255),
-    BEIGE = COL_RGB(245, 245, 220),
-    BISQUE = COL_RGB(255, 228, 196),
-    BLANCHED_ALMOND = COL_RGB(255, 235, 205),
-    BLUE_VIOLET = COL_RGB(138, 43, 226),
-    BROWN = COL_RGB(165, 42, 42),
-    BURLY_WOOD = COL_RGB(222, 184, 135),
-    CADET_BLUE = COL_RGB(95, 158, 160),
-    CHART_REUSE = COL_RGB(127, 255, 0),
-    CHOCOLATE = COL_RGB(210, 105, 30),
-    CORAL = COL_RGB(255, 127, 80),
-    CORN_FLOWER_BLUE = COL_RGB(100, 149, 237),
-    CORN_SILK = COL_RGB(255, 248, 220),
-    CRIMSON = COL_RGB(220, 20, 60),
-    DARK_BLUE = COL_RGB(0, 0, 139),
-    DARK_CYAN = COL_RGB(0, 139, 139),
-    DARK_GOLDEN_ROD = COL_RGB(184, 134, 11),
-    DARK_GRAY = COL_RGB(169, 169, 169),
-    DARK_GREEN = COL_RGB(0, 100, 0),
-    DARK_KHAKI = COL_RGB(189, 183, 107),
-    DARK_MAGENTA = COL_RGB(139, 0, 139),
-    DARK_OLIVE_GREEN = COL_RGB(85, 107, 47),
-    DARK_ORANGE = COL_RGB(255, 140, 0),
-    DARK_ORCHID = COL_RGB(153, 50, 204),
-    DARK_RED = COL_RGB(139, 0, 0),
-    DARK_SALMON = COL_RGB(233, 150, 122),
-    DARK_SEA_GREEN = COL_RGB(143, 188, 143),
-    DARK_SLATE_BLUE = COL_RGB(72, 61, 139),
-    DARK_SLATE_GRAY = COL_RGB(47, 79, 79),
-    DARK_TURQUOISE = COL_RGB(0, 206, 209),
-    DARK_VIOLET = COL_RGB(148, 0, 211),
-    DEEP_PINK = COL_RGB(255, 20, 147),
-    DEEP_SKY_BLUE = COL_RGB(0, 191, 255),
-    DIM_GRAY = COL_RGB(105, 105, 105),
-    DODGER_BLUE = COL_RGB(30, 144, 255),
-    FIREBRICK = COL_RGB(178, 34, 34),
-    FLORAL_WHITE = COL_RGB(255, 250, 240),
-    FOREST_GREEN = COL_RGB(34, 139, 34),
-    GAINSBORO = COL_RGB(220, 220, 220),
-    GHOST_WHITE = COL_RGB(248, 248, 255),
-    GOLD = COL_RGB(255, 215, 0),
-    GOLDEN_ROD = COL_RGB(218, 165, 32),
-    GREEN_YELLOW = COL_RGB(173, 255, 47),
-    HONEYDEW = COL_RGB(240, 255, 240),
-    HOT_PINK = COL_RGB(255, 105, 180),
-    INDIAN_RED = COL_RGB(205, 92, 92),
-    INDIGO = COL_RGB(75, 0, 130),
-    IVORY = COL_RGB(255, 255, 240),
-    KHAKI = COL_RGB(240, 230, 140),
-    LAVENDER = COL_RGB(230, 230, 250),
-    LAVENDER_BLUSH = COL_RGB(255, 240, 245),
-    LAWN_GREEN = COL_RGB(124, 252, 0),
-    LEMON_CHIFFON = COL_RGB(255, 250, 205),
-    LIGHT_BLUE = COL_RGB(173, 216, 230),
-    LIGHT_CORAL = COL_RGB(240, 128, 128),
-    LIGHT_CYAN = COL_RGB(224, 255, 255),
-    LIGHT_GOLDEN_ROD = COL_RGB(250, 250, 210),
-    LIGHT_GRAY = COL_RGB(211, 211, 211),
-    LIGHT_GREEN = COL_RGB(144, 238, 144),
-    LIGHT_PINK = COL_RGB(255, 182, 193),
-    LIGHT_SALMON = COL_RGB(255, 160, 122),
-    LIGHT_SEA_GREEN = COL_RGB(32, 178, 170),
-    LIGHT_SKY_BLUE = COL_RGB(135, 206, 250),
-    LIGHT_SLATE_GRAY = COL_RGB(119, 136, 153),
-    LIGHT_STEEL_BLUE = COL_RGB(176, 196, 222),
-    LIGHT_YELLOW = COL_RGB(255, 255, 224),
-    LIME_GREEN = COL_RGB(50, 205, 50),
-    LINEN = COL_RGB(250, 240, 230),
-    MEDIUM_AQUA_MARINE = COL_RGB(102, 205, 170),
-    MEDIUM_BLUE = COL_RGB(0, 0, 205),
-    MEDIUM_ORCHID = COL_RGB(186, 85, 211),
-    MEDIUM_PURPLE = COL_RGB(147, 112, 219),
-    MEDIUM_SEA_GREEN = COL_RGB(60, 179, 113),
-    MEDIUM_SLATE_BLUE = COL_RGB(123, 104, 238),
-    MEDIUM_SPRING_GREEN = COL_RGB(0, 250, 154),
-    MEDIUM_TURQUOISE = COL_RGB(72, 209, 204),
-    MEDIUM_VIOLET_RED = COL_RGB(199, 21, 133),
-    MIDNIGHT_BLUE = COL_RGB(25, 25, 112),
-    MINT_CREAM = COL_RGB(245, 255, 250),
-    MISTY_ROSE = COL_RGB(255, 228, 225),
-    MOCCASIN = COL_RGB(255, 228, 181),
-    NAVAJO_WHITE = COL_RGB(255, 222, 173),
-    OLD_LACE = COL_RGB(253, 245, 230),
-    OLIVE_DRAB = COL_RGB(107, 142, 35),
-    ORANGE = COL_RGB(255, 165, 0),
-    ORANGE_RED = COL_RGB(255, 69, 0),
-    ORCHID = COL_RGB(218, 112, 214),
-    PALE_GOLDEN_ROD = COL_RGB(238, 232, 170),
-    PALE_GREEN = COL_RGB(152, 251, 152),
-    PALE_TURQUOISE = COL_RGB(175, 238, 238),
-    PALE_VIOLET_RED = COL_RGB(219, 112, 147),
-    PAPAYA_WHIP = COL_RGB(255, 239, 213),
-    PEACH_PUFF = COL_RGB(255, 218, 185),
-    PERU = COL_RGB(205, 133, 63),
-    PINK = COL_RGB(255, 192, 203),
-    PLUM = COL_RGB(221, 160, 221),
-    POWDER_BLUE = COL_RGB(176, 224, 230),
-    ROSY_BROWN = COL_RGB(188, 143, 143),
-    ROYAL_BLUE = COL_RGB(65, 105, 225),
-    SADDLE_BROWN = COL_RGB(139, 69, 19),
-    SALMON = COL_RGB(250, 128, 114),
-    SANDY_BROWN = COL_RGB(244, 164, 96),
-    SEA_GREEN = COL_RGB(46, 139, 87),
-    SEA_SHELL = COL_RGB(255, 245, 238),
-    SIENNA = COL_RGB(160, 82, 45),
-    SKY_BLUE = COL_RGB(135, 206, 235),
-    SLATE_BLUE = COL_RGB(106, 90, 205),
-    SLATE_GRAY = COL_RGB(112, 128, 144),
-    SNOW = COL_RGB(255, 250, 250),
-    SPRING_GREEN = COL_RGB(0, 255, 127),
-    STEEL_BLUE = COL_RGB(70, 130, 180),
-    TAN = COL_RGB(210, 180, 140),
-    THISTLE = COL_RGB(216, 191, 216),
-    TOMATO = COL_RGB(255, 99, 71),
-    TURQUOISE = COL_RGB(64, 224, 208),
-    VIOLET = COL_RGB(238, 130, 238),
-    WHEAT = COL_RGB(245, 222, 179),
-    WHITE_SMOKE = COL_RGB(245, 245, 245),
-    YELLOW_GREEN = COL_RGB(154, 205, 50)
-  } COLOURS;
-#endif
-
-#if defined(GRAPHICS_CHROMA_KEY) && !defined(BLIT_CHROMA_KEY)
-#if !defined(GRAPHICS_NO_DEFAULT_COLORS)
-#define BLIT_CHROMA_KEY LIME
-#else
-#define BLIT_CHROMA_KEY -16711936
-#endif
-#endif
   /*!
    * @typedef surface_t
    * @brief An object to hold image data
@@ -304,20 +323,7 @@ if ((x)) { \
   struct surface_t {
     int *buf, w, h;
   };
-
-  /*!
-   * @discussion Get size of given surface
-   * @param s Surface object
-   * @param w Pointer to int to set
-   * @param h Pointer to int to set
-   */
-  GDEF void surface_size(struct surface_t* s, unsigned int* w, unsigned int* h);
-  /*!
-   * @discussion Get pointer to buffer of given surface
-   * @param s Surface object
-   * @return The pointer to surface buffer
-   */
-  GDEF int* surface_raw(struct surface_t* s);
+  
   /*!
    * @discussion Create a new surface
    * @param s Pointer to surface object to create
@@ -325,19 +331,35 @@ if ((x)) { \
    * @param h Height of new surface
    * @return Boolean for success
    */
-  GDEF bool surface(struct surface_t* s, unsigned int w, unsigned int h);
+  bool surface(struct surface_t* s, unsigned int w, unsigned int h);
   /*!
    * @discussion Destroy a surface
    * @param s Pointer to pointer to surface object
    */
-  GDEF void surface_destroy(struct surface_t* s);
-
+  void surface_destroy(struct surface_t* s);
+  
+  /*!
+   * @typedef draw_mode
+   * @brief Draw modes, normal = no alpha, mask = <255 transparent, alpha = transparency
+   */
+  enum draw_mode {
+    NORMAL,
+    MASK,
+    ALPHA
+  };
+  
+  /*!
+   * @discussion Set draw mode
+   * @param m Which mode to use
+   */
+  void graphics_draw_mode(enum draw_mode m);
+  
   /*!
    * @discussion Fill a surface with a given colour
    * @param s Surface object
    * @param col Colour to set
    */
-  GDEF void fill(struct surface_t* s, int col);
+  void fill(struct surface_t* s, int col);
   /*!
    * @discussion Flood portion of surface with given colour
    * @param s Surface object
@@ -345,12 +367,12 @@ if ((x)) { \
    * @param y Y position
    * @param col Colour to set
    */
-  GDEF void flood(struct surface_t* s, int x, int y, int col);
+  void flood(struct surface_t* s, int x, int y, int col);
   /*!
    * @discussion Clear a surface, zero the buffer
    * @param s Surface object
    */
-  GDEF void cls(struct surface_t* s);
+  void cls(struct surface_t* s);
   /*!
    * @discussion Set surface pixel colour
    * @param s Surface object
@@ -358,7 +380,7 @@ if ((x)) { \
    * @param y Y position
    * @param col Colour to set
    */
-  GDEF void pset(struct surface_t* s, int x, int y, int col);
+  void pset(struct surface_t* s, int x, int y, int col);
   /*!
    * @discussion Get surface pixel colour
    * @param s Surface object
@@ -366,7 +388,7 @@ if ((x)) { \
    * @param y Y position
    * @return Pixel colour
    */
-  GDEF int  pget(struct surface_t* s, int x, int y);
+  int pget(struct surface_t* s, int x, int y);
   /*!
    * @discussion Blit one surface onto another at point
    * @param dst Surface to blit to
@@ -375,7 +397,7 @@ if ((x)) { \
    * @param y Y position
    * @return Boolean of success
    */
-  GDEF bool paste(struct surface_t* dst, struct surface_t* src, int x, int y);
+  bool paste(struct surface_t* dst, struct surface_t* src, int x, int y);
   /*!
    * @discussion Blit one surface onto another at point with clipping rect
    * @param dst Surface to blit to
@@ -388,7 +410,7 @@ if ((x)) { \
    * @param rh Clip rect height
    * @return Boolean of success
    */
-  GDEF bool clip_paste(struct surface_t* dst, struct surface_t* src, int x, int y, int rx, int ry, int rw, int rh);
+  bool clip_paste(struct surface_t* dst, struct surface_t* src, int x, int y, int rx, int ry, int rw, int rh);
   /*!
    * @discussion Reallocate a surface
    * @param s Surface object
@@ -396,20 +418,20 @@ if ((x)) { \
    * @param nh New height
    * @return Boolean of success
    */
-  GDEF bool reset(struct surface_t* s, int nw, int nh);
+  bool reset(struct surface_t* s, int nw, int nh);
   /*!
    * @discussion Create a copy of a surface
    * @param a Original surface object
    * @param b New surface object to be allocated
    * @return Boolean of success
    */
-  GDEF bool copy(struct surface_t* a, struct surface_t* b);
+  bool copy(struct surface_t* a, struct surface_t* b);
   /*!
    * @discussion Loop through each pixel of surface and run position and colour through a callback. Return value of the callback is the new colour at the position
    * @param s Surface object
    * @param fn Callback function
    */
-  GDEF void passthru(struct surface_t* s, int(*fn)(int x, int y, int col));
+  void passthru(struct surface_t* s, int(*fn)(int x, int y, int col));
   /*!
    * @discussion Resize (and scale) surface to given size
    * @param a Original surface object
@@ -418,7 +440,7 @@ if ((x)) { \
    * @param b New surface object to be allocated
    * @return Boolean of success
    */
-  GDEF bool resize(struct surface_t* a, int nw, int nh, struct surface_t* b);
+  bool resize(struct surface_t* a, int nw, int nh, struct surface_t* b);
   /*!
    * @discussion Rotate a surface by a given degree
    * @param a Original surface object
@@ -426,14 +448,7 @@ if ((x)) { \
    * @param b New surface object to be allocated
    * @return Boolean of success
    */
-  GDEF bool rotate(struct surface_t* a, float angle, struct surface_t* b);
-  /*!
-   * @discussion https://en.wikipedia.org/wiki/Color_quantization
-   * @param a Original surface object
-   * @param n_colors Maximum colours
-   * @param b New surface object to be allocated
-   */
-  GDEF void quantize(struct surface_t* a, int n_colors, struct surface_t* b);
+  bool rotate(struct surface_t* a, float angle, struct surface_t* b);
 
   /*!
    * @discussion Simple Bresenham line
@@ -444,7 +459,7 @@ if ((x)) { \
    * @param y1 Vector B Y position
    * @param col Colour of line
    */
-  GDEF void line(struct surface_t* s, int x0, int y0, int x1, int y1, int col);
+  void line(struct surface_t* s, int x0, int y0, int x1, int y1, int col);
   /*!
    * @discussion Draw a circle
    * @param s Surface object
@@ -454,7 +469,7 @@ if ((x)) { \
    * @param col Colour of cricle
    * @param fill Fill circle boolean
    */
-  GDEF void circle(struct surface_t* s, int xc, int yc, int r, int col, bool fill);
+  void circle(struct surface_t* s, int xc, int yc, int r, int col, bool fill);
   /*!
    * @discussion Draw a rectangle
    * @param x X position
@@ -464,7 +479,7 @@ if ((x)) { \
    * @param col Colour of rectangle
    * @param fill Fill rectangle boolean
    */
-  GDEF void rect(struct surface_t* s, int x, int y, int w, int h, int col, bool fill);
+  void rect(struct surface_t* s, int x, int y, int w, int h, int col, bool fill);
   /*!
    * @discussion Draw a triangle
    * @param s Surface object
@@ -477,7 +492,7 @@ if ((x)) { \
    * @param col Colour of line
    * @param fill Fill triangle boolean
    */
-  GDEF void tri(struct surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col, bool fill);
+  void tri(struct surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col, bool fill);
 
   /*!
    * @discussion Load BMP file from path
@@ -485,7 +500,7 @@ if ((x)) { \
    * @param path Path to BMP file
    * @return Boolean of success
    */
-  GDEF bool bmp(struct surface_t* s, const char* path);
+  bool bmp(struct surface_t* s, const char* path);
 
   /*!
    * @discussion Save surface to BMP file
@@ -493,8 +508,8 @@ if ((x)) { \
    * @param path Path to save BMP file to
    * @return Boolean of success
    */
-  GDEF bool save_bmp(struct surface_t* s, const char* path);
-#if !defined(GRAPHICS_NO_TEXT)
+  bool save_bmp(struct surface_t* s, const char* path);
+
   /*!
    * @discussion Draw a character from ASCII value using default in-built font
    * @param s Surface object
@@ -504,7 +519,7 @@ if ((x)) { \
    * @param fg Foreground colour
    * @param bg Background colour
    */
-  GDEF void ascii(struct surface_t* s, unsigned char ch, int x, int y, int fg, int bg);
+  void ascii(struct surface_t* s, unsigned char ch, int x, int y, int fg, int bg);
   /*!
    * @discussion Draw first character (ASCII or Unicode) from string using default in-built font
    * @param s Surface object
@@ -515,7 +530,7 @@ if ((x)) { \
    * @param bg Background colour
    * @return Returns length of character
    */
-  GDEF int character(struct surface_t* s, const char* ch, int x, int y, int fg, int bg);
+  int character(struct surface_t* s, const char* ch, int x, int y, int fg, int bg);
   /*!
    * @discussion Draw a string using default in-built font
    * @param s Surface object
@@ -525,7 +540,7 @@ if ((x)) { \
    * @param bg Background colour
    * @param str String to write
    */
-  GDEF void writeln(struct surface_t* s, int x, int y, int fg, int bg, const char* str);
+  void writeln(struct surface_t* s, int x, int y, int fg, int bg, const char* str);
   /*!
    * @discussion Draw a string using default in-built font
    * @param s Surface object
@@ -535,7 +550,7 @@ if ((x)) { \
    * @param bg Background colour
    * @param fmt Format string
    */
-  GDEF void writelnf(struct surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...);
+  void writelnf(struct surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...);
   /*!
    * @discussion Create a surface object for text using default in-built font
    * @param s Surface object to be allocated
@@ -543,7 +558,7 @@ if ((x)) { \
    * @param bg Background colour
    * @param str String to write
    */
-  GDEF void string(struct surface_t* s, int fg, int bg, const char* str);
+  void string(struct surface_t* s, int fg, int bg, const char* str);
   /*!
    * @discussion Create a surface object for formatted text using default in-built font
    * @param s Surface object to be allocated
@@ -551,160 +566,20 @@ if ((x)) { \
    * @param bg Background colour
    * @param fmt Format string
    */
-  GDEF void stringf(struct surface_t* s, int fg, int bg, const char* fmt, ...);
-#endif
-
-#if !defined(GRAPHICS_NO_BDF)
-  /*!
-   * @typedef bdf_t
-   * @brief BDF font object
-   */
-  struct bdf_char_t {
-    unsigned int width;
-    char* bitmap;
-    int bb_x, bb_y, bb_w, bb_h;
-  };
-  
-  struct bdf_t {
-    int fbb_x, fbb_y, fbb_w, fbb_h;
-    unsigned int* encoding_table;
-    struct bdf_char_t* chars;
-    int n_chars;
-  };
-
-  /*!
-   * @discussion Destroy a BDF font object
-   * @param f Pointer to BDF font object
-   */
-  GDEF void bdf_destroy(struct bdf_t* f);
-  /*!
-   * @discussion Load a BDF font from path
-   * @param out BDF object to be allocated
-   * @param path Path of BDF file
-   * @return Boolean of success
-   */
-  GDEF bool bdf(struct bdf_t* out, const char* path);
-  /*!
-   * @discussion Draw a string using BDF font
-   * @param s Surface object
-   * @param f BDF font object
-   * @param ch Source string
-   * @param x X position
-   * @param y Y position
-   * @param fg Foreground colour
-   * @param bg Background colour
-   * @return Returns length of character
-   */
-  GDEF int bdf_character(struct surface_t* s, struct bdf_t* f, const char* ch, int x, int y, int fg, int bg);
-  /*!
-   * @discussion Draw a string using BDF font object
-   * @param s Surface object
-   * @param f BDF font object
-   * @param x X position
-   * @param y Y position
-   * @param fg Foreground colour
-   * @param bg Background colour
-   * @param str String to write
-   */
-  GDEF void bdf_writeln(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* str);
-  /*!
-   * @discussion Draw a formatted string using BDF font object
-   * @param s Surface object
-   * @param f BDF font object
-   * @param x X position
-   * @param y Y position
-   * @param fg Foreground colour
-   * @param bg Background colour
-   * @param fmt Format string
-   */
-  GDEF void bdf_writelnf(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...);
-  /*!
-   * @discussion Create a surface object for text using BDF font object
-   * @param s Surface object to be allocated
-   * @param f BDF font object
-   * @param fg Foreground colour
-   * @param bg Background colour
-   * @param str String to write
-   */
-  GDEF void bdf_string(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* str);
-  /*!
-   * @discussion Create a surface object for formatted text using BDF font object
-   * @param s Surface object to be allocated
-   * @param f BDF font object
-   * @param fg Foreground colour
-   * @param bg Background colour
-   * @param fmt Format string
-   */
-  GDEF void bdf_stringf(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* fmt, ...);
-#endif
-
-#if !defined(GRAPHICS_NO_ALERTS)
-  /*!
-   * @typedef ALERT_LVL
-   * @brief A list of alert levels for dialog boxes
-   */
-  typedef enum {
-    ALERT_INFO,
-    ALERT_WARNING,
-    ALERT_ERROR
-  } ALERT_LVL;
-
-  /*!
-   * @typedef ALERT_BTNS
-   * @brief A list of button options for dialog boxes
-   */
-  typedef enum {
-    ALERT_OK,
-    ALERT_OK_CANCEL,
-    ALERT_YES_NO
-  } ALERT_BTNS;
-
-  /*!
-   * @typedef DIALOG_ACTION
-   * @brief A list of options for dialog boxes
-   * @constant DIALOG_OPEN Open file dialog
-   * @constant DIALOG_OPEN_DIR Open directory dialog
-   * @constant DIALOG_SAVE Save file dialog
-   */
-  typedef enum {
-    DIALOG_OPEN,
-    DIALOG_OPEN_DIR,
-    DIALOG_SAVE
-  } DIALOG_ACTION;
-
-  /*!
-   * @discussion Open an alert dialog with message
-   * @param lvl Dialog level
-   * @param btns Dialog buttons
-   * @param fmt Formatted message
-   * @return User value from dialog action
-   */
-  GDEF bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...);
-  /*!
-   * @discussion Open file dialog
-   * @param action Save, open directory, open file
-   * @param path Initial path for dialog
-   * @param fname Default filename in dialog path
-   * @param allow_multiple Allow selection of multiple files
-   * @param nfilters Number of extention filters
-   * @param ... Extension filters
-   * @return Selected paths in dialog or NULL is cancelled
-   */
-  GDEF int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...);
-#endif
+  void stringf(struct surface_t* s, int fg, int bg, const char* fmt, ...);
   
   /*!
    * @discussion High precision timer
    * @return Number of CPU ticks
    */
-  GDEF unsigned long long ticks(void);
+  unsigned long long ticks(void);
 
   /*!
-   * @typedef MOUSE_BTN
+   * @typedef button
    * @brief A list of mouse buttons
    */
-  typedef enum {
-    MOUSE_BTN_0, // No mouse button
+  enum button {
+    MOUSE_BTN_0 = 0,
     MOUSE_BTN_1,
     MOUSE_BTN_2,
     MOUSE_BTN_3,
@@ -713,18 +588,18 @@ if ((x)) { \
     MOUSE_BTN_6,
     MOUSE_BTN_7,
     MOUSE_BTN_8
-  } MOUSE_BTN;
+  };
 
-#define MOUSE_LAST   MOUSE_BTN_8
-#define MOUSE_LEFT   MOUSE_BTN_0
-#define MOUSE_RIGHT  MOUSE_BTN_1
-#define MOUSE_MIDDLE MOUSE_BTN_2
+  static const int MOUSE_LAST   = MOUSE_BTN_8;
+  static const int MOUSE_LEFT   = MOUSE_BTN_0;
+  static const int MOUSE_RIGHT  = MOUSE_BTN_1;
+  static const int MOUSE_MIDDLE = MOUSE_BTN_2;
 
   /*!
-   * @typedef KEY_SYM
+   * @typedef key_sym
    * @brief A list of key symbols
    */
-  typedef enum {
+  enum key_sym {
     KB_KEY_SPACE = 32,
     KB_KEY_APOSTROPHE = 39,
     KB_KEY_COMMA = 44,
@@ -845,29 +720,29 @@ if ((x)) { \
     KB_KEY_RIGHT_ALT = 346,
     KB_KEY_RIGHT_SUPER = 347,
     KB_KEY_MENU = 348
-  } KEY_SYM;
+  };
 
 #define KB_KEY_UNKNOWN -1
 #define KB_KEY_LAST KB_KEY_MENU
 
   /*!
-   * @typedef KEY_MOD
+   * @typedef key_mod
    * @brief A list of key modifiers
    */
-  typedef enum {
+  enum key_mod {
     KB_MOD_SHIFT = 0x0001,
     KB_MOD_CONTROL = 0x0002,
     KB_MOD_ALT = 0x0004,
     KB_MOD_SUPER = 0x0008,
     KB_MOD_CAPS_LOCK = 0x0010,
     KB_MOD_NUM_LOCK = 0x0020
-  } KEY_MOD;
+  };
 
 #define XMAP_SCREEN_CB \
-  X(keyboard, (void*, KEY_SYM, KEY_MOD, bool)) \
-  X(mouse_button, (void*, MOUSE_BTN, KEY_MOD, bool)) \
+  X(keyboard, (void*, enum key_sym, enum key_mod, bool)) \
+  X(mouse_button, (void*, enum button, enum key_mod, bool)) \
   X(mouse_move, (void*, int, int, int, int)) \
-  X(scroll, (void*, KEY_MOD, float, float)) \
+  X(scroll, (void*, enum key_mod, float, float)) \
   X(focus, (void*, bool)) \
   X(resize, (void*, int, int)) \
   X(closed, (void*))
@@ -895,29 +770,29 @@ if ((x)) { \
    * @param s Window object
    * @param p Pointer to parent
    */
-  GDEF void window_set_parent(struct window_t* s, void* p);
+  void window_set_parent(struct window_t* s, void* p);
   /*!
    * @discussion Get parent point from window object
    * @param s Window object
    * @return Point to parent
    */
-  GDEF void* window_parent(struct window_t* s);
+  void* window_parent(struct window_t* s);
 
 #define X(a, b) \
   void(*a##_cb)b,
 
-  GDEF void window_callbacks(XMAP_SCREEN_CB struct window_t* window);
+  void window_callbacks(XMAP_SCREEN_CB struct window_t* window);
 #undef X
 #define X(a, b) \
-  GDEF void a##_callback(struct window_t* window, void(*a##_cb)b);
+  void a##_callback(struct window_t* window, void(*a##_cb)b);
   XMAP_SCREEN_CB
 #undef X
 
     /*!
-     * @typedef CURSOR_TYPE
+     * @typedef cursor_type
      * @brief A list of default cursor icons
      */
-    typedef enum {
+  enum cursor_type {
       CURSOR_ARROW,     // Arrow
       CURSOR_IBEAM,     // I-beam
       CURSOR_WAIT,      // Wait
@@ -930,20 +805,20 @@ if ((x)) { \
       CURSOR_SIZEALL,   // Four pointed arrow pointing north, south, east, and west
       CURSOR_NO,        // Slashed circle or crossbones
       CURSOR_HAND       // Hand
-    } CURSOR_TYPE;
+    };
 
   /*!
    * @typedef WINDOW_FLAGS
    * @brief A list of window flag options
    */
-  typedef enum {
+  enum window_flags {
     NONE = 0,
     RESIZABLE = 0x01,
     FULLSCREEN = 0x02,
     FULLSCREEN_DESKTOP = 0x04,
     BORDERLESS = 0x08,
     ALWAYS_ON_TOP = 0x10,
-  } WINDOW_FLAGS;
+  };
 
   /*!
    * @discussion Create a new window object
@@ -954,165 +829,151 @@ if ((x)) { \
    * @param flags Window flags
    * @return Boolean of success
    */
-  GDEF bool window(struct window_t* s, const char* t, int w, int h, short flags);
+  bool window(struct window_t* s, const char* t, int w, int h, short flags);
   /*!
    * @discussion Set window icon from surface object
    * @param s Window object
    * @param b Surface object
    */
-  GDEF void window_icon(struct window_t* s, struct surface_t* b);
+  void window_icon(struct window_t* s, struct surface_t* b);
   /*!
    * @discussion Set window title
    * @param s Window object
    * @param t New title
    */
-  GDEF void window_title(struct window_t* s, const char* t);
+  void window_title(struct window_t* s, const char* t);
   /*!
    * @discussion Get the position of a window object
    * @param s Window object
    * @param x Pointer to int to set
    * @param y Pointer to int to set
    */
-  GDEF void window_position(struct window_t* s, int* x, int*  y);
+  void window_position(struct window_t* s, int* x, int*  y);
   /*!
    * @discussion Get the size of the screen a window is on
    * @param s Window object
    * @param w Pointer to int to set
    * @param h Pointer to int to set
    */
-  GDEF void screen_size(struct window_t* s, int* w, int* h);
+  void screen_size(struct window_t* s, int* w, int* h);
   /*!
    * @discussion Destroy window object
    * @param s Window object
    */
-  GDEF void window_destroy(struct window_t* s);
+  void window_destroy(struct window_t* s);
   /*!
    * @discussion Unique window ID for window object
    * @param s Window object
    * @return Unique ID of window object
    */
-  GDEF int window_id(struct window_t* s);
+  int window_id(struct window_t* s);
   /*!
    * @discussion Get size of window
    * @param s Window object
    * @param w Pointer to int to set
    * @param h Pointer to int to set
    */
-  GDEF void window_size(struct window_t* s, int* w, int* h);
+  void window_size(struct window_t* s, int* w, int* h);
   /*!
    * @discussion Check if a window is still open
    * @param s Window object
    * @return Boolean if window is open
    */
-  GDEF bool closed(struct window_t* s);
+  bool closed(struct window_t* s);
   /*!
    * @discussion Check if n windows are still open
    * @param n Numbers of arguments
    * @param ... Window objects
    * @return Boolean if any window are still open
    */
-  GDEF bool closed_va(int n, ...);
+  bool closed_va(int n, ...);
   /*!
    * @discussion Checks if any windows are still open
    * @return Boolean if any windows are still open
    */
-  GDEF bool closed_all(void);
+  bool closed_all(void);
 
   /*!
    * @discussion Lock or unlock cursor movement to active window
    * @param locked Turn on or off
    */
-  GDEF void cursor_lock(struct window_t* s, bool locked);
+  void cursor_lock(struct window_t* s, bool locked);
   /*!
    * @discussion Hide or show system cursor
    * @param show Hide or show
    */
-  GDEF void cursor_visible(struct window_t* s, bool show);
+  void cursor_visible(struct window_t* s, bool show);
   /*!
    * @discussion Change cursor icon to system icon
    * @param s Window object
    * @param t Type of cursor
    */
-  GDEF void cursor_icon(struct window_t* s, CURSOR_TYPE t);
+  void cursor_icon(struct window_t* s, enum cursor_type t);
   /*!
    * @discussion Change cursor icon to icon from surface object
    * @param s Window object
    * @param b Surface object
    */
-  GDEF void cursor_icon_custom(struct window_t* s, struct surface_t* b);
+  void cursor_icon_custom(struct window_t* s, struct surface_t* b);
   /*!
    * @discussion Get cursor position
    * @param x Integer to set
    * @param y Integer to set
    */
-  GDEF void cursor_pos(int* x, int* y);
+  void cursor_pos(int* x, int* y);
   /*!
    * @discussion Set cursor position
    * @param x X position
    * @param y Y position
    */
-  GDEF void cursor_set_pos(int x, int y);
+  void cursor_set_pos(int x, int y);
 
   /*!
    * @discussion Poll for window events
    */
-  GDEF void events(void);
+  void events(void);
   /*!
    * @discussion Draw surface object to window
    * @param s Window object
    * @param b Surface object
    */
-  GDEF void flush(struct window_t* s, struct surface_t* b);
+  void flush(struct window_t* s, struct surface_t* b);
   /*!
    * @discussion Release anything allocated by this library
    */
-  GDEF void release(void);
+  void release(void);
 
 #define GRAPHICS_ERROR(A, ...) graphics_error((A), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
   
   /*!
-   * @typedef ERROR_TYPE
+   * @typedef graphics_error
    * @brief A list of different error types the library can generate
    */
-  typedef enum {
+  enum graphics_error {
     UNKNOWN_ERROR,
     OUT_OF_MEMEORY,
     FILE_OPEN_FAILED,
     INVALID_BMP,
     UNSUPPORTED_BMP,
     INVALID_PARAMETERS,
-    BDF_NO_CHAR_SIZE,
-    BDF_NO_CHAR_LENGTH,
-    BDF_TOO_MANY_BITMAPS,
-    BDF_UNKNOWN_CHAR,
-    GL_SHADER_ERROR,
-    GL_LOAD_DL_FAILED,
-    GL_GET_PROC_ADDR_FAILED,
     CURSOR_MOD_FAILED,
-    MTK_LIBRARY_ERROR,
-    MTK_CREATE_PIPELINE_FAILED,
     OSX_WINDOW_CREATION_FAILED,
     OSX_APPDEL_CREATION_FAILED,
     OSX_FULLSCREEN_FAILED,
-    WIN_GL_PF_ERROR,
     WIN_WINDOW_CREATION_FAILED,
     WIN_FULLSCREEN_FAILED,
-    WIN_DX9_CREATION_FAILED,
-    WIN_DX11_CREATION_FAILED,
     NIX_CURSOR_PIXMAP_ERROR,
     NIX_OPEN_DISPLAY_FAILED,
-    NIX_GL_FB_ERROR,
-    NIX_GL_CONTEXT_ERROR,
     NIX_WINDOW_CREATION_FAILED,
     WINDOW_ICON_FAILED,
     CUSTOM_CURSOR_NOT_CREATED
-  } GRAPHICS_ERROR_TYPE;
+  };
   
   /*!
    * @discussion Callback for errors inside library
    * @param cb Function pointer to callback
    */
-  GDEF void graphics_error_callback(void(*cb)(GRAPHICS_ERROR_TYPE, const char*, const char*, const char*, int));
+  void graphics_error_callback(void(*cb)(enum graphics_error, const char*, const char*, const char*, int));
   /*!
    * @discussion Internal function to send an error to the error callback
    * @param type The GRAPHICS_ERROR produced
@@ -1121,7 +982,7 @@ if ((x)) { \
    * @param line The line number the error occured on
    * @param msg Formatted error description
    */
-  GDEF void graphics_error(GRAPHICS_ERROR_TYPE type, const char* file, const char* func, int line, const char* msg, ...);
+  void graphics_error(enum graphics_error type, const char* file, const char* func, int line, const char* msg, ...);
   
 #if defined(__cplusplus)
 }

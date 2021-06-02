@@ -24,13 +24,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		8888654D2367F7BC0073BA8D /* hal */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = hal; sourceTree = BUILT_PRODUCTS_DIR; };
+		8888654D2367F7BC0073BA8D /* graphics */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = graphics; sourceTree = BUILT_PRODUCTS_DIR; };
 		888865582367F8070073BA8D /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = graphics.c; sourceTree = "<group>"; };
 		8888655C2367F8070073BA8D /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
 		8888655F2367F8070073BA8D /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		888865652367F8070073BA8D /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
-		888865692367F8070073BA8D /* hal.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = hal.js; sourceTree = "<group>"; };
-		8888656D2367F8070073BA8D /* hal.css */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.css; path = hal.css; sourceTree = "<group>"; };
+		888865692367F8070073BA8D /* graphics.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = graphics.js; sourceTree = "<group>"; };
+		8888656D2367F8070073BA8D /* graphics.css */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.css; path = graphics.css; sourceTree = "<group>"; };
 		8888656F2367F8070073BA8D /* stats.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = stats.js; sourceTree = "<group>"; };
 		888865E32367F8080073BA8D /* ftsnames.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ftsnames.h; sourceTree = "<group>"; };
 		888865E42367F8080073BA8D /* ftwinfnt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ftwinfnt.h; sourceTree = "<group>"; };
@@ -126,7 +126,6 @@
 		888866412367F8080073BA8D /* stb_image_write.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image_write.h; sourceTree = "<group>"; };
 		888866422367F8080073BA8D /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
 		888866442367F8080073BA8D /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = graphics.h; sourceTree = "<group>"; };
-		8888666023684AA40073BA8D /* libpthread.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libpthread.tbd; path = usr/lib/libpthread.tbd; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -156,7 +155,7 @@
 		8888654E2367F7BC0073BA8D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				8888654D2367F7BC0073BA8D /* hal */,
+				8888654D2367F7BC0073BA8D /* graphics */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -174,8 +173,8 @@
 			isa = PBXGroup;
 			children = (
 				888865652367F8070073BA8D /* index.html */,
-				888865692367F8070073BA8D /* hal.js */,
-				8888656D2367F8070073BA8D /* hal.css */,
+				888865692367F8070073BA8D /* graphics.js */,
+				8888656D2367F8070073BA8D /* graphics.css */,
 				8888656F2367F8070073BA8D /* stats.js */,
 			);
 			path = build;
@@ -332,7 +331,6 @@
 		8888665F23684AA40073BA8D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				8888666023684AA40073BA8D /* libpthread.tbd */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -340,9 +338,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		8888654C2367F7BC0073BA8D /* hal */ = {
+		8888654C2367F7BC0073BA8D /* graphics */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 888865542367F7BD0073BA8D /* Build configuration list for PBXNativeTarget "hal" */;
+			buildConfigurationList = 888865542367F7BD0073BA8D /* Build configuration list for PBXNativeTarget "graphics" */;
 			buildPhases = (
 				888865492367F7BC0073BA8D /* Sources */,
 				8888654A2367F7BC0073BA8D /* Frameworks */,
@@ -352,9 +350,9 @@
 			);
 			dependencies = (
 			);
-			name = hal;
+			name = graphics;
 			productName = hal;
-			productReference = 8888654D2367F7BC0073BA8D /* hal */;
+			productReference = 8888654D2367F7BC0073BA8D /* graphics */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
@@ -384,7 +382,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				8888654C2367F7BC0073BA8D /* hal */,
+				8888654C2367F7BC0073BA8D /* graphics */,
 			);
 		};
 /* End PBXProject section */
@@ -547,7 +545,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		888865542367F7BD0073BA8D /* Build configuration list for PBXNativeTarget "hal" */ = {
+		888865542367F7BD0073BA8D /* Build configuration list for PBXNativeTarget "graphics" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				888865552367F7BD0073BA8D /* Debug */,
