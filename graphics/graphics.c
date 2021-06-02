@@ -3689,6 +3689,7 @@ void release() {
 #include <emscripten.h>
 #include <emscripten/html5.h>
 
+static struct window_t *e_window = NULL;
 static int window_w, window_h, canvas_w, canvas_h, canvas_x, canvas_y, cursor_x, cursor_y;
 static bool mouse_in_canvas = true, fullscreen = false;
 
@@ -3806,15 +3807,8 @@ static const char* beforeunload_callback(int type, const void* reserved, void* u
   return "Do you really want to leave the page?";
 }
 
-static EM_BOOL webglcontext_callback(int type, const void* reserved, void* user_data) {
-#pragma message WARN("TODO: webglcontext_callback() handle error")
-  return 0;
-}
-
-static bool window_already_open = false;
-
 bool window(struct window_t* s, const char* t, int w, int h, short flags) {
-  if (window_already_open) {
+  if (e_window) {
 #pragma message WARN("TODO: window() handle error")
     return false;
   }
@@ -3969,10 +3963,6 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   
   EM_ASM(Module['noExitRuntime'] = true);
   
-#if defined(GRAPHICS_OPENGL)
-#pragma message WARN("TODO: Emscripten OpenGL not yet implemented")
-#endif
-  
   if (t)
     window_title(NULL, t);
   
@@ -4001,7 +3991,7 @@ bool window(struct window_t* s, const char* t, int w, int h, short flags) {
   }
   uievent_callback(0, NULL, NULL);
   
-  window_already_open = true;
+  e_window = s;
   return true;
 }
 

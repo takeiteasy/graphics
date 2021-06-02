@@ -721,10 +721,10 @@ if ((x)) { \
     KB_KEY_RIGHT_SUPER = 347,
     KB_KEY_MENU = 348
   };
-
-#define KB_KEY_UNKNOWN -1
-#define KB_KEY_LAST KB_KEY_MENU
-
+  
+  static const int KB_KEY_UNKNOWN = -1;
+  static const int KB_KEY_LAST = KB_KEY_MENU;
+  
   /*!
    * @typedef key_mod
    * @brief A list of key modifiers
