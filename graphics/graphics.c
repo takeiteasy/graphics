@@ -56,13 +56,6 @@
 #define __D2R(a) ((a) * M_PI / 180.0)
 #define __R2D(a) ((a) * 180.0 / M_PI)
 
-#if defined(GRAPHICS_DEBUG) || defined(DEBUG) || defined(GRAPHICS_ENABLE_SANITY_CHECK)
-#define SANITY_CHECK(x)
-#else
-#define SANITY_CHECK(x)
-#endif
-#define STSC(x) ((x) && ((x)->buf))
-
 #define LINKEDLIST(NAME, TYPE) \
 struct NAME##_node_t { \
   TYPE *data; \
@@ -222,8 +215,6 @@ int pget(struct surface_t* s, int x, int y) {
 }
 
 bool paste(struct surface_t* dst, struct surface_t* src, int x, int y) {
-  SANITY_CHECK(STSC(dst) && STSC(src));
-  
   int ox, oy, c;
   for (ox = 0; ox < src->w; ++ox) {
     for (oy = 0; oy < src->h; ++oy) {
@@ -243,45 +234,9 @@ bool paste(struct surface_t* dst, struct surface_t* src, int x, int y) {
 }
 
 bool clip_paste(struct surface_t* dst, struct surface_t* src, int x, int y, int rx, int ry, int rw, int rh) {
-  SANITY_CHECK(STSC(dst) && STSC(src));
-  
-  if (rx == rw || ry == rh)
-    return false;
-
-  int ox = x,  oy = y,
-      fx = rx, fy = ry,
-      w  = rw, h  = rh;
-
-  if (ox < 0) {
-    fx += abs(ox);
-    w -= abs(ox);
-    ox = 0;
-  }
-  if (oy < 0) {
-    fy += abs(oy);
-    h -= abs(oy);
-    oy = 0;
-  }
-
-  int to_x = ox + w, to_y = oy + h;
-  if (to_x > dst->w)
-    w += (dst->w - to_x);
-  if (to_y > dst->h)
-    h += (dst->h - to_y);
-
-  if (ox > dst->w || oy > dst->h || to_x < 0 || to_y < 0)
-    return false;
-
-  int _x, _y, c;
-  for (_x = 0; _x < w; ++_x)
-    for (_y = 0; _y < h; ++_y) {
-      c = PGET(src, fx + _x, fy + _y);
-#if defined(GRAPHICS_CHROMA_KEY) && defined(BLIT_CHROMA_KEY)
-      if (c == BLIT_CHROMA_KEY)
-        continue;
-#endif
-      blend(dst, ox + _x, oy + _y, c);
-    }
+  for (int ox = 0; ox < rw; ++ox)
+    for (int oy = 0; oy < rh; ++oy)
+      pset(dst, ox + x, oy + y, pget(src, ox + rx, oy + ry));
   return true;
 }
 
@@ -300,7 +255,6 @@ bool reset(struct surface_t* s, int nw, int nh) {
 }
 
 bool copy(struct surface_t* a, struct surface_t* b) {
-  SANITY_CHECK(STSC(a) && STSC(b));
   if (!surface(b, a->w, a->h))
     return false;
   memcpy(b->buf, a->buf, a->w * a->h * sizeof(unsigned int) + 1);
@@ -308,7 +262,6 @@ bool copy(struct surface_t* a, struct surface_t* b) {
 }
 
 void passthru(struct surface_t* s, int (*fn)(int x, int y, int col)) {
-  SANITY_CHECK(STSC(s) && fn);
   int x, y;
   for (x = 0; x < s->w; ++x)
     for (y = 0; y < s->h; ++y)
@@ -333,7 +286,6 @@ static void __resize(struct surface_t* a, struct surface_t* b) {
 }
 
 bool resize(struct surface_t* a, int nw, int nh, struct surface_t* b) {
-  SANITY_CHECK(STSC(a) && STSC(b));
   if (!surface(b, nw, nh))
     return false;
   __resize(a, b);
@@ -341,8 +293,6 @@ bool resize(struct surface_t* a, int nw, int nh, struct surface_t* b) {
 }
 
 bool rotate(struct surface_t* a, float angle, struct surface_t* b) {
-  SANITY_CHECK(STSC(a) && STSC(b));
-  
   float theta = __D2R(angle);
   float c = cosf(theta), s = sinf(theta);
   float r[3][2] = {
@@ -557,8 +507,6 @@ static void color_replace(oct_node_t* root, int* buf) {
 }
 
 void quantize(struct surface_t* a, int n_colors, struct surface_t* b) {
-  SANITY_CHECK(STSC(a) && STSC(b));
-
   int i, *buf = a->buf;
   node_heap heap = { 0, 0, 0 };
   oct_node_pool_t pool = { NULL, 0 };
@@ -936,9 +884,9 @@ bool save_bmp(struct surface_t* s, const char* path) {
     fwrite(img + (s->w * (s->h - i - 1) * 3), 3, s->w, fp);
     fwrite(pad, 1, padding, fp);
   }
-
-  GRAPHICS_SAFE_FREE(img);
+  
   fclose(fp);
+  GRAPHICS_SAFE_FREE(img);
   return true;
 }
 
@@ -1930,8 +1878,6 @@ bool bdf(struct bdf_t* out, const char* path) {
 }
 
 int bdf_character(struct surface_t* s, struct bdf_t* f, const char* ch, int x, int y, int fg, int bg) {
-  SANITY_CHECK(STSC(s) && f);
-  
   int u = -1, i, j, n;
   int l = ctoi(ch, &u);
   for (i = 0; i < f->n_chars; ++i)
@@ -1954,7 +1900,6 @@ int bdf_character(struct surface_t* s, struct bdf_t* f, const char* ch, int x, i
 }
 
 void bdf_writeln(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* str) {
-  SANITY_CHECK(STSC(s) && f);
   const char* c = (const char*)str;
   int u = x, v = y, col, len;
   while (c && *c != '\0') {
@@ -1991,7 +1936,6 @@ void bdf_writeln(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int
 }
 
 void bdf_writelnf(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...) {
-  SANITY_CHECK(STSC(s) && f);
   char* buffer = NULL;
   int buffer_size = 0;
 
@@ -2013,7 +1957,6 @@ void bdf_writelnf(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, in
 }
 
 void bdf_string(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* str) {
-  SANITY_CHECK(s && f);
   int w, h;
   str_size(str, &w, &h);
   surface(s, w * 8, h * LINE_HEIGHT);
@@ -2022,7 +1965,6 @@ void bdf_string(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char
 }
 
 void bdf_stringf(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* fmt, ...) {
-  SANITY_CHECK(s && f);
   char* buffer = NULL;
   int buffer_size = 0;
 
@@ -2400,6 +2342,54 @@ int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* f
 }
 #endif
 #endif // GRAPHICS_NO_ALERTS
+
+#if !defined(GRAPHICS_NO_TIME)
+#if defined(GRAPHICS_OSX)
+#include <mach/mach_time.h>
+#elif defined(GRAPHICS_WINDOWS)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#elif defined(GRAPHICS_LINUX)
+#include <time.h>
+#ifdef CLOCK_MONOTONIC
+#define CLOCKID CLOCK_MONOTONIC
+#else
+#define CLOCKID CLOCK_REALTIME
+#endif
+#else
+#endif
+unsigned long long ticks(void) {
+  static int started = 0;
+#if defined(GRAPHICS_OSX)
+  static mach_timebase_info_data_t info;
+  if (!started) {
+    mach_timebase_info(&info);
+    started = 1;
+  }
+  return (mach_absolute_time() * info.numer) / info.denom;
+#elif defined(GRAPHICS_WINDOWS)
+  static LARGE_INTEGER win_frequency;
+  if (!started) {
+    QueryPerformanceFrequency(&win_frequency);
+    started = 1;
+  }
+  LARGE_INTEGER now;
+  QueryPerformanceCounter(&now);
+  return (unsigned long long) ((1e9 * now.QuadPart)  / win_frequency.QuadPart);
+#elif defined(GRAPHICS_LINUX)
+  static struct timespec linux_rate;
+  if (!started) {
+    clock_getres(CLOCKID, &linux_rate);
+    started = 1;
+  }
+  struct timespec spec;
+  clock_gettime(CLOCKID, &spec);
+  return spec.tv_sec * 1.0e9 + spec.tv_nsec;
+#else
+  return 0; // TODO: Add timing for other platforms
+#endif
+}
+#endif
 
 #if !defined(GRAPHICS_NO_WINDOW)
 static short keycodes[512];
@@ -2853,9 +2843,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 
 #if defined(GRAPHICS_OPENGL)
 @interface AppView : NSOpenGLView
-@property GLuint vao;
-@property GLuint shader;
-@property GLuint texture;
+@property struct gl_obj_t gl;
 #elif defined(GRAPHICS_METAL)
 @interface AppView : MTKView
 @property (nonatomic, weak) id<MTLDevice> device;
@@ -2881,9 +2869,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 
 @implementation AppView
 #if defined(GRAPHICS_OPENGL)
-@synthesize vao = _vao;
-@synthesize shader = _shader;
-@synthesize texture = _texture;
+@synthesize gl = _gl;
 #elif defined(GRAPHICS_METAL)
 @synthesize device = _device;
 @synthesize pipeline = _pipeline;
@@ -2923,7 +2909,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
   self = [super initWithFrame:frameRect
                   pixelFormat:pixelFormat];
   [[self openGLContext] makeCurrentContext];
-  init_gl(frameRect.size.width, frameRect.size.height, &_vao, &_shader, &_texture);
+  init_gl(frameRect.size.width, frameRect.size.height, &_gl);
   [pixelFormat release];
 #elif defined(GRAPHICS_METAL)
   _device = MTLCreateSystemDefaultDevice();
@@ -3136,7 +3122,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
     return;
   
 #if defined(GRAPHICS_OPENGL)
-  draw_gl(_vao, _texture, _buffer);
+  draw_gl(&_gl, _buffer);
   [[self openGLContext] flushBuffer];
 #elif defined(GRAPHICS_METAL)
   MTLTextureDescriptor* td = [[MTLTextureDescriptor alloc] init];
@@ -3196,7 +3182,7 @@ static inline NSImage* create_cocoa_image(struct surface_t* s) {
 
 -(void)dealloc {
 #if defined(GRAPHICS_OPENGL)
-  free_gl(_vao, _shader, _texture);
+  free_gl(&_gl);
 #elif defined(GRAPHICS_METAL)
   [_device release];
   [_pipeline release];
@@ -3310,10 +3296,6 @@ static struct window_node_t* windows = NULL;
 
 -(void)setParent:(struct window_t*)screen {
   _parent = screen;
-}
-
--(CGFloat)titlebarHeight {
-  return _window.frame.size.height - [_window contentRectForFrameRect: _window.frame].size.height;
 }
 
 -(void)windowWillClose:(NSNotification*)notification {
@@ -3562,8 +3544,6 @@ void screen_size(struct window_t* s, int* w, int* h) {
 void window_destroy(struct window_t* s) {
   NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
   AppDelegate* app = (AppDelegate*)s->window;
-  if (!closed(s))
-    [[app window] close];
   [[app view] dealloc];
   [app dealloc];
   memset(s, 0, sizeof(struct window_t));

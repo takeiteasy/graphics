@@ -33,6 +33,8 @@ DEPS = -framework Cocoa -framework AppKit
 
 all: $(EXE) docs
 
+test: $(EXE)
+
 lib: $(LIB)
 
 docs: $(DOCDIR)/index.html
@@ -56,3 +58,5 @@ $(LIBOBJ): $(LIBFILE)
 
 clean:
 	rm -f $(LIBOBJ) $(EXEOBJ) $(LIB) $(EXE)
+
+.PHONY: clean all lib docs test

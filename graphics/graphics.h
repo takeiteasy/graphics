@@ -77,11 +77,11 @@ if ((x)) { \
 #endif
 #include <stdarg.h>
   
-#if !defined(HALDEF)
+#if !defined(GDEF)
 #if defined(GRAPHICS_STATIC)
-#define HALDEF static
+#define GDEF static
 #else
-#define HALDEF extern
+#define GDEF extern
 #endif
 #endif
 
@@ -311,13 +311,13 @@ if ((x)) { \
    * @param w Pointer to int to set
    * @param h Pointer to int to set
    */
-  HALDEF void surface_size(struct surface_t* s, unsigned int* w, unsigned int* h);
+  GDEF void surface_size(struct surface_t* s, unsigned int* w, unsigned int* h);
   /*!
    * @discussion Get pointer to buffer of given surface
    * @param s Surface object
    * @return The pointer to surface buffer
    */
-  HALDEF int* surface_raw(struct surface_t* s);
+  GDEF int* surface_raw(struct surface_t* s);
   /*!
    * @discussion Create a new surface
    * @param s Pointer to surface object to create
@@ -325,19 +325,19 @@ if ((x)) { \
    * @param h Height of new surface
    * @return Boolean for success
    */
-  HALDEF bool surface(struct surface_t* s, unsigned int w, unsigned int h);
+  GDEF bool surface(struct surface_t* s, unsigned int w, unsigned int h);
   /*!
    * @discussion Destroy a surface
    * @param s Pointer to pointer to surface object
    */
-  HALDEF void surface_destroy(struct surface_t* s);
+  GDEF void surface_destroy(struct surface_t* s);
 
   /*!
    * @discussion Fill a surface with a given colour
    * @param s Surface object
    * @param col Colour to set
    */
-  HALDEF void fill(struct surface_t* s, int col);
+  GDEF void fill(struct surface_t* s, int col);
   /*!
    * @discussion Flood portion of surface with given colour
    * @param s Surface object
@@ -345,12 +345,12 @@ if ((x)) { \
    * @param y Y position
    * @param col Colour to set
    */
-  HALDEF void flood(struct surface_t* s, int x, int y, int col);
+  GDEF void flood(struct surface_t* s, int x, int y, int col);
   /*!
    * @discussion Clear a surface, zero the buffer
    * @param s Surface object
    */
-  HALDEF void cls(struct surface_t* s);
+  GDEF void cls(struct surface_t* s);
   /*!
    * @discussion Set surface pixel colour
    * @param s Surface object
@@ -358,7 +358,7 @@ if ((x)) { \
    * @param y Y position
    * @param col Colour to set
    */
-  HALDEF void pset(struct surface_t* s, int x, int y, int col);
+  GDEF void pset(struct surface_t* s, int x, int y, int col);
   /*!
    * @discussion Get surface pixel colour
    * @param s Surface object
@@ -366,7 +366,7 @@ if ((x)) { \
    * @param y Y position
    * @return Pixel colour
    */
-  HALDEF int  pget(struct surface_t* s, int x, int y);
+  GDEF int  pget(struct surface_t* s, int x, int y);
   /*!
    * @discussion Blit one surface onto another at point
    * @param dst Surface to blit to
@@ -375,7 +375,7 @@ if ((x)) { \
    * @param y Y position
    * @return Boolean of success
    */
-  HALDEF bool paste(struct surface_t* dst, struct surface_t* src, int x, int y);
+  GDEF bool paste(struct surface_t* dst, struct surface_t* src, int x, int y);
   /*!
    * @discussion Blit one surface onto another at point with clipping rect
    * @param dst Surface to blit to
@@ -388,7 +388,7 @@ if ((x)) { \
    * @param rh Clip rect height
    * @return Boolean of success
    */
-  HALDEF bool clip_paste(struct surface_t* dst, struct surface_t* src, int x, int y, int rx, int ry, int rw, int rh);
+  GDEF bool clip_paste(struct surface_t* dst, struct surface_t* src, int x, int y, int rx, int ry, int rw, int rh);
   /*!
    * @discussion Reallocate a surface
    * @param s Surface object
@@ -396,20 +396,20 @@ if ((x)) { \
    * @param nh New height
    * @return Boolean of success
    */
-  HALDEF bool reset(struct surface_t* s, int nw, int nh);
+  GDEF bool reset(struct surface_t* s, int nw, int nh);
   /*!
    * @discussion Create a copy of a surface
    * @param a Original surface object
    * @param b New surface object to be allocated
    * @return Boolean of success
    */
-  HALDEF bool copy(struct surface_t* a, struct surface_t* b);
+  GDEF bool copy(struct surface_t* a, struct surface_t* b);
   /*!
    * @discussion Loop through each pixel of surface and run position and colour through a callback. Return value of the callback is the new colour at the position
    * @param s Surface object
    * @param fn Callback function
    */
-  HALDEF void passthru(struct surface_t* s, int(*fn)(int x, int y, int col));
+  GDEF void passthru(struct surface_t* s, int(*fn)(int x, int y, int col));
   /*!
    * @discussion Resize (and scale) surface to given size
    * @param a Original surface object
@@ -418,7 +418,7 @@ if ((x)) { \
    * @param b New surface object to be allocated
    * @return Boolean of success
    */
-  HALDEF bool resize(struct surface_t* a, int nw, int nh, struct surface_t* b);
+  GDEF bool resize(struct surface_t* a, int nw, int nh, struct surface_t* b);
   /*!
    * @discussion Rotate a surface by a given degree
    * @param a Original surface object
@@ -426,14 +426,14 @@ if ((x)) { \
    * @param b New surface object to be allocated
    * @return Boolean of success
    */
-  HALDEF bool rotate(struct surface_t* a, float angle, struct surface_t* b);
+  GDEF bool rotate(struct surface_t* a, float angle, struct surface_t* b);
   /*!
    * @discussion https://en.wikipedia.org/wiki/Color_quantization
    * @param a Original surface object
    * @param n_colors Maximum colours
    * @param b New surface object to be allocated
    */
-  HALDEF void quantize(struct surface_t* a, int n_colors, struct surface_t* b);
+  GDEF void quantize(struct surface_t* a, int n_colors, struct surface_t* b);
 
   /*!
    * @discussion Simple Bresenham line
@@ -444,7 +444,7 @@ if ((x)) { \
    * @param y1 Vector B Y position
    * @param col Colour of line
    */
-  HALDEF void line(struct surface_t* s, int x0, int y0, int x1, int y1, int col);
+  GDEF void line(struct surface_t* s, int x0, int y0, int x1, int y1, int col);
   /*!
    * @discussion Draw a circle
    * @param s Surface object
@@ -454,7 +454,7 @@ if ((x)) { \
    * @param col Colour of cricle
    * @param fill Fill circle boolean
    */
-  HALDEF void circle(struct surface_t* s, int xc, int yc, int r, int col, bool fill);
+  GDEF void circle(struct surface_t* s, int xc, int yc, int r, int col, bool fill);
   /*!
    * @discussion Draw a rectangle
    * @param x X position
@@ -464,7 +464,7 @@ if ((x)) { \
    * @param col Colour of rectangle
    * @param fill Fill rectangle boolean
    */
-  HALDEF void rect(struct surface_t* s, int x, int y, int w, int h, int col, bool fill);
+  GDEF void rect(struct surface_t* s, int x, int y, int w, int h, int col, bool fill);
   /*!
    * @discussion Draw a triangle
    * @param s Surface object
@@ -477,7 +477,7 @@ if ((x)) { \
    * @param col Colour of line
    * @param fill Fill triangle boolean
    */
-  HALDEF void tri(struct surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col, bool fill);
+  GDEF void tri(struct surface_t* s, int x0, int y0, int x1, int y1, int x2, int y2, int col, bool fill);
 
   /*!
    * @discussion Load BMP file from path
@@ -485,7 +485,7 @@ if ((x)) { \
    * @param path Path to BMP file
    * @return Boolean of success
    */
-  HALDEF bool bmp(struct surface_t* s, const char* path);
+  GDEF bool bmp(struct surface_t* s, const char* path);
 
   /*!
    * @discussion Save surface to BMP file
@@ -493,7 +493,7 @@ if ((x)) { \
    * @param path Path to save BMP file to
    * @return Boolean of success
    */
-  HALDEF bool save_bmp(struct surface_t* s, const char* path);
+  GDEF bool save_bmp(struct surface_t* s, const char* path);
 #if !defined(GRAPHICS_NO_TEXT)
   /*!
    * @discussion Draw a character from ASCII value using default in-built font
@@ -504,7 +504,7 @@ if ((x)) { \
    * @param fg Foreground colour
    * @param bg Background colour
    */
-  HALDEF void ascii(struct surface_t* s, unsigned char ch, int x, int y, int fg, int bg);
+  GDEF void ascii(struct surface_t* s, unsigned char ch, int x, int y, int fg, int bg);
   /*!
    * @discussion Draw first character (ASCII or Unicode) from string using default in-built font
    * @param s Surface object
@@ -515,7 +515,7 @@ if ((x)) { \
    * @param bg Background colour
    * @return Returns length of character
    */
-  HALDEF int character(struct surface_t* s, const char* ch, int x, int y, int fg, int bg);
+  GDEF int character(struct surface_t* s, const char* ch, int x, int y, int fg, int bg);
   /*!
    * @discussion Draw a string using default in-built font
    * @param s Surface object
@@ -525,7 +525,7 @@ if ((x)) { \
    * @param bg Background colour
    * @param str String to write
    */
-  HALDEF void writeln(struct surface_t* s, int x, int y, int fg, int bg, const char* str);
+  GDEF void writeln(struct surface_t* s, int x, int y, int fg, int bg, const char* str);
   /*!
    * @discussion Draw a string using default in-built font
    * @param s Surface object
@@ -535,7 +535,7 @@ if ((x)) { \
    * @param bg Background colour
    * @param fmt Format string
    */
-  HALDEF void writelnf(struct surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...);
+  GDEF void writelnf(struct surface_t* s, int x, int y, int fg, int bg, const char* fmt, ...);
   /*!
    * @discussion Create a surface object for text using default in-built font
    * @param s Surface object to be allocated
@@ -543,7 +543,7 @@ if ((x)) { \
    * @param bg Background colour
    * @param str String to write
    */
-  HALDEF void string(struct surface_t* s, int fg, int bg, const char* str);
+  GDEF void string(struct surface_t* s, int fg, int bg, const char* str);
   /*!
    * @discussion Create a surface object for formatted text using default in-built font
    * @param s Surface object to be allocated
@@ -551,7 +551,7 @@ if ((x)) { \
    * @param bg Background colour
    * @param fmt Format string
    */
-  HALDEF void stringf(struct surface_t* s, int fg, int bg, const char* fmt, ...);
+  GDEF void stringf(struct surface_t* s, int fg, int bg, const char* fmt, ...);
 #endif
 
 #if !defined(GRAPHICS_NO_BDF)
@@ -576,14 +576,14 @@ if ((x)) { \
    * @discussion Destroy a BDF font object
    * @param f Pointer to BDF font object
    */
-  HALDEF void bdf_destroy(struct bdf_t* f);
+  GDEF void bdf_destroy(struct bdf_t* f);
   /*!
    * @discussion Load a BDF font from path
    * @param out BDF object to be allocated
    * @param path Path of BDF file
    * @return Boolean of success
    */
-  HALDEF bool bdf(struct bdf_t* out, const char* path);
+  GDEF bool bdf(struct bdf_t* out, const char* path);
   /*!
    * @discussion Draw a string using BDF font
    * @param s Surface object
@@ -595,7 +595,7 @@ if ((x)) { \
    * @param bg Background colour
    * @return Returns length of character
    */
-  HALDEF int bdf_character(struct surface_t* s, struct bdf_t* f, const char* ch, int x, int y, int fg, int bg);
+  GDEF int bdf_character(struct surface_t* s, struct bdf_t* f, const char* ch, int x, int y, int fg, int bg);
   /*!
    * @discussion Draw a string using BDF font object
    * @param s Surface object
@@ -606,7 +606,7 @@ if ((x)) { \
    * @param bg Background colour
    * @param str String to write
    */
-  HALDEF void bdf_writeln(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* str);
+  GDEF void bdf_writeln(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* str);
   /*!
    * @discussion Draw a formatted string using BDF font object
    * @param s Surface object
@@ -617,7 +617,7 @@ if ((x)) { \
    * @param bg Background colour
    * @param fmt Format string
    */
-  HALDEF void bdf_writelnf(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...);
+  GDEF void bdf_writelnf(struct surface_t* s, struct bdf_t* f, int x, int y, int fg, int bg, const char* fmt, ...);
   /*!
    * @discussion Create a surface object for text using BDF font object
    * @param s Surface object to be allocated
@@ -626,7 +626,7 @@ if ((x)) { \
    * @param bg Background colour
    * @param str String to write
    */
-  HALDEF void bdf_string(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* str);
+  GDEF void bdf_string(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* str);
   /*!
    * @discussion Create a surface object for formatted text using BDF font object
    * @param s Surface object to be allocated
@@ -635,7 +635,7 @@ if ((x)) { \
    * @param bg Background colour
    * @param fmt Format string
    */
-  HALDEF void bdf_stringf(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* fmt, ...);
+  GDEF void bdf_stringf(struct surface_t* s, struct bdf_t* f, int fg, int bg, const char* fmt, ...);
 #endif
 
 #if !defined(GRAPHICS_NO_ALERTS)
@@ -679,7 +679,7 @@ if ((x)) { \
    * @param fmt Formatted message
    * @return User value from dialog action
    */
-  HALDEF bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...);
+  GDEF bool alert(ALERT_LVL lvl, ALERT_BTNS btns, const char* fmt, ...);
   /*!
    * @discussion Open file dialog
    * @param action Save, open directory, open file
@@ -690,8 +690,14 @@ if ((x)) { \
    * @param ... Extension filters
    * @return Selected paths in dialog or NULL is cancelled
    */
-  HALDEF int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...);
+  GDEF int dialog(DIALOG_ACTION action, char*** result, const char* path, const char* fname, bool allow_multiple, int nfilters, ...);
 #endif
+  
+  /*!
+   * @discussion High precision timer
+   * @return Number of CPU ticks
+   */
+  GDEF unsigned long long ticks(void);
 
   /*!
    * @typedef MOUSE_BTN
@@ -889,21 +895,21 @@ if ((x)) { \
    * @param s Window object
    * @param p Pointer to parent
    */
-  HALDEF void window_set_parent(struct window_t* s, void* p);
+  GDEF void window_set_parent(struct window_t* s, void* p);
   /*!
    * @discussion Get parent point from window object
    * @param s Window object
    * @return Point to parent
    */
-  HALDEF void* window_parent(struct window_t* s);
+  GDEF void* window_parent(struct window_t* s);
 
 #define X(a, b) \
   void(*a##_cb)b,
 
-  HALDEF void window_callbacks(XMAP_SCREEN_CB struct window_t* window);
+  GDEF void window_callbacks(XMAP_SCREEN_CB struct window_t* window);
 #undef X
 #define X(a, b) \
-  HALDEF void a##_callback(struct window_t* window, void(*a##_cb)b);
+  GDEF void a##_callback(struct window_t* window, void(*a##_cb)b);
   XMAP_SCREEN_CB
 #undef X
 
@@ -948,119 +954,119 @@ if ((x)) { \
    * @param flags Window flags
    * @return Boolean of success
    */
-  HALDEF bool window(struct window_t* s, const char* t, int w, int h, short flags);
+  GDEF bool window(struct window_t* s, const char* t, int w, int h, short flags);
   /*!
    * @discussion Set window icon from surface object
    * @param s Window object
    * @param b Surface object
    */
-  HALDEF void window_icon(struct window_t* s, struct surface_t* b);
+  GDEF void window_icon(struct window_t* s, struct surface_t* b);
   /*!
    * @discussion Set window title
    * @param s Window object
    * @param t New title
    */
-  HALDEF void window_title(struct window_t* s, const char* t);
+  GDEF void window_title(struct window_t* s, const char* t);
   /*!
    * @discussion Get the position of a window object
    * @param s Window object
    * @param x Pointer to int to set
    * @param y Pointer to int to set
    */
-  HALDEF void window_position(struct window_t* s, int* x, int*  y);
+  GDEF void window_position(struct window_t* s, int* x, int*  y);
   /*!
    * @discussion Get the size of the screen a window is on
    * @param s Window object
    * @param w Pointer to int to set
    * @param h Pointer to int to set
    */
-  HALDEF void screen_size(struct window_t* s, int* w, int* h);
+  GDEF void screen_size(struct window_t* s, int* w, int* h);
   /*!
    * @discussion Destroy window object
    * @param s Window object
    */
-  HALDEF void window_destroy(struct window_t* s);
+  GDEF void window_destroy(struct window_t* s);
   /*!
    * @discussion Unique window ID for window object
    * @param s Window object
    * @return Unique ID of window object
    */
-  HALDEF int window_id(struct window_t* s);
+  GDEF int window_id(struct window_t* s);
   /*!
    * @discussion Get size of window
    * @param s Window object
    * @param w Pointer to int to set
    * @param h Pointer to int to set
    */
-  HALDEF void window_size(struct window_t* s, int* w, int* h);
+  GDEF void window_size(struct window_t* s, int* w, int* h);
   /*!
    * @discussion Check if a window is still open
    * @param s Window object
    * @return Boolean if window is open
    */
-  HALDEF bool closed(struct window_t* s);
+  GDEF bool closed(struct window_t* s);
   /*!
    * @discussion Check if n windows are still open
    * @param n Numbers of arguments
    * @param ... Window objects
    * @return Boolean if any window are still open
    */
-  HALDEF bool closed_va(int n, ...);
+  GDEF bool closed_va(int n, ...);
   /*!
    * @discussion Checks if any windows are still open
    * @return Boolean if any windows are still open
    */
-  HALDEF bool closed_all(void);
+  GDEF bool closed_all(void);
 
   /*!
    * @discussion Lock or unlock cursor movement to active window
    * @param locked Turn on or off
    */
-  HALDEF void cursor_lock(struct window_t* s, bool locked);
+  GDEF void cursor_lock(struct window_t* s, bool locked);
   /*!
    * @discussion Hide or show system cursor
    * @param show Hide or show
    */
-  HALDEF void cursor_visible(struct window_t* s, bool show);
+  GDEF void cursor_visible(struct window_t* s, bool show);
   /*!
    * @discussion Change cursor icon to system icon
    * @param s Window object
    * @param t Type of cursor
    */
-  HALDEF void cursor_icon(struct window_t* s, CURSOR_TYPE t);
+  GDEF void cursor_icon(struct window_t* s, CURSOR_TYPE t);
   /*!
    * @discussion Change cursor icon to icon from surface object
    * @param s Window object
    * @param b Surface object
    */
-  HALDEF void cursor_icon_custom(struct window_t* s, struct surface_t* b);
+  GDEF void cursor_icon_custom(struct window_t* s, struct surface_t* b);
   /*!
    * @discussion Get cursor position
    * @param x Integer to set
    * @param y Integer to set
    */
-  HALDEF void cursor_pos(int* x, int* y);
+  GDEF void cursor_pos(int* x, int* y);
   /*!
    * @discussion Set cursor position
    * @param x X position
    * @param y Y position
    */
-  HALDEF void cursor_set_pos(int x, int y);
+  GDEF void cursor_set_pos(int x, int y);
 
   /*!
    * @discussion Poll for window events
    */
-  HALDEF void events(void);
+  GDEF void events(void);
   /*!
    * @discussion Draw surface object to window
    * @param s Window object
    * @param b Surface object
    */
-  HALDEF void flush(struct window_t* s, struct surface_t* b);
+  GDEF void flush(struct window_t* s, struct surface_t* b);
   /*!
    * @discussion Release anything allocated by this library
    */
-  HALDEF void release(void);
+  GDEF void release(void);
 
 #define GRAPHICS_ERROR(A, ...) graphics_error((A), __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
   
@@ -1106,7 +1112,7 @@ if ((x)) { \
    * @discussion Callback for errors inside library
    * @param cb Function pointer to callback
    */
-  HALDEF void graphics_error_callback(void(*cb)(GRAPHICS_ERROR_TYPE, const char*, const char*, const char*, int));
+  GDEF void graphics_error_callback(void(*cb)(GRAPHICS_ERROR_TYPE, const char*, const char*, const char*, int));
   /*!
    * @discussion Internal function to send an error to the error callback
    * @param type The GRAPHICS_ERROR produced
@@ -1115,7 +1121,7 @@ if ((x)) { \
    * @param line The line number the error occured on
    * @param msg Formatted error description
    */
-  void graphics_error(GRAPHICS_ERROR_TYPE type, const char* file, const char* func, int line, const char* msg, ...);
+  GDEF void graphics_error(GRAPHICS_ERROR_TYPE type, const char* file, const char* func, int line, const char* msg, ...);
   
 #if defined(__cplusplus)
 }

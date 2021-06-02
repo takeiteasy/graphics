@@ -123,8 +123,8 @@ int main(int argc, const char* argv[]) {
   surface_destroy(&test_icon);
   surface_destroy(&test_cursor);
 #endif
-
-cursor_visible(&win, false);
+  
+  cursor_visible(&win, false);
 
   struct surface_t img;
 #if defined(GRAPHICS_EMCC)

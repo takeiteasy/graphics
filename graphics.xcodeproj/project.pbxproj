@@ -26,10 +26,7 @@
 /* Begin PBXFileReference section */
 		8888654D2367F7BC0073BA8D /* hal */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = hal; sourceTree = BUILT_PRODUCTS_DIR; };
 		888865582367F8070073BA8D /* graphics.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = graphics.c; sourceTree = "<group>"; };
-		8888655B2367F8070073BA8D /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		8888655C2367F8070073BA8D /* test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = test.c; sourceTree = "<group>"; };
-		8888655D2367F8070073BA8D /* screenshot.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = screenshot.png; sourceTree = "<group>"; };
-		8888655E2367F8070073BA8D /* VERSION */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = VERSION; sourceTree = "<group>"; };
 		8888655F2367F8070073BA8D /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		888865652367F8070073BA8D /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 		888865692367F8070073BA8D /* hal.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = hal.js; sourceTree = "<group>"; };
@@ -129,21 +126,6 @@
 		888866412367F8080073BA8D /* stb_image_write.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image_write.h; sourceTree = "<group>"; };
 		888866422367F8080073BA8D /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
 		888866442367F8080073BA8D /* graphics.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = graphics.h; sourceTree = "<group>"; };
-		888866472367F8080073BA8D /* build.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = build.rb; sourceTree = "<group>"; };
-		888866492367F8080073BA8D /* version_flags.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = version_flags.rb; sourceTree = "<group>"; };
-		8888664A2367F8080073BA8D /* build_windows.bat */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = build_windows.bat; sourceTree = "<group>"; };
-		8888664B2367F8080073BA8D /* generate_c_definitions.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = generate_c_definitions.rb; sourceTree = "<group>"; };
-		8888664C2367F8080073BA8D /* dehal.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = dehal.rb; sourceTree = "<group>"; };
-		8888664D2367F8080073BA8D /* split_single_header.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = split_single_header.rb; sourceTree = "<group>"; };
-		8888664E2367F8080073BA8D /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		8888664F2367F8080073BA8D /* change_version.rb */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.ruby; path = change_version.rb; sourceTree = "<group>"; };
-		888866502367F8080073BA8D /* build_emcc.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_emcc.sh; sourceTree = "<group>"; };
-		888866512367F8080073BA8D /* build_docs.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_docs.sh; sourceTree = "<group>"; };
-		888866522367F8080073BA8D /* build_test.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_test.sh; sourceTree = "<group>"; };
-		888866532367F8080073BA8D /* build_library.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = build_library.sh; sourceTree = "<group>"; };
-		888866542367F8080073BA8D /* pu.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = pu.sh; sourceTree = "<group>"; };
-		888866562367F8080073BA8D /* index.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html.documentation; path = index.html; sourceTree = "<group>"; };
-		888866572367F8080073BA8D /* toc.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html.documentation; path = toc.html; sourceTree = "<group>"; };
 		8888666023684AA40073BA8D /* libpthread.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libpthread.tbd; path = usr/lib/libpthread.tbd; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -162,16 +144,10 @@
 			isa = PBXGroup;
 			children = (
 				888865602367F8070073BA8D /* build */,
-				888866472367F8080073BA8D /* build.rb */,
-				888866552367F8080073BA8D /* docs */,
 				888865DF2367F8080073BA8D /* examples */,
-				8888655B2367F8070073BA8D /* LICENSE */,
 				8888655F2367F8070073BA8D /* README.md */,
-				8888655D2367F8070073BA8D /* screenshot.png */,
 				888865572367F8070073BA8D /* graphics */,
 				8888655C2367F8070073BA8D /* test.c */,
-				888866482367F8080073BA8D /* tools */,
-				8888655E2367F8070073BA8D /* VERSION */,
 				8888654E2367F7BC0073BA8D /* Products */,
 				8888665F23684AA40073BA8D /* Frameworks */,
 			);
@@ -351,34 +327,6 @@
 				8888661B2367F8080073BA8D /* svpostnm.h */,
 			);
 			path = services;
-			sourceTree = "<group>";
-		};
-		888866482367F8080073BA8D /* tools */ = {
-			isa = PBXGroup;
-			children = (
-				888866492367F8080073BA8D /* version_flags.rb */,
-				8888664A2367F8080073BA8D /* build_windows.bat */,
-				8888664B2367F8080073BA8D /* generate_c_definitions.rb */,
-				8888664C2367F8080073BA8D /* dehal.rb */,
-				8888664D2367F8080073BA8D /* split_single_header.rb */,
-				8888664E2367F8080073BA8D /* README.md */,
-				8888664F2367F8080073BA8D /* change_version.rb */,
-				888866502367F8080073BA8D /* build_emcc.sh */,
-				888866512367F8080073BA8D /* build_docs.sh */,
-				888866522367F8080073BA8D /* build_test.sh */,
-				888866532367F8080073BA8D /* build_library.sh */,
-				888866542367F8080073BA8D /* pu.sh */,
-			);
-			path = tools;
-			sourceTree = "<group>";
-		};
-		888866552367F8080073BA8D /* docs */ = {
-			isa = PBXGroup;
-			children = (
-				888866562367F8080073BA8D /* index.html */,
-				888866572367F8080073BA8D /* toc.html */,
-			);
-			path = docs;
 			sourceTree = "<group>";
 		};
 		8888665F23684AA40073BA8D /* Frameworks */ = {
